@@ -1,0 +1,7 @@
+# Kopiér til .dev.vars til lokal udvikling (filen må ALDRIG committes).
+# Værdier her overskriver [vars] i wrangler.toml, når du kører `npm run dev`.
+APP_URL=http://localhost:8787
+DEV_MODE=1
+ADMIN_EMAILS=dig@example.dk
+# Lad stå tom i udvikling: så vises login-linket på skærmen
+RESEND_API_KEY=
