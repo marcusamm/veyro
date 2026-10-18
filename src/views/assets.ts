@@ -96,7 +96,7 @@ form.inline{display:inline}
 /* Formularer */
 label{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
 .hint{font-size:14px;color:var(--muted);margin-top:4px}
-input[type=email],input[type=text],textarea,select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;
+input[type=email],input[type=text],input[type=number],textarea,select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;
   border:1px solid var(--line-strong);border-radius:var(--r-btn);padding:11px 14px;min-height:46px}
 textarea{min-height:140px;resize:vertical;line-height:1.5}
 select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
@@ -193,6 +193,13 @@ details[open] summary{margin-bottom:6px}
 
 .visually-hidden{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.inv-line{display:grid;grid-template-columns:1fr;gap:8px}
+.inv-line+.inv-line{margin-top:10px}
+.inv-line .field+.field,.grid>.field+.field{margin-top:0}
+@media(min-width:720px){.inv-line{grid-template-columns:minmax(0,1fr) 90px 200px;gap:12px}}
+.label-like{display:block;font-weight:600;margin-bottom:6px}
+.check{display:flex;gap:10px;align-items:center;font-weight:400}
+.check input{width:auto;margin:0}
 `;
 
 export const JS = `
@@ -201,6 +208,8 @@ document.addEventListener('submit', function (e) {
   var form = e.target;
   if (!(form instanceof HTMLFormElement)) return;
   if (form.dataset.submitted === '1') { e.preventDefault(); return; }
+  var ask = (e.submitter && e.submitter.dataset.confirmBtn) || form.dataset.confirm;
+  if (ask && !window.confirm(ask)) { e.preventDefault(); return; }
   form.dataset.submitted = '1';
   var btns = form.querySelectorAll('button[type=submit],button:not([type])');
   btns.forEach(function (b) {

@@ -516,6 +516,134 @@ describe('Admin', () => {
   });
 });
 
+describe('Admin: fakturaer', () => {
+  const mockInvoices = async () => (await fetch(stack.mock.url + '/__mock/invoices')).json();
+  const setMock = (s) => fetch(stack.mock.url + '/__mock/state', { method: 'POST', body: JSON.stringify(s) });
+  const formFrom = (html, extra) => ({
+    _csrf: csrfFrom(html),
+    key: html.match(/name="key" value="([^"]+)"/)[1],
+    days: '8',
+    vat: '1',
+    line0_qty: '1',
+    ...extra,
+  });
+
+  it('kunder har ikke adgang', async () => {
+    const { client } = await as('anna@example.dk');
+    expect((await client.get('/admin/fakturaer')).status).toBe(403);
+  });
+
+  it('opretter og sender en faktura med moms til en ny kunde', async () => {
+    const { client } = await as(ADMIN_EMAIL);
+    const page = await client.get('/admin/fakturaer');
+    expect(page.status).toBe(200);
+    expect(page.html).toContain('Ny faktura');
+    const before = (await calls()).length;
+    const res = await client.post('/admin/fakturaer', formFrom(page.html, {
+      email: 'Lager@Firma.dk', name: 'Firma ApS', action: 'send',
+      line0_desc: 'Opsætning af ordresystem', line0_price: '4.500', line1_desc: 'Oplæring', line1_qty: '2', line1_price: '750,50',
+    }));
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toMatch(/^\/admin\/fakturaer\?besked=sendt#in_/);
+    const inv = (await mockInvoices()).at(-1);
+    expect(inv.customer_email).toBe('lager@firma.dk');
+    expect(inv.status).toBe('open');
+    expect(inv._sent).toBe(1);
+    // (4500 + 2 * 750,50) * 1,25 = 7500,50 * 1,25
+    expect(inv.total).toBe(Math.round(600100 * 1.25));
+    expect(inv._params.collection_method).toBe('send_invoice');
+    expect(inv._params['managed_payments[enabled]']).toBe('false');
+    const made = (await calls()).slice(before);
+    expect(made.filter((c) => c.path === '/v1/tax_rates' && c.method === 'POST')).toHaveLength(1);
+    expect(made.find((c) => c.path === '/v1/invoices' && c.method === 'POST').idempotencyKey).toMatch(/^admin-inv-/);
+    const list = await client.get('/admin/fakturaer?besked=sendt');
+    expect(list.html).toContain('Fakturaen er sendt til kunden');
+    expect(list.html).toContain('Firma ApS');
+    expect(list.html).toContain('Afventer betaling');
+  });
+
+  it('gemmer kladde uden moms til eksisterende kunde, og kladden kan sendes', async () => {
+    const { client } = await as(ADMIN_EMAIL);
+    const page = await client.get('/admin/fakturaer');
+    const res = await client.post('/admin/fakturaer', formFrom(page.html, {
+      email: 'anna@example.dk', name: 'Anna Jensen', action: 'draft', vat: '', line0_desc: 'Ekstra arbejde', line0_price: '1000',
+    }));
+    expect(res.status).toBe(303);
+    const inv = (await mockInvoices()).at(-1);
+    expect(inv.customer).toBe('cus_A');
+    expect(inv.status).toBe('draft');
+    expect(inv.total).toBe(100000);
+    expect(inv._params['default_tax_rates[0]']).toBeUndefined();
+    const list = await client.get('/admin/fakturaer');
+    expect(list.html).toContain(`/admin/fakturaer/${inv.id}/send`);
+    const sent = await client.post(`/admin/fakturaer/${inv.id}/send`, { _csrf: csrfFrom(list.html) });
+    expect(sent.status).toBe(303);
+    const after = (await mockInvoices()).find((i) => i.id === inv.id);
+    expect(after.status).toBe('open');
+    expect(after._sent).toBe(1);
+    const paid = await client.post(`/admin/fakturaer/${inv.id}/betalt`, { _csrf: csrfFrom(list.html) });
+    expect(paid.status).toBe(303);
+    expect((await mockInvoices()).find((i) => i.id === inv.id).status).toBe('paid');
+  });
+
+  it('kladder kan slettes, og ugyldige id’er afvises', async () => {
+    const { client } = await as(ADMIN_EMAIL);
+    const page = await client.get('/admin/fakturaer');
+    await client.post('/admin/fakturaer', formFrom(page.html, { email: 'bo@example.dk', name: 'Bo', action: 'draft', line0_desc: 'Test', line0_price: '10' }));
+    const inv = (await mockInvoices()).at(-1);
+    const del = await client.post(`/admin/fakturaer/${inv.id}/slet`, { _csrf: csrfFrom(page.html) });
+    expect(del.status).toBe(303);
+    expect((await mockInvoices()).some((i) => i.id === inv.id)).toBe(false);
+    expect((await client.post('/admin/fakturaer/abc/slet', { _csrf: csrfFrom(page.html) })).status).toBe(400);
+    expect((await client.post(`/admin/fakturaer/${inv.id}/hack`, { _csrf: csrfFrom(page.html) })).status).toBe(400);
+  });
+
+  it('viser valideringsfejl og bevarer det indtastede', async () => {
+    const { client } = await as(ADMIN_EMAIL);
+    const page = await client.get('/admin/fakturaer');
+    const n = (await mockInvoices()).length;
+    const bad = await client.post('/admin/fakturaer', formFrom(page.html, { email: 'x@firma.dk', name: 'X', action: 'send', line0_desc: 'Noget', line0_price: 'abc' }));
+    expect(bad.status).toBe(400);
+    expect(bad.html).toContain('Linje 1: skriv en gyldig pris');
+    expect(bad.html).toContain('value="Noget"');
+    const empty = await client.post('/admin/fakturaer', formFrom(page.html, { email: 'x@firma.dk', name: 'X', action: 'send' }));
+    expect(empty.html).toContain('mindst én linje');
+    expect((await mockInvoices()).length).toBe(n);
+  });
+
+  it('dobbelt indsendelse bruger samme engangsnøgle', async () => {
+    const { client } = await as(ADMIN_EMAIL);
+    const page = await client.get('/admin/fakturaer');
+    const form = formFrom(page.html, { email: 'bo@example.dk', name: 'Bo', action: 'draft', line0_desc: 'Dobbelt', line0_price: '20' });
+    const before = (await calls()).length;
+    await client.post('/admin/fakturaer', form);
+    await client.post('/admin/fakturaer', form);
+    const keys = (await calls()).slice(before).filter((c) => c.path === '/v1/invoices' && c.method === 'POST').map((c) => c.idempotencyKey);
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).toBe(keys[1]);
+  });
+
+  it('prøver igen uden managed_payments, hvis Stripe ikke kender parameteren', async () => {
+    const { client } = await as(ADMIN_EMAIL);
+    await setMock({ rejectManagedPayments: true });
+    const page = await client.get('/admin/fakturaer');
+    const res = await client.post('/admin/fakturaer', formFrom(page.html, { email: 'bo@example.dk', name: 'Bo', action: 'draft', line0_desc: 'Fallback', line0_price: '30' }));
+    await setMock({ rejectManagedPayments: false });
+    expect(res.status).toBe(303);
+    expect((await mockInvoices()).at(-1)._params['managed_payments[enabled]']).toBeUndefined();
+  });
+
+  it('viser Stripes fejl uden at miste formularen', async () => {
+    const { client } = await as(ADMIN_EMAIL);
+    await setMock({ failNext: '/v1/invoiceitems' });
+    const page = await client.get('/admin/fakturaer');
+    const res = await client.post('/admin/fakturaer', formFrom(page.html, { email: 'bo@example.dk', name: 'Bo', action: 'send', line0_desc: 'Fejl', line0_price: '40' }));
+    expect(res.status).toBe(502);
+    expect(res.html).toContain('Stripe svarede: Simuleret fejl');
+    expect(res.html).toContain('value="Fejl"');
+  });
+});
+
 describe('Udviklingstilstand uden Resend-nøgle', () => {
   let dev;
   beforeAll(async () => {

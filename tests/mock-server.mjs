@@ -67,9 +67,11 @@ export function startMock() {
         Object.assign(state.subscriptions, s.subscriptions ?? {});
         if (s.invoices) state.invoices.push(...s.invoices);
         if (s.failNext !== undefined) state.failNext = s.failNext;
+        if (s.rejectManagedPayments !== undefined) state.rejectManagedPayments = s.rejectManagedPayments;
         return json(200, { ok: true });
       }
       if (p === '/__mock/calls') return json(200, state.calls);
+      if (p === '/__mock/invoices') return json(200, state.invoices);
       if (p === '/__mock/emails') return json(200, state.emails);
       if (p.startsWith('/__mock/subscriptions/')) return json(200, state.subscriptions[p.split('/').pop()] ?? null);
 
@@ -104,7 +106,73 @@ export function startMock() {
         return json(200, { object: 'invoice', amount_due: (PRICES[price] ?? 0) + 12345, next_payment_attempt: null, period_end: null });
       }
       if (p === '/v1/invoices' && req.method === 'GET') {
-        return json(200, { object: 'list', data: state.invoices.filter((i) => i.customer === params.customer), has_more: false });
+        const data = params.customer ? state.invoices.filter((i) => i.customer === params.customer) : [...state.invoices].reverse();
+        return json(200, { object: 'list', data, has_more: false });
+      }
+      // --- Manuelle fakturaer (admin) ---
+      if (p === '/v1/customers' && req.method === 'GET') {
+        return json(200, { object: 'list', data: Object.values(state.customers).filter((c) => c.email === params.email) });
+      }
+      if (p === '/v1/customers' && req.method === 'POST') {
+        const id = 'cus_new_' + state.calls.length;
+        state.customers[id] = { id, object: 'customer', email: params.email, name: params.name ?? null };
+        return json(200, state.customers[id]);
+      }
+      if (p === '/v1/tax_rates' && req.method === 'GET') return json(200, { object: 'list', data: state.taxRates ?? [] });
+      if (p === '/v1/tax_rates' && req.method === 'POST') {
+        const rate = { id: 'txr_vat', percentage: Number(params.percentage), inclusive: params.inclusive === 'true', country: params.country };
+        state.taxRates = [rate];
+        return json(200, rate);
+      }
+      if (p === '/v1/invoices' && req.method === 'POST') {
+        if (params['managed_payments[enabled]'] !== undefined && state.rejectManagedPayments) {
+          return stripeErr(res, 400, 'Received unknown parameter: managed_payments', 'parameter_unknown');
+        }
+        const cust = state.customers[params.customer];
+        if (!cust) return stripeErr(res, 400, 'No such customer', 'resource_missing');
+        const inv = {
+          id: 'in_test' + String(state.invoices.length + 1).padStart(6, '0'), object: 'invoice', customer: params.customer,
+          customer_email: cust.email, customer_name: cust.name, status: 'draft', number: null, created: Math.floor(Date.now() / 1000),
+          due_date: null, total: 0, amount_remaining: 0, currency: 'dkk', hosted_invoice_url: null, invoice_pdf: null, livemode: false,
+          _tax: params['default_tax_rates[0]'] ? 25 : 0, _params: params,
+        };
+        state.invoices.push(inv);
+        return json(200, inv);
+      }
+      if (p === '/v1/invoiceitems' && req.method === 'POST') {
+        const inv = state.invoices.find((i) => i.id === params.invoice);
+        if (!inv || inv.status !== 'draft') return stripeErr(res, 400, 'Invoice is not a draft');
+        const net = Number(params.unit_amount_decimal) * Number(params.quantity ?? 1);
+        inv.total += Math.round(net * (1 + inv._tax / 100));
+        inv.amount_remaining = inv.total;
+        return json(200, { id: 'ii_' + state.calls.length, object: 'invoiceitem' });
+      }
+      if ((m = p.match(/^\/v1\/invoices\/(in_[^/]+)(?:\/(finalize|send|pay|void))?$/))) {
+        const inv = state.invoices.find((i) => i.id === m[1]);
+        if (!inv) return stripeErr(res, 404, 'No such invoice', 'resource_missing');
+        const act = m[2];
+        if (req.method === 'GET' && !act) return json(200, inv);
+        if (req.method === 'DELETE' && !act) {
+          if (inv.status !== 'draft') return stripeErr(res, 400, 'Only drafts can be deleted');
+          state.invoices.splice(state.invoices.indexOf(inv), 1);
+          return json(200, { id: inv.id, deleted: true });
+        }
+        if (act === 'finalize') {
+          if (inv.status !== 'draft') return stripeErr(res, 400, 'Invoice is already finalized');
+          Object.assign(inv, { status: 'open', number: 'VEYRO-' + inv.id.slice(-4), due_date: inv.created + 8 * 86400,
+            hosted_invoice_url: 'https://invoice.stripe.com/i/' + inv.id, invoice_pdf: 'https://pay.stripe.com/invoice/' + inv.id + '/pdf' });
+          return json(200, inv);
+        }
+        if (act === 'send') {
+          if (inv.status !== 'open') return stripeErr(res, 400, 'Invoice is not open');
+          inv._sent = (inv._sent ?? 0) + 1;
+          return json(200, inv);
+        }
+        if (act === 'pay' || act === 'void') {
+          if (inv.status !== 'open') return stripeErr(res, 400, 'Invoice is not open');
+          inv.status = act === 'pay' ? 'paid' : 'void';
+          return json(200, inv);
+        }
       }
       if ((m = p.match(/^\/v1\/customers\/([^/]+)$/)) && req.method === 'GET') {
         const c = state.customers[m[1]];

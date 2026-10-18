@@ -1,6 +1,7 @@
 import { html } from 'hono/html';
 import type { AdminRequestRow, CustomerListRow } from '../lib/db';
-import { formatDate, formatDateShort } from '../lib/format';
+import { MAX_LINES, VAT_PERCENT, type AdminInvoice, type DraftForm } from '../lib/invoices';
+import { formatDate, formatDateShort, formatKr } from '../lib/format';
 import { getPlan } from '../lib/plans';
 import { alert, csrfField, type H } from './layout';
 import { REQUEST_STATUSES, REQUEST_TYPES, badgeClass, subscriptionState } from './status';
@@ -29,6 +30,7 @@ export function adminOverviewPage(args: { customers: CustomerListRow[]; requests
     <a class="card" href="/admin/kunder" style="text-decoration:none"><div class="muted small">Betaling fejlet</div><div class="price-big">${failed}</div></a>
     <a class="card" href="/admin/henvendelser" style="text-decoration:none"><div class="muted small">Åbne henvendelser</div><div class="price-big">${open}</div></a>
   </div>
+  <div class="row"><a class="btn btn-accent" href="/admin/fakturaer">Opret faktura</a></div>
   <section class="card">
     <div class="row between"><h2 style="margin:0">Seneste åbne henvendelser</h2><a href="/admin/henvendelser" class="small">Se alle</a></div>
     ${requestsList(args.requests.filter((r) => r.status !== 'resolved').slice(0, 5), null)}
@@ -97,5 +99,123 @@ export function adminRequestsPage(args: { csrf: string; requests: AdminRequestRo
     )}
   </nav>
   <section class="card">${requestsList(args.requests, args.csrf)}</section>
+</div>`;
+}
+
+// ---------------- Fakturaer ----------------
+
+const ADMIN_INVOICE_STATUS: Record<string, { label: string; cls: string }> = {
+  draft: { label: 'Kladde', cls: 'b-neutral' },
+  open: { label: 'Afventer betaling', cls: 'b-warn' },
+  paid: { label: 'Betalt', cls: 'b-ok' },
+  void: { label: 'Annulleret', cls: 'b-neutral' },
+  uncollectible: { label: 'Ikke betalt', cls: 'b-err' },
+};
+
+const INVOICE_FLASH: Record<string, string> = {
+  kladde: 'Fakturaen er gemt som kladde. Den er ikke sendt til kunden endnu.',
+  sendt: 'Fakturaen er sendt til kunden på e-mail.',
+  slettet: 'Kladden er slettet.',
+  betalt: 'Fakturaen er markeret som betalt.',
+  annulleret: 'Fakturaen er annulleret.',
+};
+
+function invoiceActions(inv: AdminInvoice, csrf: string): H {
+  const form = (action: string, label: string, cls: string, confirm?: string) =>
+    html`<form method="post" action="/admin/fakturaer/${inv.id}/${action}" class="inline"${confirm ? html` data-confirm="${confirm}"` : ''}>${csrfField(csrf)}<button class="btn btn-small ${cls}" type="submit">${label}</button></form>`;
+  const dash = `https://dashboard.stripe.com/${inv.livemode === false ? 'test/' : ''}invoices/${inv.id}`;
+  return html`<div class="row" style="gap:8px;justify-content:flex-end">
+    ${inv.status === 'draft' ? form('send', 'Send', 'btn-primary', 'Send fakturaen til kunden nu?') : ''}
+    ${inv.status === 'draft' ? form('slet', 'Slet', 'btn-danger', 'Slet kladden?') : ''}
+    ${inv.status === 'open' ? form('betalt', 'Marker betalt', 'btn-secondary', 'Marker fakturaen som betalt uden for Stripe (fx bankoverførsel)?') : ''}
+    ${inv.status === 'open' ? form('annuller', 'Annullér', 'btn-danger', 'Annullér fakturaen? Det kan ikke fortrydes.') : ''}
+    ${inv.hosted_invoice_url ? html`<a class="small" href="${inv.hosted_invoice_url}" rel="noopener" target="_blank">Vis</a>` : ''}
+    ${inv.invoice_pdf ? html`<a class="small" href="${inv.invoice_pdf}" rel="noopener">PDF</a>` : ''}
+    <a class="small" href="${dash}" rel="noopener" target="_blank">Stripe</a>
+  </div>`;
+}
+
+function lineRow(i: number, f: DraftForm | null, errField: string | null): H {
+  const l = f?.lines[i] ?? { description: '', quantity: '', price: '' };
+  const inv = (k: string) => (errField === `line${i}_${k}` ? html` aria-invalid="true"` : '');
+  return html`<div class="inv-line">
+    <div class="field"><label for="line${i}_desc">${i === 0 ? 'Beskrivelse' : html`<span class="visually-hidden">Beskrivelse, linje ${i + 1}</span>`}</label>
+      <input id="line${i}_desc" name="line${i}_desc" type="text" maxlength="200" value="${l.description}"${i === 0 ? html` required placeholder="Fx Opsætning af internt ordresystem"` : ''}${inv('desc')}></div>
+    <div class="field"><label for="line${i}_qty">${i === 0 ? 'Antal' : html`<span class="visually-hidden">Antal, linje ${i + 1}</span>`}</label>
+      <input id="line${i}_qty" name="line${i}_qty" type="number" min="1" max="1000" step="1" inputmode="numeric" value="${l.quantity || (i === 0 ? '1' : '')}"${inv('qty')}></div>
+    <div class="field"><label for="line${i}_price">${i === 0 ? 'Pris pr. stk. (kr. ekskl. moms)' : html`<span class="visually-hidden">Pris, linje ${i + 1}</span>`}</label>
+      <input id="line${i}_price" name="line${i}_price" type="text" inputmode="decimal" maxlength="15" value="${l.price}"${i === 0 ? html` required placeholder="Fx 4.500"` : ''}${inv('price')}></div>
+  </div>`;
+}
+
+export function adminInvoicesPage(args: {
+  csrf: string;
+  formKey: string;
+  invoices: AdminInvoice[] | null;
+  customers: CustomerListRow[];
+  form: DraftForm | null;
+  error: string | null;
+  errorField: string | null;
+  flash: string | null;
+}): H {
+  const f = args.form;
+  const err = (k: string) => (args.errorField === k ? html` aria-invalid="true"` : '');
+  const flash = args.flash ? INVOICE_FLASH[args.flash] : null;
+  return html`<div class="stack-lg">
+  <div><p class="eyebrow">Admin</p><h1>Fakturaer</h1><p class="lead">Opret en faktura til en kunde, fx efter et tilbud. Fakturaen laves i Stripe, og kunden kan betale med kort via linket i e-mailen.</p></div>
+  ${flash ? alert('ok', flash) : ''}
+  <section class="card stack" aria-labelledby="ny-h">
+    <h2 id="ny-h">Ny faktura</h2>
+    ${args.error ? alert('err', args.error) : ''}
+    <form method="post" action="/admin/fakturaer" class="stack" novalidate>
+      ${csrfField(args.csrf)}
+      <input type="hidden" name="key" value="${args.formKey}">
+      <div class="grid grid-2">
+        <div class="field"><label for="email">Kundens e-mail</label>
+          <input id="email" name="email" type="email" required maxlength="254" autocomplete="off" list="kunder" value="${f?.email ?? ''}"${err('email')}>
+          <datalist id="kunder">${args.customers.map((c) => html`<option value="${c.email}">${c.name ?? ''}</option>`)}</datalist>
+        </div>
+        <div class="field"><label for="name">Navn eller firma</label>
+          <input id="name" name="name" type="text" required maxlength="100" value="${f?.name ?? ''}"${err('name')}></div>
+      </div>
+      <fieldset class="stack" style="border:0;padding:0;margin:0">
+        <legend class="small muted" style="margin-bottom:8px">Linjer (op til ${MAX_LINES}). Tomme linjer springes over.</legend>
+        ${Array.from({ length: MAX_LINES }, (_, i) => lineRow(i, f, args.errorField))}
+      </fieldset>
+      <div class="grid grid-2">
+        <div class="field"><label for="days">Betalingsfrist (dage)</label>
+          <input id="days" name="days" type="number" min="0" max="90" step="1" inputmode="numeric" value="${f?.days || '8'}"${err('days')}></div>
+        <div class="field"><span class="label-like">Moms</span>
+          <label class="check"><input type="checkbox" name="vat" value="1"${!f || f.vat ? html` checked` : ''}> Læg ${VAT_PERCENT} % moms oveni priserne</label></div>
+      </div>
+      <div class="field"><label for="memo">Besked på fakturaen (valgfri)</label>
+        <textarea id="memo" name="memo" rows="3" maxlength="500" placeholder="Fx Tak for ordren. Faktura i henhold til tilbud af 18. oktober.">${f?.memo ?? ''}</textarea></div>
+      <div class="row">
+        <button class="btn btn-accent" type="submit" name="action" value="send" data-loading="Sender …" data-confirm-btn="Send fakturaen til kunden nu?">Opret og send</button>
+        <button class="btn btn-secondary" type="submit" name="action" value="draft" data-loading="Gemmer …">Gem som kladde</button>
+      </div>
+      <p class="hint">"Gem som kladde" sender intet. Du kan se kladden igennem nedenfor eller i Stripe og sende den bagefter.</p>
+    </form>
+  </section>
+  <section class="card" aria-labelledby="liste-h">
+    <h2 id="liste-h">Seneste fakturaer</h2>
+    ${args.invoices === null
+      ? alert('err', 'Fakturaerne kunne ikke hentes fra Stripe lige nu.')
+      : args.invoices.length === 0
+        ? html`<p class="empty">Ingen fakturaer endnu.</p>`
+        : html`<div class="table-wrap"><table class="responsive">
+      <thead><tr><th scope="col">Kunde</th><th scope="col">Nummer</th><th scope="col">Status</th><th scope="col">Forfald</th><th scope="col" class="num">Beløb</th><th scope="col"><span class="visually-hidden">Handlinger</span></th></tr></thead>
+      <tbody>${args.invoices.map((inv) => {
+        const st = ADMIN_INVOICE_STATUS[inv.status ?? ''] ?? { label: inv.status ?? '–', cls: 'b-neutral' };
+        return html`<tr id="${inv.id}">
+          <td data-label="Kunde"><strong>${inv.customer_name ?? '–'}</strong><br><span class="small muted">${inv.customer_email ?? ''}</span></td>
+          <td data-label="Nummer">${inv.number ?? '–'}<br><span class="small muted">${formatDateShort(inv.created)}</span></td>
+          <td data-label="Status"><span class="badge ${st.cls}">${st.label}</span></td>
+          <td data-label="Forfald">${formatDateShort(inv.due_date)}</td>
+          <td data-label="Beløb" class="num">${formatKr(inv.total, { decimals: true })}</td>
+          <td data-label="">${invoiceActions(inv, args.csrf)}</td>
+        </tr>`;
+      })}</tbody></table></div>`}
+  </section>
 </div>`;
 }

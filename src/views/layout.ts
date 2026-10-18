@@ -2,7 +2,7 @@ import { html } from 'hono/html';
 
 export type H = ReturnType<typeof html>;
 
-export type NavKey = 'overblik' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser';
+export type NavKey = 'overblik' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer';
 
 export interface LayoutOpts {
   title: string;
@@ -28,6 +28,7 @@ export function layout(opts: LayoutOpts, body: H): H {
       navLink('/admin', 'Oversigt', opts.nav === 'admin'),
       navLink('/admin/kunder', 'Kunder', opts.nav === 'admin-kunder'),
       navLink('/admin/henvendelser', 'Henvendelser', opts.nav === 'admin-henvendelser'),
+      navLink('/admin/fakturaer', 'Fakturaer', opts.nav === 'admin-fakturaer'),
     ];
     if (opts.customerNav) navItems.push(navLink('/konto', 'Til kundepanel', false));
   } else if (opts.customerNav) {
@@ -53,8 +54,8 @@ export function layout(opts: LayoutOpts, body: H): H {
 <title>${opts.title} · Veyro kundepanel</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preload" href="/static/inter-tight.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/static/app.css?v=2">
-<script src="/static/app.js?v=1" defer></script>
+<link rel="stylesheet" href="/static/app.css?v=3">
+<script src="/static/app.js?v=2" defer></script>
 </head>
 <body>
 <a class="skip" href="#indhold">Spring til indhold</a>
