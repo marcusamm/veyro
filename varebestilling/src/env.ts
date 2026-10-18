@@ -36,6 +36,12 @@ export interface ProductRow {
   track_stock: number;
   stock: number;
   low_stock_threshold: number | null;
+  lead_time_days: number | null;
+  avg_daily_demand: number | null;
+  auto_safety_stock: number | null;
+  auto_reorder_point: number | null;
+  forecast_at: number | null;
+  reorder_alerted: number;
   active: number;
   sort_order: number;
   created_at: number;

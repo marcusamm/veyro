@@ -2,7 +2,8 @@ import { html } from 'hono/html';
 import type { OrderEventRow, OrderLineRow, OrderRow, OrderSource, OrderStatus, ProductRow } from '../env';
 import type { ImportError, PlannedRow } from '../lib/csv';
 import { FIELD_LABEL, type Field } from '../lib/csv';
-import { formatDateTime, formatKr, oereToInput } from '../lib/format';
+import { formatDate, formatDateTime, formatKr, oereToInput } from '../lib/format';
+import { MIN_HISTORY_DAYS, SERVICE_LEVELS, reorderInfo, type ReorderInfo } from '../lib/forecast';
 import { SOURCE_LABEL, STATUSES, STATUS_LABEL, TRANSITIONS, type OrderListRow, type StatusEvent } from '../lib/orders';
 import type { MovementWithProduct, ProductWithReserved } from '../lib/products';
 import { lowStockLimit, safeUrl, type Settings } from '../lib/settings';
@@ -76,6 +77,7 @@ export function flashMessage(code: string | undefined): H | '' {
     lager: ['ok', 'Lageret er opdateret.'],
     status: ['ok', 'Status er ændret.'],
     note: ['ok', 'Noten er gemt.'],
+    beregnet: ['ok', 'Tallene er beregnet igen. Varer, der skal bestilles hjem, er varslet på e-mail.'],
     ordre_oprettet: ['ok', 'Ordren er oprettet.'],
     logget_ud: ['ok', 'Du er logget ud.'],
   };
@@ -119,7 +121,17 @@ export function dashboardPage(args: {
   const newest = args.latest.find((o) => o.status === 'ny');
   const limit = (p: ProductWithReserved) => lowStockLimit(p, s);
   const avail = (p: ProductWithReserved) => Math.max(0, p.stock - p.reserved);
-  const alerts = args.stock.filter((p) => avail(p) <= limit(p)).slice(0, 6);
+  const now = Math.floor(Date.now() / 1000);
+  const alerts = args.stock
+    .map((p) => ({ p, r: reorderInfo(p, s) }))
+    .filter((x) => x.r.urgency !== 'ok')
+    .sort((a, b) => (a.r.daysToReorder ?? (a.r.urgency === 'now' ? 0 : 999)) - (b.r.daysToReorder ?? (b.r.urgency === 'now' ? 0 : 999)))
+    .slice(0, 6);
+  const alertText = ({ p, r }: { p: ProductWithReserved; r: ReorderInfo }) => {
+    if (r.available <= 0) return 'Udsolgt. 0 disponible.';
+    if (r.urgency === 'now') return `Under genbestillingspunktet: ${r.available} disponible (punkt ${r.limit}). Bestil ca. ${r.suggestQty} hjem nu.`;
+    return `Bestil senest ${formatDate(now + (r.daysToReorder ?? 0) * 86400)}: ${r.available} disponible, sælger ca. ${dec(r.avgDaily ?? 0)} pr. dag.`;
+  };
   // Ordrehændelser og manuelle lagerændringer flettet efter tid
   const activity = [
     ...args.events.map((e) => ({ at: e.created_at, html: activityLine(e) })),
@@ -200,16 +212,14 @@ export function dashboardPage(args: {
         </section>
         <section class="app-panel app-panel--alerts">
           <div>
-            <div class="app-title"><h2>Advarsler</h2></div>
+            <div class="app-title"><h2>Advarsler og genbestilling</h2><a class="small" href="/admin/genbestilling">Se alle</a></div>
             ${alerts.length
               ? html`<ul class="app-alerts">
                   ${alerts.map(
-                    (p) => html`<li class="${avail(p) <= 0 ? 'is-out' : ''}"><a href="/admin/varer/${p.id}"><b>${p.name}</b></a><span>${avail(p) <= 0
-                      ? `Udsolgt. 0 disponible.`
-                      : `Lav beholdning: ${avail(p)} disponible (minimum ${limit(p)}).`}</span></li>`,
+                    (x) => html`<li class="${x.r.urgency === 'now' ? 'is-out' : ''}"><a href="/admin/varer/${x.p.id}"><b>${x.p.name}</b></a><span>${alertText(x)}</span></li>`,
                   )}
                 </ul>`
-              : html`<p class="muted small">Ingen advarsler. Alle varer er over minimum.</p>`}
+              : html`<p class="muted small">Ingen advarsler. Alle varer har lager nok til de næste ${s.reorder_warn_days} dage.</p>`}
           </div>
           <div>
             <div class="app-title"><h2>Seneste ændringer</h2><a class="small" href="/admin/historik">Historik</a></div>
@@ -218,7 +228,71 @@ export function dashboardPage(args: {
         </section>
       </div>
     </div>
-    <p class="xs muted">Reserveret er varer i nye ordrer, der endnu ikke er bekræftet. Når en ordre bekræftes, trækkes varerne fra lageret.</p>
+    <p class="xs muted">Reserveret er varer i nye ordrer, der endnu ikke er bekræftet. Når en ordre bekræftes, trækkes varerne fra lageret.
+      <a href="/admin/app">Brug panelet som app på telefonen</a>.</p>
+  </div>`;
+}
+
+// ---------------- Genbestilling ----------------
+
+const dec = (n: number) => n.toLocaleString('da-DK', { maximumFractionDigits: n < 10 ? 1 : 0 });
+
+/** "Bestil nu", "Bestil senest 24. okt." eller "God tid". */
+export function reorderWhen(r: ReorderInfo, now: number): H {
+  if (r.urgency === 'now') return html`<span class="tag tag-out">Bestil nu</span>`;
+  if (r.daysToReorder === null) return html`<span class="muted">–</span>`;
+  const date = formatDate(now + r.daysToReorder * 86400);
+  return r.urgency === 'soon'
+    ? html`<span class="tag tag-low">Senest ${date}</span>`
+    : html`<span class="muted nowrap">${date}</span>`;
+}
+
+export function reorderPage(args: {
+  csrf: string;
+  settings: Settings;
+  rows: { p: ProductWithReserved; r: ReorderInfo }[];
+  now: number;
+  flash?: H | '';
+}): H {
+  const s = args.settings;
+  const due = args.rows.filter((x) => x.r.urgency !== 'ok').length;
+  return html`<div class="stack-lg">
+    <div class="page-head">
+      <div><p class="eyebrow">Lager</p><h1>Genbestilling</h1></div>
+      <form method="post" action="/admin/genbestilling/beregn">${csrfField(args.csrf)}<button class="btn btn-secondary" type="submit">Beregn igen og send varsel</button></form>
+    </div>
+    ${args.flash ?? ''}
+    <p class="muted" style="max-width:760px">Sikkerhedslager og genbestillingspunkt beregnes automatisk ud fra jeres salg de seneste ${s.forecast_days} dage
+      og leveringstiden fra leverandøren. Systemet varsler på e-mail ${s.reorder_warn_days} dage før en vare skal bestilles hjem.
+      Varer med et fast minimum bruger det i stedet.</p>
+    <div class="stats">
+      <div class="stat"><span class="n">${due}</span><span class="l">Skal bestilles inden for ${s.reorder_warn_days} dage</span></div>
+      <div class="stat"><span class="n">${s.service_level} %</span><span class="l">Sikkerhed mod udsolgt</span></div>
+      <div class="stat"><span class="n">${s.lead_time_days} dage</span><span class="l">Standard leveringstid</span></div>
+      <a class="stat" href="/admin/indstillinger#genbestilling"><span class="n">Indstillinger</span><span class="l">Ret beregningen</span></a>
+    </div>
+    <div class="card card-flush">
+      ${args.rows.length
+        ? html`<div class="table-wrap"><table class="list stackable">
+            <thead><tr><th>Vare</th><th class="right">Disponibel</th><th class="right">Salg pr. dag</th><th class="right">Sikkerhedslager</th><th class="right">Genbestillingspunkt</th><th class="right">Leveringstid</th><th>Bestil hjem</th><th class="right">Foreslået antal</th></tr></thead>
+            <tbody>
+              ${args.rows.map(
+                ({ p, r }) => html`<tr class="row-link${r.urgency === 'now' ? ' is-out' : r.urgency === 'soon' ? ' is-low' : ''}" data-href="/admin/varer/${p.id}">
+                  <td class="cell-main"><a class="title" href="/admin/varer/${p.id}">${p.name}</a><div class="xs muted">${p.sku}</div></td>
+                  <td data-label="Disponibel" class="right num"><strong>${r.available}</strong></td>
+                  <td data-label="Salg pr. dag" class="right num">${r.avgDaily === null ? html`<span class="muted">Intet salg</span>` : dec(r.avgDaily)}</td>
+                  <td data-label="Sikkerhedslager" class="right num">${r.safety ?? html`<span class="muted">–</span>`}</td>
+                  <td data-label="Genbestillingspunkt" class="right num">${r.limit} <span class="xs muted">${r.automatic ? 'auto' : p.low_stock_threshold !== null ? 'fast' : 'standard'}</span></td>
+                  <td data-label="Leveringstid" class="right num">${r.leadDays} d.</td>
+                  <td data-label="Bestil hjem">${reorderWhen(r, args.now)}</td>
+                  <td data-label="Foreslået antal" class="right num">${r.urgency === 'ok' ? html`<span class="muted">${r.suggestQty}</span>` : html`<strong>${r.suggestQty}</strong>`}</td>
+                </tr>`,
+              )}
+            </tbody></table></div>`
+        : html`<p class="empty">Ingen varer med lagerstyring endnu.</p>`}
+    </div>
+    <p class="xs muted">Beregning: sikkerhedslager = z × standardafvigelsen på dagligt salg × √leveringstid. Genbestillingspunkt = gennemsnitligt salg pr. dag × leveringstid + sikkerhedslager.
+      Foreslået antal dækker leveringstiden og 30 dages salg oven i sikkerhedslageret. Varer skal have mindst ${MIN_HISTORY_DAYS} dages historik, før der beregnes automatisk.</p>
   </div>`;
 }
 
@@ -363,22 +437,22 @@ export function newOrderPage(args: {
         <label for="note">Note på ordren <span class="muted">(valgfrit)</span></label>
         <textarea id="note" name="note" maxlength="1000" placeholder="Fx aftalt afhentningstidspunkt">${v.note}</textarea>
       </div>
+      <div class="stack-sm">
+        <label class="check"><input type="checkbox" name="confirm" value="1"${v.confirm ? ' checked' : ''}> <span>Bekræft ordren med det samme<span class="hint" style="display:block">Varerne trækkes fra lageret nu. Ellers lander ordren som ny og reserverer varerne, til den bekræftes.</span></span></label>
+        <label class="check"><input type="checkbox" name="send_receipt" value="1"${v.send_receipt ? ' checked' : ''}> <span>Send ordrebekræftelse til kunden<span class="hint" style="display:block">Kun hvis der er udfyldt en e-mail.</span></span></label>
+      </div>
     </section>
     <section class="stack">
       <div class="row-between">
         <h2>Varer</h2>
-        <div class="toolbar" data-sheet-search>
+        <div class="toolbar grow" data-sheet-search style="max-width:420px">
           <label class="sr-only" for="q">Find vare</label>
           <input id="q" type="search" placeholder="Find vare eller varenummer" autocomplete="off">
         </div>
       </div>
       ${e.lines ? alert('warn', e.lines) : ''}
       ${args.products.length
-        ? html`<div class="card stack-sm">
-            <label class="check"><input type="checkbox" name="confirm" value="1"${v.confirm ? ' checked' : ''}> <span>Bekræft ordren med det samme<span class="hint" style="display:block">Varerne trækkes fra lageret nu. Ellers lander ordren som ny og reserverer varerne, til den bekræftes.</span></span></label>
-            <label class="check"><input type="checkbox" name="send_receipt" value="1"${v.send_receipt ? ' checked' : ''}> <span>Send ordrebekræftelse til kunden<span class="hint" style="display:block">Kun hvis der er udfyldt en e-mail.</span></span></label>
-          </div>
-          ${orderSheet({ settings: args.settings, products: args.products, quantities: args.quantities, submitLabel: 'Opret ordre', staff: true })}`
+        ? html`${orderSheet({ settings: args.settings, products: args.products, quantities: args.quantities, submitLabel: 'Opret ordre', staff: true })}`
         : alert('info', html`Der er ingen aktive varer endnu. <a href="/admin/import">Importér en vareliste</a> først.`)}
     </section>
   </form>`;
@@ -555,6 +629,7 @@ export interface ProductFormValues {
   track_stock: boolean;
   stock: string;
   low_stock_threshold: string;
+  lead_time_days: string;
   active: boolean;
   sort_order: string;
 }
@@ -571,6 +646,7 @@ export function productValues(p?: ProductRow): ProductFormValues {
     track_stock: p ? p.track_stock === 1 : true,
     stock: p ? String(p.stock) : '0',
     low_stock_threshold: p?.low_stock_threshold === null || p?.low_stock_threshold === undefined ? '' : String(p.low_stock_threshold),
+    lead_time_days: p?.lead_time_days === null || p?.lead_time_days === undefined ? '' : String(p.lead_time_days),
     active: p ? p.active === 1 : true,
     sort_order: p ? String(p.sort_order) : '0',
   };
@@ -596,8 +672,10 @@ function productFields(v: ProductFormValues, settings: Settings, categories: str
       <label class="check"><input type="checkbox" name="track_stock" value="1"${v.track_stock ? ' checked' : ''}> <span>Følg lager for denne vare<span class="hint" style="display:block">Slå fra for ydelser eller varer, der altid kan bestilles.</span></span></label>
       <div class="fields fields-2">
         ${isNew ? html`<div class="field"><label for="stock">Antal på lager</label><input id="stock" name="stock" value="${v.stock}" inputmode="numeric"${inv('stock')}>${err('stock')}</div>` : ''}
-        <div class="field"><label for="low_stock_threshold">Advar ved lavt lager</label><input id="low_stock_threshold" name="low_stock_threshold" value="${v.low_stock_threshold}" inputmode="numeric" placeholder="Standard: ${settings.low_stock_default}"${inv('low_stock_threshold')}>
-          <p class="hint">Varen markeres, når lageret er på dette antal eller derunder.</p>${err('low_stock_threshold')}</div>
+        <div class="field"><label for="low_stock_threshold">Genbestillingspunkt</label><input id="low_stock_threshold" name="low_stock_threshold" value="${v.low_stock_threshold}" inputmode="numeric" placeholder="Automatisk"${inv('low_stock_threshold')}>
+          <p class="hint">Lad feltet stå tomt, så beregnes det ud fra salget. Skriv et tal for at bruge et fast minimum.</p>${err('low_stock_threshold')}</div>
+        <div class="field"><label for="lead_time_days">Leveringstid fra leverandør (dage)</label><input id="lead_time_days" name="lead_time_days" value="${v.lead_time_days}" inputmode="numeric" placeholder="Standard: ${settings.lead_time_days}"${inv('lead_time_days')}>
+          <p class="hint">Bruges til at beregne, hvornår varen skal bestilles hjem.</p>${err('lead_time_days')}</div>
       </div>
     </fieldset>
     <label class="check"><input type="checkbox" name="active" value="1"${v.active ? ' checked' : ''}> <span>Vis varen i webshoppen</span></label>`;
@@ -613,6 +691,23 @@ export function productNewPage(args: { csrf: string; settings: Settings; categor
       <div class="row"><button class="btn btn-primary" type="submit">Opret vare</button><a href="/admin/varer">Annullér</a></div>
     </form>
   </div>`;
+}
+
+function reorderCard(p: ProductWithReserved, s: Settings): H {
+  const r = reorderInfo(p, s);
+  const now = Math.floor(Date.now() / 1000);
+  return html`<section class="card stack">
+    <div class="row-between"><h2>Genbestilling</h2>${reorderWhen(r, now)}</div>
+    <dl class="kv">
+      <dt>Disponibel</dt><dd class="num">${r.available}</dd>
+      <dt>Salg pr. dag</dt><dd class="num">${r.avgDaily === null ? 'Intet salg endnu' : dec(r.avgDaily)}</dd>
+      <dt>Sikkerhedslager</dt><dd class="num">${r.safety ?? '–'}</dd>
+      <dt>Genbestillingspunkt</dt><dd class="num">${r.limit} <span class="xs muted">${r.automatic ? '(beregnet ud fra salget)' : p.low_stock_threshold !== null ? '(fast minimum)' : '(standard, for lidt salgsdata)'}</span></dd>
+      <dt>Leveringstid</dt><dd>${r.leadDays} dage</dd>
+      ${r.daysToEmpty !== null ? html`<dt>Tomt om</dt><dd>ca. ${r.daysToEmpty} dage</dd>` : ''}
+      <dt>Foreslået antal</dt><dd class="num">${r.suggestQty}</dd>
+    </dl>
+  </section>`;
 }
 
 export function productEditPage(args: {
@@ -661,6 +756,7 @@ export function productEditPage(args: {
               <button class="btn btn-primary btn-block" type="submit">Opdater lager</button>
             </form>`
           : html`<div class="card"><p class="small muted">Lageret følges ikke for denne vare.</p></div>`}
+        ${p.track_stock ? reorderCard(p, args.settings) : ''}
         <section class="card card-flush">
           <div style="padding:16px 20px"><h2>Lagerhistorik</h2></div>
           ${movementsTable(args.movements, false)}
@@ -857,7 +953,21 @@ export function settingsPage(args: { csrf: string; s: Settings; errors?: Record<
         <h2>Ordrer og lager</h2>
         <label class="check"><input type="checkbox" name="auto_confirm" value="1"${s.auto_confirm ? ' checked' : ''}> <span>Bekræft ordrer automatisk<span class="hint" style="display:block">Lageret trækkes, så snart kunden bestiller. Ellers bekræfter I selv hver ordre.</span></span></label>
         <label class="check"><input type="checkbox" name="show_stock_count" value="1"${s.show_stock_count ? ' checked' : ''}> <span>Vis antal på lager i webshoppen<span class="hint" style="display:block">Ellers vises blot "På lager", "Få på lager" eller "Udsolgt".</span></span></label>
-        <div class="field" style="max-width:280px"><label for="low_stock_default">Standard for lavt lager</label><input id="low_stock_default" name="low_stock_default" value="${s.low_stock_default}" inputmode="numeric">${err('low_stock_default')}<p class="hint">Bruges for varer uden egen grænse.</p></div>
+        <div class="field" style="max-width:280px"><label for="low_stock_default">Standard for lavt lager</label><input id="low_stock_default" name="low_stock_default" value="${s.low_stock_default}" inputmode="numeric">${err('low_stock_default')}<p class="hint">Bruges for varer uden fast minimum og uden salgsdata nok til en beregning.</p></div>
+      </section>
+      <section class="card stack-lg" id="genbestilling">
+        <div class="stack-sm">
+          <h2>Genbestilling</h2>
+          <p class="small muted">Sikkerhedslager og genbestillingspunkt beregnes automatisk ud fra jeres salg. Systemet varsler på e-mail, før en vare skal bestilles hjem.</p>
+        </div>
+        <div class="fields fields-2">
+          <div class="field"><label for="lead_time_days">Leveringstid fra leverandør (dage)</label><input id="lead_time_days" name="lead_time_days" value="${s.lead_time_days}" inputmode="numeric">${err('lead_time_days')}<p class="hint">Standard for alle varer. Kan ændres pr. vare.</p></div>
+          <div class="field"><label for="service_level">Sikkerhed mod udsolgt</label>
+            <select id="service_level" name="service_level">${SERVICE_LEVELS.map((l) => html`<option value="${l}"${s.service_level === l ? ' selected' : ''}>${l} %</option>`)}</select>
+            <p class="hint">Højere sikkerhed giver et større sikkerhedslager.</p></div>
+          <div class="field"><label for="forecast_days">Beregn ud fra salget de seneste (dage)</label><input id="forecast_days" name="forecast_days" value="${s.forecast_days}" inputmode="numeric">${err('forecast_days')}</div>
+          <div class="field"><label for="reorder_warn_days">Varsl så mange dage i forvejen</label><input id="reorder_warn_days" name="reorder_warn_days" value="${s.reorder_warn_days}" inputmode="numeric">${err('reorder_warn_days')}<p class="hint">Varslet sendes til e-mailen for nye ordrer.</p></div>
+        </div>
       </section>
       <section class="card stack-lg">
         <h2>Juridisk</h2>

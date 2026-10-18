@@ -21,6 +21,14 @@ export interface Settings {
   /** Bekræft ordrer automatisk (trækker lageret med det samme) */
   auto_confirm: boolean;
   low_stock_default: number;
+  /** Leverandørens leveringstid i dage (standard for alle varer) */
+  lead_time_days: number;
+  /** Ønsket sikkerhed mod udsolgt i procent: 90, 95, 98 eller 99 */
+  service_level: number;
+  /** Hvor mange dages salg beregningen bygger på */
+  forecast_days: number;
+  /** Varsl så mange dage før genbestillingspunktet nås */
+  reorder_warn_days: number;
   /** Vis lagertal i webshoppen ("12 på lager") i stedet for blot "På lager" */
   show_stock_count: boolean;
   terms_url: string;
@@ -49,6 +57,10 @@ export const DEFAULT_SETTINGS: Settings = {
   min_order: 0,
   auto_confirm: false,
   low_stock_default: 5,
+  lead_time_days: 7,
+  service_level: 95,
+  forecast_days: 90,
+  reorder_warn_days: 7,
   show_stock_count: false,
   terms_url: '',
   privacy_url: '',
@@ -91,10 +103,16 @@ export function safeUrl(s: string): string {
   return /^https?:\/\/[^\s<>"']+$/i.test(s) ? s : '';
 }
 
-/** Lavlager-grænse for en vare (egen grænse eller butikkens standard). */
-export function lowStockLimit(p: { low_stock_threshold: number | null }, s: Settings): number {
-  return p.low_stock_threshold ?? s.low_stock_default;
+/**
+ * Lavlager-grænse for en vare: et fast minimum, hvis det er sat, ellers det genbestillingspunkt,
+ * systemet har beregnet ud fra salget, og ellers butikkens standard.
+ */
+export function lowStockLimit(p: { low_stock_threshold: number | null; auto_reorder_point?: number | null }, s: Settings): number {
+  return p.low_stock_threshold ?? p.auto_reorder_point ?? s.low_stock_default;
 }
+
+/** Samme grænse i SQL (tabellen skal hedde p, og ?-parameteren er butikkens standard). */
+export const LIMIT_SQL = 'COALESCE(p.low_stock_threshold, p.auto_reorder_point, ?)';
 
 /** Leveringsgebyr for en given varesum. */
 export function deliveryFee(s: Settings, subtotal: number): number {

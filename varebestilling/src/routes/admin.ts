@@ -38,6 +38,7 @@ import {
   updateProduct,
   type ProductInput,
 } from '../lib/products';
+import { MIN_HISTORY_DAYS, SERVICE_LEVELS, ensureFreshForecast, recomputeForecast, reorderInfo, runReorderAlerts } from '../lib/forecast';
 import { DEFAULT_SETTINGS, isHexColor, safeUrl, saveSettings, type Settings } from '../lib/settings';
 import {
   consumeLoginToken,
@@ -67,12 +68,14 @@ import {
   productNewPage,
   productValues,
   productsPage,
+  reorderPage,
   settingsPage,
   verifyPage,
   type ProductFormValues,
   type StaffOrderValues,
 } from '../views/admin';
 import { alert } from '../views/layout';
+import { appPage } from '../views/shop';
 import { html } from 'hono/html';
 
 const admin = new Hono<AppEnv>();
@@ -157,6 +160,7 @@ admin.get('/', async (c) => {
   const now = Math.floor(Date.now() / 1000);
   const midnight = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Copenhagen' }));
   const sinceMidnight = midnight.getHours() * 3600 + midnight.getMinutes() * 60 + midnight.getSeconds();
+  await ensureFreshForecast(c.env.DB, s);
   const [counts, latest, stock, events, manual, today, month, countRow] = await Promise.all([
     countByStatus(c.env.DB),
     listOrders(c.env.DB, { limit: 6, offset: 0 }),
@@ -173,6 +177,34 @@ admin.get('/', async (c) => {
     dashboardPage({ settings: s, counts, latest, stock, events, manual, today, month, productCount: countRow?.n ?? 0 }),
     { nav: 'oversigt' },
   );
+});
+
+admin.get('/app', (c) => renderAdmin(c, 'App', appPage({ settings: c.get('settings'), admin: true }), { nav: 'oversigt' }));
+
+// ---------------- Genbestilling ----------------
+
+admin.get('/genbestilling', async (c) => {
+  const s = c.get('settings');
+  await ensureFreshForecast(c.env.DB, s);
+  const products = await stockOverview(c.env.DB, s, 1000);
+  const rank = { now: 0, soon: 1, ok: 2 } as const;
+  const rows = products
+    .map((p) => ({ p, r: reorderInfo(p, s) }))
+    .sort((a, b) => rank[a.r.urgency] - rank[b.r.urgency] || (a.r.daysToReorder ?? 1e9) - (b.r.daysToReorder ?? 1e9) || a.p.name.localeCompare(b.p.name, 'da'));
+  return renderAdmin(
+    c,
+    'Genbestilling',
+    reorderPage({ csrf: c.get('csrf'), settings: s, rows, now: Math.floor(Date.now() / 1000), flash: flashMessage(c.req.query('besked')) }),
+    { nav: 'genbestilling' },
+  );
+});
+
+admin.post('/genbestilling/beregn', async (c) => {
+  const s = c.get('settings');
+  // Nulstil varsler, så alle varer, der skal bestilles hjem, kommer med i e-mailen
+  await c.env.DB.prepare('UPDATE products SET reorder_alerted = 0').run();
+  await runReorderAlerts(c.env, c.executionCtx, s);
+  return c.redirect('/admin/genbestilling?besked=beregnet', 303);
 });
 
 // ---------------- Ordrer ----------------
@@ -352,6 +384,7 @@ admin.post('/ordrer/:id{[0-9]+}/note', async (c) => {
 
 admin.get('/varer', async (c) => {
   const s = c.get('settings');
+  await ensureFreshForecast(c.env.DB, s);
   const q = str(c.req.query('q'), 100);
   const category = str(c.req.query('kategori'), 80) || null;
   const low = c.req.query('lav') === '1';
@@ -388,6 +421,7 @@ function readProductForm(body: Record<string, unknown>, isNew: boolean): { value
     track_stock: body['track_stock'] === '1',
     stock: str(body['stock'], 12) || '0',
     low_stock_threshold: str(body['low_stock_threshold'], 12),
+    lead_time_days: str(body['lead_time_days'], 12),
     active: body['active'] === '1',
     sort_order: str(body['sort_order'], 12) || '0',
   };
@@ -401,6 +435,8 @@ function readProductForm(body: Record<string, unknown>, isNew: boolean): { value
   if (isNew && stock === null) errors.stock = 'Skriv et helt tal på 0 eller mere.';
   const low = values.low_stock_threshold === '' ? null : parseIntStrict(values.low_stock_threshold);
   if (values.low_stock_threshold !== '' && low === null) errors.low_stock_threshold = 'Skriv et helt tal, eller lad feltet stå tomt.';
+  const lead = values.lead_time_days === '' ? null : parseIntStrict(values.lead_time_days, { max: 365 });
+  if (values.lead_time_days !== '' && lead === null) errors.lead_time_days = 'Skriv antal dage (0-365), eller lad feltet stå tomt.';
   const sort = parseIntStrict(values.sort_order, { signed: true, max: 1_000_000 });
   if (sort === null) errors.sort_order = 'Skriv et helt tal.';
   if (Object.keys(errors).length) return { values, errors };
@@ -418,6 +454,7 @@ function readProductForm(body: Record<string, unknown>, isNew: boolean): { value
       image_url: values.image_url,
       track_stock: values.track_stock,
       low_stock_threshold: low,
+      lead_time_days: lead,
       active: values.active,
       sort_order: sort!,
     },
@@ -476,7 +513,10 @@ async function productView(
   );
 }
 
-admin.get('/varer/:id{[0-9]+}', (c) => productView(c, Number(c.req.param('id'))));
+admin.get('/varer/:id{[0-9]+}', async (c) => {
+  await ensureFreshForecast(c.env.DB, c.get('settings'));
+  return productView(c, Number(c.req.param('id')));
+});
 
 admin.post('/varer/:id{[0-9]+}', async (c) => {
   const id = Number(c.req.param('id'));
@@ -623,6 +663,10 @@ admin.post('/indstillinger', async (c) => {
     auto_confirm: b['auto_confirm'] === '1',
     show_stock_count: b['show_stock_count'] === '1',
     low_stock_default: parseIntStrict(b['low_stock_default']) ?? -1,
+    lead_time_days: b['lead_time_days'] === undefined ? DEFAULT_SETTINGS.lead_time_days : (parseIntStrict(b['lead_time_days'], { max: 365 }) ?? -1),
+    service_level: SERVICE_LEVELS.includes(Number(b['service_level'])) ? Number(b['service_level']) : DEFAULT_SETTINGS.service_level,
+    forecast_days: b['forecast_days'] === undefined ? DEFAULT_SETTINGS.forecast_days : (parseIntStrict(b['forecast_days'], { max: 365 }) ?? -1),
+    reorder_warn_days: b['reorder_warn_days'] === undefined ? DEFAULT_SETTINGS.reorder_warn_days : (parseIntStrict(b['reorder_warn_days'], { max: 90 }) ?? -1),
     terms_url: optUrl('terms_url'),
     privacy_url: optUrl('privacy_url'),
   };
@@ -630,10 +674,14 @@ admin.post('/indstillinger', async (c) => {
   if (!isHexColor(s.accent_color)) errors['accent_color'] = 'Vælg en farve.';
   if (!s.pickup_enabled && !s.delivery_enabled) errors['delivery'] = 'Vælg mindst én af afhentning og levering.';
   if (s.low_stock_default < 0) errors['low_stock_default'] = 'Skriv et helt tal på 0 eller mere.';
+  if (s.lead_time_days < 0) errors['lead_time_days'] = 'Skriv antal dage (0-365).';
+  if (s.forecast_days < MIN_HISTORY_DAYS) errors['forecast_days'] = `Skriv et antal dage mellem ${MIN_HISTORY_DAYS} og 365.`;
+  if (s.reorder_warn_days < 0) errors['reorder_warn_days'] = 'Skriv antal dage (0-90).';
   if (Object.keys(errors).length) {
     return renderAdmin(c, 'Indstillinger', settingsPage({ csrf: c.get('csrf'), s, errors }), { nav: 'indstillinger', status: 400 });
   }
   await saveSettings(c.env.DB, s);
+  await recomputeForecast(c.env.DB, s);
   return c.redirect('/admin/indstillinger?besked=gemt', 303);
 });
 

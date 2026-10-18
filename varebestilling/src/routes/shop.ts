@@ -10,7 +10,7 @@ import { available, getProduct, getProductsByIds, listCategories, listProducts }
 import { safeUrl } from '../lib/settings';
 import { rateLimit } from '../lib/session';
 import { renderShop } from '../render';
-import { cartPage, catalogPage, checkoutPage, messagePage, orderPage, type CheckoutValues } from '../views/shop';
+import { appPage, cartPage, catalogPage, checkoutPage, messagePage, offlinePage, orderPage, type CheckoutValues } from '../views/shop';
 
 const shop = new Hono<AppEnv>();
 
@@ -97,7 +97,7 @@ shop.get('/kurv', async (c) => {
   const priced = await priceCart(c.env.DB, readCart(c));
   if (priced.removed) writeCart(c, priced.lines.map((l) => ({ productId: l.productId, quantity: l.quantity })));
   const besked = c.req.query('besked');
-  const notice = besked === 'opdateret' ? 'Kurven er opdateret.' : null;
+  const notice = besked === 'opdateret' ? 'Kurven er opdateret.' : besked === 'igen' ? 'Varerne fra din tidligere bestilling er lagt i kurven.' : null;
   const warning = besked === 'justeret' ? 'Nogle antal er sat ned, så de passer til det, der er på lager. Tjek kurven, og gå videre til kassen.' : null;
   return renderShop(c, 'Kurv', cartPage({ settings: c.get('settings'), priced, csrf: c.get('csrf'), notice, warning }), { noindex: true });
 });
@@ -222,11 +222,41 @@ shop.get('/ordre/:token', async (c) => {
   const res = await renderShop(
     c,
     `Bestilling #${order.number}`,
-    orderPage({ settings: c.get('settings'), order, lines, events, justPlaced: c.req.query('ny') === '1' }),
+    orderPage({ settings: c.get('settings'), order, lines, events, justPlaced: c.req.query('ny') === '1', csrf: c.get('csrf') }),
     { noindex: true },
   );
   res.headers.set('Referrer-Policy', 'no-referrer');
   return res;
 });
+
+// Læg varerne fra en tidligere bestilling i kurven igen (aktuelle priser og lager gælder)
+shop.post('/ordre/:token/igen', async (c) => {
+  const order = await getOrderByToken(c.env.DB, c.req.param('token'));
+  if (!order) return c.redirect('/', 303);
+  const lines = await getOrderLines(c.env.DB, order.id);
+  const products = await getProductsByIds(c.env.DB, lines.flatMap((l) => (l.product_id ? [l.product_id] : [])));
+  const cart = readCart(c);
+  let adjusted = false;
+  for (const l of lines) {
+    const p = l.product_id ? products.get(l.product_id) : undefined;
+    if (!p || !p.active) {
+      adjusted = true;
+      continue;
+    }
+    const line = cart.find((x) => x.productId === p.id);
+    const a = available(p);
+    const want = Math.min((line?.quantity ?? 0) + l.quantity, a ?? MAX_QTY);
+    if (want < (line?.quantity ?? 0) + l.quantity) adjusted = true;
+    if (want <= 0) continue;
+    if (line) line.quantity = want;
+    else cart.push({ productId: p.id, quantity: want });
+  }
+  writeCart(c, cart);
+  return c.redirect(adjusted ? '/kurv?besked=justeret' : '/kurv?besked=igen', 303);
+});
+
+shop.get('/app', (c) => renderShop(c, 'Hent som app', appPage({ settings: c.get('settings') })));
+
+shop.get('/offline', (c) => renderShop(c, 'Ingen forbindelse', offlinePage(), { noindex: true }));
 
 export default shop;

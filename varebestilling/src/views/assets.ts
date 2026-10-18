@@ -286,6 +286,16 @@ table.mini tr.row-link:hover td{background:var(--hover)}
   table.mini th,table.mini td{padding-inline:5px}
 }
 
+/* App (hjemmeskærm) */
+.steps-list{margin:0;padding-left:20px;display:grid;gap:6px}
+.app-banner{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:20;display:flex;align-items:center;gap:12px;background:var(--ink);color:var(--bg);border-radius:14px;padding:12px 12px 12px 16px;box-shadow:var(--shadow-lg);font-size:14px}
+.app-banner a{color:var(--bg);font-weight:600}
+.app-banner .grow{line-height:1.35}
+.app-banner button{background:none;border:0;color:#A9A69C;font-size:22px;line-height:1;padding:4px 6px;cursor:pointer}
+.sheet-form .app-banner{display:none}
+.sheet-bar{padding-bottom:env(safe-area-inset-bottom)}
+@media(display-mode:standalone){.site-footer{padding-bottom:calc(24px + env(safe-area-inset-bottom))}}
+
 /* Bestillingsark */
 .sheet-help{margin-bottom:10px}
 .sheet-wrap{overflow:visible}
@@ -432,6 +442,42 @@ document.addEventListener('click', function (e) {
       var nav = document.querySelector('.cat-nav');
       if (nav) nav.classList.toggle('hidden', words.length > 0);
     });
+  });
+})();
+
+// Installerbar app: service worker, installationsknap og et lille tip på mobilen
+(function () {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js').catch(function () {}); });
+  }
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferred = e;
+    document.querySelectorAll('[data-install]').forEach(function (el) { el.hidden = false; });
+  });
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-install-button]');
+    if (b && deferred) { deferred.prompt(); deferred = null; }
+    var x = e.target.closest && e.target.closest('[data-banner-close]');
+    if (x) {
+      x.closest('.app-banner').remove();
+      try { localStorage.setItem('vb-app-tip', '1'); } catch (err) {}
+    }
+  });
+  document.addEventListener('DOMContentLoaded', function () {
+    var shop = document.body.hasAttribute('data-shop');
+    var mobile = window.matchMedia('(max-width: 719px)').matches;
+    var seen = false;
+    try { seen = localStorage.getItem('vb-app-tip') === '1'; } catch (err) {}
+    // Ikke på sider med bestillingsarkets bundlinje, hvor tippet ville dække knappen
+    if (!shop || !mobile || standalone || seen || document.querySelector('.sheet-bar')) return;
+    var div = document.createElement('div');
+    div.className = 'app-banner';
+    div.setAttribute('role', 'note');
+    div.innerHTML = '<span class="grow">Bestil hurtigere næste gang: <a href="/app">læg butikken på hjemmeskærmen</a></span><button type="button" data-banner-close aria-label="Luk">×</button>';
+    document.body.appendChild(div);
   });
 })();
 `;

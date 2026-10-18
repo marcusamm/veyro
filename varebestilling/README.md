@@ -2,22 +2,30 @@
 
 En færdig skabelon til et bestillingssystem, som kan sættes op for en ny kunde i en hvilken som helst branche, når vi har fået kundens vareliste. Den har intet med Veyros egen hjemmeside eller kundepanel at gøre: hver kunde får sin egen kopi, sin egen database og sit eget domæne (fx `bestil.kundensdomæne.dk`), og navn, farve og tekster er kundens egne.
 
+Udseendet følger designsystemet på veyro.dk (Inter Tight, varm off-white og én signalfarve, som kunden selv kan vælge), og administrationspanelet er bygget som eksemplet på hjemmesiden: ordreoversigt med kilde, lagerstatus med lager, reserveret og disponibel, advarsler og seneste ændringer.
+
 **Webshop (for kundens kunder)**
 
-- Varer vist pr. kategori med søgning, pris pr. enhed og lagerstatus (På lager / Få på lager / Udsolgt)
+- Bestillingsark: alle varer i én tabel ligesom et regneark. Kunden skriver antal ud for hver vare, ser beløb pr. linje og i alt med det samme og bestiller det hele med én knap. Enter og piletaster flytter mellem felterne, og søgningen filtrerer listen uden at miste det indtastede
+- Varer vist pr. kategori med pris pr. enhed og lagerstatus (På lager / Få på lager / Udsolgt)
 - Kurv og kasse med afhentning og/eller levering, leveringsgebyr, gratis levering over et beløb og mindste ordre
 - Man kan aldrig bestille mere, end der er på lager
 - Kvittering på skærmen og på e-mail, og en side hvor kunden kan følge sin bestilling
+- "Bestil det samme igen" fra kvitteringen
+- **App på telefonen:** kan lægges på hjemmeskærmen (iPhone og Android) og åbner som en app med butikkens ikon og farve. Vejledning på `/app`. Der skal ikke noget i App Store eller Google Play
 - Virker uden JavaScript og på mobil
 
 **Admin (`/admin`, kræver login)**
 
-- Oversigt: nye ordrer, omsætning i dag og de seneste 30 dage, varer med lavt lager
-- Ordrer med filter på status og søgning; ordredetaljer med kunde, varer, historik og intern note
+- Oversigt: ordreoversigt pr. status med kilde, lagerstatus (lager, reserveret, disponibel), advarsler og genbestilling, seneste ændringer og omsætning
+- **Ny ordre:** medarbejdere opretter ordrer fra telefon, e-mail eller direkte salg i samme bestillingsark. De lander i samme oversigt og lager og kan bekræftes med det samme
+- Ordrer med filter på status og søgning; ordredetaljer med kunde, kilde, varer, historik og intern note
 - Status: Ny → Bekræftet → Klar / afsendt → Afsluttet (eller Annulleret). Kunden får e-mail ved bekræftelse, når ordren er klar, og ved annullering
 - Varer: opret, ret, skjul og slet; varenummer (SKU), kategori, pris, enhed, beskrivelse, billede
 - Lager: automatisk lagertræk ved bekræftelse (præcis én gang pr. ordre), varer lægges tilbage ved annullering, manuel regulering (læg til / sæt til efter optælling) med årsag
-- Advarsel om lavt lager i admin og på e-mail, når en vare krydser minimum
+- **Genbestilling ud fra salgsdata:** sikkerhedslager og genbestillingspunkt beregnes automatisk pr. vare ud fra salget og leverandørens leveringstid. Systemet viser, hvornår hver vare senest skal bestilles hjem, og hvor mange, og varsler på e-mail i god tid (se [Genbestilling](#genbestilling))
+- Advarsel i admin og på e-mail, når en vare krydser genbestillingspunktet
+- Administrationspanelet kan også lægges på telefonens hjemmeskærm (`/admin/app`) med genveje til Ny ordre og Genbestilling
 - Fuld lagerhistorik: hvem ændrede hvad, hvornår og hvorfor
 - Import af vareliste fra CSV (Excel, Google Sheets, kassesystem) med forhåndsvisning, og eksport til CSV
 - Indstillinger for butikkens navn, farve, kontaktoplysninger, levering, automatisk bekræftelse og links til betingelser
@@ -42,6 +50,23 @@ Skærmbilleder: kør `npm run screenshots` (se [Udvikling](#udvikling-og-tests))
 - Med **Bekræft ordrer automatisk** (Indstillinger) trækkes lageret, i samme øjeblik kunden bestiller. Bliver en vare udsolgt, mens kunden står i kassen, oprettes ordren ikke, og kunden bliver bedt om at rette kurven.
 - Varer uden **lagerstyring** (fx ydelser) kan altid bestilles.
 - Afsluttede ordrer er låst. Annullerede ordrer kan genåbnes som nye.
+
+## Genbestilling
+
+For hver vare med lagerstyring tælles det solgte antal pr. dag (alle ordrer, der ikke er annulleret, uanset kilde) over de seneste 90 dage (kan ændres). Dage uden salg tæller med som 0.
+
+| Tal | Beregning |
+|---|---|
+| Salg pr. dag | Gennemsnit over perioden (nye varer: kun dagene siden de blev oprettet) |
+| Sikkerhedslager | z × standardafvigelsen på dagligt salg × √leveringstid. z = 1,65 ved 95 % sikkerhed mod udsolgt (90 / 95 / 98 / 99 % kan vælges) |
+| Genbestillingspunkt | Salg pr. dag × leveringstid + sikkerhedslager |
+| Bestil senest | Den dag det disponible lager (lager minus reserveret) forventes at nå genbestillingspunktet |
+| Foreslået antal | Dækker leveringstiden og 30 dages salg oven i sikkerhedslageret |
+
+- Leveringstiden er en standard under Indstillinger og kan ændres pr. vare.
+- Skriver man et fast tal i varens felt *Genbestillingspunkt*, bruges det i stedet. Varer med under 14 dages historik eller uden salg bruger standardgrænsen.
+- Tallene genberegnes hver nat (cron) og, når de er mere end 6 timer gamle, ved visning af oversigten, varer og genbestilling.
+- Hver nat sendes én samlet e-mail med de varer, der er kommet inden for varslingsperioden (standard 7 dage før genbestillingspunktet), eller som allerede er under det. En vare varsles kun én gang, til lageret igen er i god tid. Knappen *Beregn igen og send varsel* på `/admin/genbestilling` gør det samme med det samme.
 
 ---
 
@@ -189,7 +214,14 @@ Uden `RESEND_API_KEY` og med `DEV_MODE=1` vises login-linket direkte på skærme
 ```bash
 npm run typecheck
 npm test            # unit-tests af CSV/beløb + integrationstests mod en lokal D1 og en mock af Resend
-npm run screenshots # skærmbilleder (desktop og mobil) med eksempeldata i screenshots/
+npm run screenshots # skærmbilleder (desktop og mobil) med demodata i screenshots/
+```
+
+Demodata (en fiktiv byggevarehandel med 120 dages salg, som på veyro.dk) til en demo-database. **Sletter alle varer og ordrer i databasen først:**
+
+```bash
+node scripts/demo-data.mjs demo.sql
+npx wrangler d1 execute varebestilling-demo --remote --file demo.sql --config wrangler.demo.toml
 ```
 
 Kode:
@@ -200,6 +232,8 @@ Kode:
 | `src/lib/products.ts` | Varer, manuel regulering, lagerhistorik, import |
 | `src/lib/csv.ts` | CSV-læsning, kolonnegenkendelse, validering og eksport |
 | `src/lib/settings.ts` | Butikkens indstillinger (gemt i D1) |
+| `src/lib/forecast.ts` | Sikkerhedslager, genbestillingspunkt og varsler ud fra salget |
+| `src/views/pwa.ts`, `src/lib/icon.ts` | App på hjemmeskærmen: manifest, service worker og ikoner |
 | `src/routes/shop.ts` | Webshop, kurv, kasse og kvittering |
 | `src/routes/admin.ts` | Login og admin |
 | `migrations/` | Databaseskema |

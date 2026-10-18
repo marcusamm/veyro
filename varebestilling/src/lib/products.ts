@@ -42,7 +42,7 @@ export async function listProducts(db: D1Database, f: ProductFilter = {}): Promi
     args.push(like, like, like);
   }
   if (f.lowStock) {
-    where.push('p.track_stock = 1 AND p.stock <= COALESCE(p.low_stock_threshold, ?)');
+    where.push('p.track_stock = 1 AND p.stock <= COALESCE(p.low_stock_threshold, p.auto_reorder_point, ?)');
     args.push(f.lowStock.low_stock_default);
   }
   const sql = `SELECT p.*, ${RESERVED_SQL} AS reserved FROM products p
@@ -82,7 +82,7 @@ export async function listCategories(db: D1Database, activeOnly: boolean): Promi
 
 export async function countLowStock(db: D1Database, s: Settings): Promise<number> {
   const r = await db
-    .prepare('SELECT COUNT(*) AS n FROM products WHERE track_stock = 1 AND stock <= COALESCE(low_stock_threshold, ?)')
+    .prepare('SELECT COUNT(*) AS n FROM products WHERE track_stock = 1 AND stock <= COALESCE(low_stock_threshold, auto_reorder_point, ?)')
     .bind(s.low_stock_default)
     .first<{ n: number }>();
   return r?.n ?? 0;
@@ -98,6 +98,7 @@ export interface ProductInput {
   image_url: string;
   track_stock: boolean;
   low_stock_threshold: number | null;
+  lead_time_days: number | null;
   active: boolean;
   sort_order: number;
 }
@@ -113,11 +114,11 @@ export async function createProduct(db: D1Database, p: ProductInput, stock: numb
     db
       .prepare(
         `INSERT INTO products (sku, name, category, description, unit, price, image_url, track_stock, stock,
-           low_stock_threshold, active, sort_order, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+           low_stock_threshold, lead_time_days, active, sort_order, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
       )
       .bind(p.sku, p.name, p.category, p.description, p.unit, p.price, p.image_url, p.track_stock ? 1 : 0, stock,
-        p.low_stock_threshold, p.active ? 1 : 0, p.sort_order, now, now),
+        p.low_stock_threshold, p.lead_time_days, p.active ? 1 : 0, p.sort_order, now, now),
     db
       .prepare(
         `INSERT INTO stock_movements (product_id, change, stock_after, reason, order_id, actor, created_at)
@@ -132,11 +133,12 @@ export async function updateProduct(db: D1Database, id: number, p: ProductInput)
   await db
     .prepare(
       `UPDATE products SET sku = ?, name = ?, category = ?, description = ?, unit = ?, price = ?, image_url = ?,
-         track_stock = ?, low_stock_threshold = ?, active = ?, sort_order = ?, updated_at = ?
+         track_stock = ?, low_stock_threshold = ?, lead_time_days = ?, active = ?, sort_order = ?, updated_at = ?,
+         forecast_at = NULL
        WHERE id = ?`,
     )
     .bind(p.sku, p.name, p.category, p.description, p.unit, p.price, p.image_url, p.track_stock ? 1 : 0,
-      p.low_stock_threshold, p.active ? 1 : 0, p.sort_order, nowSec(), id)
+      p.low_stock_threshold, p.lead_time_days, p.active ? 1 : 0, p.sort_order, nowSec(), id)
     .run();
 }
 
@@ -208,7 +210,7 @@ export async function stockOverview(db: D1Database, s: Settings, limit = 50): Pr
   const { results } = await db
     .prepare(
       `SELECT * FROM (SELECT p.*, ${RESERVED_SQL} AS reserved FROM products p WHERE p.track_stock = 1 AND p.active = 1)
-       ORDER BY (stock - reserved) - COALESCE(low_stock_threshold, ?1), name LIMIT ?2`,
+       ORDER BY (stock - reserved) - COALESCE(low_stock_threshold, auto_reorder_point, ?1), name LIMIT ?2`,
     )
     .bind(s.low_stock_default, limit)
     .all<ProductWithReserved>();

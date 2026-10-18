@@ -375,3 +375,82 @@ describe('Ordrer oprettet af medarbejdere', () => {
     expect(empty.html).toContain('Skriv et antal ud for mindst én vare.');
   });
 });
+
+describe('Genbestilling ud fra salgsdata', () => {
+  it('beregner genbestillingspunkt ud fra historikken og varsler på e-mail i god tid', async () => {
+    // En vare med 60 dages historik: 3 solgt om dagen, leveringstid 10 dage
+    const now = Math.floor(Date.now() / 1000);
+    const created = now - 60 * 86400;
+    stack.sql(`INSERT INTO products (sku, name, category, unit, price, track_stock, stock, lead_time_days, active, sort_order, created_at, updated_at)
+      VALUES ('GEN-1', 'Malertape 25 mm', 'Diverse', 'rulle', 2500, 1, 50, 10, 1, 0, ${created}, ${created})`);
+    const pid = product('GEN-1').id;
+    const rows = [];
+    for (let d = 0; d < 60; d++) {
+      const t = now - d * 86400 - 3600;
+      rows.push(`(${9001 + d}, 'gen${String(d).padStart(29, '0')}', 'afsluttet', 1, 'Historik', 'h@example.dk', 'afhentning', 'telefon', 7500, 0, 7500, ${t}, ${t})`);
+    }
+    stack.sql(`INSERT INTO orders (number, token, status, stock_deducted, customer_name, customer_email, delivery, source, subtotal, delivery_fee, total, created_at, updated_at) VALUES ${rows.join(',')}`);
+    stack.sql(`INSERT INTO order_lines (order_id, product_id, sku, name, unit, unit_price, quantity, line_total)
+      SELECT id, ${pid}, 'GEN-1', 'Malertape 25 mm', 'rulle', 2500, 3, 7500 FROM orders WHERE number > 9000`);
+
+    const before = stack.mail.emails.length;
+    const page = await admin.get('/admin/genbestilling');
+    const res = await admin.post('/admin/genbestilling/beregn', { _csrf: csrfFrom(page.html) });
+    expect(res.status).toBe(303);
+    const p = product('GEN-1');
+    // Jævnt salg: 3 pr. dag, sikkerhedslager 0, genbestillingspunkt 3 × 10 = 30
+    expect(p.avg_daily_demand).toBeCloseTo(3, 1);
+    expect(p.auto_safety_stock).toBe(0);
+    expect(p.auto_reorder_point).toBe(30);
+
+    const list = await admin.get('/admin/genbestilling');
+    expect(list.html).toContain('Malertape 25 mm');
+    expect(list.html).toMatch(/Malertape 25 mm[\s\S]*?Senest/); // 50 disponible, punkt 30, 3 pr. dag = 6 dage
+    const mail = await waitFor(() => stack.mail.emails.slice(before).find((m) => m.subject.startsWith('Genbestilling')));
+    expect(mail.text).toContain('Malertape 25 mm (GEN-1): bestil senest');
+
+    const dash = await admin.get('/admin');
+    expect(dash.html).toContain('Advarsler og genbestilling');
+    expect(dash.html).toMatch(/Malertape 25 mm<\/b><\/a><span>Bestil senest/);
+  });
+});
+
+describe('App på telefonen', () => {
+  it('har manifest, ikoner, service worker og vejledning', async () => {
+    const c = new Client(stack.base);
+    const m = await c.get('/manifest.webmanifest');
+    expect(m.headers.get('content-type')).toContain('application/manifest+json');
+    const json = JSON.parse(m.html);
+    expect(json).toMatchObject({ name: 'Testbutikken – bestilling', display: 'standalone', start_url: '/?app=1', lang: 'da' });
+    const a = JSON.parse((await c.get('/admin-app.webmanifest')).html);
+    expect(a).toMatchObject({ scope: '/admin', start_url: '/admin?app=1' });
+    expect(a.shortcuts.map((x) => x.url)).toContain('/admin/ordrer/ny');
+
+    const icon = await fetch(stack.base + '/icons/192.png');
+    expect(icon.headers.get('content-type')).toBe('image/png');
+    const bytes = new Uint8Array(await icon.arrayBuffer());
+    expect([...bytes.slice(1, 4)].map((b) => String.fromCharCode(b)).join('')).toBe('PNG');
+    expect(new DataView(bytes.buffer).getUint32(16)).toBe(192); // bredde i IHDR
+
+    expect((await c.get('/sw.js')).html).toContain("caches.match('/offline')");
+    expect((await c.get('/offline')).status).toBe(200);
+    const app = await c.get('/app');
+    expect(app.html).toContain('Føj til hjemmeskærm');
+    const shop = await c.get('/');
+    expect(shop.html).toContain('<link rel="manifest" href="/manifest.webmanifest">');
+    expect(shop.html).toContain('<link rel="apple-touch-icon" href="/icons/180.png">');
+  });
+
+  it('kan bestille det samme igen fra kvitteringen', async () => {
+    const { shopper, res } = await placeOrder(stack, [[ids['KAF-2'], 1]]);
+    expect(res.status).toBe(303);
+    const receiptUrl = res.headers.get('location');
+    const receipt = await shopper.get(receiptUrl);
+    expect(receipt.html).toContain('Bestil det samme igen');
+    const token = receiptUrl.match(/ordre\/([A-Za-z0-9_-]+)/)[1];
+    const again = await shopper.post(`/ordre/${token}/igen`, { _csrf: csrfFrom(receipt.html) });
+    expect(again.status).toBe(303);
+    const cart = await shopper.get(again.headers.get('location'));
+    expect(cart.html).toContain('Espresso 500 g');
+  });
+});

@@ -3,7 +3,7 @@ import type { OrderEventRow, OrderLineRow, OrderRow } from '../env';
 import { formatDateTime, formatKr } from '../lib/format';
 import { STATUS_LABEL, type PricedCart, type PricedLine } from '../lib/orders';
 import { available, type ProductWithReserved } from '../lib/products';
-import { deliveryFee, safeUrl, type Settings } from '../lib/settings';
+import { deliveryFee, lowStockLimit, safeUrl, type Settings } from '../lib/settings';
 import { alert, csrfField, type H } from './layout';
 
 function stockTag(p: ProductWithReserved, s: Settings): H {
@@ -11,7 +11,7 @@ function stockTag(p: ProductWithReserved, s: Settings): H {
   if (a === null) return html``;
   if (a <= 0) return html`<span class="tag tag-out">Udsolgt</span>`;
   if (s.show_stock_count) return html`<span class="tag tag-ok">${a} på lager</span>`;
-  if (a <= (p.low_stock_threshold ?? s.low_stock_default)) return html`<span class="tag tag-low">Få på lager</span>`;
+  if (a <= lowStockLimit(p, s)) return html`<span class="tag tag-low">Få på lager</span>`;
   return html`<span class="tag tag-ok">På lager</span>`;
 }
 
@@ -43,7 +43,7 @@ function sheetRow(p: ProductWithReserved, s: Settings, qtyIn: number, staff: boo
 function staffStock(p: ProductWithReserved, s: Settings): H {
   const a = available(p);
   if (a === null) return html`<span class="tag tag-off">Ubegrænset</span>`;
-  const cls = a <= 0 ? 'tag-out' : a <= (p.low_stock_threshold ?? s.low_stock_default) ? 'tag-low' : 'tag-ok';
+  const cls = a <= 0 ? 'tag-out' : a <= lowStockLimit(p, s) ? 'tag-low' : 'tag-ok';
   return html`<span class="tag ${cls}">${a} disponible</span>`;
 }
 
@@ -322,7 +322,7 @@ export function checkoutPage(args: {
   </div>`;
 }
 
-export function orderPage(args: { settings: Settings; order: OrderRow; lines: OrderLineRow[]; events: OrderEventRow[]; justPlaced: boolean }): H {
+export function orderPage(args: { settings: Settings; order: OrderRow; lines: OrderLineRow[]; events: OrderEventRow[]; justPlaced: boolean; csrf: string }): H {
   const { order: o, settings: s } = args;
   const statusEvents = args.events.filter((e) => e.status);
   return html`<div class="stack-lg narrow" style="max-width:720px">
@@ -363,10 +363,61 @@ export function orderPage(args: { settings: Settings; order: OrderRow; lines: Or
           ? html`Skriv til <a href="mailto:${s.contact_email}">${s.contact_email}</a>${s.contact_phone ? html` eller ring på ${s.contact_phone}` : ''}`
           : html`Ring på ${s.contact_phone}`}.</p>`
       : ''}
-    <a class="btn btn-secondary" href="/">Tilbage til butikken</a>
+    <div class="row">
+      <form method="post" action="/ordre/${o.token}/igen">${csrfField(args.csrf)}<button class="btn btn-primary" type="submit">Bestil det samme igen</button></form>
+      <a class="btn btn-secondary" href="/">Tilbage til butikken</a>
+    </div>
   </div>`;
 }
 
 export function messagePage(title: string, text: string): H {
   return html`<div class="stack-lg narrow"><h1>${title}</h1><p class="muted">${text}</p><a class="btn btn-primary" href="/">Til butikken</a></div>`;
+}
+
+/** Vejledning i at lægge bestillingen (eller administrationspanelet) på telefonens hjemmeskærm. */
+export function appPage(args: { settings: Settings; admin?: boolean }): H {
+  const s = args.settings;
+  const what = args.admin ? 'administrationspanelet' : 'bestillingen';
+  return html`<div class="stack-lg narrow" style="max-width:720px">
+    <div class="stack-sm">
+      <p class="eyebrow">App</p>
+      <h1>${args.admin ? 'Ordrer og lager som app' : `Bestil hos ${s.shop_name} fra telefonen`}</h1>
+      <p class="lead">Læg ${what} på hjemmeskærmen, så åbner den som en app med ét tryk. Der skal ikke hentes noget i App Store eller Google Play.</p>
+    </div>
+    <div class="card stack" data-install hidden>
+      <h2>Installér med ét tryk</h2>
+      <p class="muted">Din browser kan installere appen direkte.</p>
+      <button class="btn btn-primary" type="button" data-install-button>Installér appen</button>
+    </div>
+    <div class="grid grid-2">
+      <section class="card stack">
+        <h2>iPhone og iPad</h2>
+        <ol class="steps-list">
+          <li>Åbn siden i <strong>Safari</strong>.</li>
+          <li>Tryk på <strong>Del</strong> (firkanten med pilen op).</li>
+          <li>Vælg <strong>Føj til hjemmeskærm</strong>, og tryk <strong>Tilføj</strong>.</li>
+        </ol>
+      </section>
+      <section class="card stack">
+        <h2>Android</h2>
+        <ol class="steps-list">
+          <li>Åbn siden i <strong>Chrome</strong>.</li>
+          <li>Tryk på menuen <strong>⋮</strong> øverst til højre.</li>
+          <li>Vælg <strong>Installér app</strong> eller <strong>Føj til startskærm</strong>.</li>
+        </ol>
+      </section>
+    </div>
+    <p class="small muted">${args.admin
+      ? 'Du forbliver logget ind i appen. Lagertal og ordrer hentes altid direkte, så de er opdaterede.'
+      : 'Appen viser altid de aktuelle priser og lagerstatus. Din kurv huskes, til du bestiller.'}</p>
+    <a class="btn btn-secondary" href="${args.admin ? '/admin' : '/'}">${args.admin ? 'Til oversigten' : 'Til varerne'}</a>
+  </div>`;
+}
+
+export function offlinePage(): H {
+  return html`<div class="stack-lg narrow">
+    <h1>Ingen forbindelse</h1>
+    <p class="muted">Du er ikke på nettet lige nu. Bestillinger og lagertal kræver forbindelse, så de altid er opdaterede. Prøv igen, når du har net.</p>
+    <a class="btn btn-primary" href="">Prøv igen</a>
+  </div>`;
 }

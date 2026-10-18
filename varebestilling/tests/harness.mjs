@@ -106,6 +106,14 @@ export async function startStack({ devMode = false } = {}) {
       });
       return JSON.parse(out.toString())[0].results;
     },
+    /** Kører en SQL-fil mod den lokale database (fx demodata). */
+    sqlFile(file) {
+      execFileSync(wrangler, ['d1', 'execute', 'varebestilling', '--local', '--persist-to', persist, '--file', file, '--yes'], {
+        cwd: ROOT,
+        env: childEnv(),
+        stdio: 'pipe',
+      });
+    },
     async stop() {
       proc.kill('SIGTERM');
       await new Promise((r) => (proc.exitCode !== null ? r() : proc.once('exit', r)));

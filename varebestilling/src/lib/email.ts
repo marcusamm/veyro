@@ -1,5 +1,5 @@
 import type { Env, OrderLineRow, OrderRow } from '../env';
-import { formatDateTime, formatKr } from './format';
+import { formatDate, formatDateTime, formatKr } from './format';
 import { STATUS_LABEL } from './orders';
 import type { Settings } from './settings';
 
@@ -198,6 +198,37 @@ Se lageret: ${adminUrl}`;
 ${button(s, adminUrl, 'Se lageret')}`,
   );
   return { to: s.notify_email || s.contact_email, subject: `Lavt lager: ${items.map((i) => i.name).join(', ')}`.slice(0, 150), text, html };
+}
+
+export interface ReorderItem {
+  sku: string;
+  name: string;
+  available: number;
+  limit: number;
+  /** Dato (unix) hvor der senest skal bestilles hjem; null = nu */
+  orderBy: number | null;
+  suggestQty: number;
+}
+
+export function reorderEmail(items: ReorderItem[], s: Settings, adminUrl: string): EmailMessage {
+  const when = (i: ReorderItem) => (i.orderBy === null ? 'bestil nu' : `bestil senest ${formatDate(i.orderBy)}`);
+  const text = `Disse varer skal bestilles hjem snart (beregnet ud fra jeres salg):
+
+${items.map((i) => `${i.name} (${i.sku}): ${when(i)}. ${i.available} disponible, genbestillingspunkt ${i.limit}. Foreslået antal: ${i.suggestQty}.`).join('\n')}
+
+Se varerne: ${adminUrl}`;
+  const html = wrapHtml(
+    s,
+    `<p style="margin:0 0 16px"><strong>Disse varer skal bestilles hjem snart</strong><br>Beregnet ud fra jeres salg og leveringstid.</p>
+<ul style="margin:0 0 20px;padding-left:20px">${items
+      .map(
+        (i) =>
+          `<li style="margin-bottom:8px"><strong>${escapeHtml(i.name)}</strong> (${escapeHtml(i.sku)}): ${when(i)}<br>${i.available} disponible · genbestillingspunkt ${i.limit} · foreslået antal ${i.suggestQty}</li>`,
+      )
+      .join('')}</ul>
+${button(s, adminUrl, 'Se genbestilling')}`,
+  );
+  return { to: s.notify_email || s.contact_email, subject: `Genbestilling: ${items.length} ${items.length === 1 ? 'vare' : 'varer'} skal bestilles hjem`, text, html };
 }
 
 export function loginEmail(link: string, s: Settings): Omit<EmailMessage, 'to'> {
