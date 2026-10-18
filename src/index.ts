@@ -34,7 +34,7 @@ app.use('*', async (c, next) => {
   );
   h.set('X-Content-Type-Options', 'nosniff');
   h.set('X-Frame-Options', 'DENY');
-  h.set('Referrer-Policy', 'no-referrer');
+  h.set('Referrer-Policy', 'same-origin'); // ikke no-referrer: så sender browsere Origin: null på egne formularer
   h.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
   h.set('Cross-Origin-Opener-Policy', 'same-origin');
   if (new URL(c.req.url).protocol === 'https:') {
