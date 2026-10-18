@@ -3,7 +3,7 @@ import type { OrderEventRow, OrderLineRow, OrderRow } from '../env';
 import { formatDateTime, formatKr } from '../lib/format';
 import { STATUS_LABEL, type PricedCart, type PricedLine } from '../lib/orders';
 import { available, type ProductWithReserved } from '../lib/products';
-import { deliveryFee, safeUrl, type Settings } from '../lib/settings';
+import { deliveryFee, lowStockLimit, safeUrl, type Settings } from '../lib/settings';
 import { alert, csrfField, type H } from './layout';
 
 function stockTag(p: ProductWithReserved, s: Settings): H {
@@ -11,86 +11,142 @@ function stockTag(p: ProductWithReserved, s: Settings): H {
   if (a === null) return html``;
   if (a <= 0) return html`<span class="tag tag-out">Udsolgt</span>`;
   if (s.show_stock_count) return html`<span class="tag tag-ok">${a} på lager</span>`;
-  if (a <= (p.low_stock_threshold ?? s.low_stock_default)) return html`<span class="tag tag-low">Få på lager</span>`;
+  if (a <= lowStockLimit(p, s)) return html`<span class="tag tag-low">Få på lager</span>`;
   return html`<span class="tag tag-ok">På lager</span>`;
 }
 
-function productCard(p: ProductWithReserved, s: Settings, csrf: string, inCart: number, back: string, added: boolean): H {
+/** Én række i bestillingsarket: varen og et felt til antal. */
+function sheetRow(p: ProductWithReserved, s: Settings, qtyIn: number, staff: boolean): H {
   const a = available(p);
-  const left = a === null ? null : Math.max(0, a - inCart);
-  const img = safeUrl(p.image_url);
-  return html`<article class="product" id="vare-${p.id}">
-    ${img ? html`<img class="product-img" src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}
-    <div class="product-body">
-      <h3 class="product-name">${p.name}</h3>
-      ${p.description ? html`<p class="product-desc">${p.description}</p>` : ''}
-      <div class="product-meta">
-        <span class="price">${formatKr(p.price)} <small>/ ${p.unit}</small></span>
-        ${stockTag(p, s)}
-      </div>
-      ${added ? alert('ok', html`Lagt i kurven. <a href="/kurv">Gå til kurven</a>`) : ''}
-      ${left === 0
-        ? html`<button class="btn btn-secondary btn-block" type="button" disabled>${a === 0 ? 'Udsolgt' : 'Alle på lager er i kurven'}</button>`
-        : html`<form class="add-form" method="post" action="/kurv">
-            ${csrfField(csrf)}
-            <input type="hidden" name="id" value="${p.id}">
-            <input type="hidden" name="back" value="${back}">
-            <label class="sr-only" for="qty-${p.id}">Antal</label>
-            <input class="qty" id="qty-${p.id}" type="number" name="qty" value="1" min="1" max="${left ?? 9999}" inputmode="numeric" aria-label="Antal af ${p.name}">
-            <button class="btn btn-primary" type="submit">Læg i kurv</button>
-          </form>`}
-      ${inCart ? html`<p class="xs muted">${inCart} i kurven</p>` : ''}
-    </div>
-  </article>`;
+  const out = a === 0;
+  const qty = out ? 0 : staff ? qtyIn : Math.min(qtyIn, a ?? qtyIn);
+  const search = `${p.sku} ${p.name} ${p.category ?? ''}`.toLowerCase();
+  const tag = staff ? staffStock(p, s) : stockTag(p, s);
+  return html`<tr class="sheet-row${qty ? ' has-qty' : ''}${out ? ' is-out' : ''}" data-price="${p.price}" data-search="${search}">
+    <td class="c-sku num">${p.sku}</td>
+    <td class="c-name">
+      <label for="q-${p.id}">${p.name}</label>
+      ${p.description && !staff ? html`<span class="sheet-desc">${p.description}</span>` : ''}
+      <span class="sheet-sub">${p.sku} · ${formatKr(p.price)} / ${p.unit} ${tag}</span>
+    </td>
+    <td class="c-unit">${p.unit}</td>
+    <td class="c-price right num">${formatKr(p.price)}</td>
+    <td class="c-stock">${tag}</td>
+    <td class="c-qty">${out
+      ? html`<input class="sheet-qty" id="q-${p.id}" type="number" value="" placeholder="–" disabled aria-label="${p.name} er udsolgt">`
+      : html`<input class="sheet-qty" id="q-${p.id}" type="number" name="q_${p.id}" value="${qty || ''}" placeholder="0" min="0" max="${a ?? 9999}" inputmode="numeric" autocomplete="off">`}</td>
+    <td class="c-sum right num" data-sum>${qty ? formatKr(qty * p.price) : ''}</td>
+  </tr>`;
 }
 
-export function catalogPage(args: {
+/** Lagerstatus til medarbejdere: altid det præcise antal, der kan sælges. */
+function staffStock(p: ProductWithReserved, s: Settings): H {
+  const a = available(p);
+  if (a === null) return html`<span class="tag tag-off">Ubegrænset</span>`;
+  const cls = a <= 0 ? 'tag-out' : a <= lowStockLimit(p, s) ? 'tag-low' : 'tag-ok';
+  return html`<span class="tag ${cls}">${a} disponible</span>`;
+}
+
+/**
+ * Bestillingsarket: alle varer i en tabel med et antalsfelt pr. række, beløb og en bundlinje med
+ * i alt og knap. Bruges både af kunderne i webshoppen og af medarbejdere, der opretter ordrer.
+ * Skal ligge inde i en <form class="sheet-form">.
+ */
+export function orderSheet(args: {
   settings: Settings;
   products: ProductWithReserved[];
-  categories: string[];
-  category: string | null;
-  q: string;
-  csrf: string;
-  cart: Map<number, number>;
-  added: number | null;
+  quantities: Map<number, number>;
+  submitLabel: string;
+  staff?: boolean;
 }): H {
   const s = args.settings;
-  const back = '/' + (args.category ? `?kategori=${encodeURIComponent(args.category)}` : args.q ? `?q=${encodeURIComponent(args.q)}` : '');
+  const staff = !!args.staff;
   const groups = new Map<string, ProductWithReserved[]>();
   for (const p of args.products) {
     const k = p.category || 'Øvrige';
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k)!.push(p);
   }
-  const showGroupTitles = !args.category && groups.size > 1;
+  const showGroups = groups.size > 1;
+  const slug = (name: string) => 'kat-' + [...groups.keys()].indexOf(name);
+  let count = 0;
+  let total = 0;
+  for (const p of args.products) {
+    const a = available(p);
+    const q = staff ? (args.quantities.get(p.id) ?? 0) : Math.min(args.quantities.get(p.id) ?? 0, a ?? Infinity);
+    if (q > 0 && a !== 0) {
+      count++;
+      total += q * p.price;
+    }
+  }
+  return html`${showGroups
+      ? html`<nav class="cat-nav" aria-label="Kategorier">
+          ${[...groups.keys()].map((c) => html`<a href="#${slug(c)}">${c}</a>`)}
+        </nav>`
+      : ''}
+    <div class="card card-flush sheet-wrap">
+      <table class="sheet">
+        <thead>
+          <tr>
+            <th class="c-sku" scope="col">Varenr.</th>
+            <th class="c-name" scope="col">Vare</th>
+            <th class="c-unit" scope="col">Enhed</th>
+            <th class="c-price right" scope="col">Pris</th>
+            <th class="c-stock" scope="col">Lager</th>
+            <th class="c-qty" scope="col">Antal</th>
+            <th class="c-sum right" scope="col">Beløb</th>
+          </tr>
+        </thead>
+        ${[...groups].map(
+          ([name, items]) => html`<tbody>
+            ${showGroups ? html`<tr class="sheet-group" id="${slug(name)}"><th colspan="7" scope="colgroup">${name}</th></tr>` : ''}
+            ${items.map((p) => sheetRow(p, s, args.quantities.get(p.id) ?? 0, staff))}
+          </tbody>`,
+        )}
+        <tbody class="sheet-none hidden"><tr><td colspan="7" class="muted">Ingen varer matcher din søgning.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="sheet-bar">
+      <div class="sheet-bar-inner">
+        <div class="sheet-total" aria-live="polite">
+          <span class="muted small"><span data-count>${count}</span> ${count === 1 ? 'vare' : 'varer'} valgt</span>
+          <strong data-total>${formatKr(total)}</strong>
+        </div>
+        <button class="btn btn-primary" type="submit">${args.submitLabel}</button>
+      </div>
+    </div>`;
+}
+
+export function catalogPage(args: {
+  settings: Settings;
+  products: ProductWithReserved[];
+  categories: string[];
+  q: string;
+  csrf: string;
+  cart: Map<number, number>;
+  error: string | null;
+}): H {
+  const s = args.settings;
   return html`<div class="hero">
+      <p class="eyebrow">Bestilling</p>
       <h1>${s.tagline || s.shop_name}</h1>
       ${s.intro ? html`<p class="lead">${s.intro}</p>` : ''}
     </div>
-    <form class="toolbar" method="get" action="/" role="search" style="margin-bottom:16px">
+    <form class="toolbar" method="get" action="/" role="search" style="margin-bottom:12px" data-sheet-search>
       <label class="sr-only" for="q">Søg</label>
-      <input id="q" type="search" name="q" value="${args.q}" placeholder="Søg efter vare eller varenummer">
+      <input id="q" type="search" name="q" value="${args.q}" placeholder="Søg efter vare eller varenummer" autocomplete="off">
       <button class="btn btn-secondary" type="submit">Søg</button>
     </form>
-    ${args.categories.length > 1
-      ? html`<nav class="cat-nav" aria-label="Kategorier">
-          <a href="/"${!args.category && !args.q ? html` aria-current="page"` : ''}>Alle</a>
-          ${args.categories.map(
-            (c) => html`<a href="/?kategori=${encodeURIComponent(c)}"${args.category === c ? html` aria-current="page"` : ''}>${c}</a>`,
-          )}
-        </nav>`
-      : ''}
     ${args.q ? html`<p class="muted" style="margin-bottom:16px">${args.products.length} resultater for "${args.q}". <a href="/">Vis alle</a></p>` : ''}
+    ${args.error ? html`<div style="margin-bottom:16px">${alert('warn', args.error)}</div>` : ''}
     ${!args.products.length
       ? html`<div class="card empty">${args.q ? 'Ingen varer matcher din søgning.' : 'Der er ingen varer at vise endnu.'}</div>`
-      : [...groups].map(
-          ([name, items]) => html`<section class="shop-section">
-            ${showGroupTitles ? html`<h2 class="cat-title">${name}</h2>` : ''}
-            <div class="products">
-              ${items.map((p) => productCard(p, s, args.csrf, args.cart.get(p.id) ?? 0, back, args.added === p.id))}
-            </div>
-          </section>`,
-        )}`;
+      : html`<form method="post" action="/bestil" class="sheet-form">
+          ${csrfField(args.csrf)}
+          <input type="hidden" name="back" value="${args.q ? `/?q=${encodeURIComponent(args.q)}` : '/'}">
+          <p class="small muted sheet-help">Skriv antal ud for de varer, du vil bestille, og tryk på <strong>Gå til bestilling</strong>.</p>
+          ${orderSheet({ settings: s, products: args.products, quantities: args.cart, submitLabel: 'Gå til bestilling' })}
+        </form>`}`;
 }
 
 function summary(priced: PricedCart, s: Settings, delivery: 'afhentning' | 'levering' | null): H {
@@ -115,7 +171,7 @@ function shortNotice(short: PricedLine[]): H {
   );
 }
 
-export function cartPage(args: { settings: Settings; priced: PricedCart; csrf: string; notice?: string | null }): H {
+export function cartPage(args: { settings: Settings; priced: PricedCart; csrf: string; notice?: string | null; warning?: string | null }): H {
   const { priced, settings: s } = args;
   if (!priced.lines.length) {
     return html`<div class="stack-lg narrow">
@@ -128,6 +184,7 @@ export function cartPage(args: { settings: Settings; priced: PricedCart; csrf: s
   return html`<div class="stack-lg">
     <h1>Kurv</h1>
     ${args.notice ? alert('ok', args.notice) : ''}
+    ${args.warning ? alert('warn', args.warning) : ''}
     ${priced.removed ? alert('info', 'Nogle varer er fjernet fra kurven, fordi de ikke længere kan bestilles.') : ''}
     ${priced.short.length ? shortNotice(priced.short) : ''}
     <div class="layout-side">
@@ -150,7 +207,7 @@ export function cartPage(args: { settings: Settings; priced: PricedCart; csrf: s
           </div>`,
         )}
         <div class="row-between" style="margin-top:16px">
-          <a href="/">← Fortsæt med at handle</a>
+          <a href="/">← Tilbage til varelisten</a>
           <button class="btn btn-secondary" type="submit">Opdater antal</button>
         </div>
       </form>
@@ -265,7 +322,7 @@ export function checkoutPage(args: {
   </div>`;
 }
 
-export function orderPage(args: { settings: Settings; order: OrderRow; lines: OrderLineRow[]; events: OrderEventRow[]; justPlaced: boolean }): H {
+export function orderPage(args: { settings: Settings; order: OrderRow; lines: OrderLineRow[]; events: OrderEventRow[]; justPlaced: boolean; csrf: string }): H {
   const { order: o, settings: s } = args;
   const statusEvents = args.events.filter((e) => e.status);
   return html`<div class="stack-lg narrow" style="max-width:720px">
@@ -306,10 +363,61 @@ export function orderPage(args: { settings: Settings; order: OrderRow; lines: Or
           ? html`Skriv til <a href="mailto:${s.contact_email}">${s.contact_email}</a>${s.contact_phone ? html` eller ring på ${s.contact_phone}` : ''}`
           : html`Ring på ${s.contact_phone}`}.</p>`
       : ''}
-    <a class="btn btn-secondary" href="/">Tilbage til butikken</a>
+    <div class="row">
+      <form method="post" action="/ordre/${o.token}/igen">${csrfField(args.csrf)}<button class="btn btn-primary" type="submit">Bestil det samme igen</button></form>
+      <a class="btn btn-secondary" href="/">Tilbage til butikken</a>
+    </div>
   </div>`;
 }
 
 export function messagePage(title: string, text: string): H {
   return html`<div class="stack-lg narrow"><h1>${title}</h1><p class="muted">${text}</p><a class="btn btn-primary" href="/">Til butikken</a></div>`;
+}
+
+/** Vejledning i at lægge bestillingen (eller administrationspanelet) på telefonens hjemmeskærm. */
+export function appPage(args: { settings: Settings; admin?: boolean }): H {
+  const s = args.settings;
+  const what = args.admin ? 'administrationspanelet' : 'bestillingen';
+  return html`<div class="stack-lg narrow" style="max-width:720px">
+    <div class="stack-sm">
+      <p class="eyebrow">App</p>
+      <h1>${args.admin ? 'Ordrer og lager som app' : `Bestil hos ${s.shop_name} fra telefonen`}</h1>
+      <p class="lead">Læg ${what} på hjemmeskærmen, så åbner den som en app med ét tryk. Der skal ikke hentes noget i App Store eller Google Play.</p>
+    </div>
+    <div class="card stack" data-install hidden>
+      <h2>Installér med ét tryk</h2>
+      <p class="muted">Din browser kan installere appen direkte.</p>
+      <button class="btn btn-primary" type="button" data-install-button>Installér appen</button>
+    </div>
+    <div class="grid grid-2">
+      <section class="card stack">
+        <h2>iPhone og iPad</h2>
+        <ol class="steps-list">
+          <li>Åbn siden i <strong>Safari</strong>.</li>
+          <li>Tryk på <strong>Del</strong> (firkanten med pilen op).</li>
+          <li>Vælg <strong>Føj til hjemmeskærm</strong>, og tryk <strong>Tilføj</strong>.</li>
+        </ol>
+      </section>
+      <section class="card stack">
+        <h2>Android</h2>
+        <ol class="steps-list">
+          <li>Åbn siden i <strong>Chrome</strong>.</li>
+          <li>Tryk på menuen <strong>⋮</strong> øverst til højre.</li>
+          <li>Vælg <strong>Installér app</strong> eller <strong>Føj til startskærm</strong>.</li>
+        </ol>
+      </section>
+    </div>
+    <p class="small muted">${args.admin
+      ? 'Du forbliver logget ind i appen. Lagertal og ordrer hentes altid direkte, så de er opdaterede.'
+      : 'Appen viser altid de aktuelle priser og lagerstatus. Din kurv huskes, til du bestiller.'}</p>
+    <a class="btn btn-secondary" href="${args.admin ? '/admin' : '/'}">${args.admin ? 'Til oversigten' : 'Til varerne'}</a>
+  </div>`;
+}
+
+export function offlinePage(): H {
+  return html`<div class="stack-lg narrow">
+    <h1>Ingen forbindelse</h1>
+    <p class="muted">Du er ikke på nettet lige nu. Bestillinger og lagertal kræver forbindelse, så de altid er opdaterede. Prøv igen, når du har net.</p>
+    <a class="btn btn-primary" href="">Prøv igen</a>
+  </div>`;
 }

@@ -1,4 +1,4 @@
-import type { Delivery, OrderEventRow, OrderLineRow, OrderRow, OrderStatus } from '../env';
+import type { Delivery, OrderEventRow, OrderLineRow, OrderRow, OrderSource, OrderStatus } from '../env';
 import { nowSec, randomToken } from './crypto';
 import { available, getProductsByIds, isConstraintError } from './products';
 import { deliveryFee, type Settings } from './settings';
@@ -12,6 +12,19 @@ export const STATUS_LABEL: Record<OrderStatus, string> = {
   afsluttet: 'Afsluttet',
   annulleret: 'Annulleret',
 };
+
+export const SOURCES: OrderSource[] = ['hjemmeside', 'telefon', 'email', 'direkte'];
+
+export const SOURCE_LABEL: Record<OrderSource, string> = {
+  hjemmeside: 'Hjemmeside',
+  telefon: 'Telefon',
+  email: 'E-mail',
+  direkte: 'Direkte salg',
+};
+
+export function isSource(s: unknown): s is OrderSource {
+  return typeof s === 'string' && (SOURCES as string[]).includes(s);
+}
 
 /** Statusser, hvor varerne er solgt, og lageret derfor skal være trukket. */
 const DEDUCTED: OrderStatus[] = ['bekraeftet', 'klar', 'afsluttet'];
@@ -151,19 +164,25 @@ export async function createOrder(
   settings: Settings,
   input: CheckoutInput,
   cart: CartLine[],
+  /** Ordrer oprettet af en medarbejder: kilde, hvem og om de bekræftes med det samme */
+  staff?: { source: Exclude<OrderSource, 'hjemmeside'>; actor: string; confirm: boolean },
 ): Promise<CreateResult> {
   const priced = await priceCart(db, cart);
   if (!priced.lines.length) return { ok: false, reason: 'empty' };
   if (priced.short.length) return { ok: false, reason: 'stock', short: priced.short };
-  if (settings.min_order > 0 && priced.subtotal < settings.min_order) return { ok: false, reason: 'min_order' };
-  if ((input.delivery === 'levering' && !settings.delivery_enabled) || (input.delivery === 'afhentning' && !settings.pickup_enabled)) {
-    return { ok: false, reason: 'delivery' };
+  // Mindstebeløb og leveringsformer gælder kun for kundernes egne bestillinger
+  if (!staff) {
+    if (settings.min_order > 0 && priced.subtotal < settings.min_order) return { ok: false, reason: 'min_order' };
+    if ((input.delivery === 'levering' && !settings.delivery_enabled) || (input.delivery === 'afhentning' && !settings.pickup_enabled)) {
+      return { ok: false, reason: 'delivery' };
+    }
   }
 
   const fee = input.delivery === 'levering' ? deliveryFee(settings, priced.subtotal) : 0;
   const now = nowSec();
   const token = randomToken(24);
-  const status: OrderStatus = settings.auto_confirm ? 'bekraeftet' : 'ny';
+  const status: OrderStatus = (staff ? staff.confirm : settings.auto_confirm) ? 'bekraeftet' : 'ny';
+  const source: OrderSource = staff?.source ?? 'hjemmeside';
 
   const ref = refByToken(token);
   const event = (st: OrderStatus, msg: string, actor: string) =>
@@ -175,11 +194,11 @@ export async function createOrder(
   const stmts: D1PreparedStatement[] = [
     db
       .prepare(
-        `INSERT INTO orders (number, token, status, customer_name, customer_email, customer_phone, company, delivery,
+        `INSERT INTO orders (number, token, status, customer_name, customer_email, customer_phone, company, delivery, source,
            address, postcode, city, note, subtotal, delivery_fee, total, created_at, updated_at)
-         VALUES ((SELECT COALESCE(MAX(number), 1000) + 1 FROM orders), ?, 'ny', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES ((SELECT COALESCE(MAX(number), 1000) + 1 FROM orders), ?, 'ny', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .bind(token, input.customer_name, input.customer_email, input.customer_phone, input.company, input.delivery,
+      .bind(token, input.customer_name, input.customer_email, input.customer_phone, input.company, input.delivery, source,
         input.delivery === 'levering' ? input.address : '', input.delivery === 'levering' ? input.postcode : '',
         input.delivery === 'levering' ? input.city : '', input.note, priced.subtotal, fee, priced.subtotal + fee, now, now),
     ...priced.lines.map((l) =>
@@ -190,13 +209,16 @@ export async function createOrder(
         )
         .bind(l.productId, l.sku, l.name, l.unit, l.unit_price, l.quantity, l.line_total),
     ),
-    event('ny', 'Bestilling modtaget', 'kunde'),
+    staff
+      ? event('ny', `Oprettet af medarbejder (${SOURCE_LABEL[source].toLowerCase()})`, staff.actor)
+      : event('ny', 'Bestilling modtaget', 'kunde'),
   ];
   if (status === 'bekraeftet') {
+    const actor = staff?.actor ?? 'system';
     stmts.push(
-      ...stockStatements(db, ref, -1, 'system', now),
+      ...stockStatements(db, ref, -1, actor, now),
       db.prepare(`UPDATE orders SET status = 'bekraeftet' WHERE id = ${ref}`),
-      event('bekraeftet', 'Bekræftet automatisk', 'system'),
+      event('bekraeftet', staff ? 'Bekræftet ved oprettelse' : 'Bekræftet automatisk', actor),
     );
   }
   try {
@@ -356,4 +378,27 @@ export async function revenueSince(db: D1Database, since: number): Promise<{ ord
     .bind(since)
     .first<{ orders: number; total: number }>();
   return r ?? { orders: 0, total: 0 };
+}
+
+export interface StatusEvent {
+  created_at: number;
+  status: OrderStatus;
+  order_id: number;
+  number: number;
+  source: OrderSource;
+  item_count: number;
+}
+
+/** Seneste statusskift på ordrer (til oversigtens "Seneste ændringer"). */
+export async function recentStatusEvents(db: D1Database, limit: number): Promise<StatusEvent[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT e.created_at, e.status, o.id AS order_id, o.number, o.source,
+         (SELECT COALESCE(SUM(quantity), 0) FROM order_lines WHERE order_id = o.id) AS item_count
+       FROM order_events e JOIN orders o ON o.id = e.order_id
+       WHERE e.status IS NOT NULL ORDER BY e.created_at DESC, e.id DESC LIMIT ?`,
+    )
+    .bind(limit)
+    .all<StatusEvent>();
+  return results;
 }

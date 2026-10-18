@@ -1,12 +1,16 @@
 import { Hono } from 'hono';
 import type { AppEnv, Env } from './env';
+import { runReorderAlerts } from './lib/forecast';
 import { getSettings } from './lib/settings';
 import { cleanup, csrfMiddleware, sessionMiddleware } from './lib/session';
 import { renderShop } from './render';
 import admin from './routes/admin';
 import shop from './routes/shop';
 import { CSS, JS } from './views/assets';
+import { INTER_TIGHT } from './views/font';
+import { appIcon } from './lib/icon';
 import { favicon } from './views/layout';
+import { SERVICE_WORKER, iconColors, manifest } from './views/pwa';
 import { messagePage } from './views/shop';
 
 const app = new Hono<AppEnv>();
@@ -44,6 +48,9 @@ app.use('*', async (c, next) => {
 const STATIC_CACHE = 'public, max-age=3600';
 app.get('/static/app.css', (c) => c.body(CSS, 200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
 app.get('/static/app.js', (c) => c.body(JS, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
+app.get('/static/inter-tight.woff2', (c) =>
+  c.body(INTER_TIGHT, 200, { 'Content-Type': 'font/woff2', 'Cache-Control': 'public, max-age=31536000, immutable' }),
+);
 app.get('/healthz', (c) => c.text('ok'));
 app.get('/robots.txt', (c) => c.text('User-agent: *\nDisallow: /admin\nDisallow: /kurv\nDisallow: /kassen\nDisallow: /ordre/\n', 200, { 'Cache-Control': STATIC_CACHE }));
 
@@ -54,6 +61,16 @@ app.use('*', async (c, next) => {
 });
 app.get('/favicon.svg', (c) => c.body(favicon(c.get('settings')), 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': STATIC_CACHE }));
 app.get('/favicon.ico', (c) => c.redirect('/favicon.svg', 301));
+
+// Installerbar app (manifest, ikoner og service worker)
+const MANIFEST = { 'Content-Type': 'application/manifest+json; charset=utf-8', 'Cache-Control': 'public, max-age=300' };
+app.get('/manifest.webmanifest', (c) => c.body(manifest(c.get('settings'), 'shop'), 200, MANIFEST));
+app.get('/admin-app.webmanifest', (c) => c.body(manifest(c.get('settings'), 'admin'), 200, MANIFEST));
+app.get('/icons/:file{(192|512|180)\\.png}', async (c) => {
+  const [bg, dot] = iconColors(c.get('settings'));
+  return c.body(await appIcon(parseInt(c.req.param('file'), 10), bg, dot), 200, { 'Content-Type': 'image/png', 'Cache-Control': STATIC_CACHE });
+});
+app.get('/sw.js', (c) => c.body(SERVICE_WORKER, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }));
 
 app.use('*', sessionMiddleware);
 app.use('*', csrfMiddleware);
@@ -75,5 +92,7 @@ export default {
   fetch: app.fetch,
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(cleanup(env.DB));
+    // Sikkerhedslager og genbestillingspunkter beregnes igen, og varer, der snart skal bestilles hjem, varsles
+    ctx.waitUntil(getSettings(env.DB).then((s) => runReorderAlerts(env, ctx, s)));
   },
 } satisfies ExportedHandler<Env>;

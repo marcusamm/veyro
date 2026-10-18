@@ -1,40 +1,48 @@
 import { html, raw } from 'hono/html';
-import { isHexColor, safeUrl, type Settings } from '../lib/settings';
+import { DEFAULT_ACCENT, isHexColor, safeUrl, type Settings } from '../lib/settings';
 
 export type H = ReturnType<typeof html>;
 
-export type AdminNav = 'oversigt' | 'ordrer' | 'varer' | 'import' | 'historik' | 'indstillinger';
+export type AdminNav = 'oversigt' | 'ordrer' | 'varer' | 'genbestilling' | 'import' | 'historik' | 'indstillinger';
 
-/** Tekstfarve på accentfarven: mørk på lyse farver, hvid på mørke (WCAG-luminans). */
-function inkOn(hex: string): string {
+/** Tekstfarve på accentfarven: den af mørk og hvid, der giver bedst kontrast (WCAG). */
+export function inkOn(hex: string): string {
   const n = parseInt(hex.slice(1), 16);
   const lin = (c: number) => {
     const v = c / 255;
     return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
   };
   const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
-  return L > 0.4 ? '#111827' : '#FFFFFF';
+  return (L + 0.05) / 0.0555 >= 1.05 / (L + 0.05) ? '#0F0F0D' : '#FFFFFF';
 }
 
 function themeStyle(s: Settings): H {
-  const accent = isHexColor(s.accent_color) ? s.accent_color : '#1F5EFF';
+  const accent = isHexColor(s.accent_color) ? s.accent_color : DEFAULT_ACCENT;
   const n = parseInt(accent.slice(1), 16);
-  const soft = `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},.08)`;
+  const rgb = `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
   // Værdierne er valideret (hex-farve), så de kan indsættes direkte
-  return html`<style>${raw(`:root{--accent:${accent};--accent-ink:${inkOn(accent)};--accent-soft:${soft}}`)}</style>`;
+  return html`<style>${raw(`:root{--accent:${accent};--accent-ink:${inkOn(accent)};--accent-rgb:${rgb};--accent-soft:rgba(${rgb},.1)}`)}</style>`;
 }
 
-function head(title: string, s: Settings, opts: { noindex?: boolean; description?: string }): H {
+function head(title: string, s: Settings, opts: { noindex?: boolean; description?: string; admin?: boolean }): H {
   return html`<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="${opts.admin ? '/admin-app.webmanifest' : '/manifest.webmanifest'}">
+<meta name="theme-color" content="#F4F2EC">
+<link rel="apple-touch-icon" href="/icons/180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="${opts.admin ? 'Ordrer' : s.shop_name}">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 ${opts.noindex ? html`<meta name="robots" content="noindex, nofollow">` : ''}
 ${opts.description ? html`<meta name="description" content="${opts.description}">` : ''}
 <meta name="color-scheme" content="light">
 <title>${title}</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/static/app.css?v=1">
+<link rel="preload" href="/static/inter-tight.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/static/app.css?v=2">
 ${themeStyle(s)}
-<script src="/static/app.js?v=1" defer></script>`;
+<script src="/static/app.js?v=2" defer></script>`;
 }
 
 function footer(s: Settings): H {
@@ -48,6 +56,7 @@ function footer(s: Settings): H {
       ? html` · <a href="mailto:${s.contact_email}">${s.contact_email}</a>`
       : ''}</span>
     <nav aria-label="Links">
+      <a href="/app">Hent som app</a>
       ${site ? html`<a href="${site}">Til hjemmesiden</a>` : ''}
       ${terms ? html`<a href="${terms}">Handelsbetingelser</a>` : ''}
       ${privacy ? html`<a href="${privacy}">Privatlivspolitik</a>` : ''}
@@ -63,7 +72,7 @@ export function shopLayout(opts: { title: string; settings: Settings; cartCount:
 <head>
 ${head(opts.title === s.shop_name ? s.shop_name : `${opts.title} · ${s.shop_name}`, s, { description: opts.description, noindex: opts.noindex })}
 </head>
-<body>
+<body data-shop>
 <a class="skip" href="#indhold">Spring til indhold</a>
 <header class="site-header">
   <div class="wrap">
@@ -94,7 +103,7 @@ export function adminLayout(
   return html`<!doctype html>
 <html lang="da">
 <head>
-${head(`${opts.title} · ${s.shop_name} admin`, s, { noindex: true })}
+${head(`${opts.title} · ${s.shop_name} admin`, s, { noindex: true, admin: true })}
 </head>
 <body>
 <a class="skip" href="#indhold">Spring til indhold</a>
@@ -117,6 +126,7 @@ ${loggedIn
       ${navLink('/admin', 'Oversigt', opts.nav === 'oversigt')}
       ${navLink('/admin/ordrer', 'Ordrer', opts.nav === 'ordrer', opts.newCount)}
       ${navLink('/admin/varer', 'Varer og lager', opts.nav === 'varer')}
+      ${navLink('/admin/genbestilling', 'Genbestilling', opts.nav === 'genbestilling')}
       ${navLink('/admin/import', 'Import', opts.nav === 'import')}
       ${navLink('/admin/historik', 'Lagerhistorik', opts.nav === 'historik')}
       ${navLink('/admin/indstillinger', 'Indstillinger', opts.nav === 'indstillinger')}
@@ -137,6 +147,6 @@ export function alert(kind: 'info' | 'ok' | 'warn' | 'err', content: H | string)
 }
 
 export function favicon(s: Settings): string {
-  const accent = isHexColor(s.accent_color) ? s.accent_color : '#1F5EFF';
+  const accent = isHexColor(s.accent_color) ? s.accent_color : DEFAULT_ACCENT;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="${accent}"/></svg>`;
 }
