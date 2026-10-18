@@ -97,6 +97,7 @@ export function startMock() {
       let m;
       if (p === '/v1/checkout/sessions' && req.method === 'POST') {
         const id = 'cs_test_' + state.calls.length;
+        (state.sessions ??= {})[id] = params;
         return json(200, { id, object: 'checkout.session', url: `https://checkout.stripe.com/c/pay/${id}` });
       }
       if (p === '/v1/billing_portal/sessions' && req.method === 'POST') {
@@ -175,6 +176,19 @@ export function startMock() {
           return json(200, inv);
         }
       }
+      if ((m = p.match(/^\/v1\/checkout\/sessions\/([^/]+)$/)) && req.method === 'GET') {
+        const sp = state.sessions?.[m[1]];
+        if (!sp) return stripeErr(res, 404, 'No such session', 'resource_missing');
+        return json(200, { id: m[1], mode: sp.mode, status: 'complete', customer: sp.customer,
+          metadata: { veyro_subscription: sp['metadata[veyro_subscription]'] }, setup_intent: { id: 'seti_' + m[1], status: 'succeeded', payment_method: 'pm_card_' + m[1] } });
+      }
+      if ((m = p.match(/^\/v1\/customers\/([^/]+)$/)) && req.method === 'POST') {
+        const c = state.customers[m[1]];
+        if (!c) return stripeErr(res, 404, 'No such customer', 'resource_missing');
+        if (params['invoice_settings[default_payment_method]']) c.invoice_settings = { default_payment_method: params['invoice_settings[default_payment_method]'] };
+        if (params.name) c.name = params.name;
+        return json(200, c);
+      }
       if ((m = p.match(/^\/v1\/customers\/([^/]+)$/)) && req.method === 'GET') {
         const c = state.customers[m[1]];
         return c ? json(200, c) : stripeErr(res, 404, 'No such customer', 'resource_missing');
@@ -205,7 +219,7 @@ export function startMock() {
         }
         const trialEnd = params.trial_end ? Number(params.trial_end) : null;
         state.subscriptions[id] = { id, object: 'subscription', customer: params.customer, status: trialEnd ? 'trialing' : 'active', created: now, start_date: now,
-          trial_end: trialEnd, cancel_at_period_end: false, cancel_at: null, canceled_at: null, discounts: params['discounts[0][coupon]'] ? [params['discounts[0][coupon]']] : [],
+          trial_end: trialEnd, collection_method: params.collection_method, default_payment_method: null, cancel_at_period_end: false, cancel_at: null, canceled_at: null, discounts: params['discounts[0][coupon]'] ? [params['discounts[0][coupon]']] : [],
           metadata: { source: params['metadata[source]'] }, items: { data: items }, _params: params };
         return json(200, state.subscriptions[id]);
       }
@@ -230,8 +244,12 @@ export function startMock() {
         return c ? json(200, c) : stripeErr(res, 404, 'No such coupon', 'resource_missing');
       }
       if ((m = p.match(/^\/v1\/subscriptions\/([^/]+)$/)) && req.method === 'POST' && state.subscriptions[m[1]] &&
-          (params['items[0][price_data][unit_amount]'] || params['discounts[0][coupon]'] || params.discounts === '')) {
+          (params['items[0][price_data][unit_amount]'] || params['discounts[0][coupon]'] || params.discounts === '' || params.collection_method)) {
         const sub = state.subscriptions[m[1]];
+        if (params.collection_method) {
+          sub.collection_method = params.collection_method;
+          sub.default_payment_method = params.default_payment_method ?? null;
+        }
         if (params['items[0][price_data][unit_amount]']) {
           const it = sub.items.data.find((x) => x.id === params['items[0][id]']);
           if (!it) return stripeErr(res, 400, 'Bad item');
@@ -245,7 +263,7 @@ export function startMock() {
       if ((m = p.match(/^\/v1\/subscriptions\/([^/]+)$/))) {
         const sub = state.subscriptions[m[1]];
         if (!sub) return stripeErr(res, 404, 'No such subscription', 'resource_missing');
-        if (req.method === 'GET') return json(200, sub);
+        if (req.method === 'GET') return json(200, params['expand[0]'] === 'customer' ? { ...sub, customer: state.customers[sub.customer] } : sub);
         if (req.method === 'POST') {
           if (params['items[0][price]']) {
             if (params['items[0][id]'] !== sub.items.data[0].id) return stripeErr(res, 400, 'Bad item');

@@ -792,6 +792,66 @@ describe('Admin: abonnementer', () => {
     expect((await subState(id)).cancel_at_period_end).toBe(false);
   });
 
+  it('sender velkomstmail med kortlink; kortet gør abonnementet automatisk', async () => {
+    const { client } = await as(ADMIN_EMAIL);
+    const page = await client.get('/admin/abonnementer');
+    const before = (await emails()).length;
+    const res = await client.post('/admin/abonnementer', formFrom(page.html, {
+      email: 'kort@kunde.dk', name: 'Karen Kort', action: 'free', line0_desc: 'Ordresystem', line0_price: '1000',
+    }));
+    const id = newSubId(res);
+    const mail = await waitFor(async () => (await emails()).slice(before).find((e) => e.to[0] === 'kort@kunde.dk'));
+    expect(mail.subject).toContain('betalingskort');
+    expect(mail.text).toContain('Hej Karen');
+    expect(mail.text).toContain('første måned er gratis');
+    const link = mail.text.match(/https?:\/\/\S+\/kort\/(sub_[^\s]+)/);
+    const token = link[1];
+    expect(token.startsWith(id + '.')).toBe(true);
+
+    const visitor = new Client(stack.base);
+    const cardPage = await visitor.get('/kort/' + token);
+    expect(cardPage.status).toBe(200);
+    expect(cardPage.html).toContain('Tilføj betalingskort');
+    expect((await visitor.get('/kort/' + token.slice(0, -1) + (token.endsWith('a') ? 'b' : 'a'))).status).toBe(400);
+    expect((await visitor.get('/kort/sub_A.9999999999.' + '0'.repeat(40))).status).toBe(400);
+
+    const go = await visitor.post('/kort/' + token, { _csrf: csrfFrom(cardPage.html) });
+    expect(go.status).toBe(303);
+    const csId = go.headers.get('location').split('/').pop();
+    const cs = (await calls()).filter((c) => c.path === '/v1/checkout/sessions' && c.method === 'POST').at(-1).params;
+    expect(cs.mode).toBe('setup');
+    expect(cs['metadata[veyro_subscription]']).toBe(id);
+
+    const done = await visitor.get(`/kort/${token}/tak?session_id=${csId}`);
+    expect(done.status).toBe(200);
+    expect(done.html).toContain('dit kort er tilføjet');
+    const sub = await subState(id);
+    expect(sub.collection_method).toBe('charge_automatically');
+    expect(sub.default_payment_method).toBe('pm_card_' + csId);
+
+    const list = await client.get('/admin/abonnementer');
+    expect(list.html).toContain('Kort tilknyttet');
+  });
+
+  it('webhook for kort-opsætning gør også abonnementet automatisk', async () => {
+    const { client } = await as(ADMIN_EMAIL);
+    const page = await client.get('/admin/abonnementer');
+    const res = await client.post('/admin/abonnementer', formFrom(page.html, { email: 'hook@kunde.dk', name: 'Hook', action: 'paid', line0_desc: 'X', line0_price: '100' }));
+    const id = newSubId(res);
+    const list = await client.get('/admin/abonnementer');
+    expect(list.html).toContain(`/admin/abonnementer/${id}/kortlink`);
+    const before = (await emails()).length;
+    expect((await client.post(`/admin/abonnementer/${id}/kortlink`, { _csrf: csrfFrom(list.html) })).status).toBe(303);
+    expect((await emails()).slice(before).some((e) => e.to[0] === 'hook@kunde.dk')).toBe(true);
+    const cus = (await subState(id)).customer;
+    const csRes = await fetch(stack.mock.url + '/v1/checkout/sessions', { method: 'POST', headers: { Authorization: 'Bearer sk_test_mock', 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ mode: 'setup', customer: cus, 'metadata[veyro_subscription]': id }).toString() });
+    const cs = await csRes.json();
+    const hook = await signedWebhook(stack.base, { id: 'evt_setup_' + id, type: 'checkout.session.completed', data: { object: { id: cs.id, mode: 'setup', metadata: { veyro_subscription: id } } } });
+    expect(hook.status).toBe(200);
+    expect((await subState(id)).collection_method).toBe('charge_automatically');
+  });
+
   it('kunder med særaftale kan ikke skifte til en standardplan', async () => {
     await seedCustomer(stack, { email: 'saer@example.dk', name: 'Sær', cus: 'cus_S', sub: 'sub_S', price: 'price_custom', start: now() - 40 * DAY });
     const { client } = await as('saer@example.dk');

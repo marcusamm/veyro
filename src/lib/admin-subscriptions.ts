@@ -1,6 +1,9 @@
 import type { Env } from '../env';
 import { findOrCreateCustomer, parseKr, postWithFallback, vatRateId, type DraftForm, type InvoiceDraft, validateDraft } from './invoices';
 import { StripeError, stripeRequest, type Params } from './stripe';
+import { cardLink } from './card-link';
+import { sendEmail, subscriptionWelcomeEmail } from './email';
+import { formatDate } from './format';
 
 /**
  * Abonnementer, som admin opretter fra /admin/abonnementer.
@@ -31,6 +34,7 @@ export interface AdminSubscription {
   cancel_at_period_end: boolean;
   cancel_at: number | null;
   current_period_end?: number;
+  collection_method?: string;
   customer: { id: string; email: string | null; name: string | null } | string;
   discounts?: Array<string | { coupon?: Coupon | string; source?: { coupon?: Coupon | string } }>;
   metadata?: Record<string, string>;
@@ -95,7 +99,7 @@ async function createOfferCoupon(env: Env, offer: Offer, months: number, key: st
   return coupon.id;
 }
 
-export async function createSubscription(env: Env, d: SubDraft, opts: { key: string; createdBy: string }): Promise<{ id: string }> {
+export async function createSubscription(env: Env, d: SubDraft, opts: { key: string; createdBy: string }): Promise<{ id: string; trial_end: number | null }> {
   const customer = await findOrCreateCustomer(env, d.email, d.name, opts.key);
   const taxRate = d.addVat ? await vatRateId(env) : null;
   const now = Math.floor(Date.now() / 1000);
@@ -131,7 +135,7 @@ export async function createSubscription(env: Env, d: SubDraft, opts: { key: str
   // Med gratis første måned dækker tilbuddet den første betalte måned (måned 2).
   if (d.offer) params['discounts[0][coupon]'] = await createOfferCoupon(env, d.offer, d.freeFirstMonth ? 2 : 1, opts.key);
 
-  return postWithFallback<{ id: string }>(env, '/v1/subscriptions', params, 'managed_payments', `${opts.key}-subscription`);
+  return postWithFallback<{ id: string; trial_end: number | null }>(env, '/v1/subscriptions', params, 'managed_payments', `${opts.key}-subscription`);
 }
 
 export async function listAdminSubscriptions(env: Env): Promise<AdminSubscription[]> {
@@ -217,4 +221,20 @@ export async function removeOffer(env: Env, subId: string): Promise<void> {
 
 export async function setCancelAtPeriodEnd(env: Env, subId: string, cancel: boolean): Promise<void> {
   await stripeRequest(env, 'POST', `/v1/subscriptions/${subId}`, { cancel_at_period_end: cancel ? 'true' : 'false' });
+}
+
+/** Sender velkomstmail med link til at tilføje betalingskort. */
+export async function sendWelcomeMail(env: Env, subId: string): Promise<void> {
+  const sub = await stripeRequest<{ id: string; status: string; trial_end: number | null; customer: { email: string | null; name: string | null } }>(
+    env,
+    'GET',
+    `/v1/subscriptions/${subId}`,
+    { 'expand[0]': 'customer' },
+  );
+  const to = sub.customer?.email;
+  if (!to) throw new StripeError('Kunden har ingen e-mail.', 400);
+  const link = await cardLink(env, sub.id);
+  const firstChargeDate = sub.status === 'trialing' && sub.trial_end ? formatDate(sub.trial_end) : null;
+  const ok = await sendEmail(env, { to, replyTo: 'kontakt@veyro.dk', ...subscriptionWelcomeEmail({ name: sub.customer.name ?? '', link, firstChargeDate }) });
+  if (!ok) throw new StripeError('Mailen kunne ikke sendes (mangler RESEND_API_KEY).', 500);
 }

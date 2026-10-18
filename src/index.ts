@@ -6,6 +6,7 @@ import { render } from './render';
 import account from './routes/account';
 import admin from './routes/admin';
 import auth from './routes/auth';
+import card from './routes/card';
 import pub from './routes/public';
 import webhook from './routes/webhook';
 import { CSS, FAVICON, JS } from './views/assets';
@@ -69,6 +70,7 @@ app.use('*', csrfMiddleware);
 
 app.route('/', pub);
 app.route('/', auth);
+app.route('/', card);
 app.route('/konto', account);
 app.route('/admin', admin);
 

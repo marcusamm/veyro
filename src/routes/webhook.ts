@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { AppEnv, Env } from '../env';
+import { attachCardFromSession } from '../lib/card-link';
 import { nowSec } from '../lib/crypto';
 import { getCustomerByStripeId, normalizeEmail, upsertCustomer, upsertSubscription } from '../lib/db';
 import {
@@ -74,6 +75,10 @@ webhook.post('/stripe/webhook', async (c) => {
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
+        if (obj.mode === 'setup' && obj.metadata?.veyro_subscription) {
+          await attachCardFromSession(c.env, obj.id);
+          break;
+        }
         if (obj.mode !== 'subscription') break;
         const email = normalizeEmail(obj.customer_details?.email ?? obj.customer_email);
         const stripeCustomerId = idOf(obj.customer);

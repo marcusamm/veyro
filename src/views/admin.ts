@@ -258,8 +258,9 @@ const SUB_STATUS: Record<string, { label: string; cls: string }> = {
 };
 
 const SUB_FLASH: Record<string, string> = {
-  oprettet: 'Abonnementet er oprettet. Kunden får fakturaen på e-mail.',
-  'oprettet-gratis': 'Abonnementet er oprettet med første måned gratis. Den første faktura sendes, når den gratis måned er slut.',
+  oprettet: 'Abonnementet er oprettet. Kunden får en velkomstmail med link til at tilføje kort, og fakturaen kommer i en separat mail.',
+  'oprettet-gratis': 'Abonnementet er oprettet med første måned gratis. Kunden får en velkomstmail med link til at tilføje kort før første betaling.',
+  kortlink: 'Velkomstmailen med kortlink er sendt igen.',
   pris: 'Prisen er ændret. Den nye pris gælder fra næste faktura.',
   tilbud: 'Tilbuddet er lagt på abonnementet og trækkes fra den næste betalte faktura.',
   'tilbud-fjernet': 'Tilbuddet er fjernet.',
@@ -301,7 +302,7 @@ function subRow(s: AdminSubscription, csrf: string): H {
   return html`<tr id="${s.id}">
     <td data-label="Kunde"><strong>${cust.name ?? '–'}</strong><br><span class="small muted">${cust.email ?? ''}</span></td>
     <td data-label="Indhold">${s.items.data.map((i) => html`<div class="small">${i.quantity && i.quantity > 1 ? `${i.quantity} × ` : ''}${productName(i.price.product)}</div>`)}</td>
-    <td data-label="Status"><span class="badge ${st.cls}">${st.label}</span>${s.cancel_at_period_end ? html`<br><span class="small muted">Stopper ${formatDateShort(s.cancel_at ?? next)}</span>` : ''}${offer ? html`<br><span class="small">Tilbud: ${offer}</span>` : ''}</td>
+    <td data-label="Status"><span class="badge ${st.cls}">${st.label}</span>${s.cancel_at_period_end ? html`<br><span class="small muted">Stopper ${formatDateShort(s.cancel_at ?? next)}</span>` : ''}${offer ? html`<br><span class="small">Tilbud: ${offer}</span>` : ''}<br><span class="small muted">${s.collection_method === 'charge_automatically' ? 'Kort tilknyttet' : 'Betaler via faktura'}</span></td>
     <td data-label="Næste faktura">${live ? formatDateShort(next) : '–'}</td>
     <td data-label="Pr. måned" class="num">${formatKr(monthly, { decimals: true })}<br><span class="small muted">ekskl. moms</span></td>
     <td data-label="">${live
@@ -316,6 +317,7 @@ function subRow(s: AdminSubscription, csrf: string): H {
             <p class="small muted" style="margin:0">Tilbud: rabat på næste betalte måned. Derefter gælder den normale pris igen.</p>
             ${offerFields(`o-${s.id}-`)}
             <div class="row" style="gap:8px"><button class="btn btn-small btn-secondary" type="submit">Giv tilbud</button></div></form>
+          ${s.collection_method !== 'charge_automatically' ? html`<form method="post" action="${post('kortlink')}" class="inline">${csrfField(csrf)}<button class="btn btn-small btn-secondary" type="submit">Send kortlink igen</button></form>` : ''}
           ${offer ? html`<form method="post" action="${post('fjern-tilbud')}" class="inline">${csrfField(csrf)}<button class="btn btn-small btn-danger" type="submit">Fjern tilbud</button></form>` : ''}
           ${s.cancel_at_period_end
             ? html`<form method="post" action="${post('genoptag')}" class="inline">${csrfField(csrf)}<button class="btn btn-small btn-secondary" type="submit">Fortsæt abonnementet</button></form>`
@@ -382,7 +384,7 @@ export function adminSubscriptionsPage(args: {
         <button class="btn btn-accent" type="submit" name="action" value="free" data-loading="Opretter …" data-confirm-btn="Opret abonnementet med første måned gratis?">Opret med første måned gratis</button>
         <button class="btn btn-secondary" type="submit" name="action" value="paid" data-loading="Opretter …" data-confirm-btn="Opret abonnementet og send første faktura nu?">Opret og fakturér fra i dag</button>
       </div>
-      <p class="hint">Med første måned gratis kommer den første faktura om en måned. Ellers sendes den første faktura med det samme. Begge sendes automatisk på e-mail.</p>
+      <p class="hint">Kunden får straks en velkomstmail med link til at tilføje sit kort, så betalingen trækkes automatisk. Med første måned gratis sker første betaling om en måned. Ellers sendes første faktura med det samme. Uden kort kommer fakturaerne på mail.</p>
     </form>
   </section>
   <section class="card" aria-labelledby="liste-h">

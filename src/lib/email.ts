@@ -95,6 +95,34 @@ Veyro`;
   return { subject: 'Dit login-link til Veyro admin', text, html };
 }
 
+export function subscriptionWelcomeEmail(args: { name: string; link: string; firstChargeDate: string | null }): Omit<EmailMessage, 'to'> {
+  const first = args.name.trim().split(' ')[0];
+  const hello = first ? `Hej ${first}` : 'Hej';
+  const intro = args.firstChargeDate
+    ? `Velkommen til Veyro. Dit abonnement er startet, og den første måned er gratis. Den første betaling er ${args.firstChargeDate}.`
+    : 'Velkommen til Veyro. Dit abonnement er startet, og den første faktura kommer i en separat mail.';
+  const text = `${hello}
+
+${intro}
+
+Tilføj dit betalingskort her, så betalingen trækkes automatisk hver måned:
+
+${args.link}
+
+Kortoplysningerne håndteres sikkert af Stripe og gemmes aldrig hos Veyro. Tilføjer du ikke et kort, får du i stedet en faktura på mail hver måned med et link til betaling.
+
+Linket virker i 30 dage. Har du spørgsmål, så svar på denne mail eller skriv til kontakt@veyro.dk.
+
+Venlig hilsen
+Veyro`;
+  const html = wrapHtml(`<p style="margin:0 0 16px">${escapeHtml(hello)}</p>
+<p style="margin:0 0 16px">${escapeHtml(intro)}</p>
+<p style="margin:0 0 24px">Tilføj dit betalingskort, så betalingen trækkes automatisk hver måned.</p>
+<p style="margin:0 0 24px"><a href="${escapeHtml(args.link)}" style="display:inline-block;background:#FF5A1F;color:#0F0F0D;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:600">Tilføj betalingskort</a></p>
+<p style="margin:0 0 8px;color:#55534D;font-size:14px">Kortoplysningerne håndteres sikkert af Stripe og gemmes aldrig hos Veyro. Tilføjer du ikke et kort, får du i stedet en faktura på mail hver måned med et link til betaling. Linket virker i 30 dage.</p>`);
+  return { subject: 'Velkommen til Veyro – tilføj dit betalingskort', text, html };
+}
+
 export function signupEmail(link: string, name: string | null): Omit<EmailMessage, 'to'> {
   const hello = name ? `Hej ${name.split(' ')[0]}` : 'Hej';
   const text = `${hello}

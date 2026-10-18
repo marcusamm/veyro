@@ -25,6 +25,7 @@ import {
   listAdminSubscriptions,
   parseOffer,
   removeOffer,
+  sendWelcomeMail,
   setCancelAtPeriodEnd,
   validateSubDraft,
 } from '../lib/admin-subscriptions';
@@ -155,6 +156,7 @@ admin.post('/abonnementer', async (c) => {
   if ('error' in v) return subscriptionsView(c, { form, body, error: v.error, errorField: v.field, status: 400 });
   try {
     const sub = await createSubscription(c.env, v.draft, { key: `admin-sub-${key}`, createdBy: c.get('session')!.email });
+    c.executionCtx.waitUntil(sendWelcomeMail(c.env, sub.id).catch((err) => logError(c.env.DB, 'admin.subscriptions.welcome', err)));
     return c.redirect(`/admin/abonnementer?besked=${v.draft.freeFirstMonth ? 'oprettet-gratis' : 'oprettet'}#${sub.id}`, 303);
   } catch (err) {
     await logError(c.env.DB, 'admin.subscriptions.create', err);
@@ -191,6 +193,10 @@ admin.post('/abonnementer/:id/:action', async (c) => {
       case 'fjern-tilbud':
         await removeOffer(c.env, id);
         flash = 'tilbud-fjernet';
+        break;
+      case 'kortlink':
+        await sendWelcomeMail(c.env, id);
+        flash = 'kortlink';
         break;
       case 'opsig':
         await setCancelAtPeriodEnd(c.env, id, true);
