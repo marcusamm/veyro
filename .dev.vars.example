@@ -1,0 +1,23 @@
+# Kopiér til .dev.vars til lokal udvikling (filen må ALDRIG committes).
+# Værdier her overskriver [vars] i wrangler.toml, når du kører `npm run dev`.
+
+APP_URL=http://localhost:8787
+DEV_MODE=1
+
+# Stripe testnøgler (Stripe Dashboard -> Udviklere -> API-nøgler, i testtilstand)
+STRIPE_SECRET_KEY=sk_test_...
+# Fra `stripe listen --forward-to localhost:8787/stripe/webhook`
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Test-pris-ID'er
+PRICE_STARTER=price_...
+PRICE_BUSINESS=price_...
+PRICE_PREMIUM=price_...
+
+# Lad stå tom i udvikling: så vises login-linket i konsollen og på skærmen
+RESEND_API_KEY=
+
+# Valgfrit
+MIN_MONTHS=0
+ADMIN_EMAILS=dig@veyro.dk
+# STRIPE_TAX_RATE_ID=txr_...

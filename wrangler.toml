@@ -1,0 +1,42 @@
+# Cloudflare Worker-konfiguration for Veyro kundepanel (kunde.veyro.dk)
+name = "veyro-kundepanel"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+# Ingen persondata i logs ud over det nødvendige
+[observability]
+enabled = true
+
+# D1-database. Udskift database_id med det ID, du får fra:
+#   npx wrangler d1 create veyro-kundepanel
+[[d1_databases]]
+binding = "DB"
+database_name = "veyro-kundepanel"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# Daglig oprydning af udløbne login-links, sessioner m.m. (kl. 03:17 UTC)
+[triggers]
+crons = ["17 3 * * *"]
+
+# Eget domæne. Fjern "#" når domænet veyro.dk ligger i samme Cloudflare-konto.
+# routes = [
+#   { pattern = "kunde.veyro.dk", custom_domain = true }
+# ]
+
+# Offentlige (ikke-hemmelige) indstillinger.
+# Hemmeligheder (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RESEND_API_KEY)
+# sættes med `npx wrangler secret put NAVN` – aldrig her.
+[vars]
+APP_URL = "https://kunde.veyro.dk"
+PRICE_STARTER = "price_REPLACE_STARTER"
+PRICE_BUSINESS = "price_REPLACE_BUSINESS"
+PRICE_PREMIUM = "price_REPLACE_PREMIUM"
+MIN_MONTHS = "0"
+ADMIN_EMAILS = "kontakt@veyro.dk"
+NOTIFY_EMAIL = "kontakt@veyro.dk"
+EMAIL_FROM = "Veyro <kontakt@veyro.dk>"
+DEV_MODE = "0"
+# Valgfri momssats (inkluderet i prisen), se README:
+# STRIPE_TAX_RATE_ID = "txr_..."

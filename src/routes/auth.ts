@@ -1,0 +1,90 @@
+import { Hono } from 'hono';
+import type { AppEnv } from '../env';
+import { sha256Hex } from '../lib/crypto';
+import { getCustomerByEmail, normalizeEmail, rateLimit } from '../lib/db';
+import { magicLinkEmail, sendEmail } from '../lib/email';
+import { consumeLoginToken, createLoginToken, createSession, destroySession, isAdmin } from '../lib/session';
+import { render } from '../render';
+import { flash, linkInvalidPage, loginPage, loginSentPage, verifyPage } from '../views/pages';
+
+const auth = new Hono<AppEnv>();
+
+auth.get('/login', async (c) => {
+  if (c.get('session')) return c.redirect('/konto', 303);
+  return render(c, 'Log ind', loginPage({ csrf: c.get('csrf'), info: flash(c.req.query('besked')) }));
+});
+
+auth.post('/login', async (c) => {
+  const body = await c.req.parseBody();
+  const email = normalizeEmail(body['email']);
+  if (!email) {
+    const raw = typeof body['email'] === 'string' ? body['email'].slice(0, 254) : '';
+    return render(c, 'Log ind', loginPage({ csrf: c.get('csrf'), email: raw, error: 'Indtast en gyldig e-mailadresse.' }), {
+      status: 400,
+    });
+  }
+
+  // Rate limiting pr. IP og pr. e-mail (begge hashet). Tælles uanset om e-mailen findes,
+  // så svaret aldrig afslører, om der er en konto.
+  const ip = c.req.header('CF-Connecting-IP') ?? 'ukendt';
+  const ipOk = await rateLimit(c.env.DB, 'ip:' + (await sha256Hex(ip)), 10, 15 * 60);
+  const emailOk = await rateLimit(c.env.DB, 'email:' + (await sha256Hex(email)), 3, 15 * 60);
+  if (!ipOk || !emailOk) {
+    return render(
+      c,
+      'Log ind',
+      loginPage({ csrf: c.get('csrf'), email, error: 'For mange forsøg. Vent 15 minutter, og prøv igen.' }),
+      { status: 429 },
+    );
+  }
+
+  const allowed = isAdmin(c.env, email) || !!(await getCustomerByEmail(c.env.DB, email));
+  let devLink: string | null = null;
+  if (allowed) {
+    const token = await createLoginToken(c.env, email);
+    const link = `${c.env.APP_URL.replace(/\/+$/, '')}/login/bekraeft?token=${encodeURIComponent(token)}`;
+    if (c.env.RESEND_API_KEY) {
+      // Sendes i baggrunden, så svartiden ikke afslører, om e-mailen findes.
+      c.executionCtx.waitUntil(
+        sendEmail(c.env, { to: email, ...magicLinkEmail(link) }).catch((err) =>
+          console.error('Login-mail fejlede:', (err as Error).message),
+        ),
+      );
+    } else {
+      console.log(`[DEV] Ingen RESEND_API_KEY – login-link: ${link}`);
+      if (c.env.DEV_MODE === '1') devLink = link;
+    }
+  }
+  return render(c, 'Tjek din indbakke', loginSentPage({ devLink }));
+});
+
+// GET viser kun en bekræftelsesknap; selve login sker ved POST.
+// Det forhindrer, at e-mail-scannere, der "klikker" på links, bruger engangslinket.
+auth.get('/login/bekraeft', async (c) => {
+  const token = c.req.query('token') ?? '';
+  if (!/^[A-Za-z0-9_-]{32,64}$/.test(token)) return render(c, 'Ugyldigt link', linkInvalidPage(), { status: 400 });
+  return render(c, 'Bekræft login', verifyPage({ csrf: c.get('csrf'), token }));
+});
+
+auth.post('/login/bekraeft', async (c) => {
+  const body = await c.req.parseBody();
+  const token = typeof body['token'] === 'string' ? body['token'] : '';
+  const email = await consumeLoginToken(c.env, token);
+  if (!email) return render(c, 'Ugyldigt link', linkInvalidPage(), { status: 400 });
+
+  const customer = await getCustomerByEmail(c.env.DB, email);
+  const admin = isAdmin(c.env, email);
+  if (!customer && !admin) return render(c, 'Ugyldigt link', linkInvalidPage(), { status: 400 });
+
+  // Ny session ved hvert login; en evt. gammel session i browseren afsluttes.
+  if (c.get('session')) await destroySession(c);
+  await createSession(c, email);
+  return c.redirect(customer ? '/konto' : '/admin', 303);
+});
+
+auth.post('/logout', async (c) => {
+  await destroySession(c);
+  return c.redirect('/login?besked=logget_ud', 303);
+});
+
+export default auth;

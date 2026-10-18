@@ -1,0 +1,101 @@
+import type { Env } from '../env';
+
+export interface EmailMessage {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+  replyTo?: string;
+}
+
+/**
+ * Sender e-mail via Resends HTTP API. Returnerer false hvis der ikke er
+ * nogen RESEND_API_KEY (udvikling) – så må kalderen selv håndtere det.
+ */
+export async function sendEmail(env: Env, msg: EmailMessage): Promise<boolean> {
+  if (!env.RESEND_API_KEY) return false;
+  const base = (env.RESEND_API_BASE || 'https://api.resend.com').replace(/\/+$/, '');
+  const res = await fetch(`${base}/emails`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: env.EMAIL_FROM || 'Veyro <kontakt@veyro.dk>',
+      to: [msg.to],
+      subject: msg.subject,
+      text: msg.text,
+      html: msg.html,
+      ...(msg.replyTo ? { reply_to: msg.replyTo } : {}),
+    }),
+  });
+  if (!res.ok) {
+    // Log kun status – ikke modtager eller indhold
+    console.error(`Resend-fejl: HTTP ${res.status}`);
+    throw new Error('E-mail kunne ikke sendes');
+  }
+  return true;
+}
+
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function wrapHtml(inner: string): string {
+  return `<!doctype html><html lang="da"><body style="margin:0;background:#F4F2EC;font-family:'Inter Tight',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0F0F0D">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F2EC;padding:32px 16px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#FBFAF7;border-radius:18px;padding:32px">
+<tr><td style="font-size:20px;font-weight:700;letter-spacing:-0.02em;padding-bottom:24px">Veyro<span style="color:#FF5A1F">.</span></td></tr>
+<tr><td style="font-size:16px;line-height:1.55">${inner}</td></tr>
+</table>
+<p style="font-size:12px;color:#55534D;margin-top:16px">Veyro · veyro.dk</p>
+</td></tr></table></body></html>`;
+}
+
+export function magicLinkEmail(link: string): Omit<EmailMessage, 'to'> {
+  const text = `Hej
+
+Her er dit link til at logge ind på Veyros kundepanel:
+
+${link}
+
+Linket virker i 15 minutter og kan kun bruges én gang.
+Har du ikke bedt om at logge ind, kan du se bort fra denne e-mail.
+
+Venlig hilsen
+Veyro`;
+  const html = wrapHtml(`<p style="margin:0 0 16px">Hej</p>
+<p style="margin:0 0 24px">Klik på knappen for at logge ind på Veyros kundepanel.</p>
+<p style="margin:0 0 24px"><a href="${escapeHtml(link)}" style="display:inline-block;background:#0F0F0D;color:#FBFAF7;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:600">Log ind</a></p>
+<p style="margin:0 0 8px;color:#55534D;font-size:14px">Linket virker i 15 minutter og kan kun bruges én gang. Har du ikke bedt om at logge ind, kan du se bort fra denne e-mail.</p>`);
+  return { subject: 'Dit login-link til Veyro', text, html };
+}
+
+export function newRequestEmail(args: {
+  customerEmail: string;
+  typeLabel: string;
+  title: string;
+  description: string;
+  adminUrl: string;
+}): Omit<EmailMessage, 'to'> {
+  const text = `Ny henvendelse fra ${args.customerEmail}
+
+Type: ${args.typeLabel}
+Titel: ${args.title}
+
+${args.description}
+
+Se og opdater status: ${args.adminUrl}`;
+  const html = wrapHtml(`<p style="margin:0 0 16px"><strong>Ny henvendelse</strong> fra ${escapeHtml(args.customerEmail)}</p>
+<p style="margin:0 0 4px"><strong>Type:</strong> ${escapeHtml(args.typeLabel)}</p>
+<p style="margin:0 0 16px"><strong>Titel:</strong> ${escapeHtml(args.title)}</p>
+<p style="margin:0 0 24px;white-space:pre-wrap">${escapeHtml(args.description)}</p>
+<p style="margin:0"><a href="${escapeHtml(args.adminUrl)}" style="color:#0F0F0D">Åbn i admin</a></p>`);
+  return { subject: `Ny henvendelse: ${args.title}`.slice(0, 150), text, html };
+}
