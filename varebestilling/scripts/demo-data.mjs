@@ -67,7 +67,12 @@ function poisson(lambda, rand) {
 const q = (v) => (v === null ? 'NULL' : typeof v === 'number' ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
 const token = (n) => `demo${String(n).padStart(28, '0')}`;
 
-export function demoSql(now = Math.floor(Date.now() / 1000), opts = { settings: true }) {
+/**
+ * @param opts.compact Historikken genereres af databasen selv (få, korte SQL-sætninger, fx til
+ *   D1-konsollen); ellers skrives hver ordre ud (samme tal hver gang, bruges til skærmbilleder).
+ */
+export function demoSql(now = Math.floor(Date.now() / 1000), opts = {}) {
+  opts = { settings: true, compact: false, ...opts };
   const rand = rng(20261018);
   const out = [];
   out.push('DELETE FROM stock_movements;', 'DELETE FROM order_events;', 'DELETE FROM order_lines;', 'DELETE FROM orders;', 'DELETE FROM products;');
@@ -105,7 +110,11 @@ export function demoSql(now = Math.floor(Date.now() / 1000), opts = { settings: 
   let number = 1000;
   const orders = [];
   const lines = [];
-  for (let d = 120; d >= 1; d--) {
+  if (opts.compact) {
+    orderId = 360;
+    number = 1360;
+  }
+  for (let d = opts.compact ? 0 : 120; d >= 1; d--) {
     const weekend = new Date((now - d * DAY) * 1000).getUTCDay() % 6 === 0;
     const n = weekend ? 1 : 3 + Math.floor(rand() * 3);
     const dayOrders = [];
@@ -164,6 +173,7 @@ export function demoSql(now = Math.floor(Date.now() / 1000), opts = { settings: 
       if (status === 'annulleret') out.push(`INSERT INTO order_events (order_id, status, message, actor, created_at) VALUES (${o.id}, 'annulleret', 'Status ændret', 'demo@veyro.dk', ${o.t + 1800});`);
     }
   }
+  if (opts.compact) out.push(...compactHistory(now));
   // Ordrelinjer i bidder, så hver sætning ikke bliver for lang
   for (let i = 0; i < lines.length; i += 200) {
     const values = lines
@@ -185,9 +195,38 @@ export function demoSql(now = Math.floor(Date.now() / 1000), opts = { settings: 
   return out.join('\n');
 }
 
+/** 120 dage × 3 afsluttede ordrer med spredt (men fast) antal omkring hver vares salg pr. dag. */
+function compactHistory(now) {
+  // VALUES i stedet for UNION ALL: D1 tillader kun få led i en sammensat SELECT
+  const rates = DEMO_PRODUCTS.map(([sku, , , , , , perDay]) => `(${q(sku)}, ${perDay})`).join(', ');
+  const customers = CUSTOMERS.map((c, i) => `(${i}, ${q(c[0])}, ${q(c[1])}, ${q(c[2])}, ${q(c[3])})`).join(', ');
+  const sources = SOURCES.map((x, i) => `(${i}, ${q(x)})`).join(', ');
+  return [
+    `INSERT INTO orders (id, number, token, status, stock_deducted, customer_name, customer_email, customer_phone, company, delivery, source, subtotal, delivery_fee, total, created_at, updated_at)
+     WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM n WHERE i < 359),
+     c(i, name, company, email, phone) AS (VALUES ${customers}), s(i, source) AS (VALUES ${sources})
+     SELECT n.i + 1, 1001 + n.i, 'demo' || printf('%028d', n.i + 1), 'afsluttet', 1, c.name, c.email, c.phone, c.company, 'afhentning', s.source, 0, 0, 0,
+       ${now} - (120 - n.i / 3) * 86400 + 25200 + (n.i % 3) * 10800, ${now} - (120 - n.i / 3) * 86400 + 25200 + (n.i % 3) * 10800
+     FROM n JOIN c ON c.i = (n.i * 7 + n.i / 5) % ${CUSTOMERS.length} JOIN s ON s.i = (n.i * 3 + n.i / 7) % ${SOURCES.length};`,
+    `INSERT INTO order_lines (order_id, product_id, sku, name, unit, unit_price, quantity, line_total)
+     SELECT order_id, id, sku, name, unit, price, qty, price * qty FROM (
+       SELECT o.id AS order_id, p.id, p.sku, p.name, p.unit, p.price,
+         CAST(r.rate / 3.0 * (CASE WHEN strftime('%w', o.created_at, 'unixepoch') IN ('0', '6') THEN 0.3 ELSE 1.25 END) * 2 * ((o.id * 7919 + p.id * 104729) % 1000) / 1000.0
+           + ((o.id * 6271 + p.id * 3359) % 1000) / 1000.0 AS INTEGER) AS qty
+       FROM orders o CROSS JOIN products p JOIN (WITH r(sku, rate) AS (VALUES ${rates}) SELECT * FROM r) r ON r.sku = p.sku
+       WHERE o.id <= 360
+     ) WHERE qty > 0;`,
+    `DELETE FROM orders WHERE id <= 360 AND NOT EXISTS (SELECT 1 FROM order_lines WHERE order_id = orders.id);`,
+    `UPDATE orders SET subtotal = (SELECT SUM(line_total) FROM order_lines WHERE order_id = orders.id), total = (SELECT SUM(line_total) FROM order_lines WHERE order_id = orders.id) WHERE id <= 360;`,
+    `INSERT INTO order_events (order_id, status, message, actor, created_at) SELECT id, 'ny', 'Bestilling modtaget', 'kunde', created_at FROM orders WHERE id <= 360;`,
+    `INSERT INTO order_events (order_id, status, message, actor, created_at) SELECT id, 'afsluttet', 'Status ændret', 'demo@veyro.dk', created_at + 7200 FROM orders WHERE id <= 360;`,
+  ];
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const file = process.argv[2];
-  const sql = demoSql();
+  const args = process.argv.slice(2);
+  const file = args.find((a) => !a.startsWith('--'));
+  const sql = demoSql(undefined, { compact: args.includes('--kompakt') });
   if (file) writeFileSync(file, sql);
   else process.stdout.write(sql);
 }
