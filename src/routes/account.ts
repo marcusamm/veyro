@@ -12,6 +12,7 @@ import {
 import { newRequestEmail, sendEmail } from '../lib/email';
 import { cancellableFrom, getPlan, isPlanKey, priceIdFor } from '../lib/plans';
 import { isAdmin } from '../lib/session';
+import { logError } from '../lib/errlog';
 import { stripeRequest, StripeError, type StripeInvoice, type StripeSubscription } from '../lib/stripe';
 import { render } from '../render';
 import {
@@ -47,8 +48,8 @@ account.use('*', async (c, next) => {
   await next();
 });
 
-function logStripe(where: string, err: unknown) {
-  console.error(`${where}:`, err instanceof StripeError ? `${err.status} ${err.code ?? ''} ${err.message}` : (err as Error).message);
+function logStripe(c: Context<Vars>, where: string, err: unknown): Promise<void> {
+  return logError(c.env.DB, where, err);
 }
 
 const r = (c: Context<Vars>) => c as unknown as Context<AppEnv>;
@@ -119,7 +120,7 @@ account.get('/plan/bekraeft', async (c) => {
       );
       preview = { amountDue: inv.amount_due, date: inv.next_payment_attempt ?? inv.period_end ?? null };
     } catch (err) {
-      logStripe('Fakturaeksempel', err);
+      await logStripe(c, 'Fakturaeksempel', err);
     }
   }
   return render(
@@ -165,7 +166,7 @@ account.post('/plan', async (c) => {
     await upsertSubscription(c.env, c.get('customer').id, updated);
     return c.redirect('/konto?besked=plan-skiftet', 303);
   } catch (err) {
-    logStripe('Planskift', err);
+    await logStripe(c, 'Planskift', err);
     return c.redirect('/konto?besked=stripe-fejl', 303);
   }
 });
@@ -208,7 +209,7 @@ account.post('/opsig', async (c) => {
     await upsertSubscription(c.env, c.get('customer').id, updated);
     return c.redirect('/konto?besked=opsagt', 303);
   } catch (err) {
-    logStripe('Opsigelse', err);
+    await logStripe(c, 'Opsigelse', err);
     return c.redirect('/konto?besked=stripe-fejl', 303);
   }
 });
@@ -229,7 +230,7 @@ account.post('/genoptag', async (c) => {
     await upsertSubscription(c.env, c.get('customer').id, updated);
     return c.redirect('/konto?besked=genoptaget', 303);
   } catch (err) {
-    logStripe('Genoptag', err);
+    await logStripe(c, 'Genoptag', err);
     return c.redirect('/konto?besked=stripe-fejl', 303);
   }
 });
@@ -246,7 +247,7 @@ account.get('/fakturaer', async (c) => {
       });
       invoices = res.data.filter((i) => i.status !== 'draft');
     } catch (err) {
-      logStripe('Fakturaliste', err);
+      await logStripe(c, 'Fakturaliste', err);
       invoices = null;
     }
   }
@@ -279,7 +280,7 @@ account.post('/betalingskort', async (c) => {
     });
     return c.redirect(ps.url, 303);
   } catch (err) {
-    logStripe('Betalingsportal', err);
+    await logStripe(c, 'Betalingsportal', err);
     return c.redirect('/konto/fakturaer?besked=stripe-fejl', 303);
   }
 });

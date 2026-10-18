@@ -2,7 +2,8 @@ import { Hono } from 'hono';
 import type { AppEnv } from '../env';
 import { getCurrentSubscription, getCustomerByEmail } from '../lib/db';
 import { isPlanKey, minMonths, priceIdFor } from '../lib/plans';
-import { stripeRequest, StripeError, type Params } from '../lib/stripe';
+import { logError } from '../lib/errlog';
+import { stripeRequest, type Params } from '../lib/stripe';
 import { render } from '../render';
 import { plansPage, thanksPage } from '../views/pages';
 import { subscriptionState } from '../views/status';
@@ -68,7 +69,7 @@ pub.post('/bestil', async (c) => {
     });
     return c.redirect(cs.url, 303);
   } catch (err) {
-    console.error('Checkout-fejl:', err instanceof StripeError ? `${err.status} ${err.code ?? ''} ${err.message}` : (err as Error).message);
+    await logError(c.env.DB, 'Checkout', err);
     return render(
       c,
       'Abonnementer',

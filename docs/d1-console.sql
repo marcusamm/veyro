@@ -11,3 +11,10 @@ CREATE TABLE requests ( id INTEGER PRIMARY KEY AUTOINCREMENT, customer_id INTEGE
 CREATE INDEX idx_requests_customer ON requests(customer_id, created_at);
 CREATE INDEX idx_requests_status ON requests(status, created_at);
 CREATE TABLE webhook_events ( id TEXT PRIMARY KEY, type TEXT NOT NULL, received_at INTEGER NOT NULL );
+CREATE TABLE IF NOT EXISTS error_log (
+  id      INTEGER PRIMARY KEY AUTOINCREMENT,
+  at      INTEGER NOT NULL,
+  place   TEXT NOT NULL,
+  detail  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_error_log_at ON error_log(at);
