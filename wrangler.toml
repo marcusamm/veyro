@@ -30,9 +30,9 @@ crons = ["17 3 * * *"]
 # sættes med `npx wrangler secret put NAVN` – aldrig her.
 [vars]
 APP_URL = "https://kunde.veyro.dk"
-PRICE_STARTER = "price_REPLACE_STARTER"
-PRICE_BUSINESS = "price_REPLACE_BUSINESS"
-PRICE_PREMIUM = "price_REPLACE_PREMIUM"
+PRICE_STARTER = "price_1URpraAjYluIQ8PhsKsFnLsj"
+PRICE_BUSINESS = "price_1URprgAjYluIQ8PhsiV8ne5Y"
+PRICE_PREMIUM = "price_1URpsIAjYluIQ8PhmsDKXI61"
 MIN_MONTHS = "0"
 ADMIN_EMAILS = "kontakt@veyro.dk"
 NOTIFY_EMAIL = "kontakt@veyro.dk"
