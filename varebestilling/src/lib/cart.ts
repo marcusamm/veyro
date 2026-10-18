@@ -4,7 +4,7 @@ import type { CartLine } from './orders';
 
 // Kurven gemmes i en cookie som "id:antal,id:antal". Priser og lager slås altid op på serveren,
 // så indholdet ikke behøver at være hemmeligt eller signeret.
-const MAX_LINES = 60;
+export const MAX_LINES = 200;
 export const MAX_QTY = 9999;
 
 function name(c: Context): string {

@@ -59,12 +59,15 @@ export async function getProduct(db: D1Database, id: number): Promise<ProductWit
 
 export async function getProductsByIds(db: D1Database, ids: number[]): Promise<Map<number, ProductWithReserved>> {
   const out = new Map<number, ProductWithReserved>();
-  if (!ids.length) return out;
-  const { results } = await db
-    .prepare(`SELECT p.*, ${RESERVED_SQL} AS reserved FROM products p WHERE p.id IN (${ids.map(() => '?').join(',')})`)
-    .bind(...ids)
-    .all<ProductWithReserved>();
-  for (const p of results) out.set(p.id, p);
+  // D1 tillader højst 100 parametre pr. forespørgsel
+  for (let i = 0; i < ids.length; i += 90) {
+    const chunk = ids.slice(i, i + 90);
+    const { results } = await db
+      .prepare(`SELECT p.*, ${RESERVED_SQL} AS reserved FROM products p WHERE p.id IN (${chunk.map(() => '?').join(',')})`)
+      .bind(...chunk)
+      .all<ProductWithReserved>();
+    for (const p of results) out.set(p.id, p);
+  }
   return out;
 }
 

@@ -15,82 +15,111 @@ function stockTag(p: ProductWithReserved, s: Settings): H {
   return html`<span class="tag tag-ok">På lager</span>`;
 }
 
-function productCard(p: ProductWithReserved, s: Settings, csrf: string, inCart: number, back: string, added: boolean): H {
+/** Én række i bestillingsarket: varen og et felt til antal. */
+function sheetRow(p: ProductWithReserved, s: Settings, inCart: number): H {
   const a = available(p);
-  const left = a === null ? null : Math.max(0, a - inCart);
-  const img = safeUrl(p.image_url);
-  return html`<article class="product" id="vare-${p.id}">
-    ${img ? html`<img class="product-img" src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}
-    <div class="product-body">
-      <h3 class="product-name">${p.name}</h3>
-      ${p.description ? html`<p class="product-desc">${p.description}</p>` : ''}
-      <div class="product-meta">
-        <span class="price">${formatKr(p.price)} <small>/ ${p.unit}</small></span>
-        ${stockTag(p, s)}
-      </div>
-      ${added ? alert('ok', html`Lagt i kurven. <a href="/kurv">Gå til kurven</a>`) : ''}
-      ${left === 0
-        ? html`<button class="btn btn-secondary btn-block" type="button" disabled>${a === 0 ? 'Udsolgt' : 'Alle på lager er i kurven'}</button>`
-        : html`<form class="add-form" method="post" action="/kurv">
-            ${csrfField(csrf)}
-            <input type="hidden" name="id" value="${p.id}">
-            <input type="hidden" name="back" value="${back}">
-            <label class="sr-only" for="qty-${p.id}">Antal</label>
-            <input class="qty" id="qty-${p.id}" type="number" name="qty" value="1" min="1" max="${left ?? 9999}" inputmode="numeric" aria-label="Antal af ${p.name}">
-            <button class="btn btn-primary" type="submit">Læg i kurv</button>
-          </form>`}
-      ${inCart ? html`<p class="xs muted">${inCart} i kurven</p>` : ''}
-    </div>
-  </article>`;
+  const out = a === 0;
+  const qty = out ? 0 : Math.min(inCart, a ?? inCart);
+  const search = `${p.sku} ${p.name} ${p.category ?? ''}`.toLowerCase();
+  return html`<tr class="sheet-row${qty ? ' has-qty' : ''}${out ? ' is-out' : ''}" data-price="${p.price}" data-search="${search}">
+    <td class="c-sku num">${p.sku}</td>
+    <td class="c-name">
+      <label for="q-${p.id}">${p.name}</label>
+      ${p.description ? html`<span class="sheet-desc">${p.description}</span>` : ''}
+      <span class="sheet-sub">${p.sku} · ${formatKr(p.price)} / ${p.unit} ${stockTag(p, s)}</span>
+    </td>
+    <td class="c-unit">${p.unit}</td>
+    <td class="c-price right num">${formatKr(p.price)}</td>
+    <td class="c-stock">${stockTag(p, s)}</td>
+    <td class="c-qty">${out
+      ? html`<input class="sheet-qty" id="q-${p.id}" type="number" value="" placeholder="–" disabled aria-label="${p.name} er udsolgt">`
+      : html`<input class="sheet-qty" id="q-${p.id}" type="number" name="q_${p.id}" value="${qty || ''}" placeholder="0" min="0" max="${a ?? 9999}" inputmode="numeric" autocomplete="off">`}</td>
+    <td class="c-sum right num" data-sum>${qty ? formatKr(qty * p.price) : ''}</td>
+  </tr>`;
 }
 
 export function catalogPage(args: {
   settings: Settings;
   products: ProductWithReserved[];
   categories: string[];
-  category: string | null;
   q: string;
   csrf: string;
   cart: Map<number, number>;
-  added: number | null;
+  error: string | null;
 }): H {
   const s = args.settings;
-  const back = '/' + (args.category ? `?kategori=${encodeURIComponent(args.category)}` : args.q ? `?q=${encodeURIComponent(args.q)}` : '');
   const groups = new Map<string, ProductWithReserved[]>();
   for (const p of args.products) {
     const k = p.category || 'Øvrige';
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k)!.push(p);
   }
-  const showGroupTitles = !args.category && groups.size > 1;
+  const showGroups = groups.size > 1;
+  const slug = (name: string) => 'kat-' + [...groups.keys()].indexOf(name);
+  let count = 0;
+  let total = 0;
+  for (const p of args.products) {
+    const a = available(p);
+    const q = Math.min(args.cart.get(p.id) ?? 0, a ?? Infinity);
+    if (q > 0) {
+      count++;
+      total += q * p.price;
+    }
+  }
   return html`<div class="hero">
       <h1>${s.tagline || s.shop_name}</h1>
       ${s.intro ? html`<p class="lead">${s.intro}</p>` : ''}
     </div>
-    <form class="toolbar" method="get" action="/" role="search" style="margin-bottom:16px">
+    <form class="toolbar" method="get" action="/" role="search" style="margin-bottom:12px" data-sheet-search>
       <label class="sr-only" for="q">Søg</label>
-      <input id="q" type="search" name="q" value="${args.q}" placeholder="Søg efter vare eller varenummer">
+      <input id="q" type="search" name="q" value="${args.q}" placeholder="Søg efter vare eller varenummer" autocomplete="off">
       <button class="btn btn-secondary" type="submit">Søg</button>
     </form>
-    ${args.categories.length > 1
+    ${showGroups
       ? html`<nav class="cat-nav" aria-label="Kategorier">
-          <a href="/"${!args.category && !args.q ? html` aria-current="page"` : ''}>Alle</a>
-          ${args.categories.map(
-            (c) => html`<a href="/?kategori=${encodeURIComponent(c)}"${args.category === c ? html` aria-current="page"` : ''}>${c}</a>`,
-          )}
+          ${[...groups.keys()].map((c) => html`<a href="#${slug(c)}">${c}</a>`)}
         </nav>`
       : ''}
     ${args.q ? html`<p class="muted" style="margin-bottom:16px">${args.products.length} resultater for "${args.q}". <a href="/">Vis alle</a></p>` : ''}
+    ${args.error ? html`<div style="margin-bottom:16px">${alert('warn', args.error)}</div>` : ''}
     ${!args.products.length
       ? html`<div class="card empty">${args.q ? 'Ingen varer matcher din søgning.' : 'Der er ingen varer at vise endnu.'}</div>`
-      : [...groups].map(
-          ([name, items]) => html`<section class="shop-section">
-            ${showGroupTitles ? html`<h2 class="cat-title">${name}</h2>` : ''}
-            <div class="products">
-              ${items.map((p) => productCard(p, s, args.csrf, args.cart.get(p.id) ?? 0, back, args.added === p.id))}
+      : html`<form method="post" action="/bestil" class="sheet-form">
+          ${csrfField(args.csrf)}
+          <input type="hidden" name="back" value="${args.q ? `/?q=${encodeURIComponent(args.q)}` : '/'}">
+          <p class="small muted sheet-help">Skriv antal ud for de varer, du vil bestille, og tryk på <strong>Gå til bestilling</strong>.</p>
+          <div class="card card-flush sheet-wrap">
+            <table class="sheet">
+              <thead>
+                <tr>
+                  <th class="c-sku" scope="col">Varenr.</th>
+                  <th class="c-name" scope="col">Vare</th>
+                  <th class="c-unit" scope="col">Enhed</th>
+                  <th class="c-price right" scope="col">Pris</th>
+                  <th class="c-stock" scope="col">Lager</th>
+                  <th class="c-qty" scope="col">Antal</th>
+                  <th class="c-sum right" scope="col">Beløb</th>
+                </tr>
+              </thead>
+              ${[...groups].map(
+                ([name, items]) => html`<tbody>
+                  ${showGroups ? html`<tr class="sheet-group" id="${slug(name)}"><th colspan="7" scope="colgroup">${name}</th></tr>` : ''}
+                  ${items.map((p) => sheetRow(p, s, args.cart.get(p.id) ?? 0))}
+                </tbody>`,
+              )}
+              <tbody class="sheet-none hidden"><tr><td colspan="7" class="muted">Ingen varer matcher din søgning.</td></tr></tbody>
+            </table>
+          </div>
+          <div class="sheet-bar">
+            <div class="sheet-bar-inner">
+              <div class="sheet-total" aria-live="polite">
+                <span class="muted small"><span data-count>${count}</span> ${count === 1 ? 'vare' : 'varer'} valgt</span>
+                <strong data-total>${formatKr(total)}</strong>
+              </div>
+              <button class="btn btn-primary" type="submit">Gå til bestilling</button>
             </div>
-          </section>`,
-        )}`;
+          </div>
+        </form>`}`;
 }
 
 function summary(priced: PricedCart, s: Settings, delivery: 'afhentning' | 'levering' | null): H {
@@ -115,7 +144,7 @@ function shortNotice(short: PricedLine[]): H {
   );
 }
 
-export function cartPage(args: { settings: Settings; priced: PricedCart; csrf: string; notice?: string | null }): H {
+export function cartPage(args: { settings: Settings; priced: PricedCart; csrf: string; notice?: string | null; warning?: string | null }): H {
   const { priced, settings: s } = args;
   if (!priced.lines.length) {
     return html`<div class="stack-lg narrow">
@@ -128,6 +157,7 @@ export function cartPage(args: { settings: Settings; priced: PricedCart; csrf: s
   return html`<div class="stack-lg">
     <h1>Kurv</h1>
     ${args.notice ? alert('ok', args.notice) : ''}
+    ${args.warning ? alert('warn', args.warning) : ''}
     ${priced.removed ? alert('info', 'Nogle varer er fjernet fra kurven, fordi de ikke længere kan bestilles.') : ''}
     ${priced.short.length ? shortNotice(priced.short) : ''}
     <div class="layout-side">
@@ -150,7 +180,7 @@ export function cartPage(args: { settings: Settings; priced: PricedCart; csrf: s
           </div>`,
         )}
         <div class="row-between" style="margin-top:16px">
-          <a href="/">← Fortsæt med at handle</a>
+          <a href="/">← Tilbage til varelisten</a>
           <button class="btn btn-secondary" type="submit">Opdater antal</button>
         </div>
       </form>

@@ -111,6 +111,35 @@ describe('Webshop', () => {
     expect((await c.get('/kurv')).html).not.toContain('Grøn te');
   });
 
+  it('bestillingsarket lægger alle antal i kurven på én gang og holder sig til lageret', async () => {
+    const c = new Client(stack.base);
+    const sheet = await c.get('/');
+    expect(sheet.html).toContain(`name="q_${ids['KAF-1']}"`);
+    expect(sheet.html).toContain('Gå til bestilling');
+    expect(sheet.html).not.toContain(`name="q_${ids['TE-1']}"`); // udsolgt
+
+    const many = await c.submit('/', '/bestil', { [`q_${ids['KAF-1']}`]: '3', [`q_${ids['KAF-2']}`]: '50', [`q_${ids['TE-1']}`]: '4', back: '/' });
+    expect(many.status).toBe(303);
+    expect(many.headers.get('location')).toBe('/kurv?besked=justeret');
+    let cart = await c.get(many.headers.get('location'));
+    expect(cart.html).toContain('sat ned');
+    expect(cart.html).toContain(`name="q_${ids['KAF-1']}" value="3"`);
+    expect(cart.html).toContain(`name="q_${ids['KAF-2']}" value="2"`);
+    expect(cart.html).not.toContain('Grøn te');
+
+    // Arket viser kurvens antal, og et tomt felt fjerner varen
+    expect((await c.get('/')).html).toContain(`name="q_${ids['KAF-1']}" value="3"`);
+    const fewer = await c.submit('/', '/bestil', { [`q_${ids['KAF-1']}`]: '1', [`q_${ids['KAF-2']}`]: '', back: '/' });
+    expect(fewer.headers.get('location')).toBe('/kassen');
+    cart = await c.get('/kurv');
+    expect(cart.html).toContain(`name="q_${ids['KAF-1']}" value="1"`);
+    expect(cart.html).not.toContain('Espresso 500 g');
+
+    const none = await c.submit('/', '/bestil', { [`q_${ids['KAF-1']}`]: '0', back: '/' });
+    expect(none.headers.get('location')).toBe('/?fejl=tom');
+    expect((await c.get('/?fejl=tom')).html).toContain('Skriv et antal ud for mindst én vare.');
+  });
+
   it('validerer kassen', async () => {
     const c = new Client(stack.base);
     await c.submit('/', '/kurv', { id: String(ids['KAF-1']), qty: '1', back: '/' });

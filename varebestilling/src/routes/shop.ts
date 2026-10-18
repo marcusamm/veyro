@@ -1,12 +1,12 @@
 import { Hono } from 'hono';
 import type { AppEnv } from '../env';
-import { MAX_QTY, readCart, writeCart } from '../lib/cart';
+import { MAX_LINES, MAX_QTY, readCart, writeCart } from '../lib/cart';
 import { sha256Hex } from '../lib/crypto';
 import { newOrderNotifyEmail, orderReceivedEmail, sendLater } from '../lib/email';
 import { normalizeEmail, parseIntStrict, str } from '../lib/format';
 import { notifyLowStock } from '../lib/notify';
 import { createOrder, getOrderByToken, getOrderEvents, getOrderLines, priceCart, type CheckoutInput } from '../lib/orders';
-import { getProduct, listCategories, listProducts } from '../lib/products';
+import { available, getProduct, getProductsByIds, listCategories, listProducts } from '../lib/products';
 import { safeUrl } from '../lib/settings';
 import { rateLimit } from '../lib/session';
 import { renderShop } from '../render';
@@ -31,14 +31,46 @@ shop.get('/', async (c) => {
     listCategories(c.env.DB, true),
   ]);
   const cart = new Map(readCart(c).map((l) => [l.productId, l.quantity]));
-  const added = parseIntStrict(c.req.query('tilfoejet') ?? '');
+  const error = c.req.query('fejl') === 'tom' ? 'Skriv et antal ud for mindst én vare.' : null;
   const s = c.get('settings');
   return renderShop(
     c,
     s.shop_name,
-    catalogPage({ settings: s, products, categories, category, q, csrf: c.get('csrf'), cart, added }),
+    catalogPage({ settings: s, products, categories, q, csrf: c.get('csrf'), cart, error }),
     { description: s.tagline, noindex: !!q || !!category },
   );
+});
+
+// Bestillingsarket sender antal for alle viste varer på én gang. Antallet erstatter det,
+// der lå i kurven for de varer; varer, der ikke var vist (fx ved søgning), bliver liggende.
+shop.post('/bestil', async (c) => {
+  const body = await c.req.parseBody();
+  const back = safeBack(body['back']);
+  const wanted = new Map<number, number>();
+  for (const [key, raw] of Object.entries(body)) {
+    const m = /^q_(\d{1,9})$/.exec(key);
+    if (!m || typeof raw !== 'string') continue;
+    const qty = raw.trim() === '' ? 0 : parseIntStrict(raw);
+    if (qty === null) continue;
+    wanted.set(Number(m[1]), Math.min(qty, MAX_QTY));
+    if (wanted.size >= MAX_LINES * 4) break;
+  }
+  const products = await getProductsByIds(c.env.DB, [...wanted].filter(([, q]) => q > 0).map(([id]) => id));
+  const cart = readCart(c).filter((l) => !wanted.has(l.productId));
+  let adjusted = false;
+  for (const [id, qty] of wanted) {
+    if (qty <= 0) continue;
+    const p = products.get(id);
+    if (!p || !p.active) continue;
+    // Mere end der er på lager kan ikke bestilles
+    const a = available(p);
+    const n = a === null ? qty : Math.min(qty, a);
+    if (n < qty) adjusted = true;
+    if (n > 0) cart.push({ productId: id, quantity: n });
+  }
+  writeCart(c, cart);
+  if (!cart.length) return c.redirect(`${back}${back.includes('?') ? '&' : '?'}fejl=tom`, 303);
+  return c.redirect(adjusted || cart.length > MAX_LINES ? '/kurv?besked=justeret' : '/kassen', 303);
 });
 
 shop.post('/kurv', async (c) => {
@@ -64,8 +96,10 @@ shop.post('/kurv', async (c) => {
 shop.get('/kurv', async (c) => {
   const priced = await priceCart(c.env.DB, readCart(c));
   if (priced.removed) writeCart(c, priced.lines.map((l) => ({ productId: l.productId, quantity: l.quantity })));
-  const notice = c.req.query('besked') === 'opdateret' ? 'Kurven er opdateret.' : null;
-  return renderShop(c, 'Kurv', cartPage({ settings: c.get('settings'), priced, csrf: c.get('csrf'), notice }), { noindex: true });
+  const besked = c.req.query('besked');
+  const notice = besked === 'opdateret' ? 'Kurven er opdateret.' : null;
+  const warning = besked === 'justeret' ? 'Nogle antal er sat ned, så de passer til det, der er på lager. Tjek kurven, og gå videre til kassen.' : null;
+  return renderShop(c, 'Kurv', cartPage({ settings: c.get('settings'), priced, csrf: c.get('csrf'), notice, warning }), { noindex: true });
 });
 
 shop.post('/kurv/opdater', async (c) => {

@@ -217,6 +217,47 @@ table.list a.title:hover{text-decoration:underline}
 pre.code{background:#F3F4F6;border-radius:var(--r-sm);padding:12px;font-size:13px;overflow-x:auto;margin:0}
 .thumb{width:44px;height:44px;border-radius:6px;object-fit:cover;background:#EEF0F3}
 .pager{display:flex;gap:8px;justify-content:center;margin-top:16px}
+
+/* Bestillingsark */
+.sheet-help{margin-bottom:10px}
+.sheet-wrap{overflow:visible}
+table.sheet{width:100%;border-collapse:collapse;font-size:15px}
+table.sheet thead th{position:sticky;top:64px;z-index:2;background:#F3F4F6;text-align:left;font-size:13px;font-weight:600;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--line-strong);white-space:nowrap}
+table.sheet thead th:first-child{border-top-left-radius:var(--r)}
+table.sheet thead th:last-child{border-top-right-radius:var(--r)}
+table.sheet td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+table.sheet td+td{border-left:1px solid var(--line)}
+table.sheet .right{text-align:right}
+.sheet-group th{background:#FAFBFC;text-align:left;font-size:14px;font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line);scroll-margin-top:110px}
+.sheet-row:hover td{background:#FAFBFC}
+.sheet-row.has-qty td{background:var(--accent-soft)}
+.sheet-row.is-out{color:var(--muted)}
+.sheet-row label{margin:0;font-size:15px;font-weight:600;cursor:pointer}
+.sheet-desc{display:block;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:420px}
+.sheet-sub{display:none}
+.c-sku{color:var(--muted);font-size:13px;white-space:nowrap}
+.c-unit{color:var(--muted);white-space:nowrap}
+.c-price,.c-sum{white-space:nowrap}
+.c-sum{font-weight:600;min-width:96px}
+.c-qty{width:104px}
+table.sheet .sheet-qty{width:80px;min-height:38px;padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums}
+.sheet-qty::-webkit-inner-spin-button,.sheet-qty::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.sheet-qty{-moz-appearance:textfield;appearance:textfield}
+.sheet-bar{position:sticky;bottom:0;z-index:4;margin-top:16px;padding:12px 0 0;background:linear-gradient(transparent,var(--bg) 12px)}
+.sheet-bar-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r);padding:12px 12px 12px 18px;box-shadow:0 6px 24px rgba(17,24,39,.08)}
+.sheet-total{display:flex;flex-direction:column;line-height:1.25}
+.sheet-total strong{font-size:20px;font-variant-numeric:tabular-nums}
+@media(max-width:719px){
+  table.sheet .c-sku,table.sheet .c-unit,table.sheet .c-stock,table.sheet .c-price,table.sheet .c-sum{display:none}
+  table.sheet td{padding:10px 12px}
+  table.sheet td+td{border-left:0}
+  .sheet-desc{display:none}
+  .sheet-sub{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;color:var(--muted);font-size:13px;margin-top:2px}
+  .sheet-sub .tag{font-size:12px;padding:1px 8px}
+  .c-qty{width:92px}
+  table.sheet .sheet-qty{width:76px;min-height:44px;font-size:16px}
+  .sheet-bar-inner .btn{padding:11px 14px}
+}
 `;
 
 export const JS = `
@@ -245,4 +286,81 @@ document.addEventListener('click', function (e) {
   if (!tr || e.target.closest('a,button,input,select,label')) return;
   window.location.href = tr.getAttribute('data-href');
 });
+// Bestillingsark: beløb pr. linje og i alt, tastaturnavigation som i et regneark og live-søgning
+(function () {
+  function kr(oere) {
+    var kr = Math.floor(oere / 100), ore = oere % 100;
+    var s = String(kr).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.');
+    return s + (ore ? ',' + (ore < 10 ? '0' : '') + ore : '') + ' kr.';
+  }
+  function qtyOf(input) {
+    var v = parseInt(input.value, 10);
+    return isNaN(v) || v < 0 ? 0 : v;
+  }
+  function recalc(form) {
+    var total = 0, count = 0;
+    form.querySelectorAll('.sheet-row').forEach(function (tr) {
+      var input = tr.querySelector('input[name]');
+      var q = input ? qtyOf(input) : 0;
+      var line = q * Number(tr.getAttribute('data-price'));
+      tr.classList.toggle('has-qty', q > 0);
+      tr.querySelector('[data-sum]').textContent = q > 0 ? kr(line) : '';
+      if (q > 0) { total += line; count++; }
+    });
+    var c = form.querySelector('[data-count]');
+    c.textContent = count;
+    c.nextSibling.textContent = count === 1 ? ' vare valgt' : ' varer valgt';
+    form.querySelector('[data-total]').textContent = kr(total);
+  }
+  function inputs(form) {
+    return Array.prototype.filter.call(form.querySelectorAll('.sheet-qty:not([disabled])'), function (i) {
+      return i.closest('tr').offsetParent !== null;
+    });
+  }
+  document.addEventListener('input', function (e) {
+    var f = e.target.closest && e.target.closest('.sheet-form');
+    if (f && e.target.classList.contains('sheet-qty')) recalc(f);
+  });
+  document.addEventListener('focusin', function (e) {
+    if (e.target.classList && e.target.classList.contains('sheet-qty')) e.target.select();
+  });
+  document.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (!t.classList || !t.classList.contains('sheet-qty')) return;
+    var step = e.key === 'Enter' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    var list = inputs(t.form), i = list.indexOf(t), next = list[i + step];
+    if (next) next.focus();
+  });
+  document.addEventListener('DOMContentLoaded', function () {
+    var form = document.querySelector('.sheet-form');
+    var search = document.querySelector('[data-sheet-search]');
+    if (!form || !search) return;
+    var box = search.querySelector('input[type=search]');
+    if (box.value) return; // Søgning fra serveren: vis resultatet som det er
+    search.addEventListener('submit', function (e) { e.preventDefault(); });
+    box.addEventListener('input', function () {
+      var words = box.value.toLowerCase().split(/\\s+/).filter(Boolean);
+      var shown = 0;
+      form.querySelectorAll('tbody').forEach(function (tb) {
+        var rows = tb.querySelectorAll('.sheet-row');
+        if (!rows.length) return;
+        var any = 0;
+        rows.forEach(function (tr) {
+          var hay = tr.getAttribute('data-search');
+          var ok = words.every(function (w) { return hay.indexOf(w) !== -1; });
+          tr.classList.toggle('hidden', !ok);
+          if (ok) any++;
+        });
+        var head = tb.querySelector('.sheet-group');
+        if (head) head.classList.toggle('hidden', !any);
+        shown += any;
+      });
+      form.querySelector('.sheet-none').classList.toggle('hidden', shown > 0);
+      var nav = document.querySelector('.cat-nav');
+      if (nav) nav.classList.toggle('hidden', words.length > 0);
+    });
+  });
+})();
 `;

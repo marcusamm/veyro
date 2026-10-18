@@ -88,6 +88,22 @@ try {
       console.log('Gemt:', path.relative(ROOT, file));
       await ctx.close();
     }
+    // Bestillingsarket, mens kunden skriver antal (viser beløb og bundlinjen)
+    {
+      const ctx = await browser.newContext({ viewport: { width, height: label === 'mobil' ? 844 : 900 }, deviceScaleFactor: label === 'mobil' ? 2 : 1 });
+      await ctx.addCookies(toCookies(shopper));
+      const page = await ctx.newPage();
+      await page.goto(stack.base + '/', { waitUntil: 'networkidle' });
+      await page.focus(`#q-${id('KAF-101')}`);
+      await page.keyboard.type('3');
+      await page.keyboard.press('Enter');
+      await page.keyboard.type('12');
+      const total = await page.locator('[data-total]').textContent();
+      console.log('I alt efter indtastning:', total);
+      await page.screenshot({ path: path.join(OUT, `webshop-indtastet-${label}.png`) });
+      console.log('Gemt:', `screenshots/webshop-indtastet-${label}.png`);
+      await ctx.close();
+    }
     // Forhåndsvisning af import (kræver en POST)
     const ctx = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: label === 'mobil' ? 2 : 1 });
     await ctx.addCookies(toCookies(admin));
