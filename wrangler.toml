@@ -1,8 +1,9 @@
 # Cloudflare Worker-konfiguration for Veyro kundepanel (kunde.veyro.dk)
-name = "veyro-kundepanel"
+name = "veyro"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
 workers_dev = true
+preview_urls = false
 
 # Eget domæne (veyro.dk ligger i samme Cloudflare-konto).
 routes = [
