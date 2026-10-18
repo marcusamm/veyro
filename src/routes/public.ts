@@ -42,6 +42,8 @@ pub.post('/bestil', async (c) => {
     success_url: `${base}/bestil/tak?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${base}/bestil`,
     'subscription_data[metadata][plan]': plan,
+    // Stripe slår "Managed Payments" (Stripe som sælger) til som standard. Veyro fakturerer selv inkl. dansk moms.
+    'managed_payments[enabled]': 'false',
   };
   if (c.env.STRIPE_TAX_RATE_ID) params['subscription_data[default_tax_rates][0]'] = c.env.STRIPE_TAX_RATE_ID;
 

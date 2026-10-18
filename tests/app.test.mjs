@@ -356,6 +356,7 @@ describe('Bestilling (Stripe Checkout)', () => {
       'line_items[0][price]': 'price_business_test',
       billing_address_collection: 'required',
       'tax_id_collection[enabled]': 'true',
+      'managed_payments[enabled]': 'false',
     });
   });
 
