@@ -111,26 +111,44 @@ export async function destroySession(c: Context<AppEnv>): Promise<void> {
   deleteCookie(c, cookieName(c, 'vk_session'), { path: '/', secure: isSecure(c) });
 }
 
-/** Opretter et engangs-login-token; kun SHA-256-hashen gemmes. */
-export async function createLoginToken(env: Env, email: string): Promise<string> {
+export interface LoginTokenData {
+  email: string;
+  signup: boolean;
+  name: string | null;
+  next: string | null;
+}
+
+/** Kun lokale stier ("/..."), aldrig "//host" eller fulde URL'er. */
+export function safeNext(next: unknown): string | null {
+  return typeof next === 'string' && /^\/(?![\/\\])[A-Za-z0-9\-._~\/?=&%]*$/.test(next) && next.length <= 200 ? next : null;
+}
+
+/** Opretter et engangs-login-token; kun SHA-256-hashen gemmes. `signup` tillader oprettelse af ny kunde ved bekræftelse. */
+export async function createLoginToken(
+  env: Env,
+  email: string,
+  opts: { signup?: boolean; name?: string | null; next?: string | null } = {},
+): Promise<string> {
   const token = randomToken(32);
   const now = nowSec();
-  await env.DB.prepare('INSERT INTO login_tokens (token_hash, email, expires_at, created_at) VALUES (?, ?, ?, ?)')
-    .bind(await sha256Hex(token), email, now + LOGIN_TOKEN_TTL, now)
+  await env.DB.prepare(
+    'INSERT INTO login_tokens (token_hash, email, expires_at, created_at, signup, name, next) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  )
+    .bind(await sha256Hex(token), email, now + LOGIN_TOKEN_TTL, now, opts.signup ? 1 : 0, opts.name ?? null, safeNext(opts.next))
     .run();
   return token;
 }
 
-/** Forbruger et login-token atomisk. Returnerer e-mailen eller null. */
-export async function consumeLoginToken(env: Env, token: string): Promise<string | null> {
+/** Forbruger et login-token atomisk. Returnerer tokenets data eller null. */
+export async function consumeLoginToken(env: Env, token: string): Promise<LoginTokenData | null> {
   if (!/^[A-Za-z0-9_-]{32,64}$/.test(token)) return null;
   const now = nowSec();
   const row = await env.DB.prepare(
     `UPDATE login_tokens SET used_at = ?1
      WHERE token_hash = ?2 AND used_at IS NULL AND expires_at > ?1
-     RETURNING email`,
+     RETURNING email, signup, name, next`,
   )
     .bind(now, await sha256Hex(token))
-    .first<{ email: string }>();
-  return row?.email ?? null;
+    .first<{ email: string; signup: number; name: string | null; next: string | null }>();
+  return row ? { email: row.email, signup: row.signup === 1, name: row.name, next: safeNext(row.next) } : null;
 }

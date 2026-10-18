@@ -9,6 +9,7 @@ import auth from './routes/auth';
 import pub from './routes/public';
 import webhook from './routes/webhook';
 import { CSS, FAVICON, JS } from './views/assets';
+import { ICON_PNG, INTER_TIGHT_WOFF2, LOGO_PNG } from './views/brand';
 import { errorPage } from './views/pages';
 
 const app = new Hono<AppEnv>();
@@ -50,6 +51,11 @@ app.get('/static/app.js', (c) =>
   c.body(JS, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': STATIC_CACHE }),
 );
 app.get('/favicon.svg', (c) => c.body(FAVICON, 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': STATIC_CACHE }));
+app.get('/static/logo.png', (c) => c.body(LOGO_PNG, 200, { 'Content-Type': 'image/png', 'Cache-Control': STATIC_CACHE }));
+app.get('/static/icon.png', (c) => c.body(ICON_PNG, 200, { 'Content-Type': 'image/png', 'Cache-Control': STATIC_CACHE }));
+app.get('/static/inter-tight.woff2', (c) =>
+  c.body(INTER_TIGHT_WOFF2, 200, { 'Content-Type': 'font/woff2', 'Cache-Control': 'public, max-age=31536000, immutable' }),
+);
 app.get('/favicon.ico', (c) => c.redirect('/favicon.svg', 301));
 app.get('/robots.txt', (c) => c.text('User-agent: *\nDisallow: /\n', 200, { 'Cache-Control': STATIC_CACHE }));
 app.get('/healthz', (c) => c.text('ok'));

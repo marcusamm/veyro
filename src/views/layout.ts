@@ -52,7 +52,8 @@ export function layout(opts: LayoutOpts, body: H): H {
 <meta name="theme-color" content="#F4F2EC">
 <title>${opts.title} · Veyro kundepanel</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/static/app.css?v=1">
+<link rel="preload" href="/static/inter-tight.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/static/app.css?v=2">
 <script src="/static/app.js?v=1" defer></script>
 </head>
 <body>

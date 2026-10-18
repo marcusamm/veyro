@@ -1,6 +1,7 @@
 // Statiske filer serveres fra Workeren selv (ingen tredjeparts-CDN eller skrifttyper).
 
 export const CSS = `
+@font-face{font-family:"Inter Tight";src:url(/static/inter-tight.woff2) format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
 :root{
   --bg:#F4F2EC;--surface:#FBFAF7;--ink:#0F0F0D;--muted:#55534D;--accent:#FF5A1F;
   --line:rgba(15,15,13,.10);--line-strong:rgba(15,15,13,.18);

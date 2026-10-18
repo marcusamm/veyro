@@ -16,6 +16,7 @@ export const FLASH: Record<string, { kind: 'ok' | 'info' | 'warn' | 'err'; text:
   'har-abonnement': { kind: 'info', text: 'Du har allerede et abonnement. Her kan du skifte plan.' },
   'stripe-fejl': { kind: 'err', text: 'Der opstod en fejl hos vores betalingsudbyder. Prøv igen om lidt, eller kontakt os.' },
   logget_ud: { kind: 'info', text: 'Du er logget ud.' },
+  'konto-oprettet': { kind: 'ok', text: 'Din konto er oprettet. Vælg din plan for at gå videre til betaling.' },
 };
 
 export function flash(key: string | undefined): H | '' {
@@ -44,7 +45,58 @@ export function loginPage(args: { csrf: string; error?: string; email?: string; 
     </div>
     <button class="btn btn-primary btn-block" type="submit" data-loading="Sender …">Send login-link</button>
   </form>
-  <p class="muted small">Er du ikke kunde endnu? <a href="/bestil">Se vores abonnementer</a>.</p>
+  <p class="muted small">Er du ikke kunde endnu? <a href="/opret">Opret en konto</a> eller <a href="/bestil">se vores abonnementer</a>.</p>
+</div>`;
+}
+
+export function signupPage(args: {
+  csrf: string;
+  plan?: Plan;
+  name?: string;
+  email?: string;
+  error?: string;
+  errorField?: 'name' | 'email';
+}): H {
+  const action = args.plan ? `/opret?plan=${args.plan.key}` : '/opret';
+  return html`<div class="narrow stack-lg">
+  <div>
+    <p class="eyebrow">Trin 1 af 2</p>
+    <h1>Opret din konto</h1>
+    <p class="lead">Først opretter du en konto, så dit abonnement altid er samlet ét sted. Derefter går du videre til betaling.</p>
+  </div>
+  ${args.plan
+    ? html`<div class="card item-head"><div><p class="muted small">Valgt plan</p><strong>${args.plan.name}</strong> · ${formatKr(args.plan.amount)} /md.</div><a class="small" href="/bestil">Skift</a></div>`
+    : ''}
+  ${args.error ? alert('err', args.error) : ''}
+  <form method="post" action="${action}" class="card stack" novalidate>
+    ${csrfField(args.csrf)}
+    <div class="field">
+      <label for="name">Navn</label>
+      <input id="name" name="name" type="text" autocomplete="name" required maxlength="100" value="${args.name ?? ''}"
+        ${args.errorField === 'name' ? html`aria-invalid="true"` : ''}>
+    </div>
+    <div class="field">
+      <label for="email">E-mail</label>
+      <input id="email" name="email" type="email" autocomplete="email" inputmode="email" required maxlength="254"
+        value="${args.email ?? ''}" ${args.errorField === 'email' ? html`aria-invalid="true"` : ''} aria-describedby="email-hint">
+      <p class="hint" id="email-hint">Vi sender et link, så du kan bekræfte din e-mail. Du logger ind uden adgangskode.</p>
+    </div>
+    <button class="btn btn-accent btn-block" type="submit" data-loading="Sender …">Opret konto</button>
+  </form>
+  <p class="muted small">Har du allerede en konto? <a href="/login">Log ind</a>.</p>
+</div>`;
+}
+
+export function signupSentPage(): H {
+  return html`<div class="narrow stack-lg">
+  <div>
+    <h1>Tjek din indbakke</h1>
+    <p class="lead">Vi har sendt dig en e-mail. Klik på linket i den for at bekræfte din e-mail, så kommer du videre til betaling. Linket virker i 15 minutter.</p>
+  </div>
+  <div class="card stack">
+    <p>Kan du ikke finde e-mailen? Kig i spam-mappen, eller prøv igen om et par minutter.</p>
+    <p class="muted small">Har du brug for hjælp, så skriv til <a href="mailto:kontakt@veyro.dk">kontakt@veyro.dk</a>.</p>
+  </div>
 </div>`;
 }
 
@@ -71,13 +123,13 @@ export function loginSentPage(args: { devLink?: string | null }): H {
 export function verifyPage(args: { csrf: string; token: string }): H {
   return html`<div class="narrow stack-lg">
   <div>
-    <h1>Bekræft login</h1>
-    <p class="lead">Klik på knappen for at logge ind på Veyros kundepanel.</p>
+    <h1>Bekræft din e-mail</h1>
+    <p class="lead">Klik på knappen for at fortsætte til Veyros kundepanel.</p>
   </div>
   <form method="post" action="/login/bekraeft" class="card stack">
     ${csrfField(args.csrf)}
     <input type="hidden" name="token" value="${args.token}">
-    <button class="btn btn-primary btn-block" type="submit" data-loading="Logger ind …">Log ind</button>
+    <button class="btn btn-primary btn-block" type="submit" data-loading="Et øjeblik …">Fortsæt</button>
   </form>
 </div>`;
 }
@@ -105,23 +157,33 @@ function planCard(p: Plan, footer: H, selected = false): H {
 </article>`;
 }
 
-export function plansPage(args: { csrf: string; minMonths: number; error?: string; selected?: string }): H {
+export function plansPage(args: {
+  csrf: string;
+  minMonths: number;
+  loggedIn: boolean;
+  error?: string;
+  selected?: string;
+  info?: H | '';
+}): H {
   return html`<div class="stack-lg">
   <div>
     <p class="eyebrow">Abonnementer</p>
     <h1>Vælg den plan, der passer til jer</h1>
     <p class="lead">Fast månedlig pris. Betaling med kort via Stripe. Du kan skifte plan fra kundepanelet, når som helst.</p>
   </div>
+  ${args.info ?? ''}
   ${args.error ? alert('err', args.error) : ''}
   <div class="plans">
     ${PLANS.map((p) =>
       planCard(
         p,
-        html`<form method="post" action="/bestil">
+        args.loggedIn
+          ? html`<form method="post" action="/bestil">
           ${csrfField(args.csrf)}
           <input type="hidden" name="plan" value="${p.key}">
-          <button class="btn ${p.badge || args.selected === p.key ? 'btn-accent' : 'btn-primary'} btn-block" type="submit" data-loading="Åbner betaling …"${args.selected === p.key ? ' autofocus' : ''}>Vælg ${p.name}</button>
-        </form>`,
+          <button class="btn ${p.badge || args.selected === p.key ? 'btn-accent' : 'btn-primary'} btn-block" type="submit" data-loading="Åbner betaling …"${args.selected === p.key ? ' autofocus' : ''}>${args.selected === p.key ? `Gå til betaling` : `Vælg ${p.name}`}</button>
+        </form>`
+          : html`<a class="btn ${p.badge || args.selected === p.key ? 'btn-accent' : 'btn-primary'} btn-block" href="/opret?plan=${p.key}">Vælg ${p.name}</a>`,
         args.selected === p.key,
       ),
     )}
@@ -130,7 +192,7 @@ export function plansPage(args: { csrf: string; minMonths: number; error?: strin
     ${args.minMonths > 0
       ? `Abonnementet har en bindingsperiode på ${args.minMonths} måneder fra start; derefter kan det opsiges til udgangen af en betalingsperiode.`
       : 'Abonnementet kan opsiges til udgangen af den betalte periode.'}
-    Har du allerede et abonnement? <a href="/login">Log ind</a>.</p>
+    ${args.loggedIn ? '' : html`Har du allerede en konto? <a href="/login">Log ind</a>.`}</p>
 </div>`;
 }
 

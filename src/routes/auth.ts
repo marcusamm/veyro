@@ -1,11 +1,12 @@
 import { Hono } from 'hono';
 import type { AppEnv } from '../env';
 import { sha256Hex } from '../lib/crypto';
-import { getCustomerByEmail, normalizeEmail, rateLimit } from '../lib/db';
-import { magicLinkEmail, sendEmail } from '../lib/email';
+import { getCustomerByEmail, normalizeEmail, rateLimit, upsertCustomer } from '../lib/db';
+import { magicLinkEmail, sendEmail, signupEmail } from '../lib/email';
 import { consumeLoginToken, createLoginToken, createSession, destroySession, isAdmin } from '../lib/session';
+import { getPlan, isPlanKey } from '../lib/plans';
 import { render } from '../render';
-import { flash, linkInvalidPage, loginPage, loginSentPage, verifyPage } from '../views/pages';
+import { flash, linkInvalidPage, loginPage, loginSentPage, signupPage, signupSentPage, verifyPage } from '../views/pages';
 
 const auth = new Hono<AppEnv>();
 
@@ -69,17 +70,65 @@ auth.get('/login/bekraeft', async (c) => {
 auth.post('/login/bekraeft', async (c) => {
   const body = await c.req.parseBody();
   const token = typeof body['token'] === 'string' ? body['token'] : '';
-  const email = await consumeLoginToken(c.env, token);
-  if (!email) return render(c, 'Ugyldigt link', linkInvalidPage(), { status: 400 });
+  const data = await consumeLoginToken(c.env, token);
+  if (!data) return render(c, 'Ugyldigt link', linkInvalidPage(), { status: 400 });
 
-  const customer = await getCustomerByEmail(c.env.DB, email);
-  const admin = isAdmin(c.env, email);
+  let customer = await getCustomerByEmail(c.env.DB, data.email);
+  const admin = isAdmin(c.env, data.email);
+  // Linket beviser, at e-mailen tilhører personen; først nu oprettes kunden.
+  const created = !customer && !admin && data.signup;
+  if (created) customer = await upsertCustomer(c.env.DB, { email: data.email, name: data.name });
   if (!customer && !admin) return render(c, 'Ugyldigt link', linkInvalidPage(), { status: 400 });
 
   // Ny session ved hvert login; en evt. gammel session i browseren afsluttes.
   if (c.get('session')) await destroySession(c);
-  await createSession(c, email);
+  await createSession(c, data.email);
+  if (data.next) return c.redirect(created ? `${data.next}${data.next.includes('?') ? '&' : '?'}besked=konto-oprettet` : data.next, 303);
   return c.redirect(customer ? '/konto' : '/admin', 303);
+});
+
+// ---------------- Opret konto (før betaling) ----------------
+
+auth.get('/opret', (c) => {
+  const planKey = c.req.query('plan');
+  const plan = isPlanKey(planKey) ? getPlan(planKey) : undefined;
+  if (c.get('session')) return c.redirect(plan ? `/bestil?plan=${plan.key}` : '/bestil', 303);
+  return render(c, 'Opret konto', signupPage({ csrf: c.get('csrf'), plan }));
+});
+
+auth.post('/opret', async (c) => {
+  const planKey = c.req.query('plan');
+  const plan = isPlanKey(planKey) ? getPlan(planKey) : undefined;
+  const body = await c.req.parseBody();
+  const name = typeof body['name'] === 'string' ? body['name'].trim().replace(/\s+/g, ' ').slice(0, 100) : '';
+  const rawEmail = typeof body['email'] === 'string' ? body['email'].slice(0, 254) : '';
+  const email = normalizeEmail(body['email']);
+  const again = (error: string, errorField: 'name' | 'email', status: 400 | 429 = 400) =>
+    render(c, 'Opret konto', signupPage({ csrf: c.get('csrf'), plan, name, email: rawEmail, error, errorField }), { status });
+  if (!name) return again('Skriv dit navn.', 'name');
+  if (!email) return again('Indtast en gyldig e-mailadresse.', 'email');
+
+  const ip = c.req.header('CF-Connecting-IP') ?? 'ukendt';
+  const ipOk = await rateLimit(c.env.DB, 'ip:' + (await sha256Hex(ip)), 10, 15 * 60);
+  const emailOk = await rateLimit(c.env.DB, 'email:' + (await sha256Hex(email)), 3, 15 * 60);
+  if (!ipOk || !emailOk) return again('For mange forsøg. Vent 15 minutter, og prøv igen.', 'email', 429);
+
+  // Findes kontoen allerede, sendes et almindeligt login-link. Svaret er det samme, så det
+  // ikke afslører, om e-mailen er kunde.
+  const exists = isAdmin(c.env, email) || !!(await getCustomerByEmail(c.env.DB, email));
+  const next = plan ? `/bestil?plan=${plan.key}` : '/bestil';
+  const token = await createLoginToken(c.env, email, { signup: !exists, name, next });
+  const link = `${c.env.APP_URL.replace(/\/+$/, '')}/login/bekraeft?token=${encodeURIComponent(token)}`;
+  if (c.env.RESEND_API_KEY) {
+    const msg = exists ? magicLinkEmail(link) : signupEmail(link, name);
+    c.executionCtx.waitUntil(
+      sendEmail(c.env, { to: email, ...msg }).catch((err) => console.error('Opret-mail fejlede:', (err as Error).message)),
+    );
+  } else {
+    console.log(`[DEV] Ingen RESEND_API_KEY – opret-link: ${link}`);
+    if (c.env.DEV_MODE === '1') return render(c, 'Tjek din indbakke', loginSentPage({ devLink: link }));
+  }
+  return render(c, 'Tjek din indbakke', signupSentPage());
 });
 
 auth.post('/logout', async (c) => {

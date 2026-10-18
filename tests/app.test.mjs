@@ -340,24 +340,83 @@ describe('Fakturaer og betalingskort', () => {
 });
 
 describe('Bestilling (Stripe Checkout)', () => {
-  it('opretter Checkout-session med dansk sprog, adresse og CVR', async () => {
+  it('kræver konto før betaling: anonyme sendes til opret', async () => {
     const c = new Client(stack.base);
     const page = await c.get('/bestil');
     expect(page.html).toContain('Mest populær');
     expect(page.html).toContain('299 kr.');
     expect(page.html).toContain('1.099 kr.');
-    const res = await c.post('/bestil', { _csrf: csrfFrom(page.html), plan: 'business' });
+    expect(page.html).toContain('href="/opret?plan=business"');
+    const login = await c.get('/login');
+    const res = await c.post('/bestil', { _csrf: csrfFrom(login.html), plan: 'business' });
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe('/opret?plan=business');
+  });
+
+  it('opret konto → bekræft e-mail → betaling med Veyros udseende', async () => {
+    const c = new Client(stack.base);
+    const form = await c.get('/opret?plan=business');
+    expect(form.html).toContain('Opret din konto');
+    expect(form.html).toContain('Business');
+    const sent = await c.post('/opret?plan=business', { _csrf: csrfFrom(form.html), name: 'Nina Nielsen', email: 'Nina@Example.dk' });
+    expect(sent.status).toBe(200);
+    expect(sent.html).toContain('Tjek din indbakke');
+    const mail = await waitFor(async () => (await emails()).filter((e) => e.to[0] === 'nina@example.dk').pop());
+    expect(mail.subject).toContain('opret din konto');
+    expect(mail.text).toContain('Hej Nina');
+    const token = mail.text.match(/token=([A-Za-z0-9_-]+)/)[1];
+    const confirm = await c.get('/login/bekraeft?token=' + token);
+    const done = await c.post('/login/bekraeft', { _csrf: csrfFrom(confirm.html), token });
+    expect(done.status).toBe(303);
+    expect(done.headers.get('location')).toBe('/bestil?plan=business&besked=konto-oprettet');
+    const plans = await c.get('/bestil?plan=business&besked=konto-oprettet');
+    expect(plans.html).toContain('Din konto er oprettet');
+    expect(plans.html).toContain('Gå til betaling');
+
+    const res = await c.post('/bestil', { _csrf: csrfFrom(plans.html), plan: 'business' });
     expect(res.status).toBe(303);
     expect(res.headers.get('location')).toMatch(/^https:\/\/checkout\.stripe\.com\//);
     const call = (await calls()).filter((x) => x.path === '/v1/checkout/sessions').pop();
     expect(call.params).toMatchObject({
       mode: 'subscription',
       locale: 'da',
+      customer_email: 'nina@example.dk',
       'line_items[0][price]': 'price_business_test',
       billing_address_collection: 'required',
       'tax_id_collection[enabled]': 'true',
       'managed_payments[enabled]': 'false',
+      'branding_settings[button_color]': '#FF5A1F',
+      'branding_settings[font_family]': 'inter',
     });
+    expect(call.params['branding_settings[logo][url]']).toMatch(/\/static\/logo\.png$/);
+  });
+
+  it('opret med eksisterende e-mail sender login-link og opretter ingen dublet', async () => {
+    const c = new Client(stack.base);
+    const form = await c.get('/opret');
+    const sent = await c.post('/opret', { _csrf: csrfFrom(form.html), name: 'Bo', email: 'bo@example.dk' });
+    expect(sent.html).toContain('Tjek din indbakke');
+    const mail = await waitFor(async () => (await emails()).filter((e) => e.to[0] === 'bo@example.dk' && e.subject.includes('login')).pop());
+    expect(mail).toBeTruthy();
+  });
+
+  it('opret kræver navn og gyldig e-mail', async () => {
+    const c = new Client(stack.base);
+    const form = await c.get('/opret');
+    const noName = await c.post('/opret', { _csrf: csrfFrom(form.html), name: ' ', email: 'x@example.dk' });
+    expect(noName.status).toBe(400);
+    expect(noName.html).toContain('Skriv dit navn');
+    const badEmail = await c.post('/opret', { _csrf: csrfFrom(form.html), name: 'X', email: 'ikke-en-mail' });
+    expect(badEmail.status).toBe(400);
+  });
+
+  it('serverer logo, ikon og skrifttype', async () => {
+    for (const [path, type] of [['/static/logo.png', 'image/png'], ['/static/icon.png', 'image/png'], ['/static/inter-tight.woff2', 'font/woff2']]) {
+      const r = await fetch(stack.base + path);
+      expect(r.status).toBe(200);
+      expect(r.headers.get('content-type')).toBe(type);
+      expect((await r.arrayBuffer()).byteLength).toBeGreaterThan(1000);
+    }
   });
 
   it('fremhæver planen fra ?plan= (links fra veyro.dk) og ignorerer ukendte', async () => {
