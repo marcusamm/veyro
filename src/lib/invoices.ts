@@ -102,7 +102,7 @@ export function draftTotals(d: InvoiceDraft): { net: number; vat: number; total:
 }
 
 /** Finder kunden i Stripe på e-mail, eller opretter den. */
-async function findOrCreateCustomer(env: Env, email: string, name: string, key: string): Promise<string> {
+export async function findOrCreateCustomer(env: Env, email: string, name: string, key: string): Promise<string> {
   const found = await stripeRequest<{ data: Array<{ id: string; name: string | null }> }>(env, 'GET', '/v1/customers', { email, limit: 1 });
   const existing = found.data?.[0];
   if (existing) {
@@ -120,7 +120,7 @@ async function findOrCreateCustomer(env: Env, email: string, name: string, key: 
 }
 
 /** Finder (eller opretter) en eksklusiv dansk momssats på 25 %. */
-async function vatRateId(env: Env): Promise<string> {
+export async function vatRateId(env: Env): Promise<string> {
   const list = await stripeRequest<{ data: Array<{ id: string; percentage: number; inclusive: boolean; country: string | null }> }>(
     env,
     'GET',
@@ -140,7 +140,7 @@ async function vatRateId(env: Env): Promise<string> {
 }
 
 /** Sender et Stripe-kald; afviser Stripe et ukendt parameter (fx managed_payments), prøves igen uden. */
-async function postWithFallback<T>(env: Env, path: string, params: Params, optional: string, key: string): Promise<T> {
+export async function postWithFallback<T>(env: Env, path: string, params: Params, optional: string, key: string): Promise<T> {
   try {
     return await stripeRequest<T>(env, 'POST', path, params, { idempotencyKey: key });
   } catch (err) {

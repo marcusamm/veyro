@@ -602,7 +602,7 @@ describe('Admin: fakturaer', () => {
     const { client } = await as(ADMIN_EMAIL);
     const page = await client.get('/admin/fakturaer');
     expect(page.status).toBe(200);
-    expect(page.html).toContain('Ny faktura');
+    expect(page.html).toContain('Ny engangsfaktura');
     const before = (await calls()).length;
     const res = await client.post('/admin/fakturaer', formFrom(page.html, {
       email: 'Lager@Firma.dk', name: 'Firma ApS', action: 'send',
@@ -706,6 +706,115 @@ describe('Admin: fakturaer', () => {
     expect(res.status).toBe(502);
     expect(res.html).toContain('Stripe svarede: Simuleret fejl');
     expect(res.html).toContain('value="Fejl"');
+  });
+});
+
+describe('Admin: abonnementer', () => {
+  const subState = async (id) => (await fetch(stack.mock.url + '/__mock/subscriptions/' + id)).json();
+  const subStateFor = subState;
+  const coupons = async () => (await fetch(stack.mock.url + '/__mock/coupons')).json();
+  const formFrom = (html, extra) => ({ _csrf: csrfFrom(html), key: html.match(/name="key" value="([^"]+)"/)[1], days: '8', vat: '1', line0_qty: '1', ...extra });
+  const newSubId = (res) => res.headers.get('location').split('#')[1];
+
+  it('kunder har ikke adgang', async () => {
+    const { client } = await as('anna@example.dk');
+    expect((await client.get('/admin/abonnementer')).status).toBe(403);
+  });
+
+  it('opretter abonnement med første måned gratis og tilbud på første betalte måned', async () => {
+    const { client } = await as(ADMIN_EMAIL);
+    const page = await client.get('/admin/abonnementer');
+    expect(page.html).toContain('Opret med første måned gratis');
+    const res = await client.post('/admin/abonnementer', formFrom(page.html, {
+      email: 'drift@lagerfirma.dk', name: 'Lagerfirma ApS', action: 'free',
+      line0_desc: 'Internt system til ordrer og varekontrol', line0_price: '2.500', offer: '50', offer_kind: 'pct',
+    }));
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toContain('besked=oprettet-gratis');
+    const sub = await subState(newSubId(res));
+    expect(sub.status).toBe('trialing');
+    const p = sub._params;
+    expect(p.collection_method).toBe('send_invoice');
+    expect(p['items[0][price_data][unit_amount]']).toBe('250000');
+    expect(p['items[0][price_data][recurring][interval]']).toBe('month');
+    expect(p['default_tax_rates[0]']).toBeTruthy();
+    // Prøveperioden slutter om ca. en måned
+    const days = (Number(p.trial_end) - Date.now() / 1000) / 86400;
+    expect(days).toBeGreaterThan(26);
+    expect(days).toBeLessThan(33);
+    const coupon = (await coupons())[sub.discounts[0]];
+    expect(coupon.percent_off).toBe(50);
+    expect(coupon.duration).toBe('repeating');
+    expect(coupon.duration_in_months).toBe(2);
+    const list = await client.get('/admin/abonnementer');
+    expect(list.html).toContain('Lagerfirma ApS');
+    expect(list.html).toContain('Gratis måned');
+    expect(list.html).toContain('Tilbud: 50 % rabat');
+  });
+
+  it('opretter abonnement med betaling fra start, ændrer pris og giver tilbud i én måned', async () => {
+    const { client } = await as(ADMIN_EMAIL);
+    const page = await client.get('/admin/abonnementer');
+    const res = await client.post('/admin/abonnementer', formFrom(page.html, {
+      email: 'bo@example.dk', name: 'Bo Hansen', action: 'paid', vat: '',
+      line0_desc: 'Hjemmeside med bestilling', line0_price: '1500', line1_desc: 'Ekstra bruger', line1_qty: '3', line1_price: '100',
+    }));
+    expect(res.status).toBe(303);
+    const id = newSubId(res);
+    let sub = await subState(id);
+    expect(sub.status).toBe('active');
+    expect(sub._params.trial_end).toBeUndefined();
+    expect(sub._params['default_tax_rates[0]']).toBeUndefined();
+    expect(sub.items.data).toHaveLength(2);
+    expect(sub.items.data[1].quantity).toBe(3);
+
+    const list = await client.get('/admin/abonnementer');
+    const item = sub.items.data[0].id;
+    const priced = await client.post(`/admin/abonnementer/${id}/pris`, { _csrf: csrfFrom(list.html), item, price: '1.750' });
+    expect(priced.status).toBe(303);
+    sub = await subState(id);
+    expect(sub.items.data[0].price.unit_amount).toBe(175000);
+    expect(sub._proration).toBe('none');
+
+    const offered = await client.post(`/admin/abonnementer/${id}/tilbud`, { _csrf: csrfFrom(list.html), offer: '500', offer_kind: 'kr' });
+    expect(offered.status).toBe(303);
+    sub = await subState(id);
+    const coupon = (await coupons())[sub.discounts[0]];
+    expect(coupon.amount_off).toBe(50000);
+    expect(coupon.duration).toBe('once');
+    const removed = await client.post(`/admin/abonnementer/${id}/fjern-tilbud`, { _csrf: csrfFrom(list.html) });
+    expect(removed.status).toBe(303);
+    expect((await subState(id)).discounts).toHaveLength(0);
+
+    expect((await client.post(`/admin/abonnementer/${id}/opsig`, { _csrf: csrfFrom(list.html) })).status).toBe(303);
+    expect((await subState(id)).cancel_at_period_end).toBe(true);
+    expect((await client.post(`/admin/abonnementer/${id}/genoptag`, { _csrf: csrfFrom(list.html) })).status).toBe(303);
+    expect((await subState(id)).cancel_at_period_end).toBe(false);
+  });
+
+  it('kunder med særaftale kan ikke skifte til en standardplan', async () => {
+    await seedCustomer(stack, { email: 'saer@example.dk', name: 'Sær', cus: 'cus_S', sub: 'sub_S', price: 'price_custom', start: now() - 40 * DAY });
+    const { client } = await as('saer@example.dk');
+    const page = await client.get('/konto/plan');
+    expect(page.html).toContain('særaftale');
+    expect(page.html).not.toContain('/konto/plan/bekraeft?plan=');
+    const post = await client.post('/konto/plan', { _csrf: csrfFrom(page.html), plan: 'premium' });
+    expect(post.headers.get('location')).toBe('/konto/plan');
+    expect((await subStateFor('sub_S')).items.data[0].price.id).toBe('price_custom');
+  });
+
+  it('afviser ugyldige værdier', async () => {
+    const { client } = await as(ADMIN_EMAIL);
+    const page = await client.get('/admin/abonnementer');
+    const bad = await client.post('/admin/abonnementer', formFrom(page.html, { email: 'x@firma.dk', name: 'X', action: 'free', line0_desc: 'Noget', line0_price: '100', offer: '150', offer_kind: 'pct' }));
+    expect(bad.status).toBe(400);
+    expect(bad.html).toContain('fra 1 til 100');
+    expect(bad.html).toContain('value="Noget"');
+    const subs = Object.keys(await (await fetch(stack.mock.url + '/__mock/state', { method: 'POST', body: '{}' })).json());
+    expect(subs).toBeTruthy();
+    expect((await client.post('/admin/abonnementer/sub_A/pris', { _csrf: csrfFrom(page.html), item: 'si_A', price: 'abc' })).status).toBe(400);
+    expect((await client.post('/admin/abonnementer/xyz/opsig', { _csrf: csrfFrom(page.html) })).status).toBe(400);
+    expect((await client.post('/admin/abonnementer/sub_A/slet', { _csrf: csrfFrom(page.html) })).status).toBe(400);
   });
 });
 

@@ -17,9 +17,21 @@ import {
   type DraftForm,
 } from '../lib/invoices';
 import { StripeError } from '../lib/stripe';
+import {
+  changePrice,
+  createSubscription,
+  giveOffer,
+  isSubscriptionId,
+  listAdminSubscriptions,
+  parseOffer,
+  removeOffer,
+  setCancelAtPeriodEnd,
+  validateSubDraft,
+} from '../lib/admin-subscriptions';
+import { parseKr } from '../lib/invoices';
 import { createLoginToken, isAdmin } from '../lib/session';
 import { render } from '../render';
-import { adminCustomersPage, adminInvoicesPage, adminLoginPage, adminOverviewPage, adminRequestsPage } from '../views/admin';
+import { adminCustomersPage, adminInvoicesPage, adminLoginPage, adminOverviewPage, adminRequestsPage, adminSubscriptionsPage } from '../views/admin';
 import { errorPage } from '../views/pages';
 import { REQUEST_STATUSES } from '../views/status';
 
@@ -100,6 +112,103 @@ admin.post('/henvendelser/:id/status', async (c) => {
   const ok = await updateRequestStatus(c.env.DB, id, status);
   if (!ok) return c.text('Henvendelsen findes ikke.', 404);
   return c.redirect(`/admin/henvendelser?opdateret=1#h-${id}`, 303);
+});
+
+// ---- Abonnementer (oprettes i Stripe) ----
+
+async function subscriptionsView(
+  c: Context<AppEnv>,
+  extra: { form?: DraftForm | null; body?: Record<string, unknown> | null; error?: string | null; errorField?: string | null; status?: 400 | 502 } = {},
+) {
+  const [customers, subs] = await Promise.all([
+    listCustomers(c.env.DB),
+    listAdminSubscriptions(c.env).catch(async (err) => {
+      await logError(c.env.DB, 'admin.subscriptions.list', err);
+      return null;
+    }),
+  ]);
+  return render(
+    c,
+    'Abonnementer',
+    adminSubscriptionsPage({
+      csrf: c.get('csrf'),
+      formKey: crypto.randomUUID(),
+      subs,
+      customers,
+      form: extra.form ?? null,
+      body: extra.body ?? null,
+      error: extra.error ?? null,
+      errorField: extra.errorField ?? null,
+      flash: extra.form || extra.error ? null : (c.req.query('besked') ?? null),
+    }),
+    { nav: 'admin-abonnementer', admin: true, status: extra.status },
+  );
+}
+
+admin.get('/abonnementer', (c) => subscriptionsView(c));
+
+admin.post('/abonnementer', async (c) => {
+  const body = await c.req.parseBody();
+  const form = readDraftForm(body);
+  const key = typeof body['key'] === 'string' && /^[0-9a-f-]{36}$/.test(body['key']) ? body['key'] : crypto.randomUUID();
+  const v = validateSubDraft(form, body);
+  if ('error' in v) return subscriptionsView(c, { form, body, error: v.error, errorField: v.field, status: 400 });
+  try {
+    const sub = await createSubscription(c.env, v.draft, { key: `admin-sub-${key}`, createdBy: c.get('session')!.email });
+    return c.redirect(`/admin/abonnementer?besked=${v.draft.freeFirstMonth ? 'oprettet-gratis' : 'oprettet'}#${sub.id}`, 303);
+  } catch (err) {
+    await logError(c.env.DB, 'admin.subscriptions.create', err);
+    const detail = err instanceof StripeError ? ` Stripe svarede: ${err.message}` : '';
+    return subscriptionsView(c, { form, body, error: `Abonnementet kunne ikke oprettes.${detail}`, status: 502 });
+  }
+});
+
+admin.post('/abonnementer/:id/:action', async (c) => {
+  const id = c.req.param('id');
+  const action = c.req.param('action');
+  if (!isSubscriptionId(id)) return c.text('Ugyldig anmodning.', 400);
+  const body = await c.req.parseBody();
+  const fail = (error: string, status: 400 | 502 = 400) => subscriptionsView(c, { error, status });
+  let flash: string;
+  try {
+    switch (action) {
+      case 'pris': {
+        const amount = parseKr(body['price']);
+        const item = typeof body['item'] === 'string' && /^si_[A-Za-z0-9]{8,64}$/.test(body['item']) ? body['item'] : null;
+        if (!amount || !item) return fail('Skriv en gyldig ny månedspris i kr., fx 1.500 eller 1499,50.');
+        await changePrice(c.env, id, item, amount);
+        flash = 'pris';
+        break;
+      }
+      case 'tilbud': {
+        const o = parseOffer(body['offer_kind'], body['offer']);
+        if ('error' in o) return fail(o.error);
+        if (!o.offer) return fail('Skriv rabatten i kr. eller procent.');
+        await giveOffer(c.env, id, o.offer, `admin-offer-${crypto.randomUUID()}`);
+        flash = 'tilbud';
+        break;
+      }
+      case 'fjern-tilbud':
+        await removeOffer(c.env, id);
+        flash = 'tilbud-fjernet';
+        break;
+      case 'opsig':
+        await setCancelAtPeriodEnd(c.env, id, true);
+        flash = 'opsagt';
+        break;
+      case 'genoptag':
+        await setCancelAtPeriodEnd(c.env, id, false);
+        flash = 'genoptaget';
+        break;
+      default:
+        return c.text('Ugyldig anmodning.', 400);
+    }
+  } catch (err) {
+    await logError(c.env.DB, `admin.subscriptions.${action}`, err);
+    const msg = err instanceof StripeError ? err.message : 'Ukendt fejl';
+    return fail(`Handlingen mislykkedes. Stripe svarede: ${msg}`, 502);
+  }
+  return c.redirect(`/admin/abonnementer?besked=${flash}#${id}`, 303);
 });
 
 // ---- Fakturaer (oprettes i Stripe) ----

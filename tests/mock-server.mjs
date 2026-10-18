@@ -72,6 +72,7 @@ export function startMock() {
       }
       if (p === '/__mock/calls') return json(200, state.calls);
       if (p === '/__mock/invoices') return json(200, state.invoices);
+      if (p === '/__mock/coupons') return json(200, state.coupons ?? {});
       if (p === '/__mock/emails') return json(200, state.emails);
       if (p.startsWith('/__mock/subscriptions/')) return json(200, state.subscriptions[p.split('/').pop()] ?? null);
 
@@ -177,6 +178,58 @@ export function startMock() {
       if ((m = p.match(/^\/v1\/customers\/([^/]+)$/)) && req.method === 'GET') {
         const c = state.customers[m[1]];
         return c ? json(200, c) : stripeErr(res, 404, 'No such customer', 'resource_missing');
+      }
+      // --- Abonnementer oprettet af admin ---
+      if (p === '/v1/products' && req.method === 'POST') {
+        const id = 'prod_' + state.calls.length;
+        (state.products ??= {})[id] = { id, name: params.name };
+        return json(200, state.products[id]);
+      }
+      if (p === '/v1/coupons' && req.method === 'POST') {
+        const c = { id: 'co_' + state.calls.length, name: params.name, duration: params.duration, duration_in_months: params.duration_in_months ? Number(params.duration_in_months) : null,
+          percent_off: params.percent_off ? Number(params.percent_off) : null, amount_off: params.amount_off ? Number(params.amount_off) : null };
+        (state.coupons ??= {})[c.id] = c;
+        return json(200, c);
+      }
+      if (p === '/v1/subscriptions' && req.method === 'POST') {
+        if (params['managed_payments[enabled]'] !== undefined && state.rejectManagedPayments) {
+          return stripeErr(res, 400, 'Received unknown parameter: managed_payments', 'parameter_unknown');
+        }
+        if (!state.customers[params.customer]) return stripeErr(res, 400, 'No such customer', 'resource_missing');
+        const id = 'sub_adm' + String(state.calls.length).padStart(6, '0');
+        const now = Math.floor(Date.now() / 1000);
+        const items = [];
+        for (let i = 0; params[`items[${i}][price_data][product]`]; i++) {
+          items.push({ id: `si_adm${state.calls.length}x${i}abc`, quantity: Number(params[`items[${i}][quantity]`] ?? 1), current_period_end: now + 30 * 86400,
+            price: { id: 'price_adhoc_' + i, unit_amount: Number(params[`items[${i}][price_data][unit_amount]`]), currency: 'dkk', product: params[`items[${i}][price_data][product]`] } });
+        }
+        const trialEnd = params.trial_end ? Number(params.trial_end) : null;
+        state.subscriptions[id] = { id, object: 'subscription', customer: params.customer, status: trialEnd ? 'trialing' : 'active', created: now, start_date: now,
+          trial_end: trialEnd, cancel_at_period_end: false, cancel_at: null, canceled_at: null, discounts: params['discounts[0][coupon]'] ? [params['discounts[0][coupon]']] : [],
+          metadata: { source: params['metadata[source]'] }, items: { data: items }, _params: params };
+        return json(200, state.subscriptions[id]);
+      }
+      if (p === '/v1/subscriptions' && req.method === 'GET') {
+        const data = Object.values(state.subscriptions).map((sub) => ({
+          ...sub,
+          customer: state.customers[sub.customer] ?? sub.customer,
+          discounts: (sub.discounts ?? []).map((d) => ({ coupon: state.coupons?.[d] ?? { id: d } })),
+          items: { data: sub.items.data.map((it) => ({ ...it, price: { ...it.price, product: state.products?.[it.price.product] ?? { id: it.price.product ?? 'prod_x', name: 'Plan' } } })) },
+        }));
+        return json(200, { object: 'list', data: data.reverse() });
+      }
+      if ((m = p.match(/^\/v1\/subscriptions\/([^/]+)$/)) && req.method === 'POST' && state.subscriptions[m[1]] &&
+          (params['items[0][price_data][unit_amount]'] || params['discounts[0][coupon]'] || params.discounts === '')) {
+        const sub = state.subscriptions[m[1]];
+        if (params['items[0][price_data][unit_amount]']) {
+          const it = sub.items.data.find((x) => x.id === params['items[0][id]']);
+          if (!it) return stripeErr(res, 400, 'Bad item');
+          it.price = { ...it.price, id: 'price_new_' + state.calls.length, unit_amount: Number(params['items[0][price_data][unit_amount]']), product: params['items[0][price_data][product]'] };
+          sub._proration = params.proration_behavior;
+        }
+        if (params['discounts[0][coupon]']) sub.discounts = [params['discounts[0][coupon]']];
+        if (params.discounts === '') sub.discounts = [];
+        return json(200, sub);
       }
       if ((m = p.match(/^\/v1\/subscriptions\/([^/]+)$/))) {
         const sub = state.subscriptions[m[1]];

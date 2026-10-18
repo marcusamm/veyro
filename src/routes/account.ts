@@ -89,7 +89,8 @@ account.get('/plan', async (c) => {
   const { sub, st } = await manageableSub(c);
   if (!sub || !st || st.ended) return c.redirect('/bestil', 303);
   let blockedReason: string | undefined;
-  if (st.cancelPending) blockedReason = 'Dit abonnement er opsagt. Fortsæt abonnementet fra overblikket, før du skifter plan.';
+  if (!sub.plan) blockedReason = 'Dit abonnement er en særaftale med Veyro. Skriv til os, hvis du vil ændre det.';
+  else if (st.cancelPending) blockedReason = 'Dit abonnement er opsagt. Fortsæt abonnementet fra overblikket, før du skifter plan.';
   else if (!st.manageable) blockedReason = 'Planen kan ikke skiftes lige nu. Kontakt os, hvis du har brug for hjælp.';
   const body = choosePlanPage({ sub, blockedReason, flashKey: c.req.query('besked') });
   return render(r(c), 'Skift plan', body, { nav: 'plan', isCustomer: true });
@@ -98,7 +99,7 @@ account.get('/plan', async (c) => {
 account.get('/plan/bekraeft', async (c) => {
   const target = c.req.query('plan');
   const { sub, st } = await manageableSub(c);
-  if (!sub || !st || !st.manageable || st.cancelPending || !isPlanKey(target) || target === sub.plan) {
+  if (!sub || !st || !st.manageable || st.cancelPending || !sub.plan || !isPlanKey(target) || target === sub.plan) {
     return c.redirect('/konto/plan', 303);
   }
   // Forhåndsvisning af næste faktura (bedste forsøg – siden virker også uden)
@@ -141,7 +142,7 @@ account.post('/plan', async (c) => {
   const body = await c.req.parseBody();
   const target = body['plan'];
   const { sub, st } = await manageableSub(c);
-  if (!sub || !st || !st.manageable || st.cancelPending || !isPlanKey(target) || target === sub.plan) {
+  if (!sub || !st || !st.manageable || st.cancelPending || !sub.plan || !isPlanKey(target) || target === sub.plan) {
     return c.redirect('/konto/plan', 303);
   }
   try {
