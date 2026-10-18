@@ -68,7 +68,7 @@ pub.post('/bestil', async (c) => {
     });
     return c.redirect(cs.url, 303);
   } catch (err) {
-    console.error('Checkout-fejl:', err instanceof StripeError ? `${err.status} ${err.code ?? ''}` : (err as Error).message);
+    console.error('Checkout-fejl:', err instanceof StripeError ? `${err.status} ${err.code ?? ''} ${err.message}` : (err as Error).message);
     return render(
       c,
       'Abonnementer',
