@@ -1,0 +1,8 @@
+# Kun til at køre migrationer mod previews' testdatabase (se [previews] i wrangler.toml):
+#   npx wrangler d1 migrations apply veyro-kundepanel-preview --remote --config wrangler.preview-migrations.toml
+name = "veyro"
+[[d1_databases]]
+binding = "PREVIEW_DB"
+database_name = "veyro-kundepanel-preview"
+database_id = "5795b22b-c07b-4d1f-af9d-a7f8b857e005"
+migrations_dir = "migrations"
