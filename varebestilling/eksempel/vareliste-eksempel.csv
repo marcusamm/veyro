@@ -1,0 +1,9 @@
+Varenummer;Navn;Kategori;Pris;Lager;Enhed;Beskrivelse;Billede;Minimum;Aktiv;Lagerstyring;Sortering
+KAF-100;Kaffebønner, husets blanding;Kaffe;149,95;24;pose (1 kg);Mellemristet blanding med noter af chokolade og nød.;;6;ja;ja;1
+KAF-101;Espresso, mørk;Kaffe;89,00;3;pose (500 g);Kraftig espresso til maskine og mokkakande.;;5;ja;ja;2
+KAF-102;Filterkaffe, økologisk;Kaffe;119,00;0;pose (1 kg);Let ristet og økologisk.;;5;ja;ja;3
+TE-200;Grøn te, sencha;Te;65,00;18;dåse (100 g);Japansk grøn te.;;4;ja;ja;1
+TE-201;Earl Grey;Te;55,00;12;dåse (100 g);Sort te med bergamot.;;4;ja;ja;2
+TIL-300;Kaffefiltre nr. 4;Tilbehør;24,95;80;pakke (100 stk.);;;20;ja;ja;1
+TIL-301;Mælkekande, stål;Tilbehør;179,00;7;stk.;0,6 liter, til mælkeskum.;;2;ja;ja;2
+SRV-900;Afkalkning af kaffemaskine;Service;399,00;;stk.;Vi afkalker og efterser din maskine. Aflever og hent i butikken.;;;ja;nej;1

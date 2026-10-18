@@ -41,3 +41,24 @@ EMAIL_FROM = "Veyro <kontakt@veyro.dk>"
 DEV_MODE = "0"
 # Valgfri momssats (inkluderet i prisen), se README:
 # STRIPE_TAX_RATE_ID = "txr_..."
+
+# Previews (Cloudflare bygger en preview for hver gren, der ikke er main, med `npx wrangler preview`).
+# Previews arver ikke indstillingerne ovenfor og bruger deres egen testdatabase, aldrig produktionens.
+# Hemmeligheder (Stripe, Resend) er ikke sat for previews, så de kan ikke tage betaling eller sende e-mails.
+[previews.vars]
+APP_URL = ""
+PRICE_STARTER = "price_1URpraAjYluIQ8PhsKsFnLsj"
+PRICE_BUSINESS = "price_1URprgAjYluIQ8PhsiV8ne5Y"
+PRICE_PREMIUM = "price_1URpsIAjYluIQ8PhmsDKXI61"
+MIN_MONTHS = "0"
+ADMIN_EMAILS = "kontakt@veyro.dk,efe@veyro.dk,marcus@veyro.dk"
+NOTIFY_EMAIL = "kontakt@veyro.dk"
+EMAIL_FROM = "Veyro <kontakt@veyro.dk>"
+DEV_MODE = "0"
+
+# Testdatabase til previews. Nye migrationer køres mod den med:
+#   npx wrangler d1 migrations apply veyro-kundepanel-preview --remote --config wrangler.preview-migrations.toml
+[[previews.d1_databases]]
+binding = "DB"
+database_name = "veyro-kundepanel-preview"
+database_id = "5795b22b-c07b-4d1f-af9d-a7f8b857e005"
