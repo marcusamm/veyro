@@ -68,7 +68,6 @@ card.post('/kort/:token', async (c) => {
     mode: 'setup',
     customer: sub.customer,
     currency: 'dkk',
-    'payment_method_types[0]': 'card',
     locale: 'da',
     success_url: `${base}/kort/${token}/tak?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${base}/kort/${token}`,
@@ -86,12 +85,17 @@ card.post('/kort/:token', async (c) => {
   };
   const create = (p: Params) => stripeRequest<{ url: string }>(c.env, 'POST', '/v1/checkout/sessions', p, { idempotencyKey: crypto.randomUUID() });
   try {
-    let cs: { url: string };
-    try {
-      cs = await create(params);
-    } catch (err) {
-      if (!(err instanceof StripeError && err.status === 400 && /branding/i.test(err.message))) throw err;
-      cs = await create(Object.fromEntries(Object.entries(params).filter(([k]) => !k.startsWith('branding_settings'))));
+    // Betalingsmetoder styres fra Stripe Dashboard. Afviser Stripe et valgfrit felt, prøves igen uden det.
+    let p = params;
+    let cs: { url: string } | null = null;
+    for (let attempt = 0; !cs; attempt++) {
+      try {
+        cs = await create(p);
+      } catch (err) {
+        const opt = err instanceof StripeError && err.status === 400 && attempt < 2 ? ['branding_settings', 'locale'].find((k) => err.message.includes(k)) : undefined;
+        if (!opt) throw err;
+        p = Object.fromEntries(Object.entries(p).filter(([k]) => !k.startsWith(opt)));
+      }
     }
     return c.redirect(cs.url, 303);
   } catch (err) {
