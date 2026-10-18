@@ -94,8 +94,8 @@ export function linkInvalidPage(): H {
 
 // ---------------- Planer / bestilling ----------------
 
-function planCard(p: Plan, footer: H): H {
-  return html`<article class="plan${p.badge ? ' featured' : ''}" aria-labelledby="plan-${p.key}">
+function planCard(p: Plan, footer: H, selected = false): H {
+  return html`<article class="plan${p.badge ? ' featured' : ''}${selected ? ' selected' : ''}" id="${p.key}" aria-labelledby="plan-${p.key}">
   ${p.badge ? html`<span class="badge b-accent">${p.badge}</span>` : ''}
   <h2 id="plan-${p.key}">${p.name}</h2>
   <div class="price">${formatKr(p.amount)} <small>/md.</small></div>
@@ -105,7 +105,7 @@ function planCard(p: Plan, footer: H): H {
 </article>`;
 }
 
-export function plansPage(args: { csrf: string; minMonths: number; error?: string }): H {
+export function plansPage(args: { csrf: string; minMonths: number; error?: string; selected?: string }): H {
   return html`<div class="stack-lg">
   <div>
     <p class="eyebrow">Abonnementer</p>
@@ -120,8 +120,9 @@ export function plansPage(args: { csrf: string; minMonths: number; error?: strin
         html`<form method="post" action="/bestil">
           ${csrfField(args.csrf)}
           <input type="hidden" name="plan" value="${p.key}">
-          <button class="btn ${p.badge ? 'btn-accent' : 'btn-primary'} btn-block" type="submit" data-loading="Åbner betaling …">Vælg ${p.name}</button>
+          <button class="btn ${p.badge || args.selected === p.key ? 'btn-accent' : 'btn-primary'} btn-block" type="submit" data-loading="Åbner betaling …"${args.selected === p.key ? ' autofocus' : ''}>Vælg ${p.name}</button>
         </form>`,
+        args.selected === p.key,
       ),
     )}
   </div>

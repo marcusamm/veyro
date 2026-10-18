@@ -359,6 +359,16 @@ describe('Bestilling (Stripe Checkout)', () => {
     });
   });
 
+  it('fremhæver planen fra ?plan= (links fra veyro.dk) og ignorerer ukendte', async () => {
+    const c = new Client(stack.base);
+    const page = await c.get('/bestil?plan=premium');
+    expect(page.html).toContain('class="plan selected" id="premium"');
+    expect(page.html.match(/ selected"/g)).toHaveLength(1);
+    const bad = await c.get('/bestil?plan=gratis');
+    expect(bad.status).toBe(200);
+    expect(bad.html).not.toContain(' selected"');
+  });
+
   it('sender eksisterende kunder til planskift i stedet for ny Checkout', async () => {
     const { client } = await as('anna@example.dk');
     const page = await client.get('/bestil');

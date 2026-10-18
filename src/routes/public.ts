@@ -11,9 +11,15 @@ const pub = new Hono<AppEnv>();
 
 pub.get('/', (c) => c.redirect(c.get('session') ? '/konto' : '/login', 302));
 
-pub.get('/bestil', (c) =>
-  render(c, 'Abonnementer', plansPage({ csrf: c.get('csrf'), minMonths: minMonths(c.env) })),
-);
+// ?plan=starter|business|premium (fra knapperne på veyro.dk) fremhæver den valgte plan.
+pub.get('/bestil', (c) => {
+  const plan = c.req.query('plan');
+  return render(
+    c,
+    'Abonnementer',
+    plansPage({ csrf: c.get('csrf'), minMonths: minMonths(c.env), selected: isPlanKey(plan) ? plan : undefined }),
+  );
+});
 
 pub.post('/bestil', async (c) => {
   const body = await c.req.parseBody();

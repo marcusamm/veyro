@@ -136,6 +136,7 @@ legend{font-weight:600;font-size:15px;margin-bottom:8px;padding:0}
 @media(min-width:880px){.plans{grid-template-columns:repeat(3,1fr)}}
 .plan{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:28px;position:relative}
 .plan.featured{border-color:var(--ink);box-shadow:0 1px 0 var(--ink),0 18px 40px -24px rgba(15,15,13,.35)}
+.plan.selected{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent),0 18px 40px -24px rgba(15,15,13,.35)}
 .plan .badge{position:absolute;top:-13px;left:28px}
 .plan h2{font-size:22px;margin-bottom:4px}
 .plan .price{font-size:34px;font-weight:650;letter-spacing:-.025em;margin:8px 0 2px}
