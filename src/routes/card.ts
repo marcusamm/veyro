@@ -66,6 +66,7 @@ card.post('/kort/:token', async (c) => {
   const base = c.env.APP_URL.replace(/\/+$/, '');
   const params: Params = {
     mode: 'setup',
+    'managed_payments[enabled]': 'false',
     customer: sub.customer,
     currency: 'dkk',
     locale: 'da',
