@@ -4,6 +4,11 @@ main = "src/index.ts"
 compatibility_date = "2026-10-01"
 workers_dev = true
 
+# Eget domæne (veyro.dk ligger i samme Cloudflare-konto).
+routes = [
+  { pattern = "kunde.veyro.dk", custom_domain = true }
+]
+
 # Ingen persondata i logs ud over det nødvendige
 [observability]
 enabled = true
@@ -13,17 +18,12 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "veyro-kundepanel"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "0f56d7df-f658-4f26-b0a7-53ab048d120a"
 migrations_dir = "migrations"
 
 # Daglig oprydning af udløbne login-links, sessioner m.m. (kl. 03:17 UTC)
 [triggers]
 crons = ["17 3 * * *"]
-
-# Eget domæne. Fjern "#" når domænet veyro.dk ligger i samme Cloudflare-konto.
-# routes = [
-#   { pattern = "kunde.veyro.dk", custom_domain = true }
-# ]
 
 # Offentlige (ikke-hemmelige) indstillinger.
 # Hemmeligheder (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RESEND_API_KEY)
