@@ -1,9 +1,8 @@
 import { Hono, type Context } from 'hono';
 import type { AppEnv } from '../env';
-import { nowSec, sha256Hex } from '../lib/crypto';
+import { sha256Hex } from '../lib/crypto';
 import { listAllRequests, listCustomers, normalizeEmail, rateLimit, updateRequestStatus } from '../lib/db';
-import { adminPasswordEmail, sendEmail } from '../lib/email';
-import { hasAdminPassword, passwordProblem, setAdminPassword, verifyAdminPassword } from '../lib/password';
+import { adminLoginEmail, sendEmail } from '../lib/email';
 import { logError } from '../lib/errlog';
 import {
   createInvoice,
@@ -18,24 +17,15 @@ import {
   type DraftForm,
 } from '../lib/invoices';
 import { StripeError } from '../lib/stripe';
-import { createLoginToken, createSession, destroySession, isAdmin } from '../lib/session';
+import { createLoginToken, isAdmin } from '../lib/session';
 import { render } from '../render';
-import { adminCustomersPage, adminInvoicesPage, adminLoginPage, adminOverviewPage, adminPasswordPage, adminRequestsPage } from '../views/admin';
+import { adminCustomersPage, adminInvoicesPage, adminLoginPage, adminOverviewPage, adminRequestsPage } from '../views/admin';
 import { errorPage } from '../views/pages';
 import { REQUEST_STATUSES } from '../views/status';
 
 const admin = new Hono<AppEnv>();
 
-// ---- Login med adgangskode (før adgangskontrollen nedenfor) ----
-
-const LOGIN_FAILED = 'Forkert e-mail eller adgangskode.';
-
-async function limited(c: Context<AppEnv>, email: string | null): Promise<boolean> {
-  const ip = c.req.header('CF-Connecting-IP') ?? 'ukendt';
-  const ipOk = await rateLimit(c.env.DB, 'admin-ip:' + (await sha256Hex(ip)), 10, 15 * 60);
-  const emailOk = email ? await rateLimit(c.env.DB, 'admin-email:' + (await sha256Hex(email)), 5, 15 * 60) : true;
-  return !ipOk || !emailOk;
-}
+// ---- Login via link på mail (før adgangskontrollen nedenfor) ----
 
 admin.get('/login', (c) => {
   const session = c.get('session');
@@ -46,36 +36,24 @@ admin.get('/login', (c) => {
 admin.post('/login', async (c) => {
   const body = await c.req.parseBody();
   const email = normalizeEmail(body['email']);
-  const password = typeof body['password'] === 'string' ? body['password'] : '';
-  const again = (error: string, status: 401 | 429) =>
-    render(c, 'Admin-login', adminLoginPage({ csrf: c.get('csrf'), email: email ?? '', error }), { status });
-  if (await limited(c, email)) return again('For mange forsøg. Vent 15 minutter, og prøv igen.', 429);
-  // Adgangskoden tjekkes altid, så svartiden ikke afslører, hvilke e-mails der er admins.
-  const ok = !!email && !!password && (await verifyAdminPassword(c.env.DB, email, password));
-  if (!ok || !isAdmin(c.env, email)) return again(LOGIN_FAILED, 401);
-  if (c.get('session')) await destroySession(c);
-  await createSession(c, email!);
-  return c.redirect('/admin', 303);
-});
-
-admin.post('/login/link', async (c) => {
-  const body = await c.req.parseBody();
-  const email = normalizeEmail(body['email']);
-  if (await limited(c, email)) {
+  const ip = c.req.header('CF-Connecting-IP') ?? 'ukendt';
+  const ipOk = await rateLimit(c.env.DB, 'admin-ip:' + (await sha256Hex(ip)), 10, 15 * 60);
+  const emailOk = email ? await rateLimit(c.env.DB, 'admin-email:' + (await sha256Hex(email)), 5, 15 * 60) : true;
+  if (!ipOk || !emailOk) {
     return render(c, 'Admin-login', adminLoginPage({ csrf: c.get('csrf'), email: email ?? '', error: 'For mange forsøg. Vent 15 minutter, og prøv igen.' }), { status: 429 });
   }
   let devLink: string | null = null;
   if (email && isAdmin(c.env, email)) {
-    const token = await createLoginToken(c.env, email, { next: '/admin/adgangskode' });
+    const token = await createLoginToken(c.env, email, { next: '/admin' });
     const link = `${c.env.APP_URL.replace(/\/+$/, '')}/login/bekraeft?token=${encodeURIComponent(token)}`;
     if (c.env.RESEND_API_KEY) {
       c.executionCtx.waitUntil(
-        sendEmail(c.env, { to: email, ...adminPasswordEmail(link) }).catch((err) => logError(c.env.DB, 'admin.password-link', err)),
+        sendEmail(c.env, { to: email, ...adminLoginEmail(link) }).catch((err) => logError(c.env.DB, 'admin.login-link', err)),
       );
     } else if (c.env.DEV_MODE === '1') devLink = link;
   }
-  const info = 'Hvis e-mailen hører til en admin, har vi sendt et link. Det virker i 15 minutter.';
-  return render(c, 'Admin-login', adminLoginPage({ csrf: c.get('csrf'), email: email ?? '', info, devLink }));
+  // Samme svar uanset e-mail, så siden ikke afslører, hvem der er admin.
+  return render(c, 'Tjek din indbakke', adminLoginPage({ csrf: c.get('csrf'), email: email ?? '', sent: true, devLink }));
 });
 
 // Kun e-mails i ADMIN_EMAILS
@@ -122,48 +100,6 @@ admin.post('/henvendelser/:id/status', async (c) => {
   const ok = await updateRequestStatus(c.env.DB, id, status);
   if (!ok) return c.text('Henvendelsen findes ikke.', 404);
   return c.redirect(`/admin/henvendelser?opdateret=1#h-${id}`, 303);
-});
-
-// ---- Skift adgangskode ----
-
-/** Lige efter login via e-mail-link (glemt adgangskode) kræves den nuværende adgangskode ikke. */
-async function sessionIsFresh(c: Context<AppEnv>): Promise<boolean> {
-  const row = await c.env.DB.prepare('SELECT created_at FROM sessions WHERE id_hash = ?')
-    .bind(c.get('session')!.idHash)
-    .first<{ created_at: number }>();
-  return !!row && row.created_at > nowSec() - 15 * 60;
-}
-
-async function passwordView(c: Context<AppEnv>, extra: { error?: string; saved?: boolean; status?: 200 | 400 } = {}) {
-  const email = c.get('session')!.email;
-  const hasPassword = await hasAdminPassword(c.env.DB, email);
-  const needCurrent = hasPassword && !(await sessionIsFresh(c));
-  return render(
-    c,
-    'Adgangskode',
-    adminPasswordPage({ csrf: c.get('csrf'), email, hasPassword, needCurrent, error: extra.error, saved: extra.saved }),
-    { nav: 'admin-adgangskode', admin: true, status: extra.status },
-  );
-}
-
-admin.get('/adgangskode', (c) => passwordView(c, { saved: c.req.query('gemt') === '1' }));
-
-admin.post('/adgangskode', async (c) => {
-  const session = c.get('session')!;
-  const body = await c.req.parseBody();
-  const str = (k: string) => (typeof body[k] === 'string' ? (body[k] as string) : '');
-  const fail = (error: string) => passwordView(c, { error, status: 400 });
-  if (await hasAdminPassword(c.env.DB, session.email) && !(await sessionIsFresh(c))) {
-    if (await limited(c, session.email)) return fail('For mange forsøg. Vent 15 minutter, og prøv igen.');
-    if (!(await verifyAdminPassword(c.env.DB, session.email, str('current')))) return fail('Den nuværende adgangskode er forkert.');
-  }
-  const problem = passwordProblem(str('new'), session.email);
-  if (problem) return fail(problem);
-  if (str('new') !== str('repeat')) return fail('De to nye adgangskoder er ikke ens.');
-  await setAdminPassword(c.env.DB, session.email, str('new'));
-  // Log ud alle andre steder
-  await c.env.DB.prepare('DELETE FROM sessions WHERE email = ? AND id_hash != ?').bind(session.email, session.idHash).run();
-  return c.redirect('/admin/adgangskode?gemt=1', 303);
 });
 
 // ---- Fakturaer (oprettes i Stripe) ----

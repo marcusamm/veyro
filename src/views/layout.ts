@@ -2,7 +2,7 @@ import { html } from 'hono/html';
 
 export type H = ReturnType<typeof html>;
 
-export type NavKey = 'overblik' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer' | 'admin-adgangskode';
+export type NavKey = 'overblik' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer';
 
 export interface LayoutOpts {
   title: string;
@@ -29,7 +29,6 @@ export function layout(opts: LayoutOpts, body: H): H {
       navLink('/admin/kunder', 'Kunder', opts.nav === 'admin-kunder'),
       navLink('/admin/henvendelser', 'Henvendelser', opts.nav === 'admin-henvendelser'),
       navLink('/admin/fakturaer', 'Fakturaer', opts.nav === 'admin-fakturaer'),
-      navLink('/admin/adgangskode', 'Adgangskode', opts.nav === 'admin-adgangskode'),
     ];
     if (opts.customerNav) navItems.push(navLink('/konto', 'Til kundepanel', false));
   } else if (opts.customerNav) {

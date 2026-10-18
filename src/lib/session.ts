@@ -4,6 +4,13 @@ import type { AppEnv, Env, SessionInfo } from '../env';
 import { nowSec, randomToken, sha256Hex, timingSafeEqual } from './crypto';
 
 export const SESSION_TTL = 30 * 86400; // 30 dage
+/** Admins forbliver logget ind i browseren; udløbet forlænges, mens de bruger panelet. */
+export const ADMIN_SESSION_TTL = 365 * 86400;
+const ADMIN_RENEW_AFTER = 7 * 86400;
+
+function sessionTtl(env: Env, email: string): number {
+  return isAdmin(env, email) ? ADMIN_SESSION_TTL : SESSION_TTL;
+}
 export const LOGIN_TOKEN_TTL = 15 * 60; // 15 minutter
 
 function isSecure(c: Context): boolean {
@@ -47,8 +54,14 @@ export const sessionMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
     const row = await c.env.DB.prepare('SELECT email, csrf_token, expires_at FROM sessions WHERE id_hash = ?')
       .bind(idHash)
       .first<{ email: string; csrf_token: string; expires_at: number }>();
-    if (row && row.expires_at > nowSec()) {
+    const now = nowSec();
+    if (row && row.expires_at > now) {
       session = { idHash, email: row.email, csrf: row.csrf_token };
+      // Glidende udløb for admins: højst én opdatering om ugen
+      if (isAdmin(c.env, row.email) && row.expires_at < now + ADMIN_SESSION_TTL - ADMIN_RENEW_AFTER) {
+        await c.env.DB.prepare('UPDATE sessions SET expires_at = ? WHERE id_hash = ?').bind(now + ADMIN_SESSION_TTL, idHash).run();
+        setCookie(c, cookieName(c, 'vk_session'), raw, cookieOpts(c, ADMIN_SESSION_TTL));
+      }
     }
   }
   c.set('session', session);
@@ -100,9 +113,9 @@ export async function createSession(c: Context<AppEnv>, email: string): Promise<
   await c.env.DB.prepare(
     'INSERT INTO sessions (id_hash, email, csrf_token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)',
   )
-    .bind(idHash, email, randomToken(24), now + SESSION_TTL, now)
+    .bind(idHash, email, randomToken(24), now + sessionTtl(c.env, email), now)
     .run();
-  setCookie(c, cookieName(c, 'vk_session'), raw, cookieOpts(c, SESSION_TTL));
+  setCookie(c, cookieName(c, 'vk_session'), raw, cookieOpts(c, sessionTtl(c.env, email)));
 }
 
 export async function destroySession(c: Context<AppEnv>): Promise<void> {
