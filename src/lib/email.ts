@@ -77,6 +77,24 @@ Veyro`;
   return { subject: 'Dit login-link til Veyro', text, html };
 }
 
+export function adminPasswordEmail(link: string): Omit<EmailMessage, 'to'> {
+  const text = `Hej
+
+Her er dit link til at vælge en adgangskode til Veyros adminpanel:
+
+${link}
+
+Linket virker i 15 minutter og kan kun bruges én gang.
+Har du ikke bedt om det, kan du se bort fra denne e-mail.
+
+Veyro`;
+  const html = wrapHtml(`<p style="margin:0 0 16px">Hej</p>
+<p style="margin:0 0 24px">Klik på knappen for at vælge en adgangskode til Veyros adminpanel.</p>
+<p style="margin:0 0 24px"><a href="${escapeHtml(link)}" style="display:inline-block;background:#0F0F0D;color:#FBFAF7;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:600">Vælg adgangskode</a></p>
+<p style="margin:0 0 8px;color:#55534D;font-size:14px">Linket virker i 15 minutter og kan kun bruges én gang. Har du ikke bedt om det, kan du se bort fra denne e-mail.</p>`);
+  return { subject: 'Vælg adgangskode til Veyro admin', text, html };
+}
+
 export function signupEmail(link: string, name: string | null): Omit<EmailMessage, 'to'> {
   const hello = name ? `Hej ${name.split(' ')[0]}` : 'Hej';
   const text = `${hello}

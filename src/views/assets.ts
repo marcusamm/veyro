@@ -96,7 +96,7 @@ form.inline{display:inline}
 /* Formularer */
 label{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
 .hint{font-size:14px;color:var(--muted);margin-top:4px}
-input[type=email],input[type=text],input[type=number],textarea,select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;
+input[type=email],input[type=text],input[type=number],input[type=password],textarea,select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;
   border:1px solid var(--line-strong);border-radius:var(--r-btn);padding:11px 14px;min-height:46px}
 textarea{min-height:140px;resize:vertical;line-height:1.5}
 select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);

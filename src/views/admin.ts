@@ -1,5 +1,6 @@
 import { html } from 'hono/html';
 import type { AdminRequestRow, CustomerListRow } from '../lib/db';
+import { MIN_LENGTH as MIN_PASSWORD } from '../lib/password';
 import { MAX_LINES, VAT_PERCENT, type AdminInvoice, type DraftForm } from '../lib/invoices';
 import { formatDate, formatDateShort, formatKr } from '../lib/format';
 import { getPlan } from '../lib/plans';
@@ -217,5 +218,57 @@ export function adminInvoicesPage(args: {
         </tr>`;
       })}</tbody></table></div>`}
   </section>
+</div>`;
+}
+
+// ---------------- Admin-login og adgangskode ----------------
+
+export function adminLoginPage(args: { csrf: string; email?: string; error?: string; info?: string; devLink?: string | null }): H {
+  return html`<div class="narrow stack-lg">
+  <div><p class="eyebrow">Veyro admin</p><h1>Log ind</h1><p class="lead">Kun for Veyros medarbejdere.</p></div>
+  ${args.info ? alert('ok', args.info) : ''}
+  ${args.devLink ? alert('info', html`Udviklingstilstand: <a href="${args.devLink}">åbn linket</a>`) : ''}
+  ${args.error ? alert('err', args.error) : ''}
+  <form method="post" action="/admin/login" class="card stack" novalidate>
+    ${csrfField(args.csrf)}
+    <div class="field"><label for="email">E-mail</label>
+      <input id="email" name="email" type="email" autocomplete="username" inputmode="email" required maxlength="254" value="${args.email ?? ''}"></div>
+    <div class="field"><label for="password">Adgangskode</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required maxlength="200"></div>
+    <button class="btn btn-primary btn-block" type="submit" data-loading="Logger ind …">Log ind</button>
+  </form>
+  <details class="card">
+    <summary><strong>Første gang, eller glemt adgangskoden?</strong></summary>
+    <form method="post" action="/admin/login/link" class="stack" style="margin-top:16px" novalidate>
+      ${csrfField(args.csrf)}
+      <p class="small muted">Vi sender et link til din e-mail. Det logger dig ind, så du kan vælge en ny adgangskode.</p>
+      <div class="field"><label for="link-email">E-mail</label>
+        <input id="link-email" name="email" type="email" autocomplete="username" inputmode="email" required maxlength="254" value="${args.email ?? ''}"></div>
+      <button class="btn btn-secondary" type="submit" data-loading="Sender …">Send link</button>
+    </form>
+  </details>
+</div>`;
+}
+
+export function adminPasswordPage(args: { csrf: string; email: string; needCurrent: boolean; hasPassword: boolean; error?: string; saved?: boolean }): H {
+  return html`<div class="narrow stack-lg">
+  <div><p class="eyebrow">Admin</p><h1>${args.hasPassword ? 'Skift adgangskode' : 'Vælg adgangskode'}</h1>
+    <p class="lead">Til ${args.email}. Du logger ind på kunde.veyro.dk/admin/login med din e-mail og adgangskoden.</p></div>
+  ${args.saved ? alert('ok', 'Adgangskoden er gemt. Du er logget ud alle andre steder.') : ''}
+  ${args.error ? alert('err', args.error) : ''}
+  <form method="post" action="/admin/adgangskode" class="card stack" novalidate>
+    ${csrfField(args.csrf)}
+    <input type="text" name="username" value="${args.email}" autocomplete="username" hidden>
+    ${args.needCurrent
+      ? html`<div class="field"><label for="current">Nuværende adgangskode</label>
+          <input id="current" name="current" type="password" autocomplete="current-password" required maxlength="200"></div>`
+      : ''}
+    <div class="field"><label for="new">Ny adgangskode</label>
+      <input id="new" name="new" type="password" autocomplete="new-password" required minlength="${MIN_PASSWORD}" maxlength="200" aria-describedby="new-hint">
+      <p class="hint" id="new-hint">Mindst ${MIN_PASSWORD} tegn. En sætning med flere ord er let at huske og svær at gætte.</p></div>
+    <div class="field"><label for="repeat">Gentag ny adgangskode</label>
+      <input id="repeat" name="repeat" type="password" autocomplete="new-password" required maxlength="200"></div>
+    <button class="btn btn-primary" type="submit" data-loading="Gemmer …">Gem adgangskode</button>
+  </form>
 </div>`;
 }

@@ -491,7 +491,7 @@ describe('Admin', () => {
   it('nægter anonyme adgang', async () => {
     const r = await new Client(stack.base).get('/admin/kunder');
     expect(r.status).toBe(303);
-    expect(r.headers.get('location')).toBe('/login');
+    expect(r.headers.get('location')).toBe('/admin/login');
   });
 
   it('admin (ikke-kunde) kan logge ind, se kunder og ændre status', async () => {
@@ -513,6 +513,80 @@ describe('Admin', () => {
     const anna = await as('anna@example.dk');
     const list = await anna.client.get('/konto/henvendelser');
     expect(list.html).toContain('I gang');
+  });
+});
+
+describe('Admin: login med adgangskode', () => {
+  const PW = 'lang og sikker kode 42';
+  async function requestLink(client, email) {
+    const page = await client.get('/admin/login');
+    const before = (await emails()).length;
+    const r = await client.post('/admin/login/link', { _csrf: csrfFrom(page.html), email });
+    expect(r.status).toBe(200);
+    expect(r.html).toContain('Hvis e-mailen hører til en admin');
+    return before;
+  }
+  async function pwLogin(email, password) {
+    const client = new Client(stack.base);
+    const page = await client.get('/admin/login');
+    const r = await client.post('/admin/login', { _csrf: csrfFrom(page.html), email, password });
+    return { client, r };
+  }
+
+  it('login-siden er ikke linket fra kundesiderne', async () => {
+    const { client } = await as('anna@example.dk');
+    for (const p of ['/konto', '/login', '/bestil']) {
+      const r = await new Client(stack.base).get(p);
+      expect(r.html).not.toContain('/admin/login');
+    }
+    expect((await client.get('/konto')).html).not.toContain('/admin/login');
+    expect((await client.get('/admin/adgangskode')).status).toBe(403);
+  });
+
+  it('kunder får intet link, og ukendte får samme svar', async () => {
+    const client = new Client(stack.base);
+    const before = await requestLink(client, 'anna@example.dk');
+    await new Promise((r) => setTimeout(r, 300));
+    expect((await emails()).slice(before).some((e) => e.to[0] === 'anna@example.dk')).toBe(false);
+  });
+
+  it('admin vælger adgangskode via link, logger ind og kan skifte den', async () => {
+    const client = new Client(stack.base);
+    const before = await requestLink(client, ADMIN_EMAIL);
+    const mail = await waitFor(async () => (await emails()).slice(before).find((e) => e.to[0] === ADMIN_EMAIL));
+    expect(mail.subject).toContain('adgangskode');
+    const link = mail.text.match(/https?:\/\/\S+\/login\/bekraeft\?token=[A-Za-z0-9_%-]+/)[0];
+    const confirm = await client.get(link.replace(stack.base, ''));
+    const done = await client.post('/login/bekraeft', { _csrf: csrfFrom(confirm.html), token: decodeURIComponent(new URL(link).searchParams.get('token')) });
+    expect(done.headers.get('location')).toBe('/admin/adgangskode');
+    const form = await client.get('/admin/adgangskode');
+    expect(form.html).toContain('Vælg adgangskode');
+    expect(form.html).not.toContain('name="current"');
+    const short = await client.post('/admin/adgangskode', { _csrf: csrfFrom(form.html), new: 'kort', repeat: 'kort' });
+    expect(short.status).toBe(400);
+    expect(short.html).toContain('mindst 10 tegn');
+    const mismatch = await client.post('/admin/adgangskode', { _csrf: csrfFrom(form.html), new: PW, repeat: PW + 'x' });
+    expect(mismatch.html).toContain('ikke ens');
+    const saved = await client.post('/admin/adgangskode', { _csrf: csrfFrom(form.html), new: PW, repeat: PW });
+    expect(saved.status).toBe(303);
+
+    const wrong = await pwLogin(ADMIN_EMAIL, 'forkert forkert');
+    expect(wrong.r.status).toBe(401);
+    expect(wrong.r.html).toContain('Forkert e-mail eller adgangskode');
+    const notAdmin = await pwLogin('anna@example.dk', PW);
+    expect(notAdmin.r.status).toBe(401);
+    const ok = await pwLogin(ADMIN_EMAIL.toUpperCase(), PW);
+    expect(ok.r.status).toBe(303);
+    expect(ok.r.headers.get('location')).toBe('/admin');
+    expect((await ok.client.get('/admin/fakturaer')).status).toBe(200);
+    // Ny session er frisk, så skift kræver ikke nuværende kode; den gamle session logges ud
+    const page = await ok.client.get('/admin/adgangskode');
+    expect(page.html).toContain('Skift adgangskode');
+    const changed = await ok.client.post('/admin/adgangskode', { _csrf: csrfFrom(page.html), new: PW + ' ny', repeat: PW + ' ny' });
+    expect(changed.status).toBe(303);
+    expect((await client.get('/admin')).status).toBe(303);
+    expect((await pwLogin(ADMIN_EMAIL, PW)).r.status).toBe(401);
+    expect((await pwLogin(ADMIN_EMAIL, PW + ' ny')).r.status).toBe(303);
   });
 });
 
