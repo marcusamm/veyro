@@ -17,6 +17,12 @@ export interface SubDraft extends InvoiceDraft {
   offer: Offer | null;
 }
 
+export interface Coupon {
+  name?: string | null;
+  percent_off?: number | null;
+  amount_off?: number | null;
+}
+
 export interface AdminSubscription {
   id: string;
   status: string;
@@ -26,7 +32,7 @@ export interface AdminSubscription {
   cancel_at: number | null;
   current_period_end?: number;
   customer: { id: string; email: string | null; name: string | null } | string;
-  discounts?: Array<string | { coupon?: { name?: string | null; percent_off?: number | null; amount_off?: number | null } }>;
+  discounts?: Array<string | { coupon?: Coupon | string; source?: { coupon?: Coupon | string } }>;
   metadata?: Record<string, string>;
   items: {
     data: Array<{
@@ -129,14 +135,47 @@ export async function createSubscription(env: Env, d: SubDraft, opts: { key: str
 }
 
 export async function listAdminSubscriptions(env: Env): Promise<AdminSubscription[]> {
+  // Stripe tillader højst 4 niveauer i expand, så produktnavne og kuponer hentes for sig.
   const res = await stripeRequest<{ data: AdminSubscription[] }>(env, 'GET', '/v1/subscriptions', {
     status: 'all',
     limit: 40,
     'expand[0]': 'data.customer',
     'expand[1]': 'data.discounts',
-    'expand[2]': 'data.items.data.price.product',
   });
-  return (res.data ?? []).filter((s) => s.status !== 'incomplete_expired');
+  const subs = (res.data ?? []).filter((s) => s.status !== 'incomplete_expired');
+
+  const productIds = [...new Set(subs.flatMap((s) => s.items.data.map((i) => (typeof i.price.product === 'string' ? i.price.product : i.price.product.id))))];
+  const names = new Map<string, string>();
+  for (let i = 0; i < productIds.length; i += 100) {
+    const params: Params = { limit: 100 };
+    productIds.slice(i, i + 100).forEach((id, n) => (params[`ids[${n}]`] = id));
+    const list = await stripeRequest<{ data: Array<{ id: string; name: string }> }>(env, 'GET', '/v1/products', params).catch(() => ({ data: [] }));
+    for (const p of list.data ?? []) names.set(p.id, p.name);
+  }
+
+  const coupons = new Map<string, Coupon>();
+  for (const s of subs) {
+    for (const d of s.discounts ?? []) {
+      if (typeof d === 'string') continue;
+      const c = d.coupon ?? d.source?.coupon;
+      if (typeof c === 'string' && !coupons.has(c)) {
+        coupons.set(c, await stripeRequest<Coupon>(env, 'GET', `/v1/coupons/${encodeURIComponent(c)}`).catch(() => ({ name: 'Rabat' })));
+      }
+    }
+  }
+
+  for (const s of subs) {
+    for (const it of s.items.data) {
+      const id = typeof it.price.product === 'string' ? it.price.product : it.price.product.id;
+      it.price.product = { id, name: names.get(id) ?? (typeof it.price.product === 'string' ? undefined : it.price.product.name) };
+    }
+    s.discounts = (s.discounts ?? []).map((d) => {
+      if (typeof d === 'string') return d;
+      const c = d.coupon ?? d.source?.coupon;
+      return { coupon: typeof c === 'string' ? coupons.get(c) : c };
+    });
+  }
+  return subs;
 }
 
 export function isSubscriptionId(id: string): boolean {

@@ -275,6 +275,7 @@ function offerText(s: AdminSubscription): string | null {
   const d = s.discounts?.find((x) => typeof x !== 'string');
   const c = d && typeof d !== 'string' ? d.coupon : undefined;
   if (!c) return null;
+  if (typeof c === 'string') return 'Rabat';
   if (c.percent_off) return `${c.percent_off} % rabat`;
   if (c.amount_off) return `${formatKr(c.amount_off)} rabat`;
   return c.name ?? 'Rabat';

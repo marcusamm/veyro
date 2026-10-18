@@ -210,13 +210,24 @@ export function startMock() {
         return json(200, state.subscriptions[id]);
       }
       if (p === '/v1/subscriptions' && req.method === 'GET') {
+        const expand = Object.entries(params).filter(([k]) => k.startsWith('expand')).map(([, v]) => v);
+        if (expand.some((e) => e.split('.').length > 4)) return stripeErr(res, 400, 'You cannot expand more than 4 levels of a property.', 'property_expansion_max_depth');
         const data = Object.values(state.subscriptions).map((sub) => ({
           ...sub,
           customer: state.customers[sub.customer] ?? sub.customer,
-          discounts: (sub.discounts ?? []).map((d) => ({ coupon: state.coupons?.[d] ?? { id: d } })),
-          items: { data: sub.items.data.map((it) => ({ ...it, price: { ...it.price, product: state.products?.[it.price.product] ?? { id: it.price.product ?? 'prod_x', name: 'Plan' } } })) },
+          // Nyere API-versioner: discount.source.coupon er et id
+          discounts: (sub.discounts ?? []).map((d) => ({ id: 'di_' + d, source: { type: 'coupon', coupon: d } })),
+          items: { data: sub.items.data.map((it) => ({ ...it, price: { ...it.price, product: it.price.product ?? 'prod_x' } })) },
         }));
         return json(200, { object: 'list', data: data.reverse() });
+      }
+      if (p === '/v1/products' && req.method === 'GET') {
+        const ids = Object.entries(params).filter(([k]) => k.startsWith('ids')).map(([, v]) => v);
+        return json(200, { object: 'list', data: ids.map((id) => state.products?.[id]).filter(Boolean) });
+      }
+      if ((m = p.match(/^\/v1\/coupons\/([^/]+)$/)) && req.method === 'GET') {
+        const c = state.coupons?.[m[1]];
+        return c ? json(200, c) : stripeErr(res, 404, 'No such coupon', 'resource_missing');
       }
       if ((m = p.match(/^\/v1\/subscriptions\/([^/]+)$/)) && req.method === 'POST' && state.subscriptions[m[1]] &&
           (params['items[0][price_data][unit_amount]'] || params['discounts[0][coupon]'] || params.discounts === '')) {
