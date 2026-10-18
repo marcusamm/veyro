@@ -1,0 +1,38 @@
+# Cloudflare Worker-konfiguration for én virksomheds lagerstyring.
+# Kopiér skabelonen pr. kunde og udfyld felterne markeret med UDFYLD (se README).
+name = "lagerstyring" # UDFYLD: fx "nordlysbyg-lager" (små bogstaver og bindestreger)
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+preview_urls = false
+
+# Eget domæne, fx lager.kundensdomæne.dk (domænet skal ligge i samme Cloudflare-konto).
+# Fjern kommentaren, når domænet er klar:
+# routes = [
+#   { pattern = "lager.UDFYLD.dk", custom_domain = true }
+# ]
+
+[observability]
+enabled = true
+
+# D1-database. Udskift database_id med det ID, du får fra:
+#   npx wrangler d1 create UDFYLD-kundenavn-lager
+[[d1_databases]]
+binding = "DB"
+database_name = "lagerstyring"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# Hver time: oprydning og den valgfrie samlede e-mail med nye indkøbsbehov
+[triggers]
+crons = ["7 * * * *"]
+
+# Offentlige (ikke-hemmelige) indstillinger.
+# RESEND_API_KEY sættes med `npx wrangler secret put RESEND_API_KEY` – aldrig her.
+# Firmanavn, farve, brugere og leverandører sættes i Lager → Indstillinger.
+[vars]
+APP_URL = "https://lager.UDFYLD.dk"
+ADMIN_EMAILS = "UDFYLD@kunde.dk"
+EMAIL_FROM = "UDFYLD Lager <lager@UDFYLD.dk>"
+DEV_MODE = "0"
+DEMO_MODE = "0"
