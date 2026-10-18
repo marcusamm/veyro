@@ -16,7 +16,8 @@ export interface EmailMessage {
  * nogen RESEND_API_KEY (udvikling) – så må kalderen selv håndtere det.
  */
 export async function sendEmail(env: Env, msg: EmailMessage, s?: Settings): Promise<boolean> {
-  if (!env.RESEND_API_KEY) return false;
+  // Ordrer oprettet på telefon eller ved direkte salg kan være uden e-mail
+  if (!env.RESEND_API_KEY || !msg.to) return false;
   const base = (env.RESEND_API_BASE || 'https://api.resend.com').replace(/\/+$/, '');
   const from = env.EMAIL_FROM || `${s?.shop_name ?? 'Butik'} <onboarding@resend.dev>`;
   const replyTo = msg.replyTo ?? (s?.contact_email || undefined);
@@ -181,7 +182,7 @@ ${order.note ? `<p style="margin:0 0 16px;white-space:pre-wrap"><strong>Besked:<
 ${t.html}
 ${button(s, adminUrl, 'Åbn ordren')}`,
   );
-  return { to: s.notify_email || s.contact_email, subject: `Ny bestilling #${order.number} – ${formatKr(order.total)}`, text, html, replyTo: order.customer_email };
+  return { to: s.notify_email || s.contact_email, subject: `Ny bestilling #${order.number} – ${formatKr(order.total)}`, text, html, replyTo: order.customer_email || undefined };
 }
 
 export function lowStockEmail(items: { sku: string; name: string; stock: number }[], s: Settings, adminUrl: string): EmailMessage {

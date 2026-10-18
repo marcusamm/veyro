@@ -1,11 +1,11 @@
 import { html, raw } from 'hono/html';
-import { isHexColor, safeUrl, type Settings } from '../lib/settings';
+import { DEFAULT_ACCENT, isHexColor, safeUrl, type Settings } from '../lib/settings';
 
 export type H = ReturnType<typeof html>;
 
 export type AdminNav = 'oversigt' | 'ordrer' | 'varer' | 'import' | 'historik' | 'indstillinger';
 
-/** Tekstfarve på accentfarven: mørk på lyse farver, hvid på mørke (WCAG-luminans). */
+/** Tekstfarve på accentfarven: den af mørk og hvid, der giver bedst kontrast (WCAG). */
 function inkOn(hex: string): string {
   const n = parseInt(hex.slice(1), 16);
   const lin = (c: number) => {
@@ -13,15 +13,15 @@ function inkOn(hex: string): string {
     return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
   };
   const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
-  return L > 0.4 ? '#111827' : '#FFFFFF';
+  return (L + 0.05) / 0.0555 >= 1.05 / (L + 0.05) ? '#0F0F0D' : '#FFFFFF';
 }
 
 function themeStyle(s: Settings): H {
-  const accent = isHexColor(s.accent_color) ? s.accent_color : '#1F5EFF';
+  const accent = isHexColor(s.accent_color) ? s.accent_color : DEFAULT_ACCENT;
   const n = parseInt(accent.slice(1), 16);
-  const soft = `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},.08)`;
+  const rgb = `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
   // Værdierne er valideret (hex-farve), så de kan indsættes direkte
-  return html`<style>${raw(`:root{--accent:${accent};--accent-ink:${inkOn(accent)};--accent-soft:${soft}}`)}</style>`;
+  return html`<style>${raw(`:root{--accent:${accent};--accent-ink:${inkOn(accent)};--accent-rgb:${rgb};--accent-soft:rgba(${rgb},.1)}`)}</style>`;
 }
 
 function head(title: string, s: Settings, opts: { noindex?: boolean; description?: string }): H {
@@ -32,9 +32,10 @@ ${opts.description ? html`<meta name="description" content="${opts.description}"
 <meta name="color-scheme" content="light">
 <title>${title}</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/static/app.css?v=1">
+<link rel="preload" href="/static/inter-tight.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/static/app.css?v=2">
 ${themeStyle(s)}
-<script src="/static/app.js?v=1" defer></script>`;
+<script src="/static/app.js?v=2" defer></script>`;
 }
 
 function footer(s: Settings): H {
@@ -137,6 +138,6 @@ export function alert(kind: 'info' | 'ok' | 'warn' | 'err', content: H | string)
 }
 
 export function favicon(s: Settings): string {
-  const accent = isHexColor(s.accent_color) ? s.accent_color : '#1F5EFF';
+  const accent = isHexColor(s.accent_color) ? s.accent_color : DEFAULT_ACCENT;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="${accent}"/></svg>`;
 }

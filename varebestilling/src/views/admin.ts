@@ -1,12 +1,13 @@
 import { html } from 'hono/html';
-import type { OrderEventRow, OrderLineRow, OrderRow, OrderStatus, ProductRow } from '../env';
+import type { OrderEventRow, OrderLineRow, OrderRow, OrderSource, OrderStatus, ProductRow } from '../env';
 import type { ImportError, PlannedRow } from '../lib/csv';
 import { FIELD_LABEL, type Field } from '../lib/csv';
 import { formatDateTime, formatKr, oereToInput } from '../lib/format';
-import { STATUSES, STATUS_LABEL, TRANSITIONS, type OrderListRow } from '../lib/orders';
+import { SOURCE_LABEL, STATUSES, STATUS_LABEL, TRANSITIONS, type OrderListRow, type StatusEvent } from '../lib/orders';
 import type { MovementWithProduct, ProductWithReserved } from '../lib/products';
 import { lowStockLimit, safeUrl, type Settings } from '../lib/settings';
 import { alert, csrfField, type H } from './layout';
+import { orderSheet } from './shop';
 
 // ---------------- Login ----------------
 
@@ -75,6 +76,7 @@ export function flashMessage(code: string | undefined): H | '' {
     lager: ['ok', 'Lageret er opdateret.'],
     status: ['ok', 'Status er ændret.'],
     note: ['ok', 'Noten er gemt.'],
+    ordre_oprettet: ['ok', 'Ordren er oprettet.'],
     logget_ud: ['ok', 'Du er logget ud.'],
   };
   const v = code ? m[code] : undefined;
@@ -83,56 +85,140 @@ export function flashMessage(code: string | undefined): H | '' {
 
 // ---------------- Oversigt ----------------
 
+export function sourceTag(src: OrderSource): H {
+  return html`<span class="tag tag-src">${SOURCE_LABEL[src]}</span>`;
+}
+
+const stk = (n: number) => `${n} ${n === 1 ? 'vare' : 'varer'}`;
+
+function activityLine(e: StatusEvent): H {
+  const what: Record<OrderStatus, [string, string]> = {
+    ny: ['modtaget', `${stk(e.item_count)} reserveret · ${SOURCE_LABEL[e.source].toLowerCase()}`],
+    bekraeftet: ['bekræftet', `${stk(e.item_count)} trukket fra lager`],
+    klar: ['klar / afsendt', stk(e.item_count)],
+    afsluttet: ['afsluttet', stk(e.item_count)],
+    annulleret: ['annulleret', `${stk(e.item_count)} frigivet`],
+  };
+  const [verb, detail] = what[e.status];
+  return html`<li><span><a href="/admin/ordrer/${e.order_id}">Ordre #${e.number}</a> ${verb}</span><em>${detail}</em></li>`;
+}
+
 export function dashboardPage(args: {
   settings: Settings;
   counts: Record<OrderStatus, number>;
   latest: OrderListRow[];
-  low: ProductWithReserved[];
+  stock: ProductWithReserved[];
+  events: StatusEvent[];
+  manual: MovementWithProduct[];
   today: { orders: number; total: number };
   month: { orders: number; total: number };
   productCount: number;
 }): H {
+  const s = args.settings;
   const c = args.counts;
+  const newest = args.latest.find((o) => o.status === 'ny');
+  const limit = (p: ProductWithReserved) => lowStockLimit(p, s);
+  const avail = (p: ProductWithReserved) => Math.max(0, p.stock - p.reserved);
+  const alerts = args.stock.filter((p) => avail(p) <= limit(p)).slice(0, 6);
+  // Ordrehændelser og manuelle lagerændringer flettet efter tid
+  const activity = [
+    ...args.events.map((e) => ({ at: e.created_at, html: activityLine(e) })),
+    ...args.manual.map((m) => ({
+      at: m.created_at,
+      html: html`<li><span>${m.reason || 'Lagerregulering'}</span><em>${m.name} ${m.change > 0 ? '+' : '−'}${Math.abs(m.change)}</em></li>`,
+    })),
+  ]
+    .sort((a, b) => b.at - a.at)
+    .slice(0, 6);
   return html`<div class="stack-lg">
-    <h1>Oversigt</h1>
+    <div class="page-head">
+      <div><p class="eyebrow">Administrationspanel</p><h1>Ordrer og lager</h1></div>
+      <a class="btn btn-primary" href="/admin/ordrer/ny">+ Ny ordre</a>
+    </div>
     ${args.productCount === 0
       ? alert('info', html`Der er ingen varer endnu. <a href="/admin/import">Importér en vareliste</a> eller <a href="/admin/varer/ny">opret en vare</a>.`)
       : ''}
-    <div class="grid grid-4">
-      <a class="card stat" href="/admin/ordrer?status=ny"><div class="n">${c.ny}</div><div class="l">Nye ordrer</div></a>
-      <a class="card stat" href="/admin/ordrer?status=bekraeftet"><div class="n">${c.bekraeftet}</div><div class="l">Bekræftede (skal pakkes)</div></a>
-      <div class="card stat"><div class="n">${formatKr(args.today.total)}</div><div class="l">I dag · ${args.today.orders} ordrer</div></div>
-      <div class="card stat"><div class="n">${formatKr(args.month.total)}</div><div class="l">Seneste 30 dage · ${args.month.orders} ordrer</div></div>
+    <div class="stats">
+      <a class="stat" href="/admin/ordrer?status=ny"><span class="n">${c.ny}</span><span class="l">Nye ordrer</span></a>
+      <a class="stat" href="/admin/ordrer?status=bekraeftet"><span class="n">${c.bekraeftet}</span><span class="l">Skal pakkes</span></a>
+      <div class="stat"><span class="n">${formatKr(args.today.total)}</span><span class="l">I dag · ${args.today.orders} ordrer</span></div>
+      <div class="stat"><span class="n">${formatKr(args.month.total)}</span><span class="l">Seneste 30 dage · ${args.month.orders} ordrer</span></div>
     </div>
-    <div class="grid grid-2">
-      <section class="card card-flush">
-        <div class="row-between" style="padding:16px 20px"><h2>Seneste ordrer</h2><a class="small" href="/admin/ordrer">Se alle</a></div>
-        ${args.latest.length
-          ? html`<div class="table-wrap"><table class="list"><tbody>
-              ${args.latest.map(
-                (o) => html`<tr class="row-link" data-href="/admin/ordrer/${o.id}">
-                  <td><a class="title" href="/admin/ordrer/${o.id}">#${o.number}</a><div class="xs muted">${o.customer_name}</div></td>
-                  <td>${statusTag(o.status)}</td>
-                  <td class="right num nowrap">${formatKr(o.total)}</td>
-                </tr>`,
-              )}
-            </tbody></table></div>`
-          : html`<p class="muted" style="padding:0 20px 20px">Ingen ordrer endnu.</p>`}
-      </section>
-      <section class="card card-flush">
-        <div class="row-between" style="padding:16px 20px"><h2>Lavt lager</h2><a class="small" href="/admin/varer?lav=1">Se alle</a></div>
-        ${args.low.length
-          ? html`<div class="table-wrap"><table class="list"><tbody>
-              ${args.low.map(
-                (p) => html`<tr class="row-link" data-href="/admin/varer/${p.id}">
-                  <td><a class="title" href="/admin/varer/${p.id}">${p.name}</a><div class="xs muted">${p.sku}</div></td>
-                  <td class="right">${stockCell(p, args.settings)}</td>
-                </tr>`,
-              )}
-            </tbody></table></div>`
-          : html`<p class="muted" style="padding:0 20px 20px">Alle varer er over minimum.</p>`}
-      </section>
+    <div class="app">
+      <div class="app-bar">
+        <span class="app-name">${s.shop_name}</span>
+        ${newest
+          ? html`<a class="app-toast" href="/admin/ordrer/${newest.id}"><span class="app-toast-dot" aria-hidden="true"></span>Ny ordre #${newest.number} fra ${SOURCE_LABEL[newest.source].toLowerCase()}</a>`
+          : ''}
+      </div>
+      <div class="app-grid">
+        <section class="app-panel app-panel--orders" aria-labelledby="h-ordrer">
+          <div class="app-title"><h2 id="h-ordrer">Ordreoversigt</h2><a class="small" href="/admin/ordrer">Se alle</a></div>
+          <nav class="tabs tabs-sm" aria-label="Ordrer efter status">
+            <a href="/admin/ordrer?status=ny" aria-current="page">Nye <b>${c.ny}</b></a>
+            <a href="/admin/ordrer?status=bekraeftet">Bekræftede <b>${c.bekraeftet}</b></a>
+            <a href="/admin/ordrer?status=klar">Klar <b>${c.klar}</b></a>
+            <a href="/admin/ordrer?status=afsluttet">Afsluttede <b>${c.afsluttet}</b></a>
+            <a href="/admin/ordrer?status=annulleret">Annullerede <b>${c.annulleret}</b></a>
+          </nav>
+          ${args.latest.length
+            ? html`<table class="mini">
+                <thead><tr><th scope="col">Ordre</th><th scope="col">Kunde</th><th scope="col" class="hide-xs">Kilde</th><th scope="col" class="num">Varer</th><th scope="col">Status</th></tr></thead>
+                <tbody>
+                  ${args.latest.map(
+                    (o) => html`<tr class="row-link" data-href="/admin/ordrer/${o.id}">
+                      <td><a href="/admin/ordrer/${o.id}">#${o.number}</a></td>
+                      <td>${o.company || o.customer_name}</td>
+                      <td class="hide-xs">${SOURCE_LABEL[o.source]}</td>
+                      <td class="num">${o.item_count}</td>
+                      <td>${statusTag(o.status)}</td>
+                    </tr>`,
+                  )}
+                </tbody>
+              </table>`
+            : html`<p class="muted small">Ingen ordrer endnu.</p>`}
+        </section>
+        <section class="app-panel app-panel--stock" aria-labelledby="h-lager">
+          <div class="app-title"><h2 id="h-lager">Lagerstatus</h2><a class="small" href="/admin/varer">Alle varer</a></div>
+          ${args.stock.length
+            ? html`<table class="mini">
+                <thead><tr><th scope="col">Vare</th><th scope="col" class="num">På lager</th><th scope="col" class="num">Reserveret</th><th scope="col" class="num">Disponibel</th></tr></thead>
+                <tbody>
+                  ${args.stock.slice(0, 6).map((p) => {
+                    const a = avail(p);
+                    const cls = a <= 0 ? 'is-out' : a <= limit(p) ? 'is-low' : '';
+                    return html`<tr class="row-link ${cls}" data-href="/admin/varer/${p.id}">
+                      <td><a href="/admin/varer/${p.id}">${p.name}</a><small>${p.sku}</small></td>
+                      <td class="num">${p.stock}</td>
+                      <td class="num">${p.reserved}</td>
+                      <td class="num"><b>${a}</b>${a <= 0 ? html`<span class="tag tag-out">Udsolgt</span>` : a <= limit(p) ? html`<span class="tag tag-low">Lav</span>` : ''}</td>
+                    </tr>`;
+                  })}
+                </tbody>
+              </table>`
+            : html`<p class="muted small">Ingen varer med lagerstyring endnu.</p>`}
+        </section>
+        <section class="app-panel app-panel--alerts">
+          <div>
+            <div class="app-title"><h2>Advarsler</h2></div>
+            ${alerts.length
+              ? html`<ul class="app-alerts">
+                  ${alerts.map(
+                    (p) => html`<li class="${avail(p) <= 0 ? 'is-out' : ''}"><a href="/admin/varer/${p.id}"><b>${p.name}</b></a><span>${avail(p) <= 0
+                      ? `Udsolgt. 0 disponible.`
+                      : `Lav beholdning: ${avail(p)} disponible (minimum ${limit(p)}).`}</span></li>`,
+                  )}
+                </ul>`
+              : html`<p class="muted small">Ingen advarsler. Alle varer er over minimum.</p>`}
+          </div>
+          <div>
+            <div class="app-title"><h2>Seneste ændringer</h2><a class="small" href="/admin/historik">Historik</a></div>
+            ${activity.length ? html`<ul class="app-log">${activity.map((a) => a.html)}</ul>` : html`<p class="muted small">Intet endnu.</p>`}
+          </div>
+        </section>
+      </div>
     </div>
+    <p class="xs muted">Reserveret er varer i nye ordrer, der endnu ikke er bekræftet. Når en ordre bekræftes, trækkes varerne fra lageret.</p>
   </div>`;
 }
 
@@ -156,7 +242,7 @@ export function ordersPage(args: {
     return s ? `?${s}` : '';
   };
   return html`<div class="stack-lg">
-    <h1>Ordrer</h1>
+    <div class="page-head"><h1>Ordrer</h1><a class="btn btn-primary" href="/admin/ordrer/ny">+ Ny ordre</a></div>
     <nav class="tabs" aria-label="Filtrér efter status">
       <a href="/admin/ordrer${args.q ? `?q=${encodeURIComponent(args.q)}` : ''}"${!args.status ? html` aria-current="page"` : ''}>Alle <span class="c">${total}</span></a>
       ${STATUSES.map(
@@ -172,13 +258,14 @@ export function ordersPage(args: {
     <div class="card card-flush">
       ${args.orders.length
         ? html`<div class="table-wrap"><table class="list stackable">
-            <thead><tr><th>Ordre</th><th>Kunde</th><th>Dato</th><th>Levering</th><th>Status</th><th class="right">Beløb</th></tr></thead>
+            <thead><tr><th>Ordre</th><th>Kunde</th><th>Dato</th><th>Kilde</th><th>Levering</th><th>Status</th><th class="right">Beløb</th></tr></thead>
             <tbody>
               ${args.orders.map(
                 (o) => html`<tr class="row-link" data-href="/admin/ordrer/${o.id}">
                   <td class="cell-main"><a class="title" href="/admin/ordrer/${o.id}">#${o.number}</a> <span class="xs muted">${o.item_count} stk.</span></td>
                   <td data-label="Kunde">${o.customer_name}${o.company ? html`<div class="xs muted">${o.company}</div>` : ''}</td>
                   <td data-label="Dato" class="nowrap">${formatDateTime(o.created_at)}</td>
+                  <td data-label="Kilde">${SOURCE_LABEL[o.source]}</td>
                   <td data-label="Levering">${o.delivery === 'levering' ? 'Levering' : 'Afhentning'}</td>
                   <td>${statusTag(o.status)}</td>
                   <td data-label="Beløb" class="right num nowrap">${formatKr(o.total)}</td>
@@ -194,6 +281,107 @@ export function ordersPage(args: {
         </nav>`
       : ''}
   </div>`;
+}
+
+export interface StaffOrderValues {
+  source: Exclude<OrderSource, 'hjemmeside'>;
+  customer_name: string;
+  company: string;
+  customer_phone: string;
+  customer_email: string;
+  delivery: 'afhentning' | 'levering';
+  address: string;
+  postcode: string;
+  city: string;
+  note: string;
+  confirm: boolean;
+  send_receipt: boolean;
+}
+
+export function newOrderPage(args: {
+  csrf: string;
+  settings: Settings;
+  products: ProductWithReserved[];
+  quantities: Map<number, number>;
+  values: StaffOrderValues;
+  errors?: Partial<Record<keyof StaffOrderValues | 'form' | 'lines', string>>;
+  short?: H | null;
+}): H {
+  const v = args.values;
+  const e = args.errors ?? {};
+  const err = (k: keyof StaffOrderValues) => (e[k] ? html`<p class="hint" style="color:var(--err)" id="err-${k}">${e[k]}</p>` : '');
+  const inv = (k: keyof StaffOrderValues) => (e[k] ? html` aria-invalid="true" aria-describedby="err-${k}"` : '');
+  const src = (val: StaffOrderValues['source'], label: string, hint: string) =>
+    html`<label class="radio-card"><input type="radio" name="source" value="${val}"${v.source === val ? ' checked' : ''}><span><strong>${label}</strong><span class="small muted">${hint}</span></span></label>`;
+  return html`<form class="stack-lg sheet-form" method="post" action="/admin/ordrer/ny" novalidate>
+    ${csrfField(args.csrf)}
+    <div class="stack-sm">
+      <a class="small" href="/admin/ordrer">← Ordrer</a>
+      <h1>Ny ordre</h1>
+      <p class="muted">Til ordrer, der kommer ind på telefon, e-mail eller ved direkte salg. De lander i samme ordreoversigt og lager som bestillinger fra hjemmesiden.</p>
+    </div>
+    ${e.form ? alert('err', e.form) : ''}
+    ${args.short ?? ''}
+    <section class="card stack-lg">
+      <fieldset>
+        <legend>Hvor kom ordren fra?</legend>
+        <div class="radio-cards radio-cards-3">
+          ${src('telefon', 'Telefon', 'Kunden ringede')}
+          ${src('email', 'E-mail', 'Kunden skrev')}
+          ${src('direkte', 'Direkte salg', 'I butikken eller på stedet')}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Kunde</legend>
+        <div class="fields fields-2">
+          <div class="field"><label for="customer_name">Navn</label>
+            <input id="customer_name" name="customer_name" value="${v.customer_name}" required maxlength="100" autocomplete="off"${inv('customer_name')}>${err('customer_name')}</div>
+          <div class="field"><label for="company">Firma <span class="muted">(valgfrit)</span></label>
+            <input id="company" name="company" value="${v.company}" maxlength="100" autocomplete="off"></div>
+          <div class="field"><label for="customer_phone">Telefon <span class="muted">(valgfrit)</span></label>
+            <input id="customer_phone" type="tel" name="customer_phone" value="${v.customer_phone}" maxlength="30" autocomplete="off"${inv('customer_phone')}>${err('customer_phone')}</div>
+          <div class="field"><label for="customer_email">E-mail <span class="muted">(valgfrit)</span></label>
+            <input id="customer_email" type="email" name="customer_email" value="${v.customer_email}" maxlength="254" autocomplete="off"${inv('customer_email')}>${err('customer_email')}</div>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Levering</legend>
+        <div class="radio-cards">
+          <label class="radio-card"><input type="radio" name="delivery" value="afhentning"${v.delivery === 'afhentning' ? ' checked' : ''}><span><strong>Afhentning</strong><span class="small muted">Kunden henter selv</span></span></label>
+          <label class="radio-card"><input type="radio" name="delivery" value="levering"${v.delivery === 'levering' ? ' checked' : ''}><span><strong>Levering</strong><span class="small muted">Leveringspris efter butikkens indstillinger</span></span></label>
+        </div>
+        <div id="adresse" class="fields fields-3" style="margin-top:16px">
+          <div class="field" style="grid-column:1/-1"><label for="address">Adresse</label>
+            <input id="address" name="address" value="${v.address}" maxlength="150" autocomplete="off"${inv('address')}>${err('address')}</div>
+          <div class="field"><label for="postcode">Postnummer</label>
+            <input id="postcode" name="postcode" value="${v.postcode}" inputmode="numeric" maxlength="10" autocomplete="off"${inv('postcode')}>${err('postcode')}</div>
+          <div class="field" style="grid-column:span 2"><label for="city">By</label>
+            <input id="city" name="city" value="${v.city}" maxlength="80" autocomplete="off"${inv('city')}>${err('city')}</div>
+        </div>
+      </fieldset>
+      <div class="field">
+        <label for="note">Note på ordren <span class="muted">(valgfrit)</span></label>
+        <textarea id="note" name="note" maxlength="1000" placeholder="Fx aftalt afhentningstidspunkt">${v.note}</textarea>
+      </div>
+    </section>
+    <section class="stack">
+      <div class="row-between">
+        <h2>Varer</h2>
+        <div class="toolbar" data-sheet-search>
+          <label class="sr-only" for="q">Find vare</label>
+          <input id="q" type="search" placeholder="Find vare eller varenummer" autocomplete="off">
+        </div>
+      </div>
+      ${e.lines ? alert('warn', e.lines) : ''}
+      ${args.products.length
+        ? html`<div class="card stack-sm">
+            <label class="check"><input type="checkbox" name="confirm" value="1"${v.confirm ? ' checked' : ''}> <span>Bekræft ordren med det samme<span class="hint" style="display:block">Varerne trækkes fra lageret nu. Ellers lander ordren som ny og reserverer varerne, til den bekræftes.</span></span></label>
+            <label class="check"><input type="checkbox" name="send_receipt" value="1"${v.send_receipt ? ' checked' : ''}> <span>Send ordrebekræftelse til kunden<span class="hint" style="display:block">Kun hvis der er udfyldt en e-mail.</span></span></label>
+          </div>
+          ${orderSheet({ settings: args.settings, products: args.products, quantities: args.quantities, submitLabel: 'Opret ordre', staff: true })}`
+        : alert('info', html`Der er ingen aktive varer endnu. <a href="/admin/import">Importér en vareliste</a> først.`)}
+    </section>
+  </form>`;
 }
 
 const ACTION_LABEL: Record<OrderStatus, string> = {
@@ -220,7 +408,7 @@ export function orderDetailPage(args: {
     <div class="stack-sm">
       <a class="small" href="/admin/ordrer">← Ordrer</a>
       <div class="row-between"><h1>Ordre #${o.number}</h1>${statusTag(o.status)}</div>
-      <p class="muted small">Bestilt ${formatDateTime(o.created_at)} · ${o.stock_deducted ? 'Lager er trukket' : 'Lager er ikke trukket endnu'}</p>
+      <p class="muted small">${o.source === 'hjemmeside' ? 'Bestilt på hjemmesiden' : `Oprettet fra ${SOURCE_LABEL[o.source].toLowerCase()}`} ${formatDateTime(o.created_at)} · ${o.stock_deducted ? 'Lager er trukket' : 'Lager er ikke trukket endnu'}</p>
     </div>
     ${args.flash ?? ''}
     ${args.error ?? ''}
@@ -255,8 +443,9 @@ export function orderDetailPage(args: {
           <dl class="kv">
             <dt>Navn</dt><dd>${o.customer_name}</dd>
             ${o.company ? html`<dt>Firma</dt><dd>${o.company}</dd>` : ''}
-            <dt>E-mail</dt><dd><a href="mailto:${o.customer_email}">${o.customer_email}</a></dd>
-            <dt>Telefon</dt><dd><a href="tel:${o.customer_phone.replace(/[^\d+]/g, '')}">${o.customer_phone}</a></dd>
+            ${o.customer_email ? html`<dt>E-mail</dt><dd><a href="mailto:${o.customer_email}">${o.customer_email}</a></dd>` : ''}
+            ${o.customer_phone ? html`<dt>Telefon</dt><dd><a href="tel:${o.customer_phone.replace(/[^\d+]/g, '')}">${o.customer_phone}</a></dd>` : ''}
+            <dt>Kilde</dt><dd>${SOURCE_LABEL[o.source]}</dd>
             <dt>${o.delivery === 'levering' ? 'Levering' : 'Afhentning'}</dt>
             <dd>${o.delivery === 'levering' ? html`${o.address}<br>${o.postcode} ${o.city}` : 'Kunden henter selv'}</dd>
             ${o.note ? html`<dt>Besked</dt><dd style="white-space:pre-wrap">${o.note}</dd>` : ''}

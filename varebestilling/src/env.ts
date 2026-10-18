@@ -44,6 +44,7 @@ export interface ProductRow {
 
 export type OrderStatus = 'ny' | 'bekraeftet' | 'klar' | 'afsluttet' | 'annulleret';
 export type Delivery = 'afhentning' | 'levering';
+export type OrderSource = 'hjemmeside' | 'telefon' | 'email' | 'direkte';
 
 export interface OrderRow {
   id: number;
@@ -56,6 +57,7 @@ export interface OrderRow {
   customer_phone: string;
   company: string;
   delivery: Delivery;
+  source: OrderSource;
   address: string;
   postcode: string;
   city: string;

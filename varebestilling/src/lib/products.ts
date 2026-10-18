@@ -200,6 +200,34 @@ export async function listMovements(
   return results;
 }
 
+/**
+ * Varer med lagerstyring, dem med mindst luft over minimum først (til oversigtens lagerstatus).
+ * Disponibel = lager minus reserveret i nye ordrer.
+ */
+export async function stockOverview(db: D1Database, s: Settings, limit = 50): Promise<ProductWithReserved[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT * FROM (SELECT p.*, ${RESERVED_SQL} AS reserved FROM products p WHERE p.track_stock = 1 AND p.active = 1)
+       ORDER BY (stock - reserved) - COALESCE(low_stock_threshold, ?1), name LIMIT ?2`,
+    )
+    .bind(s.low_stock_default, limit)
+    .all<ProductWithReserved>();
+  return results;
+}
+
+/** Manuelle lagerændringer (ikke fra ordrer), nyeste først. */
+export async function recentManualMovements(db: D1Database, limit: number): Promise<MovementWithProduct[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT m.*, p.sku, p.name, NULL AS order_number FROM stock_movements m
+       JOIN products p ON p.id = m.product_id
+       WHERE m.order_id IS NULL ORDER BY m.created_at DESC, m.id DESC LIMIT ?`,
+    )
+    .bind(limit)
+    .all<MovementWithProduct>();
+  return results;
+}
+
 /** Varer opslået på varenummer (små bogstaver), til import. */
 export async function productsBySku(db: D1Database): Promise<Map<string, ProductRow>> {
   const { results } = await db.prepare('SELECT * FROM products').all<ProductRow>();

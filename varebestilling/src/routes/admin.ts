@@ -2,18 +2,21 @@ import { Hono, type Context } from 'hono';
 import type { AppEnv } from '../env';
 import { sha256Hex } from '../lib/crypto';
 import { MAX_IMPORT_BYTES, exportCsv, parseImport, planImport, TEMPLATE_CSV } from '../lib/csv';
-import { loginEmail, sendEmail, sendLater, statusEmail } from '../lib/email';
+import { loginEmail, orderReceivedEmail, sendEmail, sendLater, statusEmail } from '../lib/email';
 import { normalizeEmail, parseIntStrict, parseKr, str } from '../lib/format';
 import { notifyLowStock } from '../lib/notify';
 import {
   STATUS_LABEL,
   addOrderNote,
   countByStatus,
+  createOrder,
+  type CheckoutInput,
   getOrder,
   getOrderEvents,
   getOrderLines,
   isStatus,
   listOrders,
+  recentStatusEvents,
   revenueSince,
   setOrderStatus,
 } from '../lib/orders';
@@ -29,7 +32,9 @@ import {
   listMovements,
   listProducts,
   productsBySku,
+  recentManualMovements,
   skuValid,
+  stockOverview,
   updateProduct,
   type ProductInput,
 } from '../lib/products';
@@ -55,6 +60,7 @@ import {
   linkInvalidPage,
   loginPage,
   loginSentPage,
+  newOrderPage,
   orderDetailPage,
   ordersPage,
   productEditPage,
@@ -64,6 +70,7 @@ import {
   settingsPage,
   verifyPage,
   type ProductFormValues,
+  type StaffOrderValues,
 } from '../views/admin';
 import { alert } from '../views/layout';
 import { html } from 'hono/html';
@@ -150,15 +157,22 @@ admin.get('/', async (c) => {
   const now = Math.floor(Date.now() / 1000);
   const midnight = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Copenhagen' }));
   const sinceMidnight = midnight.getHours() * 3600 + midnight.getMinutes() * 60 + midnight.getSeconds();
-  const [counts, latest, low, today, month, countRow] = await Promise.all([
+  const [counts, latest, stock, events, manual, today, month, countRow] = await Promise.all([
     countByStatus(c.env.DB),
-    listOrders(c.env.DB, { limit: 8, offset: 0 }),
-    listProducts(c.env.DB, { lowStock: s, limit: 8 }),
+    listOrders(c.env.DB, { limit: 6, offset: 0 }),
+    stockOverview(c.env.DB, s, 50),
+    recentStatusEvents(c.env.DB, 6),
+    recentManualMovements(c.env.DB, 6),
     revenueSince(c.env.DB, now - sinceMidnight),
     revenueSince(c.env.DB, now - 30 * 86400),
     c.env.DB.prepare('SELECT COUNT(*) AS n FROM products').first<{ n: number }>(),
   ]);
-  return renderAdmin(c, 'Oversigt', dashboardPage({ settings: s, counts, latest, low, today, month, productCount: countRow?.n ?? 0 }), { nav: 'oversigt' });
+  return renderAdmin(
+    c,
+    'Oversigt',
+    dashboardPage({ settings: s, counts, latest, stock, events, manual, today, month, productCount: countRow?.n ?? 0 }),
+    { nav: 'oversigt' },
+  );
 });
 
 // ---------------- Ordrer ----------------
@@ -191,6 +205,114 @@ async function orderView(c: Context<AppEnv>, id: number, extra: { error?: Return
     { nav: 'ordrer', status: extra.status },
   );
 }
+
+const emptyStaffOrder = (): StaffOrderValues => ({
+  source: 'telefon',
+  customer_name: '',
+  company: '',
+  customer_phone: '',
+  customer_email: '',
+  delivery: 'afhentning',
+  address: '',
+  postcode: '',
+  city: '',
+  note: '',
+  confirm: true,
+  send_receipt: true,
+});
+
+async function newOrderView(
+  c: Context<AppEnv>,
+  values: StaffOrderValues,
+  quantities: Map<number, number>,
+  extra: { errors?: Parameters<typeof newOrderPage>[0]['errors']; short?: ReturnType<typeof alert> | null; status?: 400 | 409 } = {},
+) {
+  const products = await listProducts(c.env.DB, { activeOnly: true });
+  return renderAdmin(
+    c,
+    'Ny ordre',
+    newOrderPage({ csrf: c.get('csrf'), settings: c.get('settings'), products, quantities, values, errors: extra.errors, short: extra.short }),
+    { nav: 'ordrer', status: extra.status },
+  );
+}
+
+admin.get('/ordrer/ny', (c) => newOrderView(c, emptyStaffOrder(), new Map()));
+
+admin.post('/ordrer/ny', async (c) => {
+  const s = c.get('settings');
+  const body = await c.req.parseBody();
+  const src = body['source'];
+  const v: StaffOrderValues = {
+    source: src === 'email' || src === 'direkte' ? src : 'telefon',
+    customer_name: str(body['customer_name'], 100),
+    company: str(body['company'], 100),
+    customer_phone: str(body['customer_phone'], 30),
+    customer_email: str(body['customer_email'], 254),
+    delivery: body['delivery'] === 'levering' ? 'levering' : 'afhentning',
+    address: str(body['address'], 150),
+    postcode: str(body['postcode'], 10),
+    city: str(body['city'], 80),
+    note: str(body['note'], 1000, { multiline: true }),
+    confirm: body['confirm'] === '1',
+    send_receipt: body['send_receipt'] === '1',
+  };
+  const quantities = new Map<number, number>();
+  for (const [key, raw] of Object.entries(body)) {
+    const m = /^q_(\d{1,9})$/.exec(key);
+    if (!m || typeof raw !== 'string' || raw.trim() === '') continue;
+    const q = parseIntStrict(raw, { max: 9999 });
+    if (q !== null && q > 0) quantities.set(Number(m[1]), q);
+  }
+
+  const errors: NonNullable<Parameters<typeof newOrderPage>[0]['errors']> = {};
+  const email = v.customer_email ? normalizeEmail(v.customer_email) : '';
+  if (!v.customer_name) errors.customer_name = 'Skriv kundens navn.';
+  if (email === null) errors.customer_email = 'Indtast en gyldig e-mailadresse, eller lad feltet stå tomt.';
+  if (v.customer_phone && !/^[+\d][\d\s\-()]{5,}$/.test(v.customer_phone)) errors.customer_phone = 'Indtast et gyldigt telefonnummer.';
+  if (v.delivery === 'levering') {
+    if (!v.address) errors.address = 'Skriv leveringsadressen.';
+    if (!/^\d{3,5}$/.test(v.postcode.replace(/\s/g, ''))) errors.postcode = 'Indtast et gyldigt postnummer.';
+    if (!v.city) errors.city = 'Skriv byen.';
+  }
+  if (!quantities.size) errors.lines = 'Skriv et antal ud for mindst én vare.';
+  if (Object.keys(errors).length) {
+    errors.form = 'Ret de markerede felter.';
+    return newOrderView(c, v, quantities, { errors, status: 400 });
+  }
+
+  const input: CheckoutInput = {
+    customer_name: v.customer_name,
+    customer_email: email ?? '',
+    customer_phone: v.customer_phone,
+    company: v.company,
+    delivery: v.delivery,
+    address: v.address,
+    postcode: v.postcode.replace(/\s/g, ''),
+    city: v.city,
+    note: v.note,
+  };
+  const cart = [...quantities].map(([productId, quantity]) => ({ productId, quantity }));
+  const result = await createOrder(c.env.DB, s, input, cart, { source: v.source, actor: actor(c), confirm: v.confirm });
+  if (!result.ok) {
+    if (result.reason === 'stock') {
+      const short = alert(
+        'err',
+        html`Der er ikke nok på lager af:
+          <ul>${(result.short ?? []).map((l) => html`<li>${l.name} (${l.sku}): ${l.quantity} bestilt, ${l.available ?? 0} disponible</li>`)}</ul>
+          Ret antallet, eller regulér lageret først.`,
+      );
+      return newOrderView(c, v, quantities, { short, status: 409 });
+    }
+    return newOrderView(c, v, quantities, { errors: { lines: 'Vælg mindst én aktiv vare.' }, status: 400 });
+  }
+  const order = result.order;
+  if (v.send_receipt && order.customer_email) {
+    const lines = await getOrderLines(c.env.DB, order.id);
+    sendLater(c.env, c.executionCtx, orderReceivedEmail(order, lines, s, `${appUrl(c.env)}/ordre/${order.token}`), s);
+  }
+  if (order.stock_deducted) await notifyLowStock(c, order.id);
+  return c.redirect(`/admin/ordrer/${order.id}?besked=ordre_oprettet`, 303);
+});
 
 admin.get('/ordrer/:id{[0-9]+}', (c) => orderView(c, Number(c.req.param('id'))));
 

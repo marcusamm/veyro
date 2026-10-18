@@ -6,6 +6,7 @@ import { renderShop } from './render';
 import admin from './routes/admin';
 import shop from './routes/shop';
 import { CSS, JS } from './views/assets';
+import { INTER_TIGHT } from './views/font';
 import { favicon } from './views/layout';
 import { messagePage } from './views/shop';
 
@@ -44,6 +45,9 @@ app.use('*', async (c, next) => {
 const STATIC_CACHE = 'public, max-age=3600';
 app.get('/static/app.css', (c) => c.body(CSS, 200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
 app.get('/static/app.js', (c) => c.body(JS, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
+app.get('/static/inter-tight.woff2', (c) =>
+  c.body(INTER_TIGHT, 200, { 'Content-Type': 'font/woff2', 'Cache-Control': 'public, max-age=31536000, immutable' }),
+);
 app.get('/healthz', (c) => c.text('ok'));
 app.get('/robots.txt', (c) => c.text('User-agent: *\nDisallow: /admin\nDisallow: /kurv\nDisallow: /kassen\nDisallow: /ordre/\n', 200, { 'Cache-Control': STATIC_CACHE }));
 

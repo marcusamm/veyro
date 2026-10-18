@@ -28,6 +28,9 @@ export interface Settings {
   notify_email: string;
 }
 
+/** Standardfarve (signalorange). Butikken kan vælge sin egen under Indstillinger. */
+export const DEFAULT_ACCENT = '#FF5A1F';
+
 export const DEFAULT_SETTINGS: Settings = {
   shop_name: 'Min butik',
   tagline: 'Bestil online',
@@ -35,7 +38,7 @@ export const DEFAULT_SETTINGS: Settings = {
   contact_phone: '',
   address: '',
   website_url: '',
-  accent_color: '#1F5EFF',
+  accent_color: DEFAULT_ACCENT,
   intro: '',
   pickup_enabled: true,
   pickup_info: 'Du får besked, når din bestilling er klar til afhentning.',

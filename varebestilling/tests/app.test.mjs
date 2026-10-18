@@ -81,7 +81,8 @@ describe('Adgang til admin', () => {
   it('logget ind kan se oversigt, varer og indstillinger', async () => {
     const dash = await admin.get('/admin');
     expect(dash.status).toBe(200);
-    expect(dash.html).toContain('Lavt lager');
+    expect(dash.html).toContain('Lagerstatus');
+    expect(dash.html).toContain('Advarsler');
     expect(dash.html).toContain('Espresso 500 g'); // 2 på lager <= standard 5
     const varer = await admin.get('/admin/varer?lav=1');
     expect(varer.html).toContain('Espresso 500 g');
@@ -327,5 +328,50 @@ describe('Import opdaterer eksisterende varer', () => {
     const dup = await admin.submit('/admin/varer/ny', '/admin/varer', { sku: 'man-1', name: 'Dublet', price: '1', stock: '0', sort_order: '0' });
     expect(dup.status).toBe(409);
     expect(dup.html).toContain('Varenummeret findes allerede');
+  });
+});
+
+describe('Ordrer oprettet af medarbejdere', () => {
+  it('opretter en telefonordre uden e-mail, bekræfter den og trækker lageret', async () => {
+    const page = await admin.get('/admin/ordrer/ny');
+    expect(page.status).toBe(200);
+    expect(page.html).toContain('Hvor kom ordren fra?');
+    expect(page.html).toContain(`name="q_${ids['KAF-1']}"`);
+
+    const before = product('KAF-2').stock;
+    const mails = stack.mail.emails.length;
+    const res = await admin.post('/admin/ordrer/ny', {
+      _csrf: csrfFrom(page.html), source: 'telefon', customer_name: 'Byggefirmaet ApS', customer_phone: '12 34 56 78',
+      delivery: 'afhentning', confirm: '1', send_receipt: '1', [`q_${ids['KAF-2']}`]: '2', [`q_${ids['KAF-1']}`]: '',
+    });
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toMatch(/^\/admin\/ordrer\/\d+\?besked=ordre_oprettet$/);
+    const id = Number(res.headers.get('location').match(/ordrer\/(\d+)/)[1]);
+    const order = stack.sql(`SELECT * FROM orders WHERE id = ${id}`)[0];
+    expect(order).toMatchObject({ source: 'telefon', status: 'bekraeftet', stock_deducted: 1, customer_email: '' });
+    expect(product('KAF-2').stock).toBe(before - 2);
+    const detail = await admin.get(`/admin/ordrer/${id}`);
+    expect(detail.html).toContain('Oprettet fra telefon');
+    expect(stack.mail.emails.length).toBe(mails); // ingen e-mail at sende til
+
+    const dash = await admin.get('/admin');
+    expect(dash.html).toContain('Ordreoversigt');
+    expect(dash.html).toMatch(new RegExp(`#${order.number}[\\s\\S]*?Telefon`));
+    expect(dash.html).toContain(`Ordre #${order.number}</a> bekræftet`);
+  });
+
+  it('kan ikke oprette en ordre på mere end der er på lager, og kræver navn og varer', async () => {
+    const page = await admin.get('/admin/ordrer/ny');
+    const short = await admin.post('/admin/ordrer/ny', {
+      _csrf: csrfFrom(page.html), source: 'direkte', customer_name: 'Kunde', delivery: 'afhentning', confirm: '1', [`q_${ids['KAF-1']}`]: '9999',
+    });
+    expect(short.status).toBe(409);
+    expect(short.html).toContain('ikke nok på lager');
+    expect(short.html).toContain('value="9999"'); // antallet bevares
+
+    const empty = await admin.post('/admin/ordrer/ny', { _csrf: csrfFrom(page.html), source: 'email', customer_name: '', delivery: 'afhentning' });
+    expect(empty.status).toBe(400);
+    expect(empty.html).toContain('Skriv kundens navn.');
+    expect(empty.html).toContain('Skriv et antal ud for mindst én vare.');
   });
 });

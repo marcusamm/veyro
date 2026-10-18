@@ -16,21 +16,22 @@ function stockTag(p: ProductWithReserved, s: Settings): H {
 }
 
 /** Én række i bestillingsarket: varen og et felt til antal. */
-function sheetRow(p: ProductWithReserved, s: Settings, inCart: number): H {
+function sheetRow(p: ProductWithReserved, s: Settings, qtyIn: number, staff: boolean): H {
   const a = available(p);
   const out = a === 0;
-  const qty = out ? 0 : Math.min(inCart, a ?? inCart);
+  const qty = out ? 0 : staff ? qtyIn : Math.min(qtyIn, a ?? qtyIn);
   const search = `${p.sku} ${p.name} ${p.category ?? ''}`.toLowerCase();
+  const tag = staff ? staffStock(p, s) : stockTag(p, s);
   return html`<tr class="sheet-row${qty ? ' has-qty' : ''}${out ? ' is-out' : ''}" data-price="${p.price}" data-search="${search}">
     <td class="c-sku num">${p.sku}</td>
     <td class="c-name">
       <label for="q-${p.id}">${p.name}</label>
-      ${p.description ? html`<span class="sheet-desc">${p.description}</span>` : ''}
-      <span class="sheet-sub">${p.sku} · ${formatKr(p.price)} / ${p.unit} ${stockTag(p, s)}</span>
+      ${p.description && !staff ? html`<span class="sheet-desc">${p.description}</span>` : ''}
+      <span class="sheet-sub">${p.sku} · ${formatKr(p.price)} / ${p.unit} ${tag}</span>
     </td>
     <td class="c-unit">${p.unit}</td>
     <td class="c-price right num">${formatKr(p.price)}</td>
-    <td class="c-stock">${stockTag(p, s)}</td>
+    <td class="c-stock">${tag}</td>
     <td class="c-qty">${out
       ? html`<input class="sheet-qty" id="q-${p.id}" type="number" value="" placeholder="–" disabled aria-label="${p.name} er udsolgt">`
       : html`<input class="sheet-qty" id="q-${p.id}" type="number" name="q_${p.id}" value="${qty || ''}" placeholder="0" min="0" max="${a ?? 9999}" inputmode="numeric" autocomplete="off">`}</td>
@@ -38,16 +39,28 @@ function sheetRow(p: ProductWithReserved, s: Settings, inCart: number): H {
   </tr>`;
 }
 
-export function catalogPage(args: {
+/** Lagerstatus til medarbejdere: altid det præcise antal, der kan sælges. */
+function staffStock(p: ProductWithReserved, s: Settings): H {
+  const a = available(p);
+  if (a === null) return html`<span class="tag tag-off">Ubegrænset</span>`;
+  const cls = a <= 0 ? 'tag-out' : a <= (p.low_stock_threshold ?? s.low_stock_default) ? 'tag-low' : 'tag-ok';
+  return html`<span class="tag ${cls}">${a} disponible</span>`;
+}
+
+/**
+ * Bestillingsarket: alle varer i en tabel med et antalsfelt pr. række, beløb og en bundlinje med
+ * i alt og knap. Bruges både af kunderne i webshoppen og af medarbejdere, der opretter ordrer.
+ * Skal ligge inde i en <form class="sheet-form">.
+ */
+export function orderSheet(args: {
   settings: Settings;
   products: ProductWithReserved[];
-  categories: string[];
-  q: string;
-  csrf: string;
-  cart: Map<number, number>;
-  error: string | null;
+  quantities: Map<number, number>;
+  submitLabel: string;
+  staff?: boolean;
 }): H {
   const s = args.settings;
+  const staff = !!args.staff;
   const groups = new Map<string, ProductWithReserved[]>();
   for (const p of args.products) {
     const k = p.category || 'Øvrige';
@@ -60,13 +73,62 @@ export function catalogPage(args: {
   let total = 0;
   for (const p of args.products) {
     const a = available(p);
-    const q = Math.min(args.cart.get(p.id) ?? 0, a ?? Infinity);
-    if (q > 0) {
+    const q = staff ? (args.quantities.get(p.id) ?? 0) : Math.min(args.quantities.get(p.id) ?? 0, a ?? Infinity);
+    if (q > 0 && a !== 0) {
       count++;
       total += q * p.price;
     }
   }
+  return html`${showGroups
+      ? html`<nav class="cat-nav" aria-label="Kategorier">
+          ${[...groups.keys()].map((c) => html`<a href="#${slug(c)}">${c}</a>`)}
+        </nav>`
+      : ''}
+    <div class="card card-flush sheet-wrap">
+      <table class="sheet">
+        <thead>
+          <tr>
+            <th class="c-sku" scope="col">Varenr.</th>
+            <th class="c-name" scope="col">Vare</th>
+            <th class="c-unit" scope="col">Enhed</th>
+            <th class="c-price right" scope="col">Pris</th>
+            <th class="c-stock" scope="col">Lager</th>
+            <th class="c-qty" scope="col">Antal</th>
+            <th class="c-sum right" scope="col">Beløb</th>
+          </tr>
+        </thead>
+        ${[...groups].map(
+          ([name, items]) => html`<tbody>
+            ${showGroups ? html`<tr class="sheet-group" id="${slug(name)}"><th colspan="7" scope="colgroup">${name}</th></tr>` : ''}
+            ${items.map((p) => sheetRow(p, s, args.quantities.get(p.id) ?? 0, staff))}
+          </tbody>`,
+        )}
+        <tbody class="sheet-none hidden"><tr><td colspan="7" class="muted">Ingen varer matcher din søgning.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="sheet-bar">
+      <div class="sheet-bar-inner">
+        <div class="sheet-total" aria-live="polite">
+          <span class="muted small"><span data-count>${count}</span> ${count === 1 ? 'vare' : 'varer'} valgt</span>
+          <strong data-total>${formatKr(total)}</strong>
+        </div>
+        <button class="btn btn-primary" type="submit">${args.submitLabel}</button>
+      </div>
+    </div>`;
+}
+
+export function catalogPage(args: {
+  settings: Settings;
+  products: ProductWithReserved[];
+  categories: string[];
+  q: string;
+  csrf: string;
+  cart: Map<number, number>;
+  error: string | null;
+}): H {
+  const s = args.settings;
   return html`<div class="hero">
+      <p class="eyebrow">Bestilling</p>
       <h1>${s.tagline || s.shop_name}</h1>
       ${s.intro ? html`<p class="lead">${s.intro}</p>` : ''}
     </div>
@@ -75,11 +137,6 @@ export function catalogPage(args: {
       <input id="q" type="search" name="q" value="${args.q}" placeholder="Søg efter vare eller varenummer" autocomplete="off">
       <button class="btn btn-secondary" type="submit">Søg</button>
     </form>
-    ${showGroups
-      ? html`<nav class="cat-nav" aria-label="Kategorier">
-          ${[...groups.keys()].map((c) => html`<a href="#${slug(c)}">${c}</a>`)}
-        </nav>`
-      : ''}
     ${args.q ? html`<p class="muted" style="margin-bottom:16px">${args.products.length} resultater for "${args.q}". <a href="/">Vis alle</a></p>` : ''}
     ${args.error ? html`<div style="margin-bottom:16px">${alert('warn', args.error)}</div>` : ''}
     ${!args.products.length
@@ -88,37 +145,7 @@ export function catalogPage(args: {
           ${csrfField(args.csrf)}
           <input type="hidden" name="back" value="${args.q ? `/?q=${encodeURIComponent(args.q)}` : '/'}">
           <p class="small muted sheet-help">Skriv antal ud for de varer, du vil bestille, og tryk på <strong>Gå til bestilling</strong>.</p>
-          <div class="card card-flush sheet-wrap">
-            <table class="sheet">
-              <thead>
-                <tr>
-                  <th class="c-sku" scope="col">Varenr.</th>
-                  <th class="c-name" scope="col">Vare</th>
-                  <th class="c-unit" scope="col">Enhed</th>
-                  <th class="c-price right" scope="col">Pris</th>
-                  <th class="c-stock" scope="col">Lager</th>
-                  <th class="c-qty" scope="col">Antal</th>
-                  <th class="c-sum right" scope="col">Beløb</th>
-                </tr>
-              </thead>
-              ${[...groups].map(
-                ([name, items]) => html`<tbody>
-                  ${showGroups ? html`<tr class="sheet-group" id="${slug(name)}"><th colspan="7" scope="colgroup">${name}</th></tr>` : ''}
-                  ${items.map((p) => sheetRow(p, s, args.cart.get(p.id) ?? 0))}
-                </tbody>`,
-              )}
-              <tbody class="sheet-none hidden"><tr><td colspan="7" class="muted">Ingen varer matcher din søgning.</td></tr></tbody>
-            </table>
-          </div>
-          <div class="sheet-bar">
-            <div class="sheet-bar-inner">
-              <div class="sheet-total" aria-live="polite">
-                <span class="muted small"><span data-count>${count}</span> ${count === 1 ? 'vare' : 'varer'} valgt</span>
-                <strong data-total>${formatKr(total)}</strong>
-              </div>
-              <button class="btn btn-primary" type="submit">Gå til bestilling</button>
-            </div>
-          </div>
+          ${orderSheet({ settings: s, products: args.products, quantities: args.cart, submitLabel: 'Gå til bestilling' })}
         </form>`}`;
 }
 
