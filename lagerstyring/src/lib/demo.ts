@@ -20,6 +20,7 @@ import {
   setPlanned,
   useFromSite,
 } from './materials';
+import { seedDemoCatalog } from './katalogdemo';
 import { importCatalog, refreshList, retailers, type RetailerRow } from './estimates';
 import { buildCredit, buildDraft, getInvoice, issueInvoice } from './invoicing';
 import { jobItems, lookupItems, manualPriceStmt, preferredRetailerId } from './jobitems';
@@ -94,6 +95,14 @@ export async function resetDemo(env: Env): Promise<void> {
       'DELETE FROM retailer_products',
       "DELETE FROM retailers WHERE access = 'demo'",
       'DELETE FROM products',
+      'DELETE FROM catalog_prices',
+      'DELETE FROM catalog_import_words',
+      'DELETE FROM catalog_import_rows',
+      'UPDATE catalog_sources SET last_import_id = NULL',
+      'DELETE FROM catalog_products',
+      'DELETE FROM catalog_imports',
+      'DELETE FROM catalog_sources',
+      'DELETE FROM catalog_words',
       'DELETE FROM suppliers',
       'DELETE FROM ops',
       "DELETE FROM settings WHERE key = 'last_digest_at'",
@@ -406,6 +415,8 @@ async function seed(env: Env): Promise<void> {
 
   await seedPrices(env, list15!.id, P, now);
   await seedJobEconomy(env, { j11, j14, j15 }, now);
+  // Produktkatalog med fiktive demovarer (importeret gennem den rigtige import; ændrer intet lager)
+  await seedDemoCatalog(db, OWNER.email, now - 2 * DAY);
 }
 
 // --- Job: materialer med priser, timer, prisoverslag og fakturaer ---------------------------------

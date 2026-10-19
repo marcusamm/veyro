@@ -96,6 +96,18 @@ Beløb til slutkunden er ekskl. moms, med moms og total inkl. moms ved siden af.
 
 Fakturagrundlag fra før denne version kan stadig ses og eksporteres under Lager → `/lager/faktura`; nye fakturaer laves under Job → Faktura.
 
+## Produktkatalog
+
+Et fælles katalog for begge portaler (Lager → Produktkatalog og Job → Produktkatalog). Kataloget er produktdata, ikke lager: en import opretter aldrig lagerbeholdning, ændrer ikke mængder, registrerer ikke indkøb eller modtagelser og gør ikke en leverandørs lager til virksomhedens eget.
+
+**Import.** Ejer og indkøber vælger en datakilde (producent, forhandler eller demo), uploader en CSV- eller Excel-fil (.xlsx), vælger faneblad og overskriftsrække og kobler kolonner til felterne. Filen læses i browseren og sendes i bidder; serveren viser en forhåndsvisning med nye, opdaterede, uændrede og fejlrækker samt varer, der mangler i filen. Intet ændres før godkendelse, og en import kan kun godkendes én gang. Kolonneopsætningen gemmes pr. kilde. Varer genkendes på producent + producentnummer og på EAN; samme varenummer med en anden EAN, pakning eller variant sammenlægges ikke. Varer, der mangler i en senere fil, markeres til gennemgang og slettes aldrig. EAN gemmes som tekst (indledende nul bevares), tomme felter vises som "Ukendt", og en manglende pris bliver aldrig 0 kr.
+
+**Felter.** Producent og kilde, producentens varenummer (adskilt fra forhandlerens varenummer og Veyros ID `VK-000123`), EAN/GTIN, navn, beskrivelse, kategori, variant, mål, materiale, enhed og pakning, link, pris med valuta, momsgrundlag og pristype, filens dato og tidspunktet for seneste import. Priser ligger i en separat tabel pr. kilde, forhandler og pristype, så en vare kan få priser fra flere forhandlere. En producents listepris kaldes aldrig en forhandlers pris eller virksomhedens indkøbspris.
+
+**Materialer på et job.** "Tilføj materiale" er en søgning ("Søg efter varenavn, varenummer eller EAN") med forslag, mens der skrives, filter på producent og kategori og sideinddeling på serveren. Præcist EAN og varenummer kommer først; flere ord og mindre stavefejl virker. Ved valg udfyldes varens data; brugeren angiver antal, kontrollerer enheden og vælger reservation, forbrug nu eller kun forventet (det manglende kommer på indkøbslisten). Findes varen ikke i varekartoteket, oprettes en reference med beholdning 0. Katalogets pris kan sættes som manuel pris på linjen, men kun når ejer eller indkøber vælger det; ellers bruges det eksisterende prisopslag. En senere katalogopdatering ændrer ikke linjer, overslag eller fakturaer. Manuel oprettelse af varer uden for kataloget findes stadig.
+
+**Demo.** Demoen har et katalog med 25 fiktive varer ("Nordlys Demo" og "Demo VVS", varenumre `DEMO-…`, EAN med præfiks 20) og version 2 af filen som CSV og Excel til at prøve genimport. Kilden KEMPER er oprettet uden varer; der er ikke hentet eller opfundet KEMPER-data. Demovarer kan kun importeres i en demokilde. En belastningstest lægger 10.000 syntetiske varer (`DEMO-LT-00001` …) i en separat kilde og kan fjernes igen. Tilladelse til at bruge en producents data i produktion afklares før officiel lancering.
+
 ## Roller
 
 | Rolle | Kan |

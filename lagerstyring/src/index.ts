@@ -11,6 +11,8 @@ import auth from './routes/auth';
 import job from './routes/job';
 import okonomi from './routes/jobokonomi';
 import lager from './routes/lager';
+import { jobKatalog, katalog } from './routes/produktkatalog';
+import { KATALOG_JS } from './views/katalog-js';
 import { CSS, JS } from './views/assets';
 import { pageHead } from './views/common';
 import { INTER_TIGHT } from './views/font';
@@ -53,6 +55,7 @@ app.use('*', async (c, next) => {
 const STATIC_CACHE = 'public, max-age=3600';
 app.get('/static/app.css', (c) => c.body(CSS, 200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
 app.get('/static/app.js', (c) => c.body(JS, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
+app.get('/static/katalog.js', (c) => c.body(KATALOG_JS, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
 app.get('/static/inter-tight.woff2', (c) =>
   c.body(INTER_TIGHT, 200, { 'Content-Type': 'font/woff2', 'Cache-Control': 'public, max-age=31536000, immutable' }),
 );
@@ -100,6 +103,8 @@ app.get('/offline', (c) =>
 app.route('/', auth);
 app.use('/lager/*', requireUser);
 app.route('/lager', lager);
+app.route('/katalog', katalog);
+app.route('/job', jobKatalog);
 app.route('/job', job);
 app.route('/job', okonomi);
 

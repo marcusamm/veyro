@@ -8,6 +8,7 @@ import { lineStatus, outstanding, type LineView } from '../lib/purchasing';
 import { LEVEL, safetyText, STATUS_LABEL, type StockStatus } from '../lib/stock';
 import { errors, flash, lineTag, meter, pageHead, qtyOrMissing, rowClass, stockTag } from './common';
 import { alert, csrfField, opField, type H } from './layout';
+import { veyroId } from '../lib/produktkatalog';
 
 export type MovementView = MovementRow & { product_name: string | null; product_unit: string | null; sku: string | null; job_number: string | null; job_name: string | null };
 
@@ -302,9 +303,10 @@ function productForm(v: ProductFormValues, d: { csrf: string; suppliers: Supplie
 </form>`;
 }
 
-export function newProductPage(v: ProductFormValues, d: { csrf: string; suppliers: SupplierRow[]; errs: string[] }): H {
+export function newProductPage(v: ProductFormValues, d: { csrf: string; suppliers: SupplierRow[]; errs: string[]; catalog?: H }): H {
   return html`<div class="stack-lg" style="max-width:860px">
   ${pageHead('Varer og lager', 'Ny vare')}
+  ${d.catalog ? html`<section class="card stack"><h2>Find varen i produktkataloget</h2><p class="hint" style="margin:0">Vælg varen i kataloget, så navn, numre og enhed udfyldes. Varen oprettes uden lagerbeholdning.</p>${d.catalog}</section><script src="/static/katalog.js" defer></script><h2>Eller opret varen manuelt</h2>` : ''}
   ${productForm(v, { ...d, isNew: true, action: '/lager/varer/ny' })}
 </div>`;
 }
@@ -335,6 +337,7 @@ export function productPage(d: {
   return html`<div class="stack-lg">
   ${pageHead('Varer og lager', html`${p.name} <span class="sku" style="font-size:16px">${p.sku}</span>`, html`<a class="btn btn-ghost" href="/lager/varer">← Alle varer</a>`)}
   ${flash(d.flashCode)}
+  ${p.catalog_product_id ? html`<p class="hint" style="margin:0">Knyttet til produktkataloget: <a href="/katalog/${p.catalog_product_id}">${veyroId(p.catalog_product_id)}</a>. Kataloget ændrer aldrig beholdningen.</p>` : ''}
   <div class="layout-side">
     <div class="stack-lg">
       <div class="card stack">
