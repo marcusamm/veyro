@@ -5,8 +5,8 @@ import { DEFAULT_ACCENT, isHexColor, type Settings } from '../lib/settings';
 
 export type H = ReturnType<typeof html>;
 
-export type LagerNav = 'oversigt' | 'varer' | 'indkob' | 'modtagelse' | 'job' | 'faktura' | 'historik' | 'indstillinger';
-export type JobNav = 'job' | 'lager' | 'indkob' | 'faktura';
+export type LagerNav = 'oversigt' | 'varer' | 'indkob' | 'modtagelse' | 'job' | 'faktura' | 'historik' | 'katalog' | 'indstillinger';
+export type JobNav = 'job' | 'lager' | 'katalog' | 'indkob' | 'faktura';
 export type Nav = { portal: 'lager'; tab: LagerNav } | { portal: 'job'; tab: JobNav } | { portal: 'none' };
 
 /** Tekstfarve på accentfarven: den af mørk og hvid, der giver bedst kontrast (WCAG). */
@@ -110,6 +110,7 @@ ${nav.portal === 'lager'
       ${navLink('/lager/varer', 'Varer og lager', nav.tab === 'varer')}
       ${navLink('/lager/indkob', 'Indkøb', nav.tab === 'indkob')}
       ${navLink('/lager/modtagelse', 'Varemodtagelse', nav.tab === 'modtagelse')}
+      ${navLink('/lager/katalog', 'Produktkatalog', nav.tab === 'katalog')}
       ${navLink('/job', 'Job', false)}
       ${navLink('/job/faktura', 'Fakturaer', false)}
       ${navLink('/lager/historik', 'Historik', nav.tab === 'historik')}
@@ -119,6 +120,7 @@ ${nav.portal === 'lager'
     ? html`<nav class="admin-nav" aria-label="Forbrugsportal"><div class="wrap"><ul>
       ${navLink('/job', 'Job', nav.tab === 'job')}
       ${navLink('/job/lager', 'Hvad er på lager', nav.tab === 'lager')}
+      ${navLink('/job/katalog', 'Produktkatalog', nav.tab === 'katalog')}
       ${navLink('/job/indkob', 'Indkøbslister', nav.tab === 'indkob')}
       ${manager ? navLink('/job/faktura', 'Fakturaer', nav.tab === 'faktura') : ''}
     </ul></div></nav>`

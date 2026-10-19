@@ -193,6 +193,12 @@ table.list a.title:hover{text-decoration:underline}
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .toolbar input[type=search]{flex:1;min-width:200px}
 .toolbar select{width:auto}
+.suggest-wrap{position:relative}
+.suggest{position:absolute;left:0;right:0;top:100%;z-index:6;margin:4px 0 0;padding:4px;list-style:none;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-sm);box-shadow:0 8px 24px rgba(15,15,13,.12);max-height:420px;overflow:auto}
+.suggest li a{display:block;padding:8px 10px;border-radius:6px;text-decoration:none;color:var(--ink)}
+.suggest li a small{display:block;color:var(--muted);font-size:13px}
+.suggest li[aria-selected=true] a,.suggest li a:hover{background:var(--bg)}
+.suggest li.more{padding:8px 10px;color:var(--muted);font-size:13px}
 
 .empty{text-align:center;padding:48px 16px;color:var(--muted)}
 .timeline{list-style:none;margin-bottom:0;padding:0}

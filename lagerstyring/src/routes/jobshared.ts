@@ -5,7 +5,7 @@ import type { AppEnv, User } from '../env';
 import { canManage } from '../lib/session';
 import type { JobHead } from '../views/job';
 
-export const NAV = (tab: 'job' | 'lager' | 'indkob' | 'faktura') => ({ portal: 'job', tab }) as const;
+export const NAV = (tab: 'job' | 'lager' | 'katalog' | 'indkob' | 'faktura') => ({ portal: 'job', tab }) as const;
 
 export const me = (c: Context<AppEnv>): User => c.get('session')!.user;
 

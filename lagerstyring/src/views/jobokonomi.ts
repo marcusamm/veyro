@@ -15,6 +15,7 @@ import { errors, flash } from './common';
 import { jobHeader, retailerOptions, stockMaterialsSection, type JobHead } from './job';
 import { alert, csrfField, opField, type H } from './layout';
 import { movesTable, type MovementView } from './lager';
+import { addMaterialSection, type SearchPanel } from './produktkatalog';
 
 const krIn = (o: number | null | undefined) => (o === null || o === undefined ? '' : oereToInput(o));
 
@@ -108,7 +109,8 @@ export function materialsPage(d: {
   job: JobHead;
   items: { it: ItemView; c: ItemCalc }[];
   mats: MaterialView[];
-  products: { id: number; sku: string; name: string; unit: string }[];
+  panel: SearchPanel;
+  manualOpen: boolean;
   retailers: RetailerView[];
   jobRetailer: RetailerView | null;
   manager: boolean;
@@ -151,7 +153,7 @@ export function materialsPage(d: {
       ? d.items.map(({ it, c }) => {
           const used = usedQty(it);
           return html`<tr${c.saleUnit === null && d.manager ? html` class="is-low"` : ''}>
-        <td class="cell-main"><strong>${it.name}</strong>${it.sku ? html`<span class="sku">${it.sku}</span>` : html`<small>Uden varenummer</small>`}${d.manager ? html`<small>${COST_BASIS_LABEL[it.cost_basis]}${it.retailer_id ? ` · ${it.retailer_name}` : ''}</small>` : ''}${it.note ? html`<small>${it.note}</small>` : ''}</td>
+        <td class="cell-main"><strong>${it.name}</strong>${it.sku ? html`<span class="sku">${it.sku}</span>` : html`<small>Uden varenummer</small>`}${d.manager ? html`<small>${COST_BASIS_LABEL[it.cost_basis]}${it.retailer_id ? ` · ${it.retailer_name}` : ''}</small>` : ''}${it.catalog_product_id ? html`<small><a href="/katalog/${it.catalog_product_id}?job=${j.id}">Fra produktkataloget</a></small>` : ''}${it.note ? html`<small>${it.note}</small>` : ''}</td>
         <td class="num" data-label="Forventet">${qtyUnit(it.qty, it.unit)}</td>
         <td class="num" data-label="Brugt">${used ? qtyUnit(used, it.unit) : '–'}${used > it.qty ? html`<small class="miss">Mere end forventet</small>` : ''}</td>
         <td data-label="Lager og indkøb">${stockState(it)}</td>
@@ -185,26 +187,7 @@ export function materialsPage(d: {
       : ''}
   </table></div></div>
   ${d.manager ? html`<p class="hint">Forbrug, købsmængde og fakturerbar mængde holdes adskilt: købes der hele pakker, faktureres kun det forventede eller brugte, aldrig overskuddet. Priser fra byggemarkeder er offentlige forbrugerpriser, omregnet til ekskl. moms; fragt og rabatter er ikke medregnet. En linje uden pris tæller aldrig som 0 kr.</p>` : ''}
-  ${active
-    ? html`<section class="card stack">
-    <h2>Tilføj materiale</h2>
-    <div class="grid grid-2">
-      <form method="post" action="/job/${j.id}/materialer/ny" class="stack-sm">
-        ${csrfField(d.csrf)}<input type="hidden" name="kind" value="lager">
-        <div class="field"><label for="product_id">Vare fra varekataloget</label><select id="product_id" name="product_id" required><option value="">Vælg vare</option>${d.products.map((p) => html`<option value="${p.id}">${p.name} (${p.sku}, ${p.unit})</option>`)}</select></div>
-        <div class="field"><label for="qty_l">Forventet mængde</label><input id="qty_l" class="in-num" name="qty" inputmode="decimal" required></div>
-        <button class="btn btn-secondary" type="submit">Tilføj vare</button>
-      </form>
-      <form method="post" action="/job/${j.id}/materialer/ny" class="stack-sm">
-        ${csrfField(d.csrf)}<input type="hidden" name="kind" value="fri">
-        <div class="field"><label for="name_f">Vare uden varenummer (købes til jobbet)</label><input id="name_f" name="name" maxlength="200" required placeholder="Fx Terrassebræt 28x120 mm trykimprægneret"></div>
-        <div class="fields fields-2"><div class="field"><label for="qty_f">Forventet mængde</label><input id="qty_f" class="in-num" name="qty" inputmode="decimal" required></div><div class="field"><label for="unit_f">Enhed</label><input id="unit_f" name="unit" maxlength="20" value="stk."></div></div>
-        ${d.manager ? html`<div class="field"><label for="url_f">Link til varen hos byggemarkedet (valgfrit)</label><input id="url_f" name="url" type="url" maxlength="500" placeholder="https://"></div><div class="field"><label for="ean_f">EAN (valgfrit)</label><input id="ean_f" name="ean" inputmode="numeric" maxlength="14"></div>` : ''}
-        <button class="btn btn-secondary" type="submit">Tilføj vare</button>
-      </form>
-    </div>
-  </section>`
-    : ''}
+  ${active ? addMaterialSection({ jobId: j.id, panel: d.panel, manager: d.manager, csrf: d.csrf, manualOpen: d.manualOpen }) : ''}
   ${stockMaterialsSection({ job: j, mats: d.mats, csrf: d.csrf, ops: d.ops })}
 </div>`;
 }

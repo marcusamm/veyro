@@ -84,6 +84,16 @@ const FLASH: Record<string, [kind: 'ok' | 'info' | 'warn' | 'err', text: string]
   faktura_udstedt: ['ok', 'Fakturaen er udstedt og låst. Rettelser sker med en kreditnota.'],
   kreditnota_oprettet: ['ok', 'Kreditnotaen er oprettet som kladde.'],
   kreditnota_udstedt: ['ok', 'Kreditnotaen er udstedt og låst.'],
+  katalog_reserveret: ['ok', 'Varen er tilføjet jobbet og reserveret på lageret.'],
+  katalog_mangler: ['warn', 'Varen er tilføjet jobbet. Det disponible er reserveret, og resten står nu på jobbets indkøbsliste.'],
+  katalog_brugt: ['ok', 'Varen er tilføjet jobbet, og forbruget er trukket fra lageret.'],
+  katalog_oprettet: ['ok', 'Varen er oprettet i varekartoteket fra produktkataloget. Beholdningen er 0; lager registreres som altid ved modtagelse eller optælling.'],
+  katalog_knyttet: ['ok', 'Varen fandtes allerede i varekartoteket og er nu knyttet til produktkataloget. Beholdningen er uændret.'],
+  enhed_mangler: ['warn', 'Katalogvaren har ingen enhed. Vælg varen på et job og angiv enheden dér, eller opret varen manuelt.'],
+  import_godkendt: ['ok', 'Importen er godkendt, og produktkataloget er opdateret. Lagerbeholdninger, indkøb og modtagelser er ikke ændret.'],
+  import_annulleret: ['ok', 'Importen er annulleret. Kataloget er uændret.'],
+  belastning: ['ok', 'Belastningstestens syntetiske DEMO-varer er oprettet i kataloget.'],
+  belastning_fjernet: ['ok', 'Belastningstestens syntetiske DEMO-varer er fjernet.'],
 };
 
 export function flash(code: string | undefined): H | '' {

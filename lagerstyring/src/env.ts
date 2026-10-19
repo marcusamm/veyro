@@ -83,6 +83,8 @@ export interface ProductRow {
   active: number;
   created_at: number;
   updated_at: number;
+  /** Varen i det centrale produktkatalog (ikke en lagerbeholdning). */
+  catalog_product_id: number | null;
 }
 
 export type JobStatus = 'aktiv' | 'afsluttet' | 'annulleret';
@@ -160,6 +162,8 @@ export interface JobItemRow {
   created_by: string;
   created_at: number;
   updated_at: number;
+  /** Valgt fra produktkataloget. */
+  catalog_product_id: number | null;
 }
 
 export interface LabourTypeRow {

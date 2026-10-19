@@ -26,6 +26,8 @@ import demo from './demo';
 import faktura from './faktura';
 import indstillinger from './indstillinger';
 import priser from './priser';
+import { lagerKatalog, panelFor } from './produktkatalog';
+import { searchPanel } from '../views/produktkatalog';
 
 const lager = new Hono<AppEnv>();
 lager.use('*', requireManager);
@@ -169,7 +171,12 @@ function parseProduct(v: ProductFormValues, isNew: boolean): { input?: ProductIn
 }
 
 lager.get('/varer/ny', async (c) =>
-  render(c, 'Ny vare', newProductPage(productValues(null), { csrf: c.get('csrf'), suppliers: await suppliers(c.env.DB), errs: [] }), NAV('varer')),
+  render(
+    c,
+    'Ny vare',
+    newProductPage(productValues(null), { csrf: c.get('csrf'), suppliers: await suppliers(c.env.DB), errs: [], catalog: searchPanel(await panelFor(c, '/lager/varer/ny', { kind: 'ny' }, { perPage: 10 })) }),
+    NAV('varer'),
+  ),
 );
 
 lager.post('/varer/ny', async (c) => {
@@ -448,5 +455,6 @@ lager.route('/demo', demo);
 lager.route('/faktura', faktura);
 lager.route('/indstillinger', indstillinger);
 lager.route('/priser', priser);
+lager.route('/katalog', lagerKatalog);
 
 export default lager;

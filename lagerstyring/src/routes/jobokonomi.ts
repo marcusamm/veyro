@@ -30,6 +30,7 @@ import { actorOf, isDemo, newOp, render, runTx } from '../render';
 import { overviewPage, type JobHead, type JobSummary } from '../views/job';
 import { hoursPage, invoicePage, invoicesPage, jobBillingPage, materialsPage, quotePage } from '../views/jobokonomi';
 import { NAV, isManager, jobHead, me, nowSec } from './jobshared';
+import { panelFor } from './produktkatalog';
 
 const okonomi = new Hono<AppEnv>();
 okonomi.use('*', requireUser);
@@ -131,14 +132,13 @@ export async function showMaterials(c: Context<AppEnv>, id: number, extra: { err
   if (!j) return c.notFound();
   const now = nowSec();
   const pref = await preferredRetailerId(db, s);
-  const [items, mats, rs, { results: products }] = await Promise.all([
+  const [items, mats, rs, panel] = await Promise.all([
     jobItems(db, id, pref),
     jobMaterials(db, id),
     retailerList(db),
-    db.prepare('SELECT id, sku, name, unit FROM products WHERE active = 1 ORDER BY name COLLATE NOCASE').all<{ id: number; sku: string; name: string; unit: string }>(),
+    panelFor(c, `/job/${id}/materialer`, { kind: 'job', jobId: id }, { anchor: 'tilfoj', perPage: 10 }),
   ]);
   const ctx = calcCtx(j, s, now);
-  const onJob = new Set(items.map((i) => i.product_id));
   const fejl = c.req.query('fejl');
   return render(
     c,
@@ -147,7 +147,8 @@ export async function showMaterials(c: Context<AppEnv>, id: number, extra: { err
       job: j,
       items: items.map((it) => ({ it, c: itemCalc(it, it.qty, ctx) })),
       mats,
-      products: products.filter((p) => !onJob.has(p.id)),
+      panel,
+      manualOpen: c.req.query('manuel') === '1' || !!extra.error,
       retailers: rs,
       jobRetailer: rs.find((r) => r.id === (j.retailer_id ?? pref)) ?? null,
       manager: isManager(c),
