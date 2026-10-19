@@ -13,6 +13,9 @@ export interface Env {
   DEV_MODE?: string;
   STRIPE_TAX_RATE_ID?: string;
 
+  /** Fælles kundekatalog: hvilke kundesystemer en e-mail har adgang til (valgfri) */
+  KATALOG?: KVNamespace;
+
   // Kun til test/udvikling: peg API-kald mod en lokal mock
   STRIPE_API_BASE?: string;
   RESEND_API_BASE?: string;

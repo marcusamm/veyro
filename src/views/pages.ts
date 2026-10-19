@@ -1,5 +1,6 @@
 import { html } from 'hono/html';
 import type { RequestRow, SubscriptionRow } from '../env';
+import { systemLoginUrl, type KundeSystem } from '../lib/katalog';
 import { formatDate, formatDateShort, formatKr } from '../lib/format';
 import { PLANS, getPlan, type Plan } from '../lib/plans';
 import type { StripeInvoice } from '../lib/stripe';
@@ -31,7 +32,7 @@ export function loginPage(args: { csrf: string; error?: string; email?: string; 
   return html`<div class="narrow stack-lg">
   <div>
     <h1>Log ind</h1>
-    <p class="lead">Skriv den e-mail, du bruger hos Veyro. Vi sender dig et link, så du kan logge ind uden adgangskode.</p>
+    <p class="lead">Skriv din e-mail. Bruger din virksomhed et system fra Veyro, sender vi dig videre dertil. Ellers får du et link til kundepanelet, så du kan logge ind uden adgangskode.</p>
   </div>
   ${args.info ?? ''}
   ${args.error ? alert('err', args.error) : ''}
@@ -46,6 +47,30 @@ export function loginPage(args: { csrf: string; error?: string; email?: string; 
     <button class="btn btn-primary btn-block" type="submit" data-loading="Sender …">Send login-link</button>
   </form>
   <p class="muted small">Er du ikke kunde endnu? <a href="/opret">Opret en konto</a> eller <a href="/bestil">se vores abonnementer</a>.</p>
+</div>`;
+}
+
+/** Kundelogin: e-mailen har adgang til flere systemer (eller også til kundepanelet). */
+export function chooseSystemPage(args: { csrf: string; email: string; systemer: KundeSystem[]; kundepanel: boolean }): H {
+  return html`<div class="narrow stack-lg">
+  <div>
+    <h1>Vælg, hvor du vil logge ind</h1>
+    <p class="lead">${args.email} har adgang til flere steder hos Veyro.</p>
+  </div>
+  <div class="card stack">
+    ${args.systemer.map(
+      (s) => html`<a class="btn btn-primary btn-block" href="${systemLoginUrl(s, args.email)}">${s.navn}</a>`,
+    )}
+    ${args.kundepanel
+      ? html`<form method="post" action="/login" class="stack">
+          ${csrfField(args.csrf)}
+          <input type="hidden" name="email" value="${args.email}">
+          <input type="hidden" name="kundepanel" value="1">
+          <button class="btn btn-secondary btn-block" type="submit" data-loading="Sender …">Abonnement og fakturaer hos Veyro</button>
+        </form>`
+      : ''}
+  </div>
+  <a class="small" href="/login">Brug en anden e-mail</a>
 </div>`;
 }
 

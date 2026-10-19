@@ -32,6 +32,12 @@ Opret `kunder/<kundenavn>.json` (små bogstaver og bindestreger, fx `nordlys.jso
 
 Worker og database får navnet `<kundenavn>-lager` eller `<kundenavn>-bestilling`. I lagerstyringen lægges firmanavnet (`navn`), farven og logoet ind ved deploy, så systemet er klar ved første login. Det sker kun, når de ændres i kundefilen, så det, kunden selv retter under Indstillinger, bliver stående. Varebestillingen sættes stadig op under Indstillinger.
 
+## Kundelogin på veyro.dk
+
+"Kundelogin" på hjemmesiden går til `kunde.veyro.dk/login`. Når man skriver sin e-mail dér, slås den op i KV-navnerummet `veyro-kundekatalog`, og man sendes videre til sin virksomheds lagerstyring (fx `ek.veyro.dk`) med e-mailen udfyldt. Har e-mailen adgang flere steder, eller også et abonnement hos Veyro, vælger man selv. Kendes e-mailen ikke, fortsætter det almindelige login til kundepanelet.
+
+Hver kundes lagerstyring holder selv kataloget opdateret: kort efter deploy, hver time og når en bruger oprettes eller ændres under Indstillinger. E-mails gemmes kun som SHA-256-hash. Navnerummets ID står i `wrangler.toml` i roden og i `scripts/deploy-kunder.mjs` (kan overskrives med repo-variablen `KUNDEKATALOG_ID`). Direkte videresendelse virker for adresser på `*.veyro.dk`; kunder med eget domæne vises som et valg i stedet.
+
 Databaser oprettes i EU (`--jurisdiction eu`), så data bliver i EU og ligger tæt på kunderne. En databases placering kan ikke ændres bagefter; den skal slettes og oprettes igen.
 
 Fjernes en fil, bliver kundens worker og database **ikke** slettet; det gøres manuelt i Cloudflare.

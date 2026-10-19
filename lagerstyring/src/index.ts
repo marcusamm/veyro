@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { AppEnv, Env } from './env';
 import { fetchFeeds, readProductPages } from './lib/estimates';
+import { syncKatalogLogged, syncKatalogOnce } from './lib/katalog';
 import { appIcon } from './lib/icon';
 import { runPurchaseDigest } from './lib/notices';
 import { cleanup, csrfMiddleware, requireUser, sessionMiddleware } from './lib/session';
@@ -61,6 +62,7 @@ app.get('/robots.txt', (c) => c.text('User-agent: *\nDisallow: /\n', 200, { 'Cac
 // Virksomhedens indstillinger bruges af alle sider (navn, farve m.m.)
 app.use('*', async (c, next) => {
   c.set('settings', await getSettings(c.env.DB));
+  syncKatalogOnce(c.env, c.executionCtx);
   await next();
 });
 app.get('/favicon.svg', (c) => c.body(favicon(c.get('settings')), 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': STATIC_CACHE }));
@@ -115,6 +117,8 @@ export default {
   fetch: app.fetch,
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(cleanup(env.DB));
+    // Brugerne i kundekataloget, så Kundelogin på kunde.veyro.dk kan sende dem hertil
+    ctx.waitUntil(syncKatalogLogged(env));
     // Samlet e-mail med nye indkøbsbehov med det valgte interval (slået fra som standard)
     ctx.waitUntil(getSettings(env.DB).then((s) => runPurchaseDigest(env, s)));
     // Officielle prisfiler fra forhandlere med et feed (højst hver 6. time; fejl stopper intet andet)

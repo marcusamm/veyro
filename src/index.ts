@@ -28,7 +28,8 @@ app.use('*', async (c, next) => {
       "img-src 'self' data:",
       "font-src 'self'",
       "connect-src 'self'",
-      "form-action 'self' https://checkout.stripe.com https://billing.stripe.com",
+      // *.veyro.dk: Kundelogin sender brugere videre til deres virksomheds system
+      "form-action 'self' https://checkout.stripe.com https://billing.stripe.com https://*.veyro.dk",
       "frame-ancestors 'none'",
       "base-uri 'none'",
       "object-src 'none'",

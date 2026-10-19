@@ -48,6 +48,7 @@ jobs:
           EMAIL_FROM_STANDARD: ${{ vars.EMAIL_FROM_STANDARD || 'Veyro <login@veyro.dk>' }}
           WORKERS_SUBDOMAIN: ${{ vars.WORKERS_SUBDOMAIN || 'marcus-ammitzboell' }}
           KUNDE_DOMAENE: ${{ vars.KUNDE_DOMAENE || 'veyro.dk' }}
+          KUNDEKATALOG_ID: ${{ vars.KUNDEKATALOG_ID }}
           KUNDE: ${{ inputs.kunde }}
         run: node scripts/deploy-kunder.mjs $KUNDE
       - name: Tjek kundeadresser i DNS

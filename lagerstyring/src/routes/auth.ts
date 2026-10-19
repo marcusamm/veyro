@@ -24,7 +24,8 @@ auth.get('/login', async (c) => {
   return render(
     c,
     'Log ind',
-    loginPage({ csrf: c.get('csrf'), next: safeNext(c.req.query('next')), info: c.req.query('besked'), demo: isDemo(c), company: c.get('settings').company_name }),
+    // Kundelogin på kunde.veyro.dk sender brugeren hertil med e-mailen udfyldt
+    loginPage({ csrf: c.get('csrf'), email: str(c.req.query('email'), 254), next: safeNext(c.req.query('next')), info: c.req.query('besked'), demo: isDemo(c), company: c.get('settings').company_name }),
     NONE,
   );
 });
