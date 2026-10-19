@@ -42,6 +42,11 @@ export function pageHead(eyebrow: string | H, title: string | H, actions: H | st
 
 const FLASH: Record<string, [kind: 'ok' | 'info' | 'warn' | 'err', text: string]> = {
   gemt: ['ok', 'Ændringerne er gemt.'],
+  logo_gemt: ['ok', 'Logoet er gemt.'],
+  inviteret: ['ok', 'Brugeren er oprettet, og invitationen er sendt på e-mail.'],
+  invitation_simuleret: ['info', 'Brugeren er oprettet. Invitationen er kun simuleret, fordi e-mail ikke er sat op, og den er gemt i e-mail-loggen.'],
+  invitation_fejlet: ['warn', 'Brugeren er oprettet, men invitationen kunne ikke sendes. Brugeren kan stadig logge ind med sin e-mail.'],
+  logo_slettet: ['ok', 'Logoet er fjernet.'],
   oprettet: ['ok', 'Oprettet.'],
   registreret: ['ok', 'Registreringen er gemt.'],
   dublet: ['info', 'Registreringen var allerede gennemført, så den er ikke lavet igen.'],

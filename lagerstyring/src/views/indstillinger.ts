@@ -1,9 +1,9 @@
 import { html } from 'hono/html';
 import type { MailRow, SupplierRow, User } from '../env';
 import { formatDateTime } from '../lib/format';
-import { DIGEST_CHOICES, type Settings } from '../lib/settings';
+import { DIGEST_CHOICES, LOGO_MAX_BYTES, type Settings } from '../lib/settings';
 import { errors, flash, mailTag, pageHead } from './common';
-import { accentOf, alert, csrfField, type H } from './layout';
+import { accentOf, alert, brandMark, csrfField, type H } from './layout';
 
 const ROLE_LABEL: Record<User['role'], string> = { ejer: 'Ejer', indkober: 'Indkøber', medarbejder: 'Medarbejder' };
 
@@ -23,11 +23,24 @@ export function settingsPage(d: {
   suppliers: SupplierRow[];
   csrf: string;
   mailConfigured: boolean;
+  canEditLogo: boolean;
+  /** Adresserne i ADMIN_EMAILS, som altid er administratorer */
+  fixedAdmins: string[];
   demo: boolean;
   flashCode?: string;
   errs: string[];
 }): H {
   const s = d.s;
+  const fixed = new Set(d.fixedAdmins);
+  // Fast administrator (ADMIN_EMAILS) kan ikke ændres her; andre kan kun ændres af en administrator
+  const adminCell = (u: User): H | '' =>
+    fixed.has(u.email.toLowerCase())
+      ? html`<span class="tag" title="Fast administrator">Administrator</span>`
+      : d.canEditLogo
+        ? check('is_admin', !!u.is_admin, 'Administrator')
+        : u.is_admin
+          ? html`<span class="tag">Administrator</span>`
+          : '';
   return html`<div class="stack-lg" style="max-width:1000px">
   ${pageHead('Lagerportal', 'Indstillinger', html`<a class="btn btn-secondary" href="/lager/indstillinger/mails">E-mail-log</a>`)}
   ${flash(d.flashCode)}${errors(d.errs)}
@@ -54,7 +67,24 @@ export function settingsPage(d: {
   </form>
 
   <section class="card stack">
+    <h2>Logo</h2>
+    <p class="muted small">Vises i toppen af siden ved firmanavnet og som ikon i browserens faneblad. PNG, JPG, WebP eller SVG på højst ${Math.round(LOGO_MAX_BYTES / 1024)} KB. Et bredt logo med gennemsigtig baggrund ser bedst ud.</p>
+    <div class="row" style="flex-wrap:wrap;gap:12px">
+      <span class="brand">${brandMark(s)}<span class="brand-name">${s.company_name}</span></span>
+    </div>
+    ${d.canEditLogo ? html`<form method="post" action="/lager/indstillinger/logo" enctype="multipart/form-data" class="row" style="flex-wrap:wrap">
+      ${csrfField(d.csrf)}
+      <input type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" required aria-label="Logofil">
+      <button class="btn btn-primary" type="submit">${s.logo_version ? 'Skift logo' : 'Upload logo'}</button>
+    </form>
+    ${s.logo_version
+      ? html`<form method="post" action="/lager/indstillinger/logo/slet">${csrfField(d.csrf)}<button class="btn btn-secondary btn-small" type="submit">Fjern logo</button></form>`
+      : ''}` : html`<p class="hint">Kontakt Veyro, hvis logoet skal skiftes.</p>`}
+  </section>
+
+  <section class="card stack">
     <h2>Brugere og e-mail-modtagere</h2>
+    <p class="muted small">Administratorer kan skifte logo og gøre andre til administratorer. En invitation er en e-mail med et link til login-siden, hvor brugeren logger ind med sin e-mailadresse.</p>
     <p class="muted small">Ejer og indkøber kan se priser og bruge lagerportalen. Medarbejdere bruger forbrugsportalen og ser ingen priser, heller ikke i e-mails.</p>
     <div class="table-wrap"><table class="list stackable dense">
       <thead><tr><th>Navn</th><th>E-mail</th><th>Rolle</th><th>E-mails</th><th>Aktiv</th><th></th></tr></thead>
@@ -67,6 +97,7 @@ export function settingsPage(d: {
         ${check('alert_mail', !!u.alert_mail, 'Lageradvarsler')}
         ${check('purchase_mail', !!u.purchase_mail, 'Indkøbslister')}
         ${check('active', !!u.active, 'Aktiv')}
+        ${adminCell(u)}
         <button class="btn btn-secondary btn-small" type="submit">Gem</button>
       </form></td></tr>`,
       )}</tbody>
@@ -78,6 +109,8 @@ export function settingsPage(d: {
       ${roleSelect('role', 'medarbejder', 'role_new')}
       ${check('alert_mail', false, 'Lageradvarsler')}
       ${check('purchase_mail', false, 'Indkøbslister')}
+      ${d.canEditLogo ? check('is_admin', false, 'Administrator') : ''}
+      ${check('invite', true, 'Send invitation på e-mail')}
       <button class="btn btn-primary btn-small" type="submit">+ Tilføj bruger</button>
     </form>
   </section>

@@ -48,6 +48,8 @@ main{flex:1;padding:24px 0 56px}
 .site-header .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px}
 .brand{font-weight:650;font-size:19px;letter-spacing:-.02em;text-decoration:none;display:flex;align-items:center;gap:10px;min-width:0}
 .brand-dot{width:12px;height:12px;border-radius:50%;background:var(--accent);flex:none}
+.brand-logo{height:30px;width:auto;max-width:120px;object-fit:contain;flex:none}
+@media(max-width:520px){.brand-logo{height:26px;max-width:84px}}
 .brand-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:559px){.hide-sm{display:none!important}}
 .header-right{display:flex;align-items:center;gap:8px}

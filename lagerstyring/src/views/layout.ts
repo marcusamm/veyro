@@ -46,7 +46,7 @@ function head(title: string, s: Settings): H {
 <meta name="apple-mobile-web-app-title" content="${s.company_name}">
 <meta name="color-scheme" content="light">
 <title>${title}</title>
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+${s.logo_version ? html`<link rel="icon" href="/logo?v=${s.logo_version}">` : html`<link rel="icon" href="/favicon.svg" type="image/svg+xml">`}
 <link rel="preload" href="/static/inter-tight.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/app.css?v=${V}">
 ${themeStyle(s)}
@@ -84,7 +84,7 @@ ${head(`${opts.title} · ${s.company_name}`, s)}
 <a class="skip" href="#indhold">Spring til indhold</a>
 <header class="site-header">
   <div class="wrap">
-    <a class="brand" href="/"><span class="brand-dot" aria-hidden="true"></span><span class="brand-name">${s.company_name}</span>${opts.demo
+    <a class="brand" href="/">${brandMark(s)}<span class="brand-name">${s.company_name}</span>${opts.demo
       ? html`<span class="tag tag-sim hide-sm">Demo</span>`
       : ''}</a>
     <div class="header-right">
@@ -139,6 +139,13 @@ export function opField(token: string): H {
 export function alert(kind: 'info' | 'ok' | 'warn' | 'err', content: H | string): H {
   const role = kind === 'err' || kind === 'warn' ? 'alert' : 'status';
   return html`<div class="alert alert-${kind}" role="${role}">${content}</div>`;
+}
+
+/** Virksomhedens logo, eller en prik i accentfarven, hvis der ikke er uploadet et logo. */
+export function brandMark(s: Settings): H {
+  return s.logo_version
+    ? html`<img class="brand-logo" src="/logo?v=${s.logo_version}" alt="">`
+    : html`<span class="brand-dot" aria-hidden="true"></span>`;
 }
 
 export function favicon(s: Settings): string {

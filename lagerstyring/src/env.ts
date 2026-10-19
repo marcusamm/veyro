@@ -31,6 +31,8 @@ export interface User {
   alert_mail: number;
   purchase_mail: number;
   active: number;
+  /** 1 = administrator (sat i appen); adresserne i ADMIN_EMAILS er altid administratorer */
+  is_admin: number;
   created_at: number;
 }
 
