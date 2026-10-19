@@ -69,15 +69,14 @@ describe('Prisestimat', () => {
     expect(line(`id = ${mal.id}`)).toMatchObject({ name: mal.name, product_id: mal.product_id, qty: mal.qty });
   });
 
-  it('valgt forhandler bevares, når priserne opdateres', async () => {
+  it('den billigste pris bruges altid, også efter "Opdatér priser"', async () => {
     const vin = line("sku = 'VIN-90'");
-    const syd = retailer('demo-syd');
-    await post(`/lager/indkob/linje/${vin.id}/forhandler`, { retailer_id: String(syd.id) });
     const res = await post(`/lager/indkob/${listId}/priser`);
     expect(res.status).toBe(200);
     expect(res.html).toContain('Priserne er opdateret');
-    expect(line(`id = ${vin.id}`).preferred_retailer_id).toBe(syd.id);
-    expect(total(res.html)).toBe('1.909,60 kr.'); // 1 pakke á 25 til 219 kr. inkl. = 175,20 kr. ekskl.
+    expect(res.html).not.toContain(`/lager/indkob/linje/${vin.id}/forhandler`);
+    // Vinkelbeslag: Nord 2 pk. = 160 kr. ekskl. er billigere end Syd 1 pk. á 25 = 175,20 kr.
+    expect(total(res.html)).toBe('1.894,40 kr.');
   });
 
   it('manuel pris kræver link til forhandleren og markeres "Manuelt indtastet"', async () => {
@@ -91,7 +90,7 @@ describe('Prisestimat', () => {
     expect(ok.status).toBe(303);
     const { html } = await page();
     expect(html).toContain('Manuelt indtastet');
-    expect(total(html)).toBe('1.989,60 kr.'); // + 4 × 25 kr. inkl. = 80 kr. ekskl.
+    expect(total(html)).toBe('1.974,40 kr.'); // + 4 × 25 kr. inkl. = 80 kr. ekskl.
     expect(html).not.toContain('uden pris:');
   });
 
@@ -147,6 +146,9 @@ describe('Prisestimat', () => {
     expect(res.html).toContain('BAUHAUS: 1 pris hentet');
     expect(stack.sql(`SELECT COUNT(*) AS n FROM retailer_products WHERE retailer_id = ${bauhaus.id}`)[0].n).toBe(1);
     expect(res.html).toContain('https://www.bauhaus.dk/vinkel');
+    // BAUHAUS er nu billigst på vinkelbeslag (1 pk. á 12 = 96 kr. inkl. = 76,80 kr. ekskl.) og bruges automatisk
+    expect(stack.sql(`SELECT COUNT(*) AS n FROM price_estimates WHERE retailer_id = ${bauhaus.id} AND status = 'aktuel'`)[0].n).toBe(1);
+    expect(res.html).toMatch(/76,80 kr\.<\/strong> <span class="small muted">ekskl\. moms hos BAUHAUS/);
   });
 
   it('prisopslag og afsendelse bestiller intet, og e-mailen har estimatet og ansvarsteksten', async () => {
@@ -161,6 +163,7 @@ describe('Prisestimat', () => {
     expect(toBuyer.body_text).toContain('2026-015');
     expect(toBuyer.body_text).toContain('Estimat i alt (ekskl. moms)');
     expect(toBuyer.body_text).toContain('Trælast Syd (demo)');
+    expect(toBuyer.body_text).toContain('BAUHAUS');
     expect(toBuyer.body_text).toContain('Prisdata fra');
     expect(toBuyer.body_text).toContain('Fragt og eventuelle gebyrer er ikke medregnet.');
     expect(toBuyer.body_text).toContain(DISCLAIMER);

@@ -146,7 +146,6 @@ export interface PurchaseLineRow {
   cancelled: number;
   auto: number;
   note: string;
-  preferred_retailer_id: number | null;
   price_checked_at: number | null;
   created_at: number;
   updated_at: number;

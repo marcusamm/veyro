@@ -70,7 +70,7 @@ export function estimateSection(d: {
   const canEdit = !d.archived;
   return html`<section class="card card-flush est" id="prisestimat">
   <div class="row-between" style="padding:16px 16px 4px">
-    <div class="stack-sm"><h2>Prisestimat</h2><p class="muted small" style="margin:0">Offentlige priser fra ${withData.length} af ${active.length} forhandlere (prisfil eller demodata); hos resten indtastes prisen manuelt med link. Alle beløb er ${basis}. Estimatet er adskilt fra forventet og faktisk indkøbspris og bestiller ikke noget.</p></div>
+    <div class="stack-sm"><h2>Prisestimat</h2><p class="muted small" style="margin:0">Offentlige priser fra ${withData.length} af ${active.length} forhandlere (prisfil eller demodata); hos resten indtastes prisen manuelt med link. Den billigste sammenlignelige pris bruges altid. Alle beløb er ${basis}. Estimatet er adskilt fra forventet og faktisk indkøbspris og bestiller ikke noget.</p></div>
     <div class="row">
       ${canEdit ? html`<form method="post" action="/lager/indkob/${d.listId}/priser">${csrfField(d.csrf)}<button class="btn btn-secondary btn-small" type="submit">Opdatér priser</button></form>` : ''}
       <a class="btn btn-ghost btn-small" href="/lager/priser">Forhandlere og prisfiler</a>
@@ -86,13 +86,7 @@ export function estimateSection(d: {
     : ''}
   ${!lines.length
     ? html`<p class="muted" style="padding:8px 16px 16px">Der er ingen varer, der mangler at blive købt på listen.</p>`
-    : html`${canEdit && active.length
-        ? html`<form method="post" action="/lager/indkob/${d.listId}/forhandler" class="row" style="padding:8px 16px">
-          ${csrfField(d.csrf)}<label class="small" for="pref-all">Forhandler for alle linjer</label>
-          <select id="pref-all" name="retailer_id" class="in-sm" style="max-width:240px"><option value="">Automatisk (laveste fundne pris)</option>${active.map((r) => html`<option value="${r.id}">${r.name}</option>`)}</select>
-          <button class="btn btn-ghost btn-small" type="submit">Brug</button></form>`
-        : ''}
-      ${lines.map((x) => estimateLine(x, d, canEdit))}`}
+    : html`${lines.map((x) => estimateLine(x, d, canEdit))}`}
   <div class="est-total stack-sm">
     <div class="row-between"><span>Estimat i alt (${basis}), ${s.priced} af ${s.lines} ${s.lines === 1 ? 'vare' : 'varer'} med pris</span><strong class="big">${formatKr(s.total)}</strong></div>
     ${s.missing.length
@@ -111,10 +105,9 @@ function estimateLine(x: { line: LineView; est: LineEstimate }, d: { csrf: strin
   const e = x.est;
   const c = e.chosen;
   const basis = VAT_LABEL[d.opts.basis];
-  const pref = l.preferred_retailer_id ? d.retailers.find((r) => r.id === l.preferred_retailer_id) : null;
   return html`<div class="est-line" id="pris-${l.id}">
   <div class="row-between">
-    <div class="stack-sm"><div><strong>${l.name}</strong></div><div class="small muted">${l.sku ? html`${l.sku} · ` : ''}Mangler at blive købt: ${qtyUnit(e.need, l.unit)}${pref ? html` · Valgt forhandler: <strong>${pref.name}</strong>` : ''}</div></div>
+    <div class="stack-sm"><div><strong>${l.name}</strong></div><div class="small muted">${l.sku ? html`${l.sku} · ` : ''}Mangler at blive købt: ${qtyUnit(e.need, l.unit)}</div></div>
     <div class="est-pick">${c
       ? html`<strong>${formatKr(c.amount)}</strong> <span class="small muted">${basis} hos ${c.est.retailer_name}</span>`
       : html`<span class="tag tag-out">Pris mangler</span> <span class="small muted">${e.missingReason}</span>`}</div>
@@ -129,7 +122,7 @@ function estimateLine(x: { line: LineView; est: LineEstimate }, d: { csrf: strin
       ${canEdit ? html`<form method="post" action="/lager/indkob/estimat/${p.id}/accepter" class="inline">${csrfField(d.csrf)}<button class="btn btn-secondary btn-small" type="submit">Acceptér ny pris</button></form>
       <form method="post" action="/lager/indkob/estimat/${p.id}/fjern" class="inline">${csrfField(d.csrf)}<button class="btn btn-ghost btn-small" type="submit">Behold min pris</button></form>` : ''}</div>`,
   )}
-  ${canEdit ? html`<div class="row">${pref ? html`<form method="post" action="/lager/indkob/linje/${l.id}/forhandler">${csrfField(d.csrf)}<input type="hidden" name="retailer_id" value=""><button class="btn btn-ghost btn-small" type="submit">Vælg automatisk (laveste fundne pris)</button></form>` : ''}${manualForm(l, d)}</div>` : ''}
+  ${canEdit ? html`<div class="row">${manualForm(l, d)}</div>` : ''}
 </div>`;
 }
 
@@ -137,7 +130,7 @@ function offerRow(o: OfferLine, l: LineView, csrf: string, canEdit: boolean): H 
   const e = o.est;
   const p = o.plan;
   return html`<tr class="${o.chosen ? 'est-chosen' : ''}">
-  <td class="cell-main"><strong>${e.retailer_name}</strong>${sourceTag(e.source)}${o.chosen ? html` <span class="tag tag-ordered">Bruges i estimatet</span>` : ''}</td>
+  <td class="cell-main"><strong>${e.retailer_name}</strong>${sourceTag(e.source)}${o.chosen ? html` <span class="tag tag-ordered">Billigst – bruges i estimatet</span>` : ''}</td>
   <td data-label="Fundet vare">${e.url ? html`<a href="${e.url}" target="_blank" rel="noopener noreferrer nofollow">${e.name}</a>` : e.name}${e.stock_text ? html`<small>Lagerstatus ifølge kilden: ${e.stock_text}</small>` : ''}${e.note ? html`<small>${e.note}</small>` : ''}</td>
   <td data-label="Match">${matchTag(e)}</td>
   <td data-label="Pakning og køb">${packText(e)}${p.ok
@@ -147,9 +140,7 @@ function offerRow(o: OfferLine, l: LineView, csrf: string, canEdit: boolean): H 
   <td class="num" data-label="Linjeestimat">${o.amount === null ? '–' : html`<strong>${formatKr(o.amount)}</strong>`}${o.lowest ? html`<small><span class="tag tag-ok">Laveste fundne materialepris</span></small>` : ''}</td>
   <td data-label="Pristjek">${formatDateTime(e.checked_at)}${o.stale ? html`<small><span class="tag tag-low">${STALE_LABEL}</span></small>` : ''}</td>
   <td>${canEdit
-    ? html`<div class="stack-sm">${o.usable && !(o.chosen && l.preferred_retailer_id === e.retailer_id)
-        ? html`<form method="post" action="/lager/indkob/linje/${l.id}/forhandler">${csrfField(csrf)}<input type="hidden" name="retailer_id" value="${e.retailer_id}"><button class="btn btn-ghost btn-small" type="submit">Vælg</button></form>`
-        : ''}${e.match === 'alternativ' && !e.approved_at
+    ? html`<div class="stack-sm">${e.match === 'alternativ' && !e.approved_at
         ? html`<form method="post" action="/lager/indkob/estimat/${e.id}/godkend" data-confirm="Godkend alternativet som erstatning i estimatet? Varen på listen ændres ikke.">${csrfField(csrf)}<button class="btn btn-secondary btn-small" type="submit">Godkend alternativ</button></form>`
         : ''}${e.source === 'manuel'
         ? html`<form method="post" action="/lager/indkob/estimat/${e.id}/fjern">${csrfField(csrf)}<button class="btn btn-ghost btn-small" type="submit">Fjern</button></form>`

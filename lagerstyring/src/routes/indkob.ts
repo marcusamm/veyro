@@ -30,7 +30,6 @@ import {
   refreshList,
   retailers,
   saveManual,
-  setPreferred,
 } from '../lib/estimates';
 import { estimateSection } from '../views/priser';
 import { actorOf, idParam, newOp, render, runTx } from '../render';
@@ -312,26 +311,6 @@ indkob.post('/:id{[0-9]+}/priser', async (c) => {
   const feeds = await fetchFeeds(c.env, now, true).catch(() => []);
   const r = await refreshList(c.env.DB, id, actorOf(c).email, now);
   return showList(c, id, { refreshed: { ...r, feeds } });
-});
-
-indkob.post('/:id{[0-9]+}/forhandler', async (c) => {
-  const id = Number(c.req.param('id'));
-  const body = await c.req.parseBody();
-  const rid = idParam(String(body['retailer_id'] ?? ''));
-  if (rid && !(await getRetailer(c.env.DB, rid))) return c.notFound();
-  const { results } = await c.env.DB.prepare('SELECT id FROM purchase_lines WHERE list_id = ? AND cancelled = 0').bind(id).all<{ id: number }>();
-  await setPreferred(c.env.DB, results.map((r) => r.id), rid);
-  return c.redirect(`/lager/indkob/${id}?besked=forhandler_valgt#prisestimat`, 303);
-});
-
-indkob.post('/linje/:lineId{[0-9]+}/forhandler', async (c) => {
-  const line = await getLine(c.env.DB, Number(c.req.param('lineId')));
-  if (!line) return c.notFound();
-  const body = await c.req.parseBody();
-  const rid = idParam(String(body['retailer_id'] ?? ''));
-  if (rid && !(await getRetailer(c.env.DB, rid))) return c.notFound();
-  await setPreferred(c.env.DB, [line.id], rid);
-  return c.redirect(`/lager/indkob/${line.list_id}?besked=forhandler_valgt#pris-${line.id}`, 303);
 });
 
 indkob.post('/linje/:lineId{[0-9]+}/pris', async (c) => {

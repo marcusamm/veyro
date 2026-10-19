@@ -100,8 +100,6 @@ CREATE INDEX idx_price_estimates_line ON price_estimates(line_id, status);
 CREATE UNIQUE INDEX idx_price_estimates_live ON price_estimates(line_id, retailer_id) WHERE status IN ('aktuel', 'tidligere');
 CREATE UNIQUE INDEX idx_price_estimates_proposal ON price_estimates(line_id, retailer_id) WHERE status = 'forslag';
 
--- Valgt forhandler til linjens estimat (bevares ved senere prisopdateringer)
-ALTER TABLE purchase_lines ADD COLUMN preferred_retailer_id INTEGER REFERENCES retailers(id) ON DELETE SET NULL;
 -- Seneste automatiske prisopslag for linjen
 ALTER TABLE purchase_lines ADD COLUMN price_checked_at INTEGER;
 

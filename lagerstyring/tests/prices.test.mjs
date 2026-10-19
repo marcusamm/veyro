@@ -71,19 +71,17 @@ describe('match', () => {
 describe('estimat pr. linje og liste', () => {
   const opts = { basis: 'ekskl', maxAgeDays: 7, now: 2_000_000_000, today: '2026-10-19' };
   const est = (o) => ({ ...offer(), id: 1, retailer_id: 1, retailer_name: 'A', retailer_access: 'demo', match: 'praecis', approved_at: null, status: 'aktuel', checked_at: opts.now, ...o });
-  const line = { qty: 12 * K, ordered: 0, cancelled: 0, unit: 'stk.', preferred_retailer_id: null };
+  const line = { qty: 12 * K, ordered: 0, cancelled: 0, unit: 'stk.' };
   it('fremhæver laveste sammenlignelige pris og vælger den', () => {
     const r = lineEstimate(line, [est({ id: 1 }), est({ id: 2, retailer_id: 2, price: 9000 })], opts);
     expect(r.chosen.est.id).toBe(2);
     expect(r.offers.filter((x) => x.lowest).map((x) => x.est.id)).toEqual([2]);
     expect(r.chosen.amount).toBe(14400); // 2 × 90 kr. inkl. moms = 144 kr. ekskl.
   });
-  it('alternativer tæller først med efter godkendelse, og den valgte forhandler bevares', () => {
+  it('alternativer tæller først med efter godkendelse', () => {
     const alt = est({ id: 3, retailer_id: 3, match: 'alternativ', price: 5000 });
     expect(lineEstimate(line, [alt], opts).chosen).toBeNull();
     expect(lineEstimate(line, [{ ...alt, approved_at: 1 }], opts).chosen.est.id).toBe(3);
-    const pref = lineEstimate({ ...line, preferred_retailer_id: 1 }, [est({ id: 1 }), est({ id: 2, retailer_id: 2, price: 9000 })], opts);
-    expect(pref.chosen.est.id).toBe(1);
   });
   it('gamle priser markeres, og linjer uden pris tælles', () => {
     const old = lineEstimate(line, [est({ checked_at: opts.now - 10 * 86400 })], opts);

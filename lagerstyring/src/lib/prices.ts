@@ -270,7 +270,7 @@ export interface EstimateOpts {
 }
 
 export function lineEstimate(
-  line: Pick<PurchaseLineRow, 'qty' | 'ordered' | 'cancelled' | 'unit'> & { preferred_retailer_id: number | null },
+  line: Pick<PurchaseLineRow, 'qty' | 'ordered' | 'cancelled' | 'unit'>,
   ests: EstimateView[],
   o: EstimateOpts,
 ): LineEstimate {
@@ -298,10 +298,8 @@ export function lineEstimate(
   let chosen: OfferLine | null = null;
   let missingReason = '';
   if (need <= 0) missingReason = 'Hele mængden er bestilt.';
-  else if (line.preferred_retailer_id) {
-    chosen = usable.find((x) => x.est.retailer_id === line.preferred_retailer_id) ?? null;
-    if (!chosen) missingReason = 'Ingen brugbar pris hos den valgte forhandler.';
-  } else {
+  else {
+    // Altid den billigste sammenlignelige pris blandt alle forhandlere
     chosen = usable.find((x) => x.lowest) ?? usable[0] ?? null;
     if (!chosen) {
       missingReason = offers.some((x) => x.plan.ok && x.est.match === 'alternativ')

@@ -2,7 +2,7 @@
 // manuelle priser, godkendelse af alternativer og valg af forhandler.
 //
 // Prisopslag kører adskilt fra lager og indkøb: de skriver kun i price_estimates og
-// purchase_lines.preferred_retailer_id/price_checked_at, og en fejl hos en forhandler stopper
+// purchase_lines.price_checked_at, og en fejl hos en forhandler stopper
 // aldrig registrering af forbrug eller oprettelse af lister.
 
 import type { Env, PurchaseLineRow } from '../env';
@@ -381,7 +381,7 @@ export async function estimatesFor(db: D1Database, lineIds: number[]): Promise<M
 
 export type EstimatedLine<L> = { line: L; est: LineEstimate };
 
-export async function listEstimate<L extends Pick<PurchaseLineRow, 'id' | 'name' | 'qty' | 'ordered' | 'cancelled' | 'unit'> & { preferred_retailer_id: number | null }>(
+export async function listEstimate<L extends Pick<PurchaseLineRow, 'id' | 'name' | 'qty' | 'ordered' | 'cancelled' | 'unit'>>(
   db: D1Database,
   s: Settings,
   lines: L[],
@@ -468,11 +468,6 @@ export async function dismissEstimate(db: D1Database, estimateId: number, now: n
     .bind(now, estimateId)
     .first<{ line_id: number }>();
   return row?.line_id ?? null;
-}
-
-export async function setPreferred(db: D1Database, lineIds: number[], retailerId: number | null): Promise<void> {
-  if (!lineIds.length) return;
-  await db.batch(lineIds.map((id) => db.prepare('UPDATE purchase_lines SET preferred_retailer_id = ? WHERE id = ?').bind(retailerId, id)));
 }
 
 /** Historik: alle estimater for en linje, også de erstattede. */
