@@ -92,6 +92,7 @@ form.inline{display:inline}
 
 /* Kort og paneler */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+tr.sec th{background:var(--bg);color:var(--muted);font-size:13px;font-weight:600;text-align:left;letter-spacing:.02em}
 @media(min-width:720px){.card{padding:24px}}
 .card-flush{padding:0;overflow:hidden}
 .grid{display:grid;gap:16px}
@@ -174,6 +175,8 @@ table.list a.title:hover{text-decoration:underline}
   table.list.stackable td{padding:2px 0;border:0;text-align:left!important}
   table.list.stackable td[data-label]::before{content:attr(data-label) ": ";color:var(--muted);font-size:13px}
   table.list.stackable td.cell-main{font-size:16px;padding-bottom:4px}
+  table.list.stackable tr.sec{background:var(--bg);padding:8px 16px}
+  table.list.stackable tr.sec th{display:block;padding:0;border:0}
 }
 .totals{width:100%;border-collapse:collapse;font-size:15px}
 .totals td{padding:6px 0}
@@ -375,6 +378,16 @@ details.act form input{width:100px}
   .card{border:0;padding:0}
   table.list th,table.list td{padding:6px 8px}
 }
+/* Prisestimat */
+.tag-demo{background:#FEF3C7;color:#92400E;border:1px dashed #D97706}
+.est-line{border-top:1px solid var(--line);padding:14px 16px;display:grid;gap:10px}
+.est-line .alert{margin:0}
+.est-pick{text-align:right}
+tr.est-chosen td{background:rgba(var(--accent-rgb),.06)}
+.est-total{border-top:1px solid var(--line);padding:14px 16px 16px}
+.est-total .big{font-size:22px}
+.ok-text{color:var(--ok)}.err-text{color:var(--err)}
+.est td small .tag{margin-top:4px}
 `;
 
 export const JS = `

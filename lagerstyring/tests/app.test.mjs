@@ -167,31 +167,24 @@ describe('Demo uden e-mail (simuleret)', () => {
     expect(stack.sql(`SELECT COUNT(*) AS n FROM purchase_lines WHERE job_id = ${j.id} AND product_id = ${p.id} AND cancelled = 0`)[0].n).toBe(1);
   });
 
-  it('fakturagrundlaget tæller ikke købte og brugte varer to gange', async () => {
+  it('fakturakladden tæller ikke købte og brugte varer to gange', async () => {
     const j = job('2026-014');
-    let page = await owner.get(`/lager/faktura/job/${j.id}`);
-    let res = await owner.post(`/lager/faktura/job/${j.id}/kladde`, { _csrf: csrfFrom(page.html) });
+    // Det gamle fakturagrundlag sender videre til jobbets faktura
+    let res = await owner.get(`/lager/faktura/job/${j.id}`);
+    expect(res.headers.get('location')).toBe(`/job/${j.id}/faktura`);
+    const page = await owner.get(`/job/${j.id}/faktura`);
+    res = await owner.post(`/job/${j.id}/faktura`, { _csrf: csrfFrom(page.html), mode: 'medgaaet' });
     expect(res.status).toBe(303);
-    const basisId = Number(res.headers.get('location').match(/faktura\/(\d+)/)[1]);
-    const lines = stack.sql(`SELECT * FROM invoice_lines WHERE basis_id = ${basisId}`);
-    const vin = lines.find((l) => l.product_id === product('VIN-90').id);
-    expect(vin.qty).toBe(25 * K);
-    // Godkend
-    page = await owner.get(`/lager/faktura/${basisId}`);
-    const form = { _csrf: csrfFrom(page.html), do: 'godkend', note: '' };
-    for (const l of lines) Object.assign(form, { [`qty_${l.id}`]: String(l.qty / K).replace('.', ','), [`cost_${l.id}`]: String(l.unit_cost / 100).replace('.', ','), [`price_${l.id}`]: String(l.unit_price / 100).replace('.', ','), [`inc_${l.id}`]: '1' });
-    res = await owner.post(`/lager/faktura/${basisId}`, form);
-    expect(res.headers.get('location')).toContain('besked=godkendt');
-    const basis = stack.sql(`SELECT * FROM invoice_bases WHERE id = ${basisId}`)[0];
-    expect(basis.status).toBe('godkendt');
-    expect(basis.total_sale).toBeGreaterThan(0);
-    const csv = await owner.get(`/lager/faktura/${basisId}.csv`);
-    expect(csv.status).toBe(200);
-    expect(csv.html).toContain('2026-014');
-    expect(csv.html).toContain('Anne og Peter Lund');
-    // En ny kladde har intet at fakturere
-    page = await owner.get(`/lager/faktura/job/${j.id}`);
-    expect(page.html).toContain('Intet forbrug.');
+    const invId = Number(res.headers.get('location').match(/faktura\/(\d+)/)[1]);
+    const lines = stack.sql(`SELECT * FROM invoice_items WHERE invoice_id = ${invId}`);
+    const vin = lines.filter((l) => l.source_key === `lager:${product('VIN-90').id}`);
+    expect(vin.length).toBe(1);
+    expect(vin[0].qty).toBe(25 * K);
+    const keys = lines.map((l) => l.source_key).filter(Boolean);
+    expect(new Set(keys).size).toBe(keys.length);
+    const pdf = await owner.get(`/job/faktura/${invId}.pdf`);
+    expect(pdf.status).toBe(200);
+    expect(pdf.headers.get('content-type')).toBe('application/pdf');
   });
 
   it('medarbejdere har ikke adgang til lagerportalen og ser ingen priser', async () => {

@@ -1,14 +1,15 @@
 // Lagerbevægelser, som ejer eller indkøber registrerer direkte på en vare:
-// varemodtagelse uden indkøbsliste, optælling, svind og returnering til leverandør.
+// varemodtagelse uden indkøbsliste, brugbare returvarer, optælling, svind og returnering til leverandør.
 
 import type { ProductRow } from '../env';
 import { formatQty } from './format';
 import { Conflict, type Tx } from './ledger';
 
-export type AdjustKind = 'modtagelse' | 'optaelling' | 'svind' | 'leverandorretur';
+export type AdjustKind = 'modtagelse' | 'returvare' | 'optaelling' | 'svind' | 'leverandorretur';
 
 export const ADJUST_LABEL: Record<AdjustKind, string> = {
   modtagelse: 'Varemodtagelse',
+  returvare: 'Brugbar returvare',
   optaelling: 'Optælling',
   svind: 'Svind',
   leverandorretur: 'Returnering til leverandør',
@@ -32,6 +33,13 @@ export function adjustStock(tx: Tx, p: ProductRow, kind: AdjustKind, q: number, 
         .bind(q, unitPrice, tx.now, p.id),
     );
     tx.move({ product_id: p.id, kind, qty: q, stock_delta: q, unit_cost: unitPrice ?? p.purchase_price, reason });
+    return;
+  }
+  if (kind === 'returvare') {
+    // Brugbare varer, der kommer retur uden for et job (fx fra en byggeplads eller en kunde). Indkøbsprisen ændres ikke.
+    if (q <= 0) throw new Conflict('Angiv den mængde, der kommer retur.');
+    tx.add(tx.db.prepare('UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ?').bind(q, tx.now, p.id));
+    tx.move({ product_id: p.id, kind, qty: q, stock_delta: q, unit_cost: p.purchase_price, reason });
     return;
   }
   if (kind === 'optaelling') {

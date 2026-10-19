@@ -4,7 +4,7 @@
 export interface Settings {
   company_name: string;
   accent_color: string;
-  /** Standardavance i procent, når en vare ikke har en salgspris (kan ændres pr. job) */
+  /** Standardpåslag i procent på materialer, når en vare ikke har en salgspris (kan ændres pr. job og linje) */
   default_markup_pct: number;
   /** Send lageradvarsler på e-mail til modtagerne med det samme */
   alert_mail_enabled: boolean;
@@ -12,8 +12,40 @@ export interface Settings {
   purchase_digest_hours: number;
   /** Tidspunktet for seneste samlede indkøbs-e-mail (unix-sekunder) */
   last_digest_at: number;
+  /** Momsgrundlag for prisestimater på indkøbslister: 'ekskl' eller 'inkl' */
+  estimate_vat: string;
+  /** Priser ældre end dette antal dage vises som "Tidligere pris – ikke bekræftet" */
+  price_max_age_days: number;
   /** Version af det uploadede logo (0 = intet logo); bruges i /logo?v= så browseren henter det nye */
   logo_version: number;
+
+  // Virksomhedens oplysninger på prisoverslag og fakturaer
+  company_address: string;
+  company_cvr: string;
+  company_email: string;
+  company_phone: string;
+  bank_reg: string;
+  bank_account: string;
+  /** Momsregistreret: 'ja', 'nej' eller '' (ikke oplyst endnu, så der kan ikke udstedes fakturaer) */
+  vat_registered: string;
+  /** Betalingsfrist i dage */
+  payment_days: number;
+  /** Første fakturanummer (bruges, indtil der er udstedt en faktura) */
+  invoice_start: number;
+  /** Prisoverslag gælder i så mange dage */
+  quote_valid_days: number;
+  /** Tekst nederst på prisoverslag og fakturaer */
+  quote_note: string;
+  invoice_note: string;
+
+  // Arbejdstimer (øre pr. time; 0 = ikke sat op)
+  /** Standard timepris til slutkunden ekskl. moms */
+  default_hour_rate: number;
+  /** Samlet intern timeomkostning (løn, pension, feriepenge m.m.), når medarbejderen ikke har en type */
+  default_internal_cost: number;
+
+  /** Foretrukket byggemarked (retailers.key), standard for nye job */
+  preferred_retailer: string;
 }
 
 /** Standardfarve (signalorange som på veyro.dk). Kan ændres under Indstillinger. */
@@ -26,7 +58,24 @@ export const DEFAULT_SETTINGS: Settings = {
   alert_mail_enabled: true,
   purchase_digest_hours: 0,
   last_digest_at: 0,
+  estimate_vat: 'ekskl',
+  price_max_age_days: 7,
   logo_version: 0,
+  company_address: '',
+  company_cvr: '',
+  company_email: '',
+  company_phone: '',
+  bank_reg: '',
+  bank_account: '',
+  vat_registered: '',
+  payment_days: 8,
+  invoice_start: 1,
+  quote_valid_days: 30,
+  quote_note: '',
+  invoice_note: '',
+  default_hour_rate: 0,
+  default_internal_cost: 0,
+  preferred_retailer: '',
 };
 
 export const DIGEST_CHOICES = [0, 1, 4, 24];

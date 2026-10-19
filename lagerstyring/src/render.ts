@@ -4,6 +4,7 @@ import type { AppEnv, Env } from './env';
 import type { Settings } from './lib/settings';
 import { randomToken } from './lib/crypto';
 import { Conflict, Duplicate, RaceConflict, Tx, opToken, type Actor } from './lib/ledger';
+import { syncStage } from './lib/jobs';
 import { reconcileJob } from './lib/materials';
 import { evaluateProducts } from './lib/notices';
 import { canManage } from './lib/session';
@@ -85,7 +86,10 @@ export async function execTx(
 }
 
 export async function afterTx(env: Env, s: Settings, tx: Tx): Promise<void> {
-  for (const jobId of tx.jobs) await reconcileJob(env.DB, jobId, tx.now);
+  for (const jobId of tx.jobs) {
+    await reconcileJob(env.DB, jobId, tx.now);
+    await syncStage(env.DB, jobId, tx.now, tx.actor);
+  }
   await evaluateProducts(env, s, tx.products, tx.actor.email);
 }
 

@@ -67,6 +67,23 @@ const FLASH: Record<string, [kind: 'ok' | 'info' | 'warn' | 'err', text: string]
   planlagt_mangler: ['warn', 'Det disponible er reserveret. Resten mangler og står nu på jobbets indkøbsliste, og jobbet afventer materialer.'],
   forbrug: ['ok', 'Forbruget er registreret og trukket fra lageret.'],
   job_oprettet: ['ok', 'Jobbet er oprettet.'],
+  pris_gemt: ['ok', 'Prisen er gemt.'],
+  alternativ_godkendt: ['ok', 'Alternativet er godkendt og tæller med i estimatet. Varen på listen er ikke ændret.'],
+  prisfil: ['ok', 'Prisfilen er indlæst.'],
+  job_annulleret: ['ok', 'Jobbet er annulleret, og ubrugte reservationer er frigivet.'],
+  status_gemt: ['ok', 'Status er ændret.'],
+  materiale_tilfojet: ['ok', 'Materialet er tilføjet jobbet.'],
+  alternativ_godkendt_job: ['ok', 'Alternativet er godkendt for denne linje. Prisen bruges nu i overslag og faktura.'],
+  forbrug_registreret: ['ok', 'Forbruget er registreret.'],
+  reserveret: ['ok', 'Lagervarerne er reserveret, og det manglende står på jobbets indkøbsliste.'],
+  timer_registreret: ['ok', 'Timerne er registreret og afventer godkendelse.'],
+  timer_godkendt: ['ok', 'Timerne er godkendt til fakturering.'],
+  overslag_gemt: ['ok', 'Prisoverslaget er gemt som en ny version. Tidligere versioner er uændrede.'],
+  overslag_accepteret: ['ok', 'Overslaget er markeret som accepteret af kunden.'],
+  kladde_oprettet: ['ok', 'Fakturakladden er oprettet. Den er ikke udstedt endnu.'],
+  faktura_udstedt: ['ok', 'Fakturaen er udstedt og låst. Rettelser sker med en kreditnota.'],
+  kreditnota_oprettet: ['ok', 'Kreditnotaen er oprettet som kladde.'],
+  kreditnota_udstedt: ['ok', 'Kreditnotaen er udstedt og låst.'],
 };
 
 export function flash(code: string | undefined): H | '' {

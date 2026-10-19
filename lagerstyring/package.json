@@ -13,7 +13,8 @@
     "screenshots": "node scripts/screenshots.mjs"
   },
   "dependencies": {
-    "hono": "^4.13.13"
+    "hono": "^4.13.13",
+    "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261018.1",

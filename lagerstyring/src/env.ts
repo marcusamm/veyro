@@ -33,6 +33,7 @@ export interface User {
   active: number;
   /** 1 = administrator (sat i appen); adresserne i ADMIN_EMAILS er altid administratorer */
   is_admin: number;
+  labour_type_id: number | null;
   created_at: number;
 }
 
@@ -67,6 +68,10 @@ export interface ProductRow {
   max_stock: number | null;
   purchase_price: number | null;
   sale_price: number | null;
+  ean: string;
+  mpn: string;
+  brand: string;
+  variant: string;
   stock: number;
   reserved: number;
   alert_level: number;
@@ -76,6 +81,8 @@ export interface ProductRow {
 }
 
 export type JobStatus = 'aktiv' | 'afsluttet' | 'annulleret';
+/** Status for brugeren; kladde, planlagt, i_gang og afventer er alle status 'aktiv' i lagermotoren */
+export type JobStage = 'kladde' | 'planlagt' | 'i_gang' | 'afventer' | 'afsluttet' | 'annulleret';
 
 export interface JobRow {
   id: number;
@@ -91,8 +98,163 @@ export interface JobRow {
   status: JobStatus;
   markup_pct: number | null;
   note: string;
+  stage: JobStage;
+  stage_auto: number;
+  stage_prev: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  customer_cvr: string;
+  customer_contact: string;
+  retailer_id: number | null;
+  hour_rate: number | null;
   created_at: number;
   updated_at: number;
+}
+
+export interface JobItemRow {
+  id: number;
+  job_id: number;
+  product_id: number | null;
+  cost_basis: 'lager' | 'byggemarked';
+  sku: string;
+  name: string;
+  unit: string;
+  ean: string;
+  mpn: string;
+  brand: string;
+  variant: string;
+  qty: number;
+  used_qty: number;
+  retailer_id: number | null;
+  price_retailer_id: number | null;
+  retailer_product_id: number | null;
+  match: 'praecis' | 'alternativ' | null;
+  match_basis: string;
+  approved_by: string | null;
+  approved_at: number | null;
+  found_name: string;
+  url: string;
+  sales_unit: string;
+  pack_qty: number | null;
+  min_qty: number;
+  divisible: number;
+  price: number | null;
+  vat: 'inkl' | 'ekskl' | null;
+  price_source: string;
+  checked_at: number | null;
+  lookup_note: string;
+  actual_cost: number | null;
+  sale_mode: 'offentlig' | 'paaslag' | 'manuel';
+  markup_pct: number | null;
+  sale_price: number | null;
+  purchase_line_id: number | null;
+  planned_at: number | null;
+  note: string;
+  sort_order: number;
+  created_by: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface LabourTypeRow {
+  id: number;
+  name: string;
+  internal_cost: number | null;
+  bill_rate: number | null;
+  active: number;
+  created_at: number;
+}
+
+export interface JobEntryRow {
+  id: number;
+  job_id: number;
+  type: 'tid' | 'omkostning';
+  phase: 'forventet' | 'faktisk';
+  worker_email: string;
+  worker_name: string;
+  worker_type: string;
+  work_date: string;
+  description: string;
+  qty: number;
+  unit: string;
+  internal_cost: number | null;
+  unit_price: number | null;
+  billable: number;
+  extra: number;
+  approved_by: string | null;
+  approved_at: number | null;
+  created_by: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface JobQuoteRow {
+  id: number;
+  job_id: number;
+  version: number;
+  data: string;
+  materials: number;
+  labour: number;
+  other: number;
+  subtotal: number;
+  vat: number;
+  total: number;
+  incomplete: number;
+  note: string;
+  valid_until: string;
+  shared_at: number | null;
+  shared_by: string | null;
+  accepted_at: number | null;
+  accepted_by: string | null;
+  created_by: string;
+  created_at: number;
+}
+
+export type InvoiceMode = 'medgaaet' | 'fast' | 'kombination';
+
+export interface InvoiceRow {
+  id: number;
+  job_id: number;
+  kind: 'faktura' | 'kreditnota';
+  status: 'kladde' | 'udstedt';
+  number: number | null;
+  credit_of: number | null;
+  mode: InvoiceMode;
+  fixed_amount: number | null;
+  quote_id: number | null;
+  customer: string;
+  company: string;
+  issue_date: string;
+  delivery_date: string;
+  due_date: string;
+  payment_days: number;
+  vat_rate: number;
+  subtotal: number;
+  vat: number;
+  total: number;
+  note: string;
+  created_by: string;
+  created_at: number;
+  updated_at: number;
+  issued_by: string | null;
+  issued_at: number | null;
+}
+
+export interface InvoiceItemRow {
+  id: number;
+  invoice_id: number;
+  type: 'materiale' | 'tid' | 'omkostning' | 'fastpris';
+  source_key: string;
+  description: string;
+  qty: number;
+  unit: string;
+  unit_price: number | null;
+  unit_cost: number | null;
+  include: number;
+  covered: number;
+  note: string;
+  sort_order: number;
 }
 
 export interface JobMaterialRow {
@@ -144,6 +306,8 @@ export interface PurchaseLineRow {
   cancelled: number;
   auto: number;
   note: string;
+  price_checked_at: number | null;
+  retailer_id: number | null;
   created_at: number;
   updated_at: number;
 }

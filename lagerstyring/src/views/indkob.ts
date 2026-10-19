@@ -148,6 +148,7 @@ export function listPage(d: {
   mail?: { status: string; to: string };
   error?: string;
   errs?: string[];
+  estimate?: H;
 }): H {
   const l = d.list;
   const isJob = !!l.job_id;
@@ -192,8 +193,9 @@ export function listPage(d: {
           )
         : html`<tr><td colspan="11" class="empty">Listen er tom.</td></tr>`}</tbody>
     </table></div>
-    <div class="row-between" style="padding:14px 16px;border-top:1px solid var(--line)"><span class="muted">Forventet beløb i alt</span><strong>${formatKr(total)}</strong></div>
+    <div class="row-between" style="padding:14px 16px;border-top:1px solid var(--line)"><span class="muted">Forventet beløb i alt (egne forventede priser)</span><strong>${formatKr(total)}</strong></div>
   </div>
+  ${d.estimate ?? ''}
   ${drafts && !l.archived
     ? html`<form method="post" action="/lager/indkob/${l.id}/klar" class="row">${csrfField(d.csrf)}${opField(nextOp())}<button class="btn btn-secondary" type="submit">Markér ${drafts} ${drafts === 1 ? 'kladde' : 'kladder'} klar til indkøb</button></form>`
     : ''}
@@ -228,10 +230,11 @@ export function listPage(d: {
       <form method="post" action="/lager/indkob/${l.id}/send" class="card stack">
         ${csrfField(d.csrf)}
         <h2>Send indkøbsliste</h2>
-        <p class="muted small">Sendes som orientering til ejer, indkøber eller medarbejder. Afsendelsen ændrer ikke status til bestilt. Priser medtages kun til modtagere, der må se dem.</p>
+        <p class="muted small">Sendes som orientering til ejer, indkøber eller medarbejder. Afsendelsen ændrer ikke status til bestilt. Priser og prisestimat medtages kun til modtagere, der må se dem.</p>
         <div class="field"><label for="sl-to">Modtager</label><select id="sl-to" name="user_id">${d.users.map(
           (u) => html`<option value="${u.id}">${u.name} (${u.role === 'medarbejder' ? 'medarbejder, uden priser' : u.role === 'ejer' ? 'ejer' : 'indkøber'})</option>`,
         )}</select></div>
+        <label class="check"><input type="checkbox" name="split" value="1"> Opdel prisestimatet efter forhandler</label>
         <button class="btn btn-dark" type="submit">Send indkøbsliste</button>
       </form>
       <form method="post" action="/lager/indkob/${l.id}" class="card stack">

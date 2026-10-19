@@ -1,9 +1,10 @@
 import { Hono, type Context } from 'hono';
-import type { AppEnv, MailRow, Role, User } from '../env';
+import type { AppEnv, LabourTypeRow, MailRow, Role, User } from '../env';
 import { suppliers } from '../lib/catalog';
 import { deliver, emailConfigured, inviteEmail } from '../lib/email';
 import { appUrl } from '../lib/notices';
-import { normalizeEmail, parseIntStrict, str } from '../lib/format';
+import { normalizeEmail, parseIntStrict, parseKr, str } from '../lib/format';
+import { retailers } from '../lib/estimates';
 import { DIGEST_CHOICES, LOGO_MAX_BYTES, deleteLogo, isHexColor, logoType, saveLogo, saveSettings } from '../lib/settings';
 import { isAdminUser, parseAdminEmails } from '../lib/session';
 import { idParam, isDemo, render } from '../render';
@@ -19,7 +20,12 @@ const isAdmin = (c: Context<AppEnv>) => isAdminUser(c.env, c.get('session')?.use
 
 async function show(c: Context<AppEnv>, errs: string[] = []) {
   const db = c.env.DB;
-  const [{ results: users }, sups] = await Promise.all([db.prepare('SELECT * FROM users ORDER BY active DESC, name COLLATE NOCASE').all<User>(), suppliers(db)]);
+  const [{ results: users }, sups, types, rets] = await Promise.all([
+    db.prepare('SELECT * FROM users ORDER BY active DESC, name COLLATE NOCASE').all<User>(),
+    suppliers(db),
+    db.prepare('SELECT * FROM labour_types ORDER BY active DESC, name COLLATE NOCASE').all<LabourTypeRow>().then((r) => r.results),
+    retailers(db),
+  ]);
   return render(
     c,
     'Indstillinger',
@@ -34,6 +40,8 @@ async function show(c: Context<AppEnv>, errs: string[] = []) {
       demo: isDemo(c),
       flashCode: c.req.query('besked'),
       errs,
+      labourTypes: types,
+      retailers: rets,
     }),
     NAV,
     errs.length ? 400 : 200,
@@ -51,7 +59,7 @@ indstillinger.post('/firma', async (c) => {
   const errs: string[] = [];
   if (!name) errs.push('Angiv et firmanavn.');
   if (!isHexColor(accent)) errs.push('Vælg en gyldig farve.');
-  if (markup === null) errs.push('Avancen skal være et helt tal mellem 0 og 1000.');
+  if (markup === null) errs.push('Påslaget skal være et helt tal mellem 0 og 1000.');
   if (!DIGEST_CHOICES.includes(digest)) errs.push('Vælg et gyldigt interval.');
   if (errs.length) return show(c, errs);
   await saveSettings(c.env.DB, {
@@ -133,9 +141,12 @@ indstillinger.post('/bruger/:id{[0-9]+}', async (c) => {
   // Der skal altid være mindst én aktiv ejer
   const owners = await db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'ejer' AND active = 1 AND id <> ?").bind(id).first<{ n: number }>();
   if (!owners?.n && (u.role !== 'ejer' || !u.active)) return show(c, ['Der skal være mindst én aktiv ejer.']);
+  // Medarbejdertypen ændres kun, når formularen sender den
+  const typeRaw = body['labour_type_id'];
+  const typeId = typeof typeRaw === 'string' ? (typeRaw ? parseIntStrict(typeRaw) : null) : target.labour_type_id;
   await db
-    .prepare('UPDATE users SET name = ?, role = ?, alert_mail = ?, purchase_mail = ?, active = ?, is_admin = ? WHERE id = ?')
-    .bind(u.name, u.role, u.alert_mail, u.purchase_mail, u.active, admin, id)
+    .prepare('UPDATE users SET name = ?, role = ?, alert_mail = ?, purchase_mail = ?, active = ?, is_admin = ?, labour_type_id = (SELECT id FROM labour_types WHERE id = ?) WHERE id = ?')
+    .bind(u.name, u.role, u.alert_mail, u.purchase_mail, u.active, admin, typeId, id)
     .run();
   if (!u.active) {
     const row = await db.prepare('SELECT email FROM users WHERE id = ?').bind(id).first<{ email: string }>();
@@ -171,6 +182,88 @@ indstillinger.post('/leverandor/:id{[0-9]+}', async (c) => {
     if (String((err as Error).message).includes('UNIQUE')) return show(c, [`Leverandøren ${x.name} findes allerede.`]);
     throw err;
   }
+  return c.redirect('/lager/indstillinger?besked=gemt', 303);
+});
+
+indstillinger.post('/faktura', async (c) => {
+  const body = await c.req.parseBody();
+  const cvr = str(body['company_cvr'], 8).replace(/\s/g, '');
+  const email = body['company_email'] ? normalizeEmail(body['company_email']) : '';
+  const vat = body['vat_registered'];
+  const payment = parseIntStrict(body['payment_days'], { max: 120 });
+  const start = parseIntStrict(body['invoice_start'], { max: 99_999_999 });
+  const valid = parseIntStrict(body['quote_valid_days'], { max: 365 });
+  const reg = str(body['bank_reg'], 4).replace(/\s/g, '');
+  const account = str(body['bank_account'], 14).replace(/\s/g, '');
+  const errs: string[] = [];
+  if (cvr && !/^\d{8}$/.test(cvr)) errs.push('CVR-nummeret skal være 8 cifre.');
+  if (email === null) errs.push('Angiv en gyldig e-mail (eller ingen).');
+  if (vat !== '' && vat !== 'ja' && vat !== 'nej') errs.push('Vælg, om virksomheden er momsregistreret.');
+  if (payment === null) errs.push('Betalingsfristen skal være 0-120 dage.');
+  if (start === null || start < 1) errs.push('Første fakturanummer skal være et positivt helt tal.');
+  if (valid === null || valid < 1) errs.push('Prisoverslagets gyldighed skal være 1-365 dage.');
+  if ((reg && !/^\d{4}$/.test(reg)) || (account && !/^\d{1,14}$/.test(account))) errs.push('Reg.nr. skal være 4 cifre og kontonummeret op til 14 cifre.');
+  if (errs.length) return show(c, errs);
+  await saveSettings(c.env.DB, {
+    company_address: str(body['company_address'], 200, { multiline: true }),
+    company_cvr: cvr,
+    company_email: email ?? '',
+    company_phone: str(body['company_phone'], 40),
+    bank_reg: reg,
+    bank_account: account,
+    vat_registered: vat as string,
+    payment_days: payment!,
+    invoice_start: start!,
+    quote_valid_days: valid!,
+    quote_note: str(body['quote_note'], 600, { multiline: true }),
+    invoice_note: str(body['invoice_note'], 600, { multiline: true }),
+  });
+  return c.redirect('/lager/indstillinger?besked=gemt', 303);
+});
+
+/** Beløb i kr. fra en formular: tom = null, ugyldig = undefined. */
+function optKr(raw: unknown): number | null | undefined {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const v = parseKr(raw);
+  return v === null || v < 0 || v > 100_000_00 ? undefined : v;
+}
+
+indstillinger.post('/timer', async (c) => {
+  const body = await c.req.parseBody();
+  const rate = optKr(body['default_hour_rate']);
+  const cost = optKr(body['default_internal_cost']);
+  if (rate === undefined || cost === undefined) return show(c, ['Angiv timesatser som beløb i kr. mellem 0 og 100.000.']);
+  await saveSettings(c.env.DB, { default_hour_rate: rate ?? 0, default_internal_cost: cost ?? 0 });
+  return c.redirect('/lager/indstillinger?besked=gemt', 303);
+});
+
+async function saveType(c: Context<AppEnv>, id: number | null) {
+  const body = await c.req.parseBody();
+  const name = str(body['name'], 60);
+  const cost = optKr(body['internal_cost']);
+  const rate = optKr(body['bill_rate']);
+  if (!name || cost === undefined || rate === undefined) return show(c, ['Angiv et navn og timesatser i kr. mellem 0 og 100.000.']);
+  try {
+    if (id === null)
+      await c.env.DB.prepare('INSERT INTO labour_types (name, internal_cost, bill_rate, active, created_at) VALUES (?, ?, ?, 1, ?)').bind(name, cost, rate, now()).run();
+    else
+      await c.env.DB.prepare('UPDATE labour_types SET name = ?, internal_cost = ?, bill_rate = ?, active = ? WHERE id = ?')
+        .bind(name, cost, rate, body['active'] === '1' ? 1 : 0, id)
+        .run();
+  } catch (err) {
+    if (String((err as Error).message).includes('UNIQUE')) return show(c, [`Medarbejdertypen ${name} findes allerede.`]);
+    throw err;
+  }
+  return c.redirect(`/lager/indstillinger?besked=${id === null ? 'oprettet' : 'gemt'}`, 303);
+}
+
+indstillinger.post('/medarbejdertype', (c) => saveType(c, null));
+indstillinger.post('/medarbejdertype/:id{[0-9]+}', (c) => saveType(c, Number(c.req.param('id'))));
+
+indstillinger.post('/byggemarked', async (c) => {
+  const key = str((await c.req.parseBody())['preferred_retailer'], 40);
+  if (key && !(await c.env.DB.prepare('SELECT 1 FROM retailers WHERE key = ?').bind(key).first())) return show(c, ['Vælg et byggemarked fra listen.']);
+  await saveSettings(c.env.DB, { preferred_retailer: key });
   return c.redirect('/lager/indstillinger?besked=gemt', 303);
 });
 

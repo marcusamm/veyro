@@ -1,12 +1,14 @@
-// Fakturagrundlag: gennemsyn, ret, godkend og eksportér materialeforbruget pr. job.
+// Det tidligere fakturagrundlag (kun materialer). Fakturering sker nu under Job → Faktura; her kan
+// tidligere grundlag stadig ses og eksporteres, og en kladde, der allerede findes, kan gøres færdig,
+// så længe jobbet ikke er faktureret i den nye faktura.
 
 import { Hono, type Context } from 'hono';
 import type { AppEnv, InvoiceBasisRow } from '../env';
-import { basisCsv, createDraft, customerSnapshot, getBasis, jobConsumption, totals, uninvoiced } from '../lib/billing';
+import { basisCsv, customerSnapshot, getBasis, totals, uninvoiced } from '../lib/billing';
 import { parseKr, parseQty, str } from '../lib/format';
 import { getJob } from '../lib/materials';
 import { actorOf, render } from '../render';
-import { basisPage, fakturaListPage, jobBillingPage, type BasisListRow, type BillingJobRow } from '../views/faktura';
+import { basisPage, fakturaListPage, type BasisListRow, type BillingJobRow } from '../views/faktura';
 
 const faktura = new Hono<AppEnv>();
 const NAV = { portal: 'lager', tab: 'faktura' } as const;
@@ -34,31 +36,11 @@ faktura.get('/', async (c) => {
   return render(c, 'Fakturagrundlag', fakturaListPage({ jobs, bases, flashCode: c.req.query('besked') }), NAV);
 });
 
-async function showJob(c: Context<AppEnv>, jobId: number, error?: string) {
-  const db = c.env.DB;
-  const job = await getJob(db, jobId);
-  if (!job) return c.notFound();
-  const [consumption, open, { results: bases }] = await Promise.all([
-    jobConsumption(db, jobId),
-    uninvoiced(db, jobId),
-    db.prepare('SELECT * FROM invoice_bases WHERE job_id = ? ORDER BY id DESC').bind(jobId).all<InvoiceBasisRow>(),
-  ]);
-  return render(
-    c,
-    `Fakturagrundlag ${job.number}`,
-    jobBillingPage({ job, consumption, open, bases, csrf: c.get('csrf'), flashCode: c.req.query('besked'), error }),
-    NAV,
-    error ? 409 : 200,
-  );
-}
-
-faktura.get('/job/:id{[0-9]+}', (c) => showJob(c, Number(c.req.param('id'))));
+faktura.get('/job/:id{[0-9]+}', (c) => c.redirect(`/job/${c.req.param('id')}/faktura`, 301));
 
 faktura.post('/job/:id{[0-9]+}/kladde', async (c) => {
-  const job = await getJob(c.env.DB, Number(c.req.param('id')));
-  if (!job) return c.notFound();
-  const id = await createDraft(c.env.DB, job, c.get('settings'), actorOf(c).email, now());
-  return c.redirect(`/lager/faktura/${id}?besked=oprettet`, 303);
+  // Nye kladder laves under Job → Faktura, så intet faktureres to steder
+  return c.redirect(`/job/${c.req.param('id')}/faktura`, 303);
 });
 
 async function showBasis(c: Context<AppEnv>, id: number, errs: string[] = []) {
@@ -83,6 +65,8 @@ faktura.post('/:id{[0-9]+}', async (c) => {
   if (b.basis.status !== 'kladde') return showBasis(c, id, ['Fakturagrundlaget er godkendt og kan ikke ændres.']);
   const body = await c.req.parseBody();
   const action = body['do'];
+  if (action !== 'slet' && (await db.prepare('SELECT 1 FROM invoices WHERE job_id = ? LIMIT 1').bind(b.basis.job_id).first()))
+    return showBasis(c, id, ['Jobbet faktureres nu under Job → Faktura. Slet denne kladde, så intet faktureres to gange.']);
 
   if (action === 'slet') {
     await db.batch([

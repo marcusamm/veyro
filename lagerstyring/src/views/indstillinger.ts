@@ -1,6 +1,8 @@
 import { html } from 'hono/html';
-import type { MailRow, SupplierRow, User } from '../env';
-import { formatDateTime } from '../lib/format';
+import type { LabourTypeRow, MailRow, SupplierRow, User } from '../env';
+import type { RetailerView } from '../lib/estimates';
+import { retailerLive } from '../lib/jobitems';
+import { formatDateTime, oereToInput } from '../lib/format';
 import { DIGEST_CHOICES, LOGO_MAX_BYTES, type Settings } from '../lib/settings';
 import { errors, flash, mailTag, pageHead } from './common';
 import { accentOf, alert, brandMark, csrfField, type H } from './layout';
@@ -29,8 +31,14 @@ export function settingsPage(d: {
   demo: boolean;
   flashCode?: string;
   errs: string[];
+  labourTypes: LabourTypeRow[];
+  retailers: RetailerView[];
 }): H {
   const s = d.s;
+  const kr = (v: number | null) => (v === null || v === 0 ? '' : oereToInput(v));
+  const typeSelect = (u: User): H => html`<select name="labour_type_id" aria-label="Medarbejdertype"><option value="">Ingen type</option>${d.labourTypes.map(
+    (t) => html`<option value="${t.id}"${t.id === u.labour_type_id ? ' selected' : ''}>${t.name}</option>`,
+  )}</select>`;
   const fixed = new Set(d.fixedAdmins);
   // Fast administrator (ADMIN_EMAILS) kan ikke ændres her; andre kan kun ændres af en administrator
   const adminCell = (u: User): H | '' =>
@@ -56,7 +64,7 @@ export function settingsPage(d: {
       <div class="field"><label for="accent_color">Accentfarve</label><input id="accent_color" type="color" name="accent_color" value="${accentOf(s)}"></div>
     </div>
     <div class="fields fields-2">
-      <div class="field"><label for="default_markup_pct">Standardavance på materialer (%)</label><input id="default_markup_pct" class="in-num" name="default_markup_pct" inputmode="numeric" value="${s.default_markup_pct}"><p class="hint">Bruges på fakturagrundlaget, når en vare ikke har en salgspris.</p></div>
+      <div class="field"><label for="default_markup_pct">Standardpåslag på materialer (%)</label><input id="default_markup_pct" class="in-num" name="default_markup_pct" inputmode="numeric" value="${s.default_markup_pct}"><p class="hint">Lægges på kostprisen, når en vare ikke har en salgspris. Kan ændres pr. job og pr. linje.</p></div>
       <div class="field"><label for="purchase_digest_hours">Samlet e-mail med nye indkøbsbehov</label><select id="purchase_digest_hours" name="purchase_digest_hours">${DIGEST_CHOICES.map(
         (h) => html`<option value="${h}"${h === s.purchase_digest_hours ? ' selected' : ''}>${h === 0 ? 'Slået fra (kun manuel afsendelse)' : h === 1 ? 'Hver time' : h === 24 ? 'Én gang i døgnet' : `Hver ${h}. time`}</option>`,
       )}</select><p class="hint">Sendes til modtagere af indkøbslister. Sætter aldrig noget til "Bestilt".</p></div>
@@ -65,6 +73,64 @@ export function settingsPage(d: {
     <p class="hint">Der sendes kun en ny advarsel, når en vare bliver værre (genbestilling → kritisk → ingen disponible), ikke igen for samme behov. Der sendes aldrig noget til leverandører.</p>
     <div><button class="btn btn-primary" type="submit">Gem</button></div>
   </form>
+
+
+  <form method="post" action="/lager/indstillinger/faktura" class="card stack">
+    ${csrfField(d.csrf)}
+    <h2>Oplysninger på prisoverslag og fakturaer</h2>
+    ${s.vat_registered === ''
+      ? alert('warn', 'Angiv, om virksomheden er momsregistreret, og udfyld CVR og adresse, før der kan udstedes fakturaer.')
+      : ''}
+    <div class="fields fields-2">
+      <div class="field"><label for="company_address">Adresse</label><textarea id="company_address" name="company_address" rows="2" maxlength="200">${s.company_address}</textarea></div>
+      <div class="field"><label for="company_cvr">CVR-nummer</label><input id="company_cvr" name="company_cvr" inputmode="numeric" maxlength="8" value="${s.company_cvr}"></div>
+      <div class="field"><label for="company_email">E-mail</label><input id="company_email" name="company_email" type="email" maxlength="254" value="${s.company_email}"></div>
+      <div class="field"><label for="company_phone">Telefon</label><input id="company_phone" name="company_phone" maxlength="40" value="${s.company_phone}"></div>
+      <div class="field"><label for="bank_reg">Bank: reg.nr.</label><input id="bank_reg" name="bank_reg" inputmode="numeric" maxlength="4" value="${s.bank_reg}"></div>
+      <div class="field"><label for="bank_account">Bank: kontonr.</label><input id="bank_account" name="bank_account" inputmode="numeric" maxlength="14" value="${s.bank_account}"></div>
+      <div class="field"><label for="vat_registered">Momsregistreret</label><select id="vat_registered" name="vat_registered">
+        <option value=""${s.vat_registered === '' ? ' selected' : ''}>Ikke oplyst</option>
+        <option value="ja"${s.vat_registered === 'ja' ? ' selected' : ''}>Ja, 25 % moms</option>
+        <option value="nej"${s.vat_registered === 'nej' ? ' selected' : ''}>Nej, ingen moms</option>
+      </select></div>
+      <div class="field"><label for="payment_days">Betalingsfrist (dage)</label><input id="payment_days" class="in-num" name="payment_days" inputmode="numeric" value="${s.payment_days}"></div>
+      <div class="field"><label for="invoice_start">Første fakturanummer</label><input id="invoice_start" class="in-num" name="invoice_start" inputmode="numeric" value="${s.invoice_start}"><p class="hint">Bruges kun, indtil den første faktura er udstedt. Derefter fortsætter numrene fortløbende.</p></div>
+      <div class="field"><label for="quote_valid_days">Prisoverslag gælder (dage)</label><input id="quote_valid_days" class="in-num" name="quote_valid_days" inputmode="numeric" value="${s.quote_valid_days}"></div>
+      <div class="field"><label for="quote_note">Tekst på prisoverslag</label><textarea id="quote_note" name="quote_note" rows="2" maxlength="600">${s.quote_note}</textarea></div>
+      <div class="field"><label for="invoice_note">Tekst på fakturaer</label><textarea id="invoice_note" name="invoice_note" rows="2" maxlength="600">${s.invoice_note}</textarea></div>
+    </div>
+    <p class="hint">Kravene til fakturaer og moms (fx ved B2B, B2C og omvendt betalingspligt) skal bekræftes med revisor eller Skattestyrelsen, før systemet bruges til rigtige fakturaer.</p>
+    <div><button class="btn btn-primary" type="submit">Gem</button></div>
+  </form>
+
+  <section class="card stack">
+    <h2>Arbejdstimer og timesatser</h2>
+    <p class="muted small">Den interne timeomkostning er en samlet sats (løn, pension, feriepenge m.m.) til at se jobbets dækningsbidrag. Det er ikke et lønsystem, og satsen vises aldrig for slutkunden.</p>
+    <form method="post" action="/lager/indstillinger/timer" class="row" style="flex-wrap:wrap">
+      ${csrfField(d.csrf)}
+      <label class="small">Standard timepris til slutkunden <input class="in-num" name="default_hour_rate" inputmode="decimal" value="${kr(s.default_hour_rate)}" placeholder="kr." aria-label="Standard timepris i kr. ekskl. moms"></label>
+      <label class="small">Standard intern timeomkostning <input class="in-num" name="default_internal_cost" inputmode="decimal" value="${kr(s.default_internal_cost)}" placeholder="kr." aria-label="Standard intern timeomkostning i kr."></label>
+      <button class="btn btn-secondary btn-small" type="submit">Gem</button>
+    </form>
+    <div class="table-wrap"><table class="list dense"><tbody>${d.labourTypes.map(
+      (t) => html`<tr><td style="padding:0"><form method="post" action="/lager/indstillinger/medarbejdertype/${t.id}" class="row" style="padding:10px 12px;flex-wrap:wrap">
+      ${csrfField(d.csrf)}
+      <input name="name" value="${t.name}" maxlength="60" required aria-label="Medarbejdertype" style="max-width:200px">
+      <label class="small">Intern <input class="in-num in-sm" name="internal_cost" inputmode="decimal" value="${kr(t.internal_cost)}" aria-label="Intern timeomkostning i kr."></label>
+      <label class="small">Timepris <input class="in-num in-sm" name="bill_rate" inputmode="decimal" value="${kr(t.bill_rate)}" aria-label="Timepris til slutkunden i kr. ekskl. moms"></label>
+      ${check('active', !!t.active, 'Aktiv')}
+      <button class="btn btn-secondary btn-small" type="submit">Gem</button>
+    </form></td></tr>`,
+    )}</tbody></table></div>
+    <form method="post" action="/lager/indstillinger/medarbejdertype" class="row" style="flex-wrap:wrap">
+      ${csrfField(d.csrf)}
+      <input name="name" placeholder="Fx Tømrer eller Lærling" maxlength="60" required aria-label="Medarbejdertype" style="max-width:200px">
+      <label class="small">Intern <input class="in-num in-sm" name="internal_cost" inputmode="decimal" aria-label="Intern timeomkostning i kr."></label>
+      <label class="small">Timepris <input class="in-num in-sm" name="bill_rate" inputmode="decimal" aria-label="Timepris til slutkunden i kr. ekskl. moms"></label>
+      <button class="btn btn-primary btn-small" type="submit">+ Tilføj type</button>
+    </form>
+    <p class="hint">Alle beløb er pr. time ekskl. moms. Tom timepris betyder, at standard timeprisen bruges. Medarbejderens type vælges under Brugere.</p>
+  </section>
 
   <section class="card stack">
     <h2>Logo</h2>
@@ -94,6 +160,7 @@ export function settingsPage(d: {
         <input name="name" value="${u.name}" maxlength="80" required aria-label="Navn" style="max-width:180px">
         <span class="muted small" style="min-width:200px">${u.email}</span>
         ${roleSelect('role', u.role, `role${u.id}`)}
+        ${typeSelect(u)}
         ${check('alert_mail', !!u.alert_mail, 'Lageradvarsler')}
         ${check('purchase_mail', !!u.purchase_mail, 'Indkøbslister')}
         ${check('active', !!u.active, 'Aktiv')}
@@ -113,6 +180,19 @@ export function settingsPage(d: {
       ${check('invite', true, 'Send invitation på e-mail')}
       <button class="btn btn-primary btn-small" type="submit">+ Tilføj bruger</button>
     </form>
+  </section>
+
+  <section class="card stack">
+    <div class="row-between"><h2>Byggemarked og prisopslag</h2><a class="btn btn-secondary btn-small" href="/lager/priser">Forhandlere og prisfiler</a></div>
+    <form method="post" action="/lager/indstillinger/byggemarked" class="row" style="flex-wrap:wrap">
+      ${csrfField(d.csrf)}
+      <label for="preferred_retailer" class="small">Foretrukket byggemarked</label>
+      <select id="preferred_retailer" name="preferred_retailer"><option value="">Intet valgt</option>${d.retailers
+        .filter((r) => r.access !== 'demo' || d.demo)
+        .map((r) => html`<option value="${r.key}"${r.key === s.preferred_retailer ? ' selected' : ''}>${r.name} · ${retailerLive(r) ? 'Aktiv' : 'Kommer senere'}</option>`)}</select>
+      <button class="btn btn-secondary btn-small" type="submit">Gem</button>
+    </form>
+    <p class="muted small" style="margin:0">Bruges som standard på nye job og kan ændres pr. job og pr. materialelinje. Der skiftes aldrig byggemarked i stilhed. "Aktiv" betyder, at prisopslag er bygget og afprøvet; ved "Kommer senere" bruges produktlink og manuel pris.</p>
   </section>
 
   <section class="card stack">

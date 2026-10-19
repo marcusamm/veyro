@@ -37,8 +37,8 @@ export function iconColors(s: Settings): [bg: string, dot: string] {
 }
 
 export const SERVICE_WORKER = `
-const CACHE = 'ls-v1';
-const STATIC = ['/static/app.css?v=1', '/static/app.js?v=1', '/static/inter-tight.woff2', '/offline', '/icons/192.png'];
+const CACHE = 'ls-v2';
+const STATIC = ['/static/app.css?v=2', '/static/app.js?v=2', '/static/inter-tight.woff2', '/offline', '/icons/192.png'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(STATIC)).then(() => self.skipWaiting()));
 });

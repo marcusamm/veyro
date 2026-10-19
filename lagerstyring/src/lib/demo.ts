@@ -1,9 +1,8 @@
 // Demo: fiktive varer, job og indkøbslister, så hele systemet kan afprøves med det samme, og et
 // demoforløb, der kører eksemplerne fra kravene igennem den rigtige lagermotor og viser tallene.
 
-import type { Env, JobRow, ProductRow, User } from '../env';
+import type { Env, JobRow, LabourTypeRow, ProductRow, User } from '../env';
 import { execTx } from '../render';
-import { createDraft, getBasis, totals, uninvoiced } from './billing';
 import { productOverviewOne } from './catalog';
 import { nowSec, randomToken } from './crypto';
 import { addDays, formatQty, todayDk } from './format';
@@ -21,7 +20,14 @@ import {
   setPlanned,
   useFromSite,
 } from './materials';
+import { importCatalog, refreshList, retailers, type RetailerRow } from './estimates';
+import { buildCredit, buildDraft, getInvoice, issueInvoice } from './invoicing';
+import { jobItems, lookupItems, manualPriceStmt, preferredRetailerId } from './jobitems';
+import { logStmt, syncStage } from './jobs';
+import { billRate, internalRate, jobEntries } from './labour';
+import { computeQuote, saveQuote } from './quotes';
 import { sendPurchaseList } from './notices';
+import { ean13, type FeedItem } from './prices';
 import { addLine, createList, getList, getLine, lineStatus, LINE_STATUS_LABEL, registerOrder, receiveLine, stockList } from './purchasing';
 import { getSettings, saveSettings, type Settings } from './settings';
 import { STATUS_LABEL } from './stock';
@@ -65,6 +71,16 @@ export async function resetDemo(env: Env): Promise<void> {
   const db = env.DB;
   await db.batch(
     [
+      'DELETE FROM price_estimates',
+      'DELETE FROM invoice_items',
+      'DELETE FROM invoices',
+      'DELETE FROM job_quotes',
+      'DELETE FROM job_entries',
+      'DELETE FROM job_log',
+      'DELETE FROM job_items',
+      'DELETE FROM job_staff',
+      'UPDATE users SET labour_type_id = NULL',
+      'DELETE FROM labour_types',
       'DELETE FROM invoice_lines',
       'DELETE FROM invoice_bases',
       'DELETE FROM notices',
@@ -74,6 +90,9 @@ export async function resetDemo(env: Env): Promise<void> {
       'DELETE FROM purchase_lists',
       'DELETE FROM job_materials',
       'DELETE FROM jobs',
+      'DELETE FROM product_pages',
+      'DELETE FROM retailer_products',
+      "DELETE FROM retailers WHERE access = 'demo'",
       'DELETE FROM products',
       'DELETE FROM suppliers',
       'DELETE FROM ops',
@@ -168,8 +187,9 @@ async function insertProducts(env: Env, s: Settings, list: ProductSeed[], sups: 
 async function insertJob(db: D1Database, j: Partial<JobRow> & { number: string; name: string }, at: number): Promise<JobRow> {
   const row = await db
     .prepare(
-      `INSERT INTO jobs (number, name, customer_name, customer_email, customer_phone, customer_address, site_address, responsible, planned_date, markup_pct, note, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+      `INSERT INTO jobs (number, name, customer_name, customer_email, customer_phone, customer_address, site_address, responsible, planned_date, markup_pct, note,
+         status, stage, description, start_date, end_date, customer_cvr, customer_contact, hour_rate, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
     )
     .bind(
       j.number,
@@ -180,19 +200,47 @@ async function insertJob(db: D1Database, j: Partial<JobRow> & { number: string; 
       j.customer_address ?? '',
       j.site_address ?? '',
       j.responsible ?? '',
-      j.planned_date ?? '',
+      j.planned_date ?? j.start_date ?? '',
       j.markup_pct ?? null,
       j.note ?? '',
+      j.status ?? 'aktiv',
+      j.stage ?? 'planlagt',
+      j.description ?? '',
+      j.start_date ?? j.planned_date ?? '',
+      j.end_date ?? '',
+      j.customer_cvr ?? '',
+      j.customer_contact ?? '',
+      j.hour_rate ?? null,
       at,
       at,
     )
     .first<JobRow>();
+  if (j.responsible) await db.prepare('INSERT INTO job_staff (job_id, email) VALUES (?, ?) ON CONFLICT DO NOTHING').bind(row!.id, j.responsible).run();
   return row!;
 }
 
 async function seed(env: Env): Promise<void> {
   const db = env.DB;
-  await saveSettings(db, { company_name: 'Nordlys Byg ApS', default_markup_pct: 25, alert_mail_enabled: true, purchase_digest_hours: 0 });
+  // Fiktive firmaoplysninger (Demodata): CVR, adresse og bankkonto findes ikke
+  await saveSettings(db, {
+    company_name: 'Nordlys Byg ApS',
+    default_markup_pct: 25,
+    alert_mail_enabled: true,
+    purchase_digest_hours: 0,
+    company_address: 'Håndværkervej 12\n8660 Skanderborg',
+    company_cvr: '12345678',
+    company_email: 'kontor@nordlysbyg.example',
+    company_phone: '86 52 00 00',
+    bank_reg: '1234',
+    bank_account: '0001234567',
+    vat_registered: 'ja',
+    payment_days: 8,
+    invoice_start: 1001,
+    quote_valid_days: 30,
+    default_hour_rate: kr(575),
+    default_internal_cost: kr(360),
+    preferred_retailer: 'demo-nord',
+  });
   const s = await getSettings(db);
   const now = nowSec();
   const t0 = now - 21 * DAY;
@@ -218,7 +266,9 @@ async function seed(env: Env): Promise<void> {
       customer_address: 'Lindevej 7, 8660 Skanderborg',
       site_address: 'Lindevej 7, 8660 Skanderborg',
       responsible: STAFF.email,
-      planned_date: addDays(today, -12),
+      planned_date: addDays(today, -13),
+      end_date: addDays(today, -10),
+      description: 'Nye overskabe, fuger i bordplade og maling af vægge og loft i køkkenet.',
     },
     t0 + DAY,
   );
@@ -237,13 +287,6 @@ async function seed(env: Env): Promise<void> {
     await returnToStock(tx, j11, await prod('PU-750'), 1 * K, 'Ubrugt');
   });
   await run(OWNER, 'job_afsluttet', now - 10 * DAY, async (tx) => closeJob(tx, (await getJob(db, j11.id))!, 'afsluttet'));
-  const basisId = await createDraft(db, (await getJob(db, j11.id))!, s, OWNER.email, now - 10 * DAY);
-  const b = (await getBasis(db, basisId))!;
-  const t = totals(b.lines);
-  await db
-    .prepare("UPDATE invoice_bases SET status = 'godkendt', total_cost = ?, total_sale = ?, approved_by = ?, approved_at = ? WHERE id = ?")
-    .bind(t.cost, t.sale, OWNER.name, now - 9 * DAY, basisId)
-    .run();
 
   // --- Job 1: tilbygning med planlagte materialer og en liste til leje -----------------------
   const j14 = await insertJob(
@@ -257,7 +300,9 @@ async function seed(env: Env): Promise<void> {
       customer_address: 'Fjordvej 12, 8600 Silkeborg',
       site_address: 'Fjordvej 12, 8600 Silkeborg',
       responsible: STAFF.email,
-      planned_date: addDays(today, 2),
+      planned_date: addDays(today, -5),
+      end_date: addDays(today, 20),
+      description: 'Tilbygning på 18 m² med ydervæg i træskelet, isolering og dampspærre.',
       note: 'Nøgle hos naboen i nr. 10.',
     },
     now - 6 * DAY,
@@ -304,7 +349,11 @@ async function seed(env: Env): Promise<void> {
       site_address: 'Søndergade 4, 2. th., 8000 Aarhus C',
       responsible: STAFF.email,
       planned_date: addDays(today, 5),
+      end_date: addDays(today, 12),
       markup_pct: 20,
+      customer_cvr: '87654321',
+      customer_contact: 'Driftsleder Ole Vang',
+      description: 'Renovering af badeværelse: nye gipsvægge, skakt og klinker på gulvet.',
     },
     now - 3 * DAY,
   );
@@ -354,6 +403,349 @@ async function seed(env: Env): Promise<void> {
   });
   const osbLine = await db.prepare('SELECT id FROM purchase_lines WHERE list_id = ? AND product_id = ?').bind(refill, osb.id).first<{ id: number }>();
   await run(BUYER, 'bestilling', now - DAY, async (tx) => registerOrder(tx, (await getLine(db, osbLine!.id))!, 10 * K, addDays(today, 3), 'ST-55190', null));
+
+  await seedPrices(env, list15!.id, P, now);
+  await seedJobEconomy(env, { j11, j14, j15 }, now);
+}
+
+// --- Job: materialer med priser, timer, prisoverslag og fakturaer ---------------------------------
+// Alt er fiktivt (Demodata). Jobbene dækker alle statusser: kladde, planlagt, i gang, afventer
+// materialer, afsluttet (med udstedt faktura, kreditnota og en ny kladde) og annulleret.
+
+/** Lagervarer, der er planlagt eller brugt på jobbet, som linjer under jobbets materialer. */
+async function stockItems(db: D1Database, jobId: number, at: number): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO job_items (job_id, product_id, cost_basis, sku, name, unit, ean, mpn, brand, variant, qty, sale_mode, sale_price, planned_at, sort_order, created_by, created_at, updated_at)
+       SELECT m.job_id, p.id, 'lager', p.sku, p.name, p.unit, p.ean, p.mpn, p.brand, p.variant, MAX(m.planned, m.issued - m.returned),
+         CASE WHEN p.sale_price IS NULL THEN 'paaslag' ELSE 'manuel' END, p.sale_price, CASE WHEN m.planned > 0 THEN ?2 END, m.id, ?3, ?2, ?2
+       FROM job_materials m JOIN products p ON p.id = m.product_id WHERE m.job_id = ?1
+       ON CONFLICT(job_id, product_id) WHERE product_id IS NOT NULL DO NOTHING`,
+    )
+    .bind(jobId, at, STAFF.email)
+    .run();
+}
+
+/** Materiale fra byggemarkedet (uden varenummer på lageret). */
+async function freeItem(db: D1Database, jobId: number, o: { name: string; unit?: string; qty: number; used?: number; ean?: string }, at: number): Promise<number> {
+  const row = await db
+    .prepare(
+      `INSERT INTO job_items (job_id, product_id, cost_basis, name, unit, ean, qty, used_qty, sale_mode, sort_order, created_by, created_at, updated_at)
+       VALUES (?1, NULL, 'byggemarked', ?2, ?3, ?4, ?5, ?6, 'paaslag', (SELECT COALESCE(MAX(sort_order), 0) + 1000 FROM job_items WHERE job_id = ?1), ?7, ?8, ?8) RETURNING id`,
+    )
+    .bind(jobId, o.name, o.unit ?? 'stk.', o.ean ?? '', o.qty, o.used ?? 0, BUYER.email, at)
+    .first<{ id: number }>();
+  return row!.id;
+}
+
+interface EntrySeed {
+  phase: 'forventet' | 'faktisk';
+  type?: 'tid' | 'omkostning';
+  worker?: User | null;
+  labour?: LabourTypeRow | null;
+  date?: string;
+  description?: string;
+  qty: number;
+  unit?: string;
+  price?: number | null;
+  cost?: number | null;
+  approved?: boolean;
+  extra?: boolean;
+}
+
+async function entry(db: D1Database, s: Settings, job: JobRow, e: EntrySeed, at: number): Promise<void> {
+  const type = e.type ?? 'tid';
+  const lt = e.labour ?? null;
+  const price = e.price !== undefined ? e.price : type === 'tid' ? billRate(job, lt, s) : null;
+  const cost = e.cost !== undefined ? e.cost : type === 'tid' ? internalRate(lt, s) : null;
+  await db
+    .prepare(
+      `INSERT INTO job_entries (job_id, type, phase, worker_email, worker_name, worker_type, work_date, description, qty, unit, internal_cost, unit_price, billable, extra,
+         approved_by, approved_at, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      job.id,
+      type,
+      e.phase,
+      e.worker?.email ?? '',
+      e.worker?.name ?? '',
+      lt?.name ?? '',
+      e.date ?? '',
+      e.description ?? '',
+      e.qty,
+      type === 'tid' ? 'timer' : (e.unit ?? 'stk.'),
+      cost,
+      price,
+      e.extra ? 1 : 0,
+      e.approved ? OWNER.name : null,
+      e.approved ? at : null,
+      e.worker?.email ?? OWNER.email,
+      at,
+      at,
+    )
+    .run();
+}
+
+async function quote(env: Env, s: Settings, jobId: number, at: number, o: { shared?: boolean; accepted?: boolean; note?: string } = {}): Promise<number> {
+  const db = env.DB;
+  const job = (await getJob(db, jobId))!;
+  const [items, entries, rs] = await Promise.all([jobItems(db, jobId, await preferredRetailerId(db, s)), jobEntries(db, jobId), retailers(db)]);
+  const names = new Map(rs.map((r) => [r.id, r.name]));
+  const calc = computeQuote(job, items, entries, s, at, (id) => (id === null ? 'Byggemarked' : (names.get(id) ?? 'Byggemarked')));
+  const id = await saveQuote(db, jobId, calc, s, o.note ?? '', OWNER, at);
+  if (o.shared || o.accepted)
+    await db
+      .prepare('UPDATE job_quotes SET shared_at = ?1, shared_by = ?2, accepted_at = ?3, accepted_by = ?4 WHERE id = ?5')
+      .bind(at, OWNER.email, o.accepted ? at + 3600 : null, o.accepted ? OWNER.email : null, id)
+      .run();
+  return id;
+}
+
+async function invoice(env: Env, s: Settings, jobId: number, at: number, opts: { mode: 'medgaaet' | 'fast' | 'kombination'; fixed: number | null }, issue: boolean): Promise<number> {
+  const db = env.DB;
+  const job = (await getJob(db, jobId))!;
+  const items = await jobItems(db, jobId, await preferredRetailerId(db, s));
+  const id = await buildDraft(db, job, items, s, opts, OWNER, at);
+  if (issue) {
+    const r = await issueInvoice(db, (await getInvoice(db, id))!, job, items, s, OWNER, at);
+    if (!r.ok) throw new Error(`Demofakturaen kunne ikke udstedes: ${r.errors.join(' ')}`);
+  }
+  return id;
+}
+
+async function seedJobEconomy(env: Env, J: { j11: JobRow; j14: JobRow; j15: JobRow }, now: number): Promise<void> {
+  const db = env.DB;
+  const s = await getSettings(db);
+  const today = todayDk();
+  const at = (days: number) => Math.round(now - days * DAY);
+
+  // Medarbejdertyper med samlet intern timeomkostning og timepris (Demodata)
+  await db.batch([
+    db.prepare('INSERT INTO labour_types (name, internal_cost, bill_rate, active, created_at) VALUES (?, ?, ?, 1, ?)').bind('Tømrer', kr(385), kr(595), at(21)),
+    db.prepare('INSERT INTO labour_types (name, internal_cost, bill_rate, active, created_at) VALUES (?, ?, ?, 1, ?)').bind('Lærling', kr(190), kr(395), at(21)),
+  ]);
+  const types = (await db.prepare('SELECT * FROM labour_types').all<LabourTypeRow>()).results;
+  const tomrer = types.find((t) => t.name === 'Tømrer')!;
+  const laerling = types.find((t) => t.name === 'Lærling')!;
+  await db.prepare('UPDATE users SET labour_type_id = ? WHERE email IN (?, ?)').bind(tomrer.id, STAFF.email, OWNER.email).run();
+  const jonas = (await db.prepare('SELECT * FROM users WHERE email = ?').bind(STAFF.email).first<User>())!;
+  const mette = (await db.prepare('SELECT * FROM users WHERE email = ?').bind(OWNER.email).first<User>())!;
+
+  // --- 2026-011 Køkken (afsluttet): accepteret overslag og udstedt faktura (medgået) ---------
+  await stockItems(db, J.j11.id, at(13));
+  const j11 = (await getJob(db, J.j11.id))!;
+  await entry(db, s, j11, { phase: 'forventet', labour: tomrer, qty: 22 * K, description: 'Montering og maling' }, at(20));
+  await quote(env, s, j11.id, at(19), { accepted: true });
+  for (const [d, h, txt] of [[13, 7500, 'Overskabe monteret'], [12, 7500, 'Fuger og spartling'], [11, 6000, 'Maling af vægge og loft']] as const)
+    await entry(db, s, j11, { phase: 'faktisk', worker: jonas, labour: tomrer, date: addDays(today, -d), qty: h, description: txt, approved: true }, at(d));
+  await entry(db, s, j11, { phase: 'faktisk', type: 'omkostning', description: 'Bortkørsel af affald', qty: 1 * K, price: kr(450), cost: kr(300), approved: true }, at(10));
+  await invoice(env, s, j11.id, at(9), { mode: 'medgaaet', fixed: null }, true);
+
+  // --- 2026-010 Terrasse (afsluttet): fast pris, kreditnota og ny kladde med ekstraarbejde ---
+  const j10 = await insertJob(
+    db,
+    {
+      number: '2026-010',
+      name: 'Terrasse, Birkevej 22',
+      customer_name: 'Henrik Dahl',
+      customer_email: 'henrik.dahl@mail.example',
+      customer_phone: '30 40 50 60',
+      customer_address: 'Birkevej 22, 8680 Ry',
+      site_address: 'Birkevej 22, 8680 Ry',
+      responsible: STAFF.email,
+      start_date: addDays(today, -19),
+      end_date: addDays(today, -15),
+      status: 'afsluttet',
+      stage: 'afsluttet',
+      description: 'Terrasse på 24 m² i trykimprægneret fyr med trappe.',
+    },
+    at(25),
+  );
+  const deck = await freeItem(db, j10.id, { name: 'Terrassebrædder fyr 28×120 mm', unit: 'm', qty: 210 * K, used: 204 * K }, at(24));
+  const screws = await freeItem(db, j10.id, { name: 'Terrasseskruer A2 4,8×60 (500 stk.)', unit: 'pk.', qty: 2 * K, used: 2 * K }, at(24));
+  await db.batch([
+    manualPriceStmt(db, deck, null, { price: kr(21.95), vat: 'inkl', sales_unit: 'm', pack_qty: 1 * K, url: '', found_name: 'Terrassebræt fyr 28×120 (Demodata)' }, BUYER, at(24)),
+    manualPriceStmt(db, screws, null, { price: kr(399), vat: 'inkl', sales_unit: 'pk.', pack_qty: 1 * K, url: '', found_name: 'Terrasseskruer 500 stk. (Demodata)' }, BUYER, at(24)),
+  ]);
+  await entry(db, s, j10, { phase: 'forventet', labour: tomrer, qty: 28 * K, description: 'Opbygning af terrasse og trappe' }, at(24));
+  await quote(env, s, j10.id, at(23), { accepted: true, note: 'Fast pris efter aftale.' });
+  for (const d of [19, 18, 17, 16]) await entry(db, s, j10, { phase: 'faktisk', worker: jonas, labour: tomrer, date: addDays(today, -d), qty: 7500, description: 'Terrasse', approved: true }, at(d));
+  await entry(db, s, j10, { phase: 'faktisk', worker: mette, labour: tomrer, date: addDays(today, -15), qty: 3 * K, description: 'Ekstra trappetrin efter kundens ønske', approved: true, extra: true }, at(15));
+  const fixed = kr(17500);
+  // Faktura med den faste pris; ved en fejl kom ekstraarbejdet ikke med. Den krediteres, og en ny
+  // kladde med fast pris plus ekstraarbejde ligger klar til gennemsyn.
+  const first = await invoice(env, s, j10.id, at(14), { mode: 'fast', fixed }, true);
+  const credit = await buildCredit(db, (await getInvoice(db, first))!, OWNER, at(12));
+  await db.prepare("UPDATE invoices SET note = 'Krediteres fuldt, fordi ekstraarbejdet manglede. Erstattes af en ny faktura.' WHERE id = ?").bind(credit).run();
+  const job10 = (await getJob(db, j10.id))!;
+  const cr = await issueInvoice(db, (await getInvoice(db, credit))!, job10, await jobItems(db, j10.id, await preferredRetailerId(db, s)), s, OWNER, at(12));
+  if (!cr.ok) throw new Error(`Demokreditnotaen kunne ikke udstedes: ${cr.errors.join(' ')}`);
+  await invoice(env, s, j10.id, at(12), { mode: 'kombination', fixed }, false);
+
+  // --- 2026-012 Vinduer (annulleret) ----------------------------------------------------------
+  const j12 = await insertJob(
+    db,
+    {
+      number: '2026-012',
+      name: 'Udskiftning af vinduer, Kirkegade 3',
+      customer_name: 'Sofie Krogh',
+      customer_email: 'sofie.krogh@mail.example',
+      customer_address: 'Kirkegade 3, 8660 Skanderborg',
+      responsible: STAFF.email,
+      start_date: addDays(today, -8),
+      status: 'annulleret',
+      stage: 'annulleret',
+      description: 'Udskiftning af 6 vinduer. Kunden har valgt at udskyde opgaven.',
+    },
+    at(18),
+  );
+  await entry(db, s, j12, { phase: 'forventet', labour: tomrer, qty: 30 * K }, at(18));
+  await quote(env, s, j12.id, at(17), { shared: true });
+  await db.batch([logStmt(db, j12.id, 'status', 'Status ændret fra Planlagt til Annulleret. Kunden udskyder opgaven.', OWNER, at(9))]);
+
+  // --- 2026-014 Tilbygning (i gang): to overslagsversioner, timer til godkendelse --------------
+  await stockItems(db, J.j14.id, at(5));
+  const j14 = (await getJob(db, J.j14.id))!;
+  await entry(db, s, j14, { phase: 'forventet', labour: tomrer, qty: 80 * K, description: 'Skelet, isolering og beklædning' }, at(6));
+  await entry(db, s, j14, { phase: 'forventet', type: 'omkostning', description: 'Leje af lift', qty: 1 * K, price: kr(2250), cost: kr(1800) }, at(6));
+  await quote(env, s, j14.id, at(6), { shared: true });
+  await entry(db, s, j14, { phase: 'forventet', labour: laerling, qty: 24 * K, description: 'Lærling til isolering' }, at(5));
+  await quote(env, s, j14.id, at(5), { accepted: true, note: 'Version 2: lærling til isolering tilføjet.' });
+  await entry(db, s, j14, { phase: 'faktisk', worker: jonas, labour: tomrer, date: addDays(today, -4), qty: 7500, description: 'Bundrem og stolper', approved: true }, at(4));
+  await entry(db, s, j14, { phase: 'faktisk', worker: jonas, labour: tomrer, date: addDays(today, -3), qty: 8 * K, description: 'Skelet til ydervæg' }, at(3));
+  await entry(db, s, j14, { phase: 'faktisk', worker: jonas, labour: tomrer, date: addDays(today, -1), qty: 6500, description: 'Remme og vindafstivning' }, at(1));
+
+  // --- 2026-015 Badeværelse (afventer materialer) --------------------------------------------
+  await stockItems(db, J.j15.id, at(2));
+  const j15 = (await getJob(db, J.j15.id))!;
+  await entry(db, s, j15, { phase: 'forventet', labour: tomrer, qty: 30 * K, description: 'Vægge, skakt og gulv' }, at(3));
+  await quote(env, s, j15.id, at(2));
+
+  // --- 2026-016 Loft i carport (planlagt): materialer fra byggemarkedet med pakkeomregning ----
+  const j16 = await insertJob(
+    db,
+    {
+      number: '2026-016',
+      name: 'Loft i carport, Engvej 9',
+      customer_name: 'Mikkel og Ida Friis',
+      customer_email: 'friis@mail.example',
+      customer_phone: '28 29 30 31',
+      customer_address: 'Engvej 9, 8660 Skanderborg',
+      site_address: 'Engvej 9, 8660 Skanderborg',
+      responsible: STAFF.email,
+      start_date: addDays(today, 7),
+      end_date: addDays(today, 9),
+      stage: 'planlagt',
+      description: 'Loft af gipsplader i carport på 30 m² med lister.',
+    },
+    at(2),
+  );
+  await freeItem(db, j16.id, { name: 'Gipsplade 13 mm 900×2500', qty: 12 * K, ean: DEMO_EAN['GIP-13'] }, at(2));
+  // 12 stk. købes som 2 pakker med 10 (8 i overskud, som ikke faktureres)
+  await freeItem(db, j16.id, { name: 'Vinkelbeslag 90 mm', qty: 12 * K, ean: DEMO_EAN['VIN-90'] }, at(2));
+  await freeItem(db, j16.id, { name: 'Loftliste fyr 21×45 mm', unit: 'm', qty: 30 * K }, at(2));
+  await lookupItems(env, await jobItems(db, j16.id, await preferredRetailerId(db, s)), at(2));
+  const job16 = (await getJob(db, j16.id))!;
+  await entry(db, s, job16, { phase: 'forventet', labour: tomrer, qty: 16 * K, description: 'Montering af loft og lister' }, at(2));
+  await quote(env, s, j16.id, at(1));
+
+  // --- 2026-017 Nyt køkken (kladde) ------------------------------------------------------------
+  const j17 = await insertJob(
+    db,
+    {
+      number: '2026-017',
+      name: 'Nyt køkken, Bakkevej 3',
+      customer_name: 'Lone Bech',
+      customer_email: 'lone.bech@mail.example',
+      customer_address: 'Bakkevej 3, 8600 Silkeborg',
+      responsible: STAFF.email,
+      stage: 'kladde',
+      description: 'Kunden ønsker et overslag på nedtagning af gammelt køkken og montering af nyt.',
+    },
+    at(0.5),
+  );
+  await entry(db, s, j17, { phase: 'forventet', labour: tomrer, qty: 40 * K, description: 'Nedtagning og montering' }, at(0.5));
+  await freeItem(db, j17.id, { name: 'Køkkenelementer efter kundens valg', qty: 1 * K }, at(0.5));
+
+  for (const id of [J.j14.id, J.j15.id, j16.id]) await syncStage(db, id, now);
+}
+
+// --- Prisestimat med demodata ----------------------------------------------------------------
+// To fiktive forhandlere med opdigtede priser, markeret "Demodata" overalt. Der er ingen
+// produktlinks, fordi siderne ikke findes. EAN-numrene bruger præfiks 20 (internt brug), så de
+// ikke er rigtige varers numre.
+
+const DEMO_EAN = {
+  'GIP-13': '0' + ean13('200000000013'),
+  'VIN-90': '0' + ean13('200000000090'),
+};
+
+async function seedPrices(env: Env, listId: number, P: Map<string, ProductRow>, now: number): Promise<void> {
+  const db = env.DB;
+  const note = 'Fiktiv forhandler i demoen. Priserne er opdigtede (Demodata) og findes ikke hos nogen rigtig forhandler.';
+  await db.batch([
+    db.prepare("INSERT INTO retailers (key, name, website, access, terms_note, created_at) VALUES ('demo-nord', 'Byggecenter Nord (demo)', '', 'demo', ?, ?)").bind(note, now),
+    db.prepare("INSERT INTO retailers (key, name, website, access, terms_note, created_at) VALUES ('demo-syd', 'Trælast Syd (demo)', '', 'demo', ?, ?)").bind(note, now),
+    ...Object.entries(DEMO_EAN).map(([sku, ean]) => db.prepare("UPDATE products SET ean = ?, brand = 'Nordlys Demo' WHERE sku = ?").bind(ean, sku)),
+  ]);
+  const nord = (await db.prepare("SELECT * FROM retailers WHERE key = 'demo-nord'").first<RetailerRow>())!;
+  const syd = (await db.prepare("SELECT * FROM retailers WHERE key = 'demo-syd'").first<RetailerRow>())!;
+  const item = (o: Partial<FeedItem> & Pick<FeedItem, 'retailer_sku' | 'name' | 'price'>): FeedItem => ({
+    ean: '',
+    mpn: '',
+    brand: '',
+    variant: '',
+    url: '',
+    sales_unit: 'stk.',
+    pack_qty: 1 * K,
+    content_unit: 'stk.',
+    min_qty: 1 * K,
+    divisible: 0,
+    vat: 'inkl',
+    offer_price: null,
+    offer_text: '',
+    offer_min_qty: null,
+    offer_until: '',
+    stock_text: '',
+    ...o,
+  });
+  await importCatalog(
+    db,
+    nord,
+    [
+      item({ retailer_sku: 'N-1001', ean: DEMO_EAN['GIP-13'], name: 'Gipsplade 13 mm 900×2500', price: kr(79) }),
+      item({ retailer_sku: 'N-2040', ean: DEMO_EAN['VIN-90'], name: 'Vinkelbeslag 90 mm, 10 stk.', sales_unit: 'pk.', pack_qty: 10 * K, price: kr(100) }),
+      item({ retailer_sku: 'N-3310', name: 'Vægmaling glans 5 hvid 10 l (andet mærke)', sales_unit: 'spand', content_unit: 'spand', price: kr(649) }),
+    ],
+    'demodata',
+    now,
+  );
+  await importCatalog(
+    db,
+    syd,
+    [
+      item({ retailer_sku: 'S-77', ean: DEMO_EAN['GIP-13'], name: 'Gipsplade standard 13 mm 0,9×2,5 m', price: kr(72.5), offer_text: '' }),
+      item({ retailer_sku: 'S-91', ean: DEMO_EAN['VIN-90'], name: 'Vinkelbeslag 90 mm, 25 stk.', sales_unit: 'pk.', pack_qty: 25 * K, price: kr(219) }),
+    ],
+    'demodata',
+    now,
+  );
+  // En ældre pris, der vises som "Tidligere pris – ikke bekræftet"
+  await db.prepare("UPDATE retailer_products SET checked_at = ? WHERE retailer_id = ? AND retailer_sku = 'S-91'").bind(now - 20 * DAY, syd.id).run();
+
+  const list = (await getList(db, listId))!;
+  const vin = P.get('VIN-90')!;
+  const mal = P.get('MAL-10')!;
+  await must(
+    execTx(env, await getSettings(db), BUYER, 'linje', null, (tx) => {
+      for (const [p, q] of [[vin, 12 * K], [mal, 2 * K]] as const) {
+        addLine(tx, list, { product_id: p.id, sku: p.sku, name: p.name, unit: p.unit, supplier_id: p.supplier_id, qty: q, unit_price: p.purchase_price, expected_date: '', deliver_to: 'lager', note: '' });
+      }
+      addLine(tx, list, { product_id: null, sku: '', name: 'Specialbeslag til skakt (tegning 4B)', unit: 'stk.', supplier_id: null, qty: 4 * K, unit_price: null, expected_date: '', deliver_to: 'arbejdssted', note: 'Skal bestilles efter mål' });
+    }, now),
+  );
+  await refreshList(db, listId, BUYER.email, now);
 }
 
 // --- Demoforløb ------------------------------------------------------------------------------
@@ -397,6 +789,9 @@ export async function runDemoScenario(env: Env, s: Settings, actor: Actor): Prom
   await db.batch([
     db.prepare("UPDATE notices SET open = 0, resolved_at = ? WHERE open = 1 AND product_id IN (SELECT id FROM products WHERE category = ?)").bind(now, SCENARIO_CATEGORY),
     db.prepare('UPDATE products SET active = 0 WHERE category = ?').bind(SCENARIO_CATEGORY),
+    // Forløbets fakturakladder er aldrig udstedt og fjernes igen
+    db.prepare("DELETE FROM invoice_items WHERE invoice_id IN (SELECT i.id FROM invoices i JOIN jobs j ON j.id = i.job_id WHERE i.status = 'kladde' AND j.number LIKE 'FORLØB-%')"),
+    db.prepare("DELETE FROM invoices WHERE status = 'kladde' AND job_id IN (SELECT id FROM jobs WHERE number LIKE 'FORLØB-%')"),
   ]);
 
   const n = ((await db.prepare("SELECT COUNT(*) AS n FROM jobs WHERE number LIKE 'FORLØB-%'").first<{ n: number }>())?.n ?? 0) / 2 + 1;
@@ -576,21 +971,19 @@ export async function runDemoScenario(env: Env, s: Settings, actor: Actor): Prom
     checks: [chk('Fysisk', 3 * K, c.stock), chk('Jobbets nettoforbrug', 25 * K, mc.issued - mc.returned)],
   });
 
-  // 12. Fakturagrundlag uden dobbelttælling
-  const draft = await createDraft(db, await J(j2.id), s, actor.email, nowSec());
-  const bas = (await getBasis(db, draft))!;
-  const t = totals(bas.lines);
-  await db.prepare("UPDATE invoice_bases SET status = 'godkendt', total_cost = ?, total_sale = ?, approved_by = ?, approved_at = ? WHERE id = ?").bind(t.cost, t.sale, actor.name, nowSec(), draft).run();
-  const left = await uninvoiced(db, j2.id);
+  // 12. Fakturakladde uden dobbelttælling
+  const j2now = await J(j2.id);
+  const items2 = await jobItems(db, j2.id, await preferredRetailerId(db, s));
+  const draft = await buildDraft(db, j2now, items2, s, { mode: 'medgaaet', fixed: null }, actor, nowSec());
+  const lines2 = (await db.prepare("SELECT * FROM invoice_items WHERE invoice_id = ? AND type = 'materiale'").bind(draft).all<{ qty: number; source_key: string }>()).results;
+  // Kladden bygges igen: linjerne erstattes, de lægges ikke oven i
+  await buildDraft(db, await J(j2.id), items2, s, { mode: 'medgaaet', fixed: null }, actor, nowSec());
+  const again2 = (await db.prepare("SELECT COUNT(*) AS n FROM invoice_items WHERE invoice_id = ? AND type = 'materiale'").bind(draft).first<{ n: number }>())?.n ?? 0;
   steps.push({
-    title: 'Fakturagrundlag uden dobbelttælling',
-    text: 'Grundlaget bygger på forbruget (udleveret minus returneret), ikke på indkøbet. Plader, der både er købt og brugt, tælles kun én gang, og efter godkendelse er der intet tilbage at fakturere.',
-    checks: [
-      chk('Linjer på grundlaget', '1', String(bas.lines.length)),
-      chk('Mængde på grundlaget', 25 * K, bas.lines[0]?.qty ?? 0),
-      chk('Ikke faktureret efter godkendelse', '0', String(left.length)),
-    ],
-    link: { href: `/lager/faktura/${draft}`, label: 'Se fakturagrundlaget (CSV og PDF)' },
+    title: 'Fakturakladde uden dobbelttælling',
+    text: 'Kladden bygger på forbruget (udleveret minus returneret), ikke på indkøbet. Plader, der både er købt og brugt, tælles kun én gang, og bygges kladden igen, erstattes linjerne i stedet for at blive lagt oven i. Kladden er ikke udstedt.',
+    checks: [chk('Materialelinjer på kladden', '1', String(lines2.length)), chk('Mængde på linjen', 25 * K, lines2[0]?.qty ?? 0), chk('Materialelinjer efter ny kladde', '1', String(again2))],
+    link: { href: `/job/faktura/${draft}`, label: 'Se fakturakladden' },
   });
 
   return steps;
