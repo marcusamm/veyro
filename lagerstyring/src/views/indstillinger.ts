@@ -23,6 +23,7 @@ export function settingsPage(d: {
   suppliers: SupplierRow[];
   csrf: string;
   mailConfigured: boolean;
+  canEditLogo: boolean;
   demo: boolean;
   flashCode?: string;
   errs: string[];
@@ -59,14 +60,14 @@ export function settingsPage(d: {
     <div class="row" style="flex-wrap:wrap;gap:12px">
       <span class="brand">${brandMark(s)}<span class="brand-name">${s.company_name}</span></span>
     </div>
-    <form method="post" action="/lager/indstillinger/logo" enctype="multipart/form-data" class="row" style="flex-wrap:wrap">
+    ${d.canEditLogo ? html`<form method="post" action="/lager/indstillinger/logo" enctype="multipart/form-data" class="row" style="flex-wrap:wrap">
       ${csrfField(d.csrf)}
       <input type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" required aria-label="Logofil">
       <button class="btn btn-primary" type="submit">${s.logo_version ? 'Skift logo' : 'Upload logo'}</button>
     </form>
     ${s.logo_version
       ? html`<form method="post" action="/lager/indstillinger/logo/slet">${csrfField(d.csrf)}<button class="btn btn-secondary btn-small" type="submit">Fjern logo</button></form>`
-      : ''}
+      : ''}` : html`<p class="hint">Kontakt Veyro, hvis logoet skal skiftes.</p>`}
   </section>
 
   <section class="card stack">
