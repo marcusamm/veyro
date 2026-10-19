@@ -51,7 +51,7 @@ export async function startStack({ minMonths = 12, devMode = false, resend = tru
     PRICE_PREMIUM: 'price_premium_test',
     MIN_MONTHS: String(minMonths),
     ADMIN_EMAILS: ADMIN_EMAIL,
-    NOTIFY_EMAIL: 'kontakt@veyro.dk',
+    NOTIFY_EMAIL: 'salg@veyro.dk',
     DEV_MODE: devMode ? '1' : '0',
   };
   const args = ['dev', '--local', '--ip', '127.0.0.1', '--port', String(port), '--persist-to', persist,

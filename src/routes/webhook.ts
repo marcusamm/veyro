@@ -3,6 +3,8 @@ import type { AppEnv, Env } from '../env';
 import { attachCardFromSession } from '../lib/card-link';
 import { nowSec } from '../lib/crypto';
 import { getCustomerByStripeId, normalizeEmail, upsertCustomer, upsertSubscription } from '../lib/db';
+import { newOrderEmail, sendEmail } from '../lib/email';
+import { getPlan, planForPriceId } from '../lib/plans';
 import {
   idOf,
   stripeRequest,
@@ -43,6 +45,7 @@ async function syncSubscription(
   const customer = await ensureCustomer(env, stripeCustomerId);
   if (!customer) return;
   await upsertSubscription(env, customer.id, sub, extra);
+  return { customer, sub };
 }
 
 function invoiceSubscriptionId(inv: any): string | null {
@@ -86,7 +89,22 @@ webhook.post('/stripe/webhook', async (c) => {
           await upsertCustomer(c.env.DB, { email, name: obj.customer_details?.name ?? null, stripeCustomerId });
         }
         const subId = idOf(obj.subscription);
-        if (subId) await syncSubscription(c.env, subId);
+        const synced = subId ? await syncSubscription(c.env, subId) : undefined;
+        if (synced) {
+          // Ny ordre fra veyro.dk: giv salg besked (NOTIFY_EMAIL). Fejl her må ikke få Stripe til at prøve igen.
+          const item = synced.sub.items?.data?.[0];
+          const msg = newOrderEmail({
+            customerEmail: synced.customer.email,
+            customerName: synced.customer.name ?? obj.customer_details?.name ?? null,
+            planName: getPlan(planForPriceId(c.env, item?.price?.id))?.name ?? null,
+            amount: item?.price?.unit_amount != null ? item.price.unit_amount * (item.quantity ?? 1) : null,
+            adminUrl: `${c.env.APP_URL.replace(/\/+$/, '')}/admin`,
+          });
+          c.executionCtx.waitUntil(
+            sendEmail(c.env, { to: c.env.NOTIFY_EMAIL || 'salg@veyro.dk', replyTo: synced.customer.email, ...msg })
+              .catch((err) => console.error('Ordre-notifikation fejlede:', (err as Error).message)),
+          );
+        }
         break;
       }
       case 'customer.subscription.created':

@@ -190,7 +190,7 @@ Kunden oprettes i kundepanelet, når betalingen er gennemført. Derefter kan kun
 5. Tilbage i Resend: klik **Verify DNS Records**. Det kan tage fra få minutter til et par timer.
 6. **API Keys → Create API Key** (Sending access, evt. kun for `veyro.dk`) → sæt som `RESEND_API_KEY` (trin 6).
 
-Afsender er `Veyro <kontakt@veyro.dk>` (kan ændres med `EMAIL_FROM`). Nye henvendelser sendes til `NOTIFY_EMAIL` (standard `kontakt@veyro.dk`) med kundens e-mail som "svar til".
+Afsender er `Veyro <kontakt@veyro.dk>` (kan ændres med `EMAIL_FROM`). Nye ordrer (gennemført checkout) og nye henvendelser sendes til `NOTIFY_EMAIL` (standard `salg@veyro.dk`) med kundens e-mail som "svar til".
 
 ---
 
@@ -220,7 +220,7 @@ Skift derefter til live-nøgler, live-pris-ID'er og en live-webhook.
 | `PRICE_PREMIUM` | – | Stripe pris-ID for Premium. **Skal udfyldes.** |
 | `MIN_MONTHS` | `0` | Bindingsperiode i måneder fra abonnementets start. `0` = ingen binding. Er den fx `6`, kan kunden først opsige 6 måneder efter start, og panelet viser datoen. |
 | `ADMIN_EMAILS` | `kontakt@veyro.dk` | Kommaseparerede e-mails med adgang til `/admin`. |
-| `NOTIFY_EMAIL` | `kontakt@veyro.dk` | Modtager af notifikationer om nye henvendelser. |
+| `NOTIFY_EMAIL` | `salg@veyro.dk` | Modtager af notifikationer om nye ordrer og henvendelser. |
 | `EMAIL_FROM` | `Veyro <kontakt@veyro.dk>` | Afsender på e-mails (domænet skal være verificeret i Resend). |
 | `DEV_MODE` | `0` | Kun til udvikling: `1` viser login-linket på skærmen, når der ikke er en Resend-nøgle. **Skal være `0` i produktion.** |
 | `STRIPE_TAX_RATE_ID` | (tom) | Valgfri momssats (`txr_...`) der sættes på nye abonnementer. |

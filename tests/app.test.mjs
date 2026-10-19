@@ -72,6 +72,23 @@ describe('Stripe-webhook', () => {
     const dash = await client.get('/konto');
     expect(dash.html).toContain('Premium');
   });
+
+  it('sender besked om ny ordre til salg@veyro.dk ved gennemført checkout', async () => {
+    const { makeSubscription } = await import('./mock-server.mjs');
+    const sub = makeSubscription({ id: 'sub_D', customer: 'cus_D', price: 'price_business_test' });
+    await setMockState(stack.mock, { customers: { cus_D: { id: 'cus_D', email: 'dorte@example.dk', name: 'Dorte <Design>' } }, subscriptions: { sub_D: sub } });
+    const before = (await emails()).length;
+    const r = await signedWebhook(stack.base, {
+      id: 'evt_order_D',
+      type: 'checkout.session.completed',
+      data: { object: { id: 'cs_D', mode: 'subscription', customer: 'cus_D', subscription: 'sub_D', customer_details: { email: 'dorte@example.dk', name: 'Dorte <Design>' } } },
+    });
+    expect(r.status).toBe(200);
+    const mail = await waitFor(async () => (await emails()).slice(before).find((e) => e.to[0] === 'salg@veyro.dk'));
+    expect(mail.subject).toContain('Ny ordre: Business');
+    expect(mail.reply_to).toBe('dorte@example.dk');
+    expect(mail.html).toContain('Dorte &lt;Design&gt;');
+  });
 });
 
 describe('Magic-link-login', () => {
@@ -438,7 +455,7 @@ describe('Bestilling (Stripe Checkout)', () => {
 });
 
 describe('Henvendelser', () => {
-  it('opretter, lister og sender notifikation til kontakt@veyro.dk', async () => {
+  it('opretter, lister og sender notifikation til salg@veyro.dk', async () => {
     const { client } = await as('anna@example.dk');
     const page = await client.get('/konto/henvendelser');
     expect(page.html).toContain('Du har ikke sendt nogen henvendelser endnu');
@@ -455,7 +472,7 @@ describe('Henvendelser', () => {
     expect(list.html).not.toContain('Ferielukning i juli <script>');
     expect(list.html).toContain('Modtaget');
     expect(list.html).toContain('Indholdsændring');
-    const mail = await waitFor(async () => (await emails()).slice(before).find((e) => e.to[0] === 'kontakt@veyro.dk'));
+    const mail = await waitFor(async () => (await emails()).slice(before).find((e) => e.to[0] === 'salg@veyro.dk'));
     expect(mail.subject).toContain('Ny henvendelse');
     expect(mail.reply_to).toBe('anna@example.dk');
     expect(mail.html).toContain('&lt;script&gt;');
