@@ -337,7 +337,7 @@ account.post('/henvendelser', async (c) => {
     description: values.description!,
   });
 
-  const notify = c.env.NOTIFY_EMAIL || 'kontakt@veyro.dk';
+  const notify = c.env.NOTIFY_EMAIL || 'salg@veyro.dk';
   const msg = newRequestEmail({
     customerEmail: customer.email,
     typeLabel: REQUEST_TYPES[values.type!]!,

@@ -3,6 +3,8 @@ import type { AppEnv, Env } from '../env';
 import { attachCardFromSession } from '../lib/card-link';
 import { nowSec } from '../lib/crypto';
 import { getCustomerByStripeId, normalizeEmail, upsertCustomer, upsertSubscription } from '../lib/db';
+import { newOrderEmail, sendEmail } from '../lib/email';
+import { getPlan, planForPriceId } from '../lib/plans';
 import {
   idOf,
   stripeRequest,
@@ -43,6 +45,30 @@ async function syncSubscription(
   const customer = await ensureCustomer(env, stripeCustomerId);
   if (!customer) return;
   await upsertSubscription(env, customer.id, sub, extra);
+  return { customer, sub };
+}
+
+/** Giver salg besked (NOTIFY_EMAIL) om en ny ordre. Fejl her må ikke få Stripe til at prøve igen. */
+function notifySales(
+  env: Env,
+  ctx: { waitUntil(p: Promise<unknown>): void },
+  synced: { customer: { email: string; name: string | null }; sub: StripeSubscription },
+  title: string,
+) {
+  const items = synced.sub.items?.data ?? [];
+  const priced = items.filter((i) => i.price?.unit_amount != null);
+  const msg = newOrderEmail({
+    title,
+    customerEmail: synced.customer.email,
+    customerName: synced.customer.name,
+    planName: items.length === 1 ? (getPlan(planForPriceId(env, items[0]!.price?.id))?.name ?? null) : null,
+    amount: priced.length ? priced.reduce((sum, i) => sum + i.price.unit_amount! * (i.quantity ?? 1), 0) : null,
+    adminUrl: `${env.APP_URL.replace(/\/+$/, '')}/admin/abonnementer`,
+  });
+  ctx.waitUntil(
+    sendEmail(env, { to: env.NOTIFY_EMAIL || 'salg@veyro.dk', replyTo: synced.customer.email, ...msg })
+      .catch((err) => console.error('Ordre-notifikation fejlede:', (err as Error).message)),
+  );
 }
 
 function invoiceSubscriptionId(inv: any): string | null {
@@ -76,7 +102,9 @@ webhook.post('/stripe/webhook', async (c) => {
     switch (event.type) {
       case 'checkout.session.completed': {
         if (obj.mode === 'setup' && obj.metadata?.veyro_subscription) {
-          await attachCardFromSession(c.env, obj.id);
+          const subId = await attachCardFromSession(c.env, obj.id);
+          const synced = subId ? await syncSubscription(c.env, subId) : undefined;
+          if (synced) notifySales(c.env, c.executionCtx, synced, 'Tilbud accepteret');
           break;
         }
         if (obj.mode !== 'subscription') break;
@@ -86,7 +114,8 @@ webhook.post('/stripe/webhook', async (c) => {
           await upsertCustomer(c.env.DB, { email, name: obj.customer_details?.name ?? null, stripeCustomerId });
         }
         const subId = idOf(obj.subscription);
-        if (subId) await syncSubscription(c.env, subId);
+        const synced = subId ? await syncSubscription(c.env, subId) : undefined;
+        if (synced) notifySales(c.env, c.executionCtx, synced, 'Ny ordre');
         break;
       }
       case 'customer.subscription.created':

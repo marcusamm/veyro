@@ -1,4 +1,5 @@
 import type { Env } from '../env';
+import { formatKr } from './format';
 
 export interface EmailMessage {
   to: string;
@@ -164,4 +165,28 @@ Se og opdater status: ${args.adminUrl}`;
 <p style="margin:0 0 24px;white-space:pre-wrap">${escapeHtml(args.description)}</p>
 <p style="margin:0"><a href="${escapeHtml(args.adminUrl)}" style="color:#0F0F0D">Åbn i admin</a></p>`);
   return { subject: `Ny henvendelse: ${args.title}`.slice(0, 150), text, html };
+}
+
+export function newOrderEmail(args: {
+  title: string;
+  customerEmail: string;
+  customerName: string | null;
+  planName: string | null;
+  amount: number | null;
+  adminUrl: string;
+}): Omit<EmailMessage, 'to'> {
+  const who = args.customerName ? `${args.customerName} (${args.customerEmail})` : args.customerEmail;
+  const plan = args.planName ?? 'Abonnement';
+  const price = args.amount != null ? `${formatKr(args.amount)} pr. måned` : '–';
+  const text = `${args.title} fra ${who}
+
+Pakke: ${plan}
+Pris: ${price}
+
+Se abonnementet i admin: ${args.adminUrl}`;
+  const html = wrapHtml(`<p style="margin:0 0 16px"><strong>${escapeHtml(args.title)}</strong> fra ${escapeHtml(who)}</p>
+<p style="margin:0 0 4px"><strong>Pakke:</strong> ${escapeHtml(plan)}</p>
+<p style="margin:0 0 24px"><strong>Pris:</strong> ${escapeHtml(price)}</p>
+<p style="margin:0"><a href="${escapeHtml(args.adminUrl)}" style="color:#0F0F0D">Åbn i admin</a></p>`);
+  return { subject: `${args.title}: ${plan} – ${who}`.slice(0, 150), text, html };
 }
