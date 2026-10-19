@@ -17,8 +17,10 @@ database_name = "lagerstyring-demo"
 database_id = "034205d9-9a7d-4039-a0bf-d9401b6c1c71"
 migrations_dir = "migrations"
 
+# Ingen cron i demoen: gratisplanen tillader kun 5 cron-triggere i alt, og de bruges af kunderne.
+# Demoen har ingen rigtige prisfiler eller e-mails at køre hver time.
 [triggers]
-crons = ["7 * * * *"]
+crons = []
 
 # Uden RESEND_API_KEY sendes ingen e-mails: de gemmes som "simuleret" i e-mail-loggen.
 # DEMO_MODE giver login med ét klik som ejer eller medarbejder, eksempeldata og nulstilling.
