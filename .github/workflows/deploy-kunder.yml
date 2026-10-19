@@ -50,3 +50,12 @@ jobs:
           KUNDE_DOMAENE: ${{ vars.KUNDE_DOMAENE || 'veyro.dk' }}
           KUNDE: ${{ inputs.kunde }}
         run: node scripts/deploy-kunder.mjs $KUNDE
+      - name: Tjek kundeadresser i DNS
+        if: always()
+        env:
+          KUNDE_DOMAENE: ${{ vars.KUNDE_DOMAENE || 'veyro.dk' }}
+        run: |
+          echo "Navneservere for $KUNDE_DOMAENE:"; dig +short NS "$KUNDE_DOMAENE"
+          for adr in $(node -e "for (const f of require('fs').readdirSync('kunder').filter((f) => f.endsWith('.json'))) console.log(JSON.parse(require('fs').readFileSync('kunder/' + f)).adresse ?? f.replace('.json', ''))"); do
+            echo "$adr.$KUNDE_DOMAENE: $(dig +short "$adr.$KUNDE_DOMAENE" @1.1.1.1 | tr '\n' ' ')"
+          done

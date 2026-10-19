@@ -229,7 +229,8 @@ function deploy(kunde, inst) {
       unlinkSync(join(cwd, sqlFil));
     }
   }
-  wrangler(cwd, ['deploy', '--config', config]);
+  // Vis deployets output, så det fremgår af loggen, hvilke adresser workeren fik
+  console.log(wrangler(cwd, ['deploy', '--config', config]));
   if (process.env.RESEND_API_KEY) {
     wrangler(cwd, ['secret', 'put', 'RESEND_API_KEY', '--config', config], process.env.RESEND_API_KEY);
   } else {
