@@ -215,6 +215,20 @@ describe('Demo uden e-mail (simuleret)', () => {
     expect((await new Client(stack.base).get('/logo')).status).toBe(404);
   });
 
+  it('en ejer, der ikke er administrator, kan ikke udnævne eller ændre administratorer', async () => {
+    let page = await owner.get('/lager/indstillinger');
+    expect(page.html).not.toContain('name="is_admin"');
+    await owner.post('/lager/indstillinger/bruger', { _csrf: csrfFrom(page.html), name: 'Ny Ejer', email: 'ny.ejer@firma.dk', role: 'ejer', is_admin: '1' });
+    expect(stack.sql("SELECT is_admin FROM users WHERE email = 'ny.ejer@firma.dk'")[0].is_admin).toBe(0);
+    stack.sql("UPDATE users SET is_admin = 1 WHERE email = 'ny.ejer@firma.dk'");
+    const id = stack.sql("SELECT id FROM users WHERE email = 'ny.ejer@firma.dk'")[0].id;
+    page = await owner.get('/lager/indstillinger');
+    const res = await owner.post(`/lager/indstillinger/bruger/${id}`, { _csrf: csrfFrom(page.html), name: 'Ny Ejer', role: 'medarbejder', active: '1' });
+    expect(res.html).toContain('Kun administratorer kan ændre en administrator.');
+    expect(stack.sql(`SELECT role FROM users WHERE id = ${id}`)[0].role).toBe('ejer');
+    stack.sql(`DELETE FROM users WHERE id = ${id}`);
+  });
+
   it('nulstilling lægger demodata ind igen', async () => {
     const page = await owner.get('/lager/indstillinger');
     const res = await owner.post('/lager/demo/nulstil', { _csrf: csrfFrom(page.html) });
@@ -271,6 +285,48 @@ describe('Med e-mail', () => {
     expect(del.headers.get('location')).toContain('logo_slettet');
     expect((await admin.get('/lager')).html).toContain('brand-dot');
     expect((await new Client(stack.base).get('/logo')).status).toBe(404);
+  });
+
+  it('administratoren kan invitere på e-mail og udnævne andre administratorer', async () => {
+    const admin = await login(stack, ADMIN_EMAIL);
+    let page = await admin.get('/lager/indstillinger');
+    expect(page.html).toContain('name="is_admin"');
+    const before = stack.mail.emails.length;
+    const res = await admin.post('/lager/indstillinger/bruger', { _csrf: csrfFrom(page.html), name: 'Anna Admin', email: 'anna@firma.dk', role: 'medarbejder', is_admin: '1', invite: '1' });
+    expect(res.headers.get('location')).toContain('besked=inviteret');
+    const invite = await waitFor(() => stack.mail.emails.slice(before).find((e) => e.to[0] === 'anna@firma.dk'));
+    expect(invite.subject).toContain('inviteret');
+    expect(invite.text).toContain(`${stack.base}/login`);
+    // En administrator er altid ejer
+    expect(stack.sql("SELECT role, is_admin FROM users WHERE email = 'anna@firma.dk'")[0]).toEqual({ role: 'ejer', is_admin: 1 });
+
+    // Den nye administrator kan selv skifte logoet og fjerne administratorrettigheden fra andre
+    const anna = await login(stack, 'anna@firma.dk');
+    page = await anna.get('/lager/indstillinger');
+    expect(page.html).not.toContain('Kontakt Veyro, hvis logoet skal skiftes.');
+    const fd = new FormData();
+    fd.append('_csrf', csrfFrom(page.html));
+    fd.append('logo', new Blob([PNG]), 'logo.png');
+    expect((await anna.postMultipart('/lager/indstillinger/logo', fd)).headers.get('location')).toContain('logo_gemt');
+    await anna.submit('/lager/indstillinger', '/lager/indstillinger/logo/slet');
+
+    // Den faste administrator fra kundefilen kan ikke nedgraderes
+    const fixedId = stack.sql(`SELECT id FROM users WHERE email = '${ADMIN_EMAIL}'`)[0].id;
+    const down = await anna.post(`/lager/indstillinger/bruger/${fixedId}`, { _csrf: csrfFrom(page.html), name: 'Ejer', role: 'indkober', active: '1' });
+    expect(down.html).toContain('er fast administrator');
+
+    // Uden invitation sendes ingen mail
+    const n = stack.mail.emails.length;
+    const plain = await admin.post('/lager/indstillinger/bruger', { _csrf: csrfFrom((await admin.get('/lager/indstillinger')).html), name: 'Ole Uden', email: 'ole@firma.dk', role: 'medarbejder' });
+    expect(plain.headers.get('location')).toContain('besked=oprettet');
+    await new Promise((r) => setTimeout(r, 300));
+    expect(stack.mail.emails.slice(n).some((e) => e.to[0] === 'ole@firma.dk')).toBe(false);
+
+    const annaId = stack.sql("SELECT id FROM users WHERE email = 'anna@firma.dk'")[0].id;
+    page = await admin.get('/lager/indstillinger');
+    await admin.post(`/lager/indstillinger/bruger/${annaId}`, { _csrf: csrfFrom(page.html), name: 'Anna Admin', role: 'ejer', active: '1' });
+    expect(stack.sql(`SELECT is_admin FROM users WHERE id = ${annaId}`)[0].is_admin).toBe(0);
+    stack.sql("DELETE FROM users WHERE email IN ('anna@firma.dk', 'ole@firma.dk')");
   });
 
   it('sender advarsel og indkøbsliste, og medarbejdere får ingen priser', async () => {

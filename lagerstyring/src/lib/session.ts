@@ -30,6 +30,11 @@ export function parseAdminEmails(env: Env): Set<string> {
   );
 }
 
+/** Administratorer kan skifte logo, invitere brugere og udnævne andre administratorer. */
+export function isAdminUser(env: Env, user: User | null | undefined): boolean {
+  return !!user && (!!user.is_admin || parseAdminEmails(env).has(user.email.toLowerCase()));
+}
+
 /** Ejer og indkøber har lagerportalen, priser og indkøb; medarbejdere har forbrugsportalen. */
 export function canManage(user: User | null | undefined): boolean {
   return !!user && (user.role === 'ejer' || user.role === 'indkober');
