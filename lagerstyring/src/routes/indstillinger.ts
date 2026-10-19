@@ -4,6 +4,7 @@ import { suppliers } from '../lib/catalog';
 import { emailConfigured } from '../lib/email';
 import { normalizeEmail, parseIntStrict, str } from '../lib/format';
 import { DIGEST_CHOICES, LOGO_MAX_BYTES, deleteLogo, isHexColor, logoType, saveLogo, saveSettings } from '../lib/settings';
+import { parseAdminEmails } from '../lib/session';
 import { idParam, isDemo, render } from '../render';
 import { mailsPage, settingsPage } from '../views/indstillinger';
 
@@ -11,6 +12,12 @@ const indstillinger = new Hono<AppEnv>();
 const NAV = { portal: 'lager', tab: 'indstillinger' } as const;
 const ROLES: Role[] = ['ejer', 'indkober', 'medarbejder'];
 const now = () => Math.floor(Date.now() / 1000);
+
+/** Kun adresserne i ADMIN_EMAILS (Veyros administratorer) må skifte logoet. */
+const isAdmin = (c: Context<AppEnv>) => {
+  const email = c.get('session')?.user.email.toLowerCase();
+  return !!email && parseAdminEmails(c.env).has(email);
+};
 
 async function show(c: Context<AppEnv>, errs: string[] = []) {
   const db = c.env.DB;
@@ -24,6 +31,7 @@ async function show(c: Context<AppEnv>, errs: string[] = []) {
       suppliers: sups,
       csrf: c.get('csrf'),
       mailConfigured: emailConfigured(c.env),
+      canEditLogo: isAdmin(c),
       demo: isDemo(c),
       flashCode: c.req.query('besked'),
       errs,
@@ -58,6 +66,7 @@ indstillinger.post('/firma', async (c) => {
 });
 
 indstillinger.post('/logo', async (c) => {
+  if (!isAdmin(c)) return show(c, ['Kun administratorer kan skifte logoet.']);
   const file = (await c.req.parseBody())['logo'];
   if (!(file instanceof File) || file.size === 0) return show(c, ['Vælg en billedfil.']);
   if (file.size > LOGO_MAX_BYTES) return show(c, [`Logoet må højst fylde ${Math.round(LOGO_MAX_BYTES / 1024)} KB.`]);
@@ -69,6 +78,7 @@ indstillinger.post('/logo', async (c) => {
 });
 
 indstillinger.post('/logo/slet', async (c) => {
+  if (!isAdmin(c)) return show(c, ['Kun administratorer kan fjerne logoet.']);
   await deleteLogo(c.env.DB);
   return c.redirect('/lager/indstillinger?besked=logo_slettet', 303);
 });
