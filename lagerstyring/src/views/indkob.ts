@@ -35,12 +35,14 @@ export function purchasingPage(d: {
   csrf: string;
   ops: string[];
   flashCode?: string;
+  mail?: { status: string; to: string };
   error?: string;
 }): H {
   const groups = bySupplier(d.toOrder);
+  const notOrdered = d.mail && d.mail.status !== 'sendt' && !d.flashCode;
   return html`<div class="stack-lg">
-  ${pageHead('Lagerportal', 'Indkøb', html`<a class="btn btn-secondary" href="/lager/modtagelse">Varemodtagelse</a>`, 'Systemet bestiller aldrig selv hos leverandøren. Registrér her, hvad der er bestilt.')}
-  ${flash(d.flashCode)}${d.error ? alert('err', d.error) : ''}
+  ${pageHead('Lagerportal', 'Indkøb', html`<a class="btn btn-secondary" href="/lager/modtagelse">Varemodtagelse</a>`, 'Send bestillingen til leverandøren på e-mail, eller registrér en bestilling, du har lavet på anden vis.')}
+  ${flash(d.flashCode)}${d.mail ? mailFlash(d.mail.status, d.mail.to) : ''}${notOrdered ? alert('warn', 'Bestillingen er ikke registreret, fordi e-mailen ikke er sendt.') : ''}${d.error ? alert('err', d.error) : ''}
   <section class="stack">
     <h2>Til bestilling</h2>
     ${groups.length
@@ -63,11 +65,18 @@ export function purchasingPage(d: {
           </tr>`,
           )}</tbody>
         </table></div>
-        <div class="row" style="padding:12px 16px 16px">
-          <input name="ref" maxlength="60" placeholder="Ordrenummer hos leverandøren" style="max-width:280px" aria-label="Ordrenummer">
-          <button class="btn btn-dark" type="submit">Registrér bestilling hos ${sup}</button>
+        <div class="row" style="padding:12px 16px 16px;flex-wrap:wrap">
+          <input name="ref" maxlength="60" placeholder="Ordrenummer eller reference" style="max-width:280px" aria-label="Ordrenummer eller reference">
+          ${lines[0]!.supplier_email
+            ? html`<button class="btn btn-primary" type="submit" formaction="/lager/indkob/bestil-mail" data-confirm="Send bestillingen til ${sup} (${lines[0]!.supplier_email})?">Send bestilling til ${sup}</button>`
+            : ''}
+          <button class="btn ${lines[0]!.supplier_email ? 'btn-secondary' : 'btn-dark'}" type="submit">Registrér bestilling hos ${sup}</button>
         </div>
-        <p class="hint" style="padding:0 16px 16px">Linjer markeret "Klar til indkøb" er udfyldt med hele mængden. Tomme felter bestilles ikke.</p>
+        <p class="hint" style="padding:0 16px 16px">${lines[0]!.supplier_email
+          ? html`"Send bestilling" sender varer, antal og leveringsadresse (uden priser) til ${lines[0]!.supplier_email} og registrerer dem som bestilt. Svar fra ${sup} går til dig.`
+          : lines[0]!.supplier_id
+            ? html`Tilføj ${sup}s e-mail under <a href="/lager/indstillinger">Indstillinger</a> for at sende bestillingen direkte herfra.`
+            : ''} Linjer markeret "Klar til indkøb" er udfyldt med hele mængden. Tomme felter bestilles ikke.</p>
       </form>`,
         )
       : html`<div class="card"><p class="muted">Der er intet, der mangler at blive bestilt.</p></div>`}

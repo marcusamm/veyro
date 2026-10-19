@@ -6,7 +6,7 @@
 // genbestilling; en åben indkøbsordre skjuler aldrig risikoen for mangel før levering.
 
 import type { Env, PurchaseListRow, User } from '../env';
-import { formatDateTime, formatKr, formatQty, lineAmount, todayDk } from './format';
+import { formatDateTime, formatDay, formatKr, formatQty, lineAmount, todayDk } from './format';
 import { nowSec } from './crypto';
 import { deliver, button, escapeHtml, table, wrapHtml, type DeliveryStatus } from './email';
 import { listEstimate, type EstimatedLine } from './estimates';
@@ -169,6 +169,53 @@ export function purchaseListEmail(
     html: wrapHtml(
       s,
       `<p style="margin:0 0 8px">${meta.map(escapeHtml).join('<br>')}</p>${tb.html}${withPrices ? `<p style="margin:8px 0 0"><strong>I alt (forventet): ${formatKr(total)}</strong></p>` : ''}${est ? est.html : ''}${button(s, link, 'Åbn indkøbslisten')}<p style="color:#55534D;font-size:13px">${note}</p>`,
+    ),
+  };
+}
+
+export interface OrderLine {
+  line: LineView;
+  qty: number;
+  date: string;
+  /** Leveringsadresse: firmaets adresse (lager) eller jobbets arbejdssted */
+  address: string;
+}
+
+/**
+ * Bestilling til en forhandler på e-mail. Uden priser: forhandleren bruger firmaets egne
+ * aftalepriser og bekræfter pris og levering ved at svare (svaret går til den, der bestilte).
+ */
+export function supplierOrderEmail(
+  supplier: string,
+  lines: OrderLine[],
+  s: Settings,
+  d: { ref: string; orderedBy: { name: string; email: string } },
+): { subject: string; text: string; html: string } {
+  const rows = [['Varenr.', 'Vare', 'Antal', 'Job', 'Levering', 'Ønsket levering']];
+  for (const { line, qty, date, address } of lines) {
+    rows.push([
+      line.sku || '–',
+      line.note ? `${line.name} (${line.note})` : line.name,
+      `${formatQty(qty)} ${line.unit}`,
+      line.job_number ?? 'Lager',
+      address || 'Aftales',
+      date ? formatDay(date) : 'Snarest',
+    ]);
+  }
+  const tb = table(rows, [2]);
+  const meta = [
+    `Bestilling fra ${s.company_name}${d.ref ? ` (vores ref. ${d.ref})` : ''}`,
+    s.company_cvr && `CVR: ${s.company_cvr}`,
+    s.company_address && `Adresse: ${s.company_address}`,
+    `Bestilt af: ${d.orderedBy.name} (${d.orderedBy.email}${s.company_phone ? `, tlf. ${s.company_phone}` : ''})`,
+  ].filter(Boolean) as string[];
+  const ask = 'Bekræft venligst bestillingen med pris og forventet leveringsdato ved at svare på denne e-mail. Priser efter vores aftale med jer.';
+  return {
+    subject: `Bestilling fra ${s.company_name}${d.ref ? ` · ${d.ref}` : ''}`,
+    text: `Til ${supplier}\n\n${meta.join('\n')}\n\n${tb.text}\n\n${ask}`,
+    html: wrapHtml(
+      s,
+      `<p style="margin:0 0 8px">Til ${escapeHtml(supplier)}</p><p style="margin:0 0 8px">${meta.map(escapeHtml).join('<br>')}</p>${tb.html}<p style="margin:12px 0 0">${escapeHtml(ask)}</p>`,
     ),
   };
 }

@@ -11,6 +11,7 @@ Systemet har to portaler med de samme data:
 - Opret varer, ret indstillinger og registrér varemodtagelse, brugbare returvarer, optælling, svind og returnering til leverandør
 - Indkøbslister pr. job og en fælles liste til lageropfyldning; linjer med og uden varenummer, grupperet efter leverandør
 - Bestilling hos leverandør og varemodtagelse (også delvis). Varer lægges først på lager, når de modtages
+- **Send bestilling til leverandøren på e-mail:** under Indkøb → Til bestilling sender "Send bestilling til …" varenr., vare, antal, job, leveringsadresse (firmaets adresse eller jobbets arbejdssted) og ønsket levering til leverandørens e-mail, uden priser. Svar går til den, der bestilte. Linjerne registreres kun som bestilt, hvis e-mailen faktisk er sendt, og et dobbeltklik sender ikke to bestillinger. Kræver, at leverandøren har en e-mail under Indstillinger
 - Indstillinger: firma og fakturaoplysninger, moms, brugere og roller, medarbejdertyper og timesatser, foretrukket byggemarked, e-mail-modtagere, leverandører og e-mail-log
 
 **Job- og forbrugsportalen** (`/job`, alle medarbejdere, virker på mobil, tablet og computer)
@@ -57,7 +58,7 @@ Teknik: Cloudflare Workers + D1, Hono og Resend til e-mail. Kan lægges på hjem
 | Kritisk | disponibel ≤ sikkerhedslager og > 0 |
 | Ingen disponible varer | disponibel = 0 |
 
-Advarsler vises i lagerportalen og sendes på e-mail til de valgte modtagere. Samme behov giver ikke en ny e-mail, men en forværring gør. Advarslen bliver stående med "Genbestilling oprettet", indtil varerne er modtaget. Der sendes aldrig noget til leverandører.
+Advarsler vises i lagerportalen og sendes på e-mail til de valgte modtagere. Samme behov giver ikke en ny e-mail, men en forværring gør. Advarslen bliver stående med "Genbestilling oprettet", indtil varerne er modtaget. Advarsler sendes aldrig til leverandører; en bestilling går kun til leverandøren, når nogen trykker "Send bestilling".
 
 ## E-mail
 
