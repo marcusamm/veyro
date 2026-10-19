@@ -13,8 +13,9 @@
 //   node scripts/deploy-kunder.mjs              # alle kunder
 //   node scripts/deploy-kunder.mjs nordlys      # kun én kunde
 //   node scripts/deploy-kunder.mjs --dry-run    # vis konfigurationerne uden at kalde Cloudflare
-// Valgfrit: EMAIL_FROM_STANDARD (afsender når kunden ikke har sin egen) og WORKERS_SUBDOMAIN
-// (kontoens workers.dev-underdomæne, kræves for kunder uden eget domæne).
+// Valgfrit: EMAIL_FROM_STANDARD (afsender når kunden ikke har sin egen), WORKERS_SUBDOMAIN
+// (kontoens workers.dev-underdomæne, kræves for kunder uden eget domæne) og KUNDE_DOMAENE
+// (fx veyro.dk: kunder uden eget domæne får <adresse>.veyro.dk i stedet for workers.dev).
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -47,7 +48,8 @@ function fejl(fil, besked) {
 }
 
 /** Læser og validerer kunder/*.json. Alt, der havner i TOML eller kommandoer, tjekkes her. */
-export function laesKunder(dir = KUNDER_DIR) {
+export function laesKunder(dir = KUNDER_DIR, kundeDomaene = process.env.KUNDE_DOMAENE || '') {
+  if (kundeDomaene && !DOMAENE.test(kundeDomaene)) throw new Error(`KUNDE_DOMAENE er ugyldigt: "${kundeDomaene}"`);
   const filer = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
   return filer.map((fil) => {
     const slug = fil.replace(/\.json$/, '');
@@ -61,6 +63,10 @@ export function laesKunder(dir = KUNDER_DIR) {
     if (!data.systemer || typeof data.systemer !== 'object' || !Object.keys(data.systemer).length) {
       fejl(fil, '"systemer" skal indeholde mindst ét system');
     }
+    const adresse = data.adresse ?? slug;
+    if (typeof adresse !== 'string' || !SLUG.test(adresse) || adresse.length > 40) {
+      fejl(fil, '"adresse" skal være små bogstaver, tal og bindestreger, fx "ek"');
+    }
     const systemer = Object.entries(data.systemer).map(([system, opsaetning]) => {
       if (!SYSTEMER[system]) fejl(fil, `ukendt system "${system}" (brug ${Object.keys(SYSTEMER).join(' eller ')})`);
       const { domaene = '', admins = [], afsender = '' } = opsaetning ?? {};
@@ -72,7 +78,11 @@ export function laesKunder(dir = KUNDER_DIR) {
         fejl(fil, `${system}: "afsender" skal have formen "Navn <adresse@domæne.dk>"`);
       }
       const navn = `${slug}-${SYSTEMER[system].kort}`;
-      return { system, navn, domaene, admins, afsender };
+      // Uden eget domæne: <adresse>.<KUNDE_DOMAENE> til lagerstyringen, <adresse>-bestilling.<…> til varebestillingen
+      const standardDomaene = kundeDomaene
+        ? `${adresse}${system === 'lagerstyring' ? '' : `-${SYSTEMER[system].kort}`}.${kundeDomaene}`
+        : '';
+      return { system, navn, domaene: domaene || standardDomaene, admins, afsender };
     });
     const udseende = laesUdseende(fil, dir, data.udseende);
     return { slug, navn: data.navn.trim(), systemer, udseende };
