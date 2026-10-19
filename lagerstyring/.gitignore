@@ -7,3 +7,4 @@ screenshots/*.tmp
 test-results/
 *.log
 screenshots/
+.wrangler-kunde-*.toml
