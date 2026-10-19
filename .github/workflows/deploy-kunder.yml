@@ -45,7 +45,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          EMAIL_FROM_STANDARD: ${{ vars.EMAIL_FROM_STANDARD }}
-          WORKERS_SUBDOMAIN: ${{ vars.WORKERS_SUBDOMAIN }}
+          EMAIL_FROM_STANDARD: ${{ vars.EMAIL_FROM_STANDARD || 'Veyro <login@veyro.dk>' }}
+          WORKERS_SUBDOMAIN: ${{ vars.WORKERS_SUBDOMAIN || 'marcus-ammitzboell' }}
           KUNDE: ${{ inputs.kunde }}
         run: node scripts/deploy-kunder.mjs $KUNDE

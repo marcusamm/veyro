@@ -33,6 +33,6 @@ Fjernes en fil, bliver kundens worker og database **ikke** slettet; det gøres m
 Under *Settings → Secrets and variables → Actions*:
 
 - Secrets: `CLOUDFLARE_API_TOKEN` (skabelonen "Edit Cloudflare Workers" plus D1-redigering), `CLOUDFLARE_ACCOUNT_ID`, `RESEND_API_KEY`.
-- Variables: `EMAIL_FROM_STANDARD`, fx `Veyro <login@veyro.dk>`, og `WORKERS_SUBDOMAIN`, kontoens workers.dev-underdomæne (fx `marcus-ammitzboell`).
+- Variables (valgfrie): `EMAIL_FROM_STANDARD` (standard `Veyro <login@veyro.dk>`) og `WORKERS_SUBDOMAIN` (standard `marcus-ammitzboell`) overskriver standardværdierne i workflowet.
 
 Deploy af én kunde manuelt: fanen *Actions → Deploy kunder → Run workflow* med kundens filnavn.
