@@ -31,6 +31,8 @@ Opret `kunder/<kundenavn>.json` (små bogstaver og bindestreger, fx `nordlys.jso
 
 Worker og database får navnet `<kundenavn>-lager` eller `<kundenavn>-bestilling`. I lagerstyringen lægges firmanavnet (`navn`), farven og logoet ind ved deploy, så systemet er klar ved første login. Det sker kun, når de ændres i kundefilen, så det, kunden selv retter under Indstillinger, bliver stående. Varebestillingen sættes stadig op under Indstillinger.
 
+Databaser oprettes i EU (`--jurisdiction eu`), så data bliver i EU og ligger tæt på kunderne. En databases placering kan ikke ændres bagefter; den skal slettes og oprettes igen.
+
 Fjernes en fil, bliver kundens worker og database **ikke** slettet; det gøres manuelt i Cloudflare.
 
 ## Engangsopsætning i GitHub
