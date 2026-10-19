@@ -1,0 +1,39 @@
+# Lægger demoen af lagerstyringen ud (lagerstyring-demo.<konto>.workers.dev) med fiktive data.
+# Kører, når lagerstyringen ændres på main, eller manuelt fra fanen Actions.
+name: Deploy lagerstyring-demo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lagerstyring/**'
+      - '.github/workflows/deploy-demo.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-lagerstyring-demo
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lagerstyring
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Installér og typecheck
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci && npm run typecheck
+      - name: Migrér demodatabasen
+        run: npx wrangler d1 migrations apply lagerstyring-demo --remote --config wrangler.demo.toml
+      - name: Deploy
+        run: npx wrangler deploy --config wrangler.demo.toml
