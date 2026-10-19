@@ -6,7 +6,7 @@ import { DEFAULT_ACCENT, isHexColor, type Settings } from '../lib/settings';
 export type H = ReturnType<typeof html>;
 
 export type LagerNav = 'oversigt' | 'varer' | 'indkob' | 'modtagelse' | 'job' | 'faktura' | 'historik' | 'indstillinger';
-export type JobNav = 'job' | 'lager' | 'indkob';
+export type JobNav = 'job' | 'lager' | 'indkob' | 'faktura';
 export type Nav = { portal: 'lager'; tab: LagerNav } | { portal: 'job'; tab: JobNav } | { portal: 'none' };
 
 /** Tekstfarve på accentfarven: den af mørk og hvid, der giver bedst kontrast (WCAG). */
@@ -111,7 +111,7 @@ ${nav.portal === 'lager'
       ${navLink('/lager/indkob', 'Indkøb', nav.tab === 'indkob')}
       ${navLink('/lager/modtagelse', 'Varemodtagelse', nav.tab === 'modtagelse')}
       ${navLink('/job', 'Job', false)}
-      ${navLink('/lager/faktura', 'Fakturagrundlag', nav.tab === 'faktura')}
+      ${navLink('/job/faktura', 'Fakturaer', false)}
       ${navLink('/lager/historik', 'Historik', nav.tab === 'historik')}
       ${navLink('/lager/indstillinger', 'Indstillinger', nav.tab === 'indstillinger')}
     </ul></div></nav>`
@@ -120,6 +120,7 @@ ${nav.portal === 'lager'
       ${navLink('/job', 'Job', nav.tab === 'job')}
       ${navLink('/job/lager', 'Hvad er på lager', nav.tab === 'lager')}
       ${navLink('/job/indkob', 'Indkøbslister', nav.tab === 'indkob')}
+      ${manager ? navLink('/job/faktura', 'Fakturaer', nav.tab === 'faktura') : ''}
     </ul></div></nav>`
     : ''}
 <main id="indhold"><div class="wrap">${body}</div></main>

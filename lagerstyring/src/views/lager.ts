@@ -282,7 +282,7 @@ function productForm(v: ProductFormValues, d: { csrf: string; suppliers: Supplie
     <legend>Priser</legend>
     <div class="fields fields-2">
       <div class="field"><label for="purchase_price">Indkøbspris pr. enhed (kr.)</label><input id="purchase_price" class="in-num" name="purchase_price" inputmode="decimal" value="${v.purchase_price}"><p class="hint">Opdateres med den faktiske pris ved varemodtagelse.</p></div>
-      <div class="field"><label for="sale_price">Salgspris pr. enhed (kr.)</label><input id="sale_price" class="in-num" name="sale_price" inputmode="decimal" value="${v.sale_price}"><p class="hint">Tom = indkøbspris plus jobbets avance.</p></div>
+      <div class="field"><label for="sale_price">Salgspris pr. enhed (kr.)</label><input id="sale_price" class="in-num" name="sale_price" inputmode="decimal" value="${v.sale_price}"><p class="hint">Tom = indkøbspris plus jobbets påslag.</p></div>
     </div>
     <p class="muted small">Priser vises kun for ejer og indkøber.</p>
   </fieldset>
@@ -331,7 +331,7 @@ export function productPage(d: {
     plan.rop !== null
       ? `${formatQty(plan.avgDaily)} × ${plan.leadDays} + ${formatQty(plan.safety)} = ${formatQty(plan.rop)} ${u}`
       : `Mangler opsætning: ${plan.missing.join(', ')}`;
-  const kinds: AdjustKind[] = ['modtagelse', 'optaelling', 'svind', 'leverandorretur'];
+  const kinds: AdjustKind[] = ['modtagelse', 'returvare', 'optaelling', 'svind', 'leverandorretur'];
   return html`<div class="stack-lg">
   ${pageHead('Varer og lager', html`${p.name} <span class="sku" style="font-size:16px">${p.sku}</span>`, html`<a class="btn btn-ghost" href="/lager/varer">← Alle varer</a>`)}
   ${flash(d.flashCode)}
@@ -395,7 +395,7 @@ export function productPage(d: {
         <button class="btn btn-primary" type="submit">Registrér</button>
         <p class="hint">Varer fra en indkøbsliste modtages under Varemodtagelse, så de knyttes til den rigtige bestilling og det rigtige job.</p>
       </form>
-      <div class="card stack"><h2>Priser</h2><dl class="kv"><dt>Indkøbspris</dt><dd>${formatKr(p.purchase_price)}</dd><dt>Salgspris</dt><dd>${p.sale_price === null ? 'Indkøbspris + avance' : formatKr(p.sale_price)}</dd></dl></div>
+      <div class="card stack"><h2>Priser</h2><dl class="kv"><dt>Indkøbspris</dt><dd>${formatKr(p.purchase_price)}</dd><dt>Salgspris</dt><dd>${p.sale_price === null ? 'Indkøbspris + påslag' : formatKr(p.sale_price)}</dd></dl></div>
     </aside>
   </div>
   <h2>Indstillinger for varen</h2>

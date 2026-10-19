@@ -7,7 +7,7 @@
 
 import type { Env, PurchaseLineRow } from '../env';
 import { todayDk } from './format';
-import { USER_AGENT, parseProductPage, robotsAllows, robotsRules } from './pagereader';
+import { USER_AGENT, parseProductPage, robotsAllows, robotsRules, type PageProduct } from './pagereader';
 import {
   buyPlan,
   findMatch,
@@ -214,6 +214,33 @@ async function robotsFor(env: Env, r: RetailerRow, origin: string, now: number):
 }
 
 /**
+ * Henter og læser én offentlig produktside hos forhandleren (på serveren, med timeout).
+ * robots.txt overholdes; login, robotkontrol og afvisning omgås aldrig. Kaster en fejl med en
+ * forklaring, der kan vises for brugeren.
+ */
+export async function fetchProductPage(env: Env, r: RetailerRow, url: string, now: number): Promise<PageProduct> {
+  if (!fetchableUrl(env, url) || !onRetailerSite(r, url)) throw new Error(`Linket peger ikke på ${r.website.replace(/^https?:\/\//, '')}.`);
+  const u = new URL(url);
+  const robots = await robotsFor(env, r, u.origin, now);
+  if (robots === null) throw new Error('robots.txt kunne ikke hentes, så siden læses ikke.');
+  if (!robotsAllows(robotsRules(robots), u.pathname + u.search)) throw new Error('Butikkens robots.txt tillader ikke automatisk læsning af siden.');
+  const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'text/html', 'Accept-Language': 'da-DK,da' }, redirect: 'follow', signal: AbortSignal.timeout(10_000) });
+  if (res.status === 401 || res.status === 403 || res.status === 429) throw new Error(`Siden afviser automatisk adgang (${res.status}). Den omgås ikke.`);
+  if (!res.ok) throw new Error(`Siden svarede ${res.status}.`);
+  if (!onRetailerSite(r, res.url || url)) throw new Error('Siden viderestiller væk fra butikken.');
+  if (/\/(login|log-ind|signin)/i.test(new URL(res.url || url).pathname)) throw new Error('Siden kræver login. Den omgås ikke.');
+  const html = (await res.text()).slice(0, 3_000_000);
+  const parsed = parseProductPage(html);
+  if (!parsed.ok) throw new Error(parsed.reason);
+  return parsed.product;
+}
+
+/** Må priser læses fra forhandlerens offentlige produktsider? */
+export function canReadPages(r: Pick<RetailerRow, 'access' | 'active' | 'terms_confirmed_at'>): boolean {
+  return !!r.active && r.access === 'side' && r.terms_confirmed_at !== null;
+}
+
+/**
  * Læser prisen på de produktsider, brugeren har knyttet til varerne, hos forhandlere hvor
  * læsning af sider er slået til (og vilkårene bekræftet). robots.txt overholdes, siderne hentes
  * én ad gangen med timeout, og resultatet caches i 6 timer. En side bag login eller en
@@ -246,20 +273,7 @@ export async function readProductPages(
     let status = '';
     let ok = false;
     try {
-      if (!fetchableUrl(env, pg.url) || !onRetailerSite(r, pg.url)) throw new Error(`Linket peger ikke på ${r.website}.`);
-      const u = new URL(pg.url);
-      const robots = await robotsFor(env, r, u.origin, now);
-      if (robots === null) throw new Error('robots.txt kunne ikke hentes, så siden læses ikke.');
-      if (!robotsAllows(robotsRules(robots), u.pathname + u.search)) throw new Error('Butikkens robots.txt tillader ikke automatisk læsning af siden.');
-      const res = await fetch(pg.url, { headers: { 'User-Agent': USER_AGENT, Accept: 'text/html', 'Accept-Language': 'da-DK,da' }, redirect: 'follow', signal: AbortSignal.timeout(10_000) });
-      if (res.status === 401 || res.status === 403 || res.status === 429) throw new Error(`Siden afviser automatisk adgang (${res.status}). Den omgås ikke.`);
-      if (!res.ok) throw new Error(`Siden svarede ${res.status}.`);
-      if (!onRetailerSite(r, res.url || pg.url)) throw new Error('Siden viderestiller væk fra butikken.');
-      if (/\/(login|log-ind|signin)/i.test(new URL(res.url || pg.url).pathname)) throw new Error('Siden kræver login. Den omgås ikke.');
-      const html = (await res.text()).slice(0, 3_000_000);
-      const parsed = parseProductPage(html);
-      if (!parsed.ok) throw new Error(parsed.reason);
-      const p = parsed.product;
+      const p = await fetchProductPage(env, r, pg.url, now);
       // Er sidens EAN en anden end varens, er det ikke samme vare (markeres som alternativ ved opslaget)
       const ean = p.gtin || (pg.match === 'praecis' ? pg.product_ean : '');
       await db
@@ -531,7 +545,7 @@ export async function listEstimate<L extends Pick<PurchaseLineRow, 'id' | 'name'
   const opts = estimateOpts(s, now);
   const live = lines.filter((l) => !l.cancelled);
   const map = await estimatesFor(db, live.map((l) => l.id));
-  const items = live.map((line) => ({ line, est: lineEstimate(line, map.get(line.id) ?? [], opts) }));
+  const items = live.map((line) => ({ line, est: lineEstimate(line, map.get(line.id) ?? [], opts, (line as { retailer_id?: number | null }).retailer_id ?? null) }));
   return { items, summary: summarize(items.map((x) => ({ name: x.line.name, est: x.est })), opts.basis), opts };
 }
 

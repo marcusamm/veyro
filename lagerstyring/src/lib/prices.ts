@@ -274,6 +274,8 @@ export function lineEstimate(
   line: Pick<PurchaseLineRow, 'qty' | 'ordered' | 'cancelled' | 'unit'>,
   ests: EstimateView[],
   o: EstimateOpts,
+  /** Linjens valgte byggemarked: kun dets pris bruges, andre vises til orientering */
+  preferred: number | null = null,
 ): LineEstimate {
   const need = missingQty(line);
   const live = ests.filter((e) => e.status === 'aktuel' || e.status === 'tidligere');
@@ -300,9 +302,19 @@ export function lineEstimate(
   let missingReason = '';
   if (need <= 0) missingReason = 'Hele mængden er bestilt.';
   else {
-    // Altid den billigste sammenlignelige pris blandt alle forhandlere
-    chosen = usable.find((x) => x.lowest) ?? usable[0] ?? null;
-    if (!chosen) {
+    // Det valgte byggemarked bruges altid; uden et valg den billigste sammenlignelige pris.
+    // Der skiftes aldrig byggemarked i stilhed: mangler prisen hos det valgte, mangler prisen.
+    chosen = preferred !== null ? (usable.find((x) => x.est.retailer_id === preferred) ?? null) : (usable.find((x) => x.lowest) ?? usable[0] ?? null);
+    if (!chosen && preferred !== null) {
+      const own = offers.filter((x) => x.est.retailer_id === preferred);
+      missingReason = own.some((x) => x.plan.ok && x.est.match === 'alternativ')
+        ? 'Kun et alternativ hos det valgte byggemarked, som ikke er godkendt.'
+        : own.length
+          ? 'Prisen hos det valgte byggemarked kan ikke omregnes til listens enhed.'
+          : usable.length
+            ? 'Ingen pris hos det valgte byggemarked. Priser hos andre vises kun til orientering.'
+            : 'Ingen offentlig pris fundet hos det valgte byggemarked.';
+    } else if (!chosen) {
       missingReason = offers.some((x) => x.plan.ok && x.est.match === 'alternativ')
         ? 'Kun alternativer, der ikke er godkendt.'
         : offers.length

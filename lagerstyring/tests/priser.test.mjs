@@ -184,7 +184,8 @@ describe('Prisestimat', () => {
 
   it('læser offentlige produktsider, kun når vilkårene er bekræftet og robots.txt tillader det', async () => {
     const base = `http://127.0.0.1:${feed.address().port}`;
-    stack.sql("UPDATE retailers SET website = 'https://127.0.0.1' WHERE key = 'silvan'");
+    // Start fra en butik uden bekræftede vilkår, så adgangskontrollen afprøves
+    stack.sql("UPDATE retailers SET website = 'https://127.0.0.1', access = 'manuel', terms_confirmed_at = NULL, terms_confirmed_by = NULL WHERE key = 'silvan'");
     const silvan = retailer('silvan');
     const pid = (sku) => stack.sql(`SELECT id FROM products WHERE sku = '${sku}'`)[0].id;
     const ean = stack.sql("SELECT ean FROM products WHERE sku = 'GIP-13'")[0].ean;

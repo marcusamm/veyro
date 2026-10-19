@@ -264,7 +264,7 @@ export async function closeJob(tx: Tx, job: JobRow, status: 'afsluttet' | 'annul
   tx.add(
     tx.db.prepare(`UPDATE job_materials SET planned = issued - returned + site_used, updated_at = ? WHERE job_id = ?`).bind(tx.now, job.id),
     tx.db.prepare('DELETE FROM purchase_lines WHERE job_id = ? AND auto = 1 AND ordered = 0 AND ready = 0 AND cancelled = 0').bind(job.id),
-    tx.db.prepare('UPDATE jobs SET status = ?, updated_at = ? WHERE id = ?').bind(status, tx.now, job.id),
+    tx.db.prepare("UPDATE jobs SET status = ?1, stage = ?1, stage_auto = 0, stage_prev = '', updated_at = ?2 WHERE id = ?3").bind(status, tx.now, job.id),
   );
   tx.jobs.add(job.id);
 }
@@ -282,6 +282,10 @@ export async function defaultJobList(db: D1Database, job: JobRow, now: number): 
     .first<{ id: number }>();
   return created!.id;
 }
+
+/** Byggemarked for en vare på et job (?2 = job, ?3 = vare): materialelinjen, jobbet, ellers det foretrukne. */
+export const RETAILER_SQL = `COALESCE((SELECT retailer_id FROM job_items WHERE job_id = ?2 AND product_id = ?3), (SELECT retailer_id FROM jobs WHERE id = ?2),
+  (SELECT id FROM retailers WHERE key = (SELECT value FROM settings WHERE key = 'preferred_retailer')))`;
 
 /**
  * Automatisk indkøbsbehov: for hver vare på jobbet beregnes, hvad der hverken er dækket af lager,
@@ -317,12 +321,12 @@ export async function reconcileJob(db: D1Database, jobId: number, now: number): 
         stmts.push(
           db
             .prepare(
-              `INSERT INTO purchase_lines (list_id, job_id, product_id, sku, name, unit, supplier_id, qty, unit_price, auto, note, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'Mangler til jobbet', ?, ?)
+              `INSERT INTO purchase_lines (list_id, job_id, product_id, sku, name, unit, supplier_id, qty, unit_price, auto, note, retailer_id, created_at, updated_at)
+               VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 1, 'Mangler til jobbet', ${RETAILER_SQL}, ?10, ?10)
                ON CONFLICT(job_id, product_id) WHERE auto = 1 AND ordered = 0 AND ready = 0 AND cancelled = 0
                DO UPDATE SET qty = excluded.qty, updated_at = excluded.updated_at`,
             )
-            .bind(listId, jobId, m.product_id, m.sku, m.name, m.unit, m.supplier_id, target, m.purchase_price, now, now),
+            .bind(listId, jobId, m.product_id, m.sku, m.name, m.unit, m.supplier_id, target, m.purchase_price, now),
         );
         touched.add(listId);
         added += target;

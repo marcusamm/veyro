@@ -8,6 +8,7 @@ import { getLogo, getSettings } from './lib/settings';
 import { render } from './render';
 import auth from './routes/auth';
 import job from './routes/job';
+import okonomi from './routes/jobokonomi';
 import lager from './routes/lager';
 import { CSS, JS } from './views/assets';
 import { pageHead } from './views/common';
@@ -98,6 +99,7 @@ app.route('/', auth);
 app.use('/lager/*', requireUser);
 app.route('/lager', lager);
 app.route('/job', job);
+app.route('/job', okonomi);
 
 app.notFound((c) => render(c, 'Siden findes ikke', pageHead('Fejl 404', 'Siden findes ikke', '', 'Vi kunne ikke finde den side, du leder efter.'), { portal: 'none' }, 404));
 

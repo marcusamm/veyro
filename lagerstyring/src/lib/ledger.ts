@@ -37,6 +37,7 @@ export const MOVE_LABEL: Record<string, string> = {
   modtagelse: 'Varemodtagelse',
   optaelling: 'Optælling',
   svind: 'Svind',
+  returvare: 'Brugbar returvare',
   leverandorretur: 'Returneret til leverandør',
   forbrug: 'Direkte forbrug',
   planlagt: 'Planlagt og reserveret',

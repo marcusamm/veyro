@@ -121,9 +121,22 @@ const AVAIL: Record<string, string> = {
   onlineonly: 'Kun online ifølge siden',
 };
 
-function decodeEntities(s: string): string {
-  return s.replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+const NAMED: Record<string, string> = { quot: '"', apos: "'", lt: '<', gt: '>', amp: '&', nbsp: ' ', aelig: 'æ', oslash: 'ø', aring: 'å', AElig: 'Æ', Oslash: 'Ø', Aring: 'Å' };
+
+/** HTML-entiteter (navngivne og numeriske, fx &#x20; og &#229;) -> tegn. */
+export function decodeEntities(s: string): string {
+  return s.replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|[a-z]{2,6});/gi, (m, e: string) => {
+    if (e[0] === '#') {
+      const n = e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+      return n > 0 && n < 0x110000 ? String.fromCodePoint(n) : m;
+    }
+    return NAMED[e] ?? m;
+  });
 }
+
+/** Tydelige tegn på en robotkontrol i stedet for en produktside (ikke blot en reCAPTCHA-nøgle til et nyhedsbrev). */
+const CHALLENGE =
+  /cf-challenge|challenge-platform\/h\/[a-z]\/orchestrate|cf_chl_opt|<title>[^<]*(just a moment|attention required|are you a robot|er du et menneske|access denied)|captcha-delivery\.com|px-captcha|id=["']challenge-form|g-recaptcha[^>]*data-callback=["'][^"']*(verify|challenge)/i;
 
 /**
  * Finder ét entydigt produkt med én pris i danske kroner. Flere forskellige priser (fx et
@@ -131,7 +144,8 @@ function decodeEntities(s: string): string {
  */
 export function parseProductPage(html: string): { ok: true; product: PageProduct } | { ok: false; reason: string } {
   const found: Json[] = [];
-  for (const m of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+  // Nogle butikker HTML-koder plustegnet i typen (application/ld&#x2B;json)
+  for (const m of html.matchAll(/<script[^>]+type=["']application\/ld(?:\+|&#x2B;|&#43;)json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
     try {
       products(JSON.parse(m[1]!.trim()), found);
     } catch {
@@ -151,11 +165,12 @@ export function parseProductPage(html: string): { ok: true; product: PageProduct
       if (currency !== 'DKK' || price === null) continue;
       const avail = text(o['availability']).replace(/^https?:\/\/schema\.org\//i, '').toLowerCase();
       candidates.push({
-        name: text(p['name']).slice(0, 200),
+        name: decodeEntities(text(p['name'])).replace(/\s+/g, ' ').trim().slice(0, 200),
         price,
         gtin: normGtin(text(p['gtin13'] ?? p['gtin'] ?? p['gtin14'] ?? p['gtin12'] ?? p['gtin8'])) ?? '',
-        mpn: text(p['mpn']).slice(0, 60),
-        brand: text(p['brand']).slice(0, 60),
+        // Nogle butikker skriver deres eget varenummer som producentnummer; det bruges ikke til match
+        mpn: text(p['mpn']) === text(p['sku']) ? '' : text(p['mpn']).slice(0, 60),
+        brand: decodeEntities(text(p['brand'])).slice(0, 60),
         sku: text(p['sku']).slice(0, 60),
         availability: AVAIL[avail] ?? '',
       });
@@ -176,11 +191,19 @@ export function parseProductPage(html: string): { ok: true; product: PageProduct
     }
   }
   if (!candidates.length) {
-    if (/captcha|cf-challenge|are you a robot|er du et menneske/i.test(html)) return { ok: false, reason: 'Siden viser en robotkontrol (CAPTCHA). Den omgås ikke.' };
+    // Små sider uden produktdata, der nævner captcha, er en robotkontrol
+    if (CHALLENGE.test(html) || (html.length < 20_000 && /captcha/i.test(html))) return { ok: false, reason: 'Siden viser en robotkontrol (CAPTCHA). Den omgås ikke.' };
     return { ok: false, reason: 'Siden har ingen entydig pris i kroner i sine produktdata.' };
   }
   const prices = new Set(candidates.map((c) => c.price));
   if (prices.size > 1) return { ok: false, reason: 'Siden har flere forskellige priser (fx varianter). Link til den præcise variant.' };
+  // EAN fra sidens mikrodata (itemprop="gtin13"), når JSON-LD ikke har den
+  if (!candidates.some((c) => c.gtin)) {
+    const gtins = new Set(
+      [...html.matchAll(/<meta[^>]+itemprop=["']gtin(?:8|12|13|14)?["'][^>]+content=["']([0-9 -]{8,20})["']/gi)].map((m) => normGtin(m[1]!)).filter((g): g is string => !!g),
+    );
+    if (gtins.size === 1) for (const c of candidates) c.gtin = [...gtins][0]!;
+  }
   const best = candidates.find((c) => c.gtin) ?? candidates[0]!;
   return { ok: true, product: { ...best, name: best.name || candidates.find((c) => c.name)?.name || '' } };
 }
