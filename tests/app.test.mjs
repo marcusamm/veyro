@@ -867,6 +867,9 @@ describe('Admin: abonnementer', () => {
     const hook = await signedWebhook(stack.base, { id: 'evt_setup_' + id, type: 'checkout.session.completed', data: { object: { id: cs.id, mode: 'setup', metadata: { veyro_subscription: id } } } });
     expect(hook.status).toBe(200);
     expect((await subState(id)).collection_method).toBe('charge_automatically');
+    const mail = await waitFor(async () => (await emails()).slice(before).find((e) => e.to[0] === 'salg@veyro.dk'));
+    expect(mail.subject).toContain('Tilbud accepteret');
+    expect(mail.reply_to).toBe('hook@kunde.dk');
   });
 
   it('kunder med særaftale kan ikke skifte til en standardplan', async () => {
