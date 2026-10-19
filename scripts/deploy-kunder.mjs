@@ -191,7 +191,9 @@ function deploy(kunde, inst) {
   let databaseId = dryRun ? '00000000-0000-0000-0000-000000000000' : findDatabase(cwd, inst.navn);
   if (!databaseId) {
     console.log(`  opretter database ${inst.navn}`);
-    wrangler(cwd, ['d1', 'create', inst.navn]);
+    // Uden angivelse lægges databasen tæt på den, der opretter den (GitHubs servere i USA), og så
+    // skal hver forespørgsel fra Danmark over Atlanten. "eu" holder kundedata i EU og tæt på kunderne.
+    wrangler(cwd, ['d1', 'create', inst.navn, '--jurisdiction', 'eu']);
     databaseId = findDatabase(cwd, inst.navn);
     if (!databaseId) throw new Error(`Databasen ${inst.navn} blev ikke fundet efter oprettelse`);
   }
