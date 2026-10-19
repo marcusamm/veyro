@@ -1,6 +1,6 @@
 // Starter en mock af Resend + `wrangler dev --local` med en midlertidig lokal D1.
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import net from 'node:net';
 import os from 'node:os';
@@ -56,7 +56,10 @@ function startMail() {
   );
 }
 
-export async function startStack({ devMode = false, demo = false, email = true } = {}) {
+/** Konfiguration med kundekataloget (KV), som scripts/deploy-kunder.mjs giver kunderne. */
+const KATALOG_CONFIG = '.wrangler-kunde-test-katalog.toml';
+
+export async function startStack({ devMode = false, demo = false, email = true, katalog = false } = {}) {
   const mail = await startMail();
   const port = await freePort();
   const persist = mkdtempSync(path.join(os.tmpdir(), 'ls-d1-'));
@@ -77,6 +80,15 @@ export async function startStack({ devMode = false, demo = false, email = true }
   if (email) vars.RESEND_API_KEY = RESEND_KEY;
   const args = ['dev', '--local', '--ip', '127.0.0.1', '--port', String(port), '--persist-to', persist,
     '--show-interactive-dev-session=false', '--log-level', 'log'];
+  if (katalog) {
+    writeFileSync(
+      path.join(ROOT, KATALOG_CONFIG),
+      readFileSync(path.join(ROOT, 'wrangler.toml'), 'utf8') + '\n[[kv_namespaces]]\nbinding = "KATALOG"\nid = "katalog-test"\n',
+    );
+    // Kataloget kræver en https-adresse; /__scheduled kører den timevise cron
+    Object.assign(vars, { APP_URL: 'https://firma.veyro.dk', KATALOG_ID: 'firma-lager' });
+    args.push('--config', KATALOG_CONFIG, '--test-scheduled');
+  }
   for (const [k, v] of Object.entries(vars)) args.push('--var', `${k}:${v}`);
   const proc = spawn(wrangler, args, { cwd: ROOT, env: childEnv(), stdio: ['ignore', 'pipe', 'pipe'] });
   let logs = '';
@@ -115,11 +127,21 @@ export async function startStack({ devMode = false, demo = false, email = true }
         stdio: 'pipe',
       });
     },
+    /** Nøglerne i det lokale kundekatalog (kun med katalog: true). */
+    katalogKeys() {
+      const out = execFileSync(wrangler, ['kv', 'key', 'list', '--binding', 'KATALOG', '--local', '--persist-to', persist, '--config', KATALOG_CONFIG], {
+        cwd: ROOT,
+        env: childEnv(),
+        stdio: 'pipe',
+      });
+      return JSON.parse(out.toString());
+    },
     async stop() {
       proc.kill('SIGTERM');
       await new Promise((r) => (proc.exitCode !== null ? r() : proc.once('exit', r)));
       await mail.close();
       rmSync(persist, { recursive: true, force: true });
+      if (katalog) rmSync(path.join(ROOT, KATALOG_CONFIG), { force: true });
     },
   };
 }

@@ -22,6 +22,12 @@ database_name = "veyro-kundepanel"
 database_id = "0f56d7df-f658-4f26-b0a7-53ab048d120a"
 migrations_dir = "migrations"
 
+# Kundekatalog: hvilke kundesystemer (fx ek.veyro.dk) en e-mail har adgang til.
+# Kundernes lagerstyring skriver til det (se scripts/deploy-kunder.mjs); Kundelogin slår op i det.
+[[kv_namespaces]]
+binding = "KATALOG"
+id = "3c625abe4eca4137926bef27947a605f"
+
 # Daglig oprydning af udløbne login-links, sessioner m.m. (kl. 03:17 UTC)
 [triggers]
 crons = ["17 3 * * *"]

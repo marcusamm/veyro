@@ -5,6 +5,7 @@ import { deliver, emailConfigured, inviteEmail } from '../lib/email';
 import { appUrl } from '../lib/notices';
 import { normalizeEmail, parseIntStrict, parseKr, str } from '../lib/format';
 import { retailers } from '../lib/estimates';
+import { syncKatalogLogged } from '../lib/katalog';
 import { DIGEST_CHOICES, LOGO_MAX_BYTES, deleteLogo, isHexColor, logoType, saveLogo, saveSettings } from '../lib/settings';
 import { isAdminUser, parseAdminEmails } from '../lib/session';
 import { idParam, isDemo, render } from '../render';
@@ -116,6 +117,7 @@ indstillinger.post('/bruger', async (c) => {
     if (String((err as Error).message).includes('UNIQUE')) return show(c, [`Der findes allerede en bruger med ${email}.`]);
     throw err;
   }
+  c.executionCtx.waitUntil(syncKatalogLogged(c.env));
   if (body['invite'] !== '1') return c.redirect('/lager/indstillinger?besked=oprettet', 303);
   const me = c.get('session')!.user;
   const s = c.get('settings');
@@ -152,6 +154,7 @@ indstillinger.post('/bruger/:id{[0-9]+}', async (c) => {
     const row = await db.prepare('SELECT email FROM users WHERE id = ?').bind(id).first<{ email: string }>();
     if (row) await db.prepare('DELETE FROM sessions WHERE email = ?').bind(row.email).run();
   }
+  c.executionCtx.waitUntil(syncKatalogLogged(c.env));
   return c.redirect('/lager/indstillinger?besked=gemt', 303);
 });
 

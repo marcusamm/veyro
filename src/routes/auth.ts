@@ -2,11 +2,12 @@ import { Hono } from 'hono';
 import type { AppEnv } from '../env';
 import { sha256Hex } from '../lib/crypto';
 import { getCustomerByEmail, normalizeEmail, rateLimit, upsertCustomer } from '../lib/db';
+import { findKundeSystemer, kanRedirecte, systemLoginUrl } from '../lib/katalog';
 import { magicLinkEmail, sendEmail, signupEmail } from '../lib/email';
 import { consumeLoginToken, createLoginToken, createSession, destroySession, isAdmin } from '../lib/session';
 import { getPlan, isPlanKey } from '../lib/plans';
 import { render } from '../render';
-import { flash, linkInvalidPage, loginPage, loginSentPage, signupPage, signupSentPage, verifyPage } from '../views/pages';
+import { chooseSystemPage, flash, linkInvalidPage, loginPage, loginSentPage, signupPage, signupSentPage, verifyPage } from '../views/pages';
 
 const auth = new Hono<AppEnv>();
 
@@ -40,6 +41,19 @@ auth.post('/login', async (c) => {
   }
 
   const allowed = isAdmin(c.env, email) || !!(await getCustomerByEmail(c.env.DB, email));
+
+  // Kundelogin: bruger e-mailen et kundesystem (fx ek.veyro.dk), sendes man videre dertil.
+  // Med flere systemer, eller også en konto her, vælger man selv. "kundepanel=1" er det valg.
+  if (body['kundepanel'] !== '1') {
+    const systemer = await findKundeSystemer(c.env, email);
+    if (systemer.length === 1 && !allowed && kanRedirecte(systemer[0]!)) {
+      return c.redirect(systemLoginUrl(systemer[0]!, email), 303);
+    }
+    if (systemer.length) {
+      return render(c, 'Vælg system', chooseSystemPage({ csrf: c.get('csrf'), email, systemer, kundepanel: allowed }));
+    }
+  }
+
   let devLink: string | null = null;
   if (allowed) {
     const token = await createLoginToken(c.env, email);

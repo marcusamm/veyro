@@ -5,6 +5,7 @@ import {
   csrfFrom,
   login,
   seedCustomer,
+  seedKatalog,
   setMockState,
   signedWebhook,
   startStack,
@@ -142,6 +143,33 @@ describe('Magic-link-login', () => {
       statuses.push(r.status);
     }
     expect(statuses).toEqual([200, 200, 200, 429]);
+  });
+
+  it('Kundelogin sender en bruger af et kundesystem videre med e-mailen udfyldt', async () => {
+    await seedKatalog(stack, { email: 'mester@firma.dk', id: 'firma-lager', navn: 'Firma ApS', url: 'https://firma.veyro.dk' });
+    const c = new Client(stack.base);
+    const page = await c.get('/login');
+    const res = await c.post('/login', { _csrf: csrfFrom(page.html), email: 'Mester@Firma.dk' });
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe('https://firma.veyro.dk/login?email=mester%40firma.dk');
+    expect(page.headers.get('content-security-policy')).toContain('form-action \'self\' https://checkout.stripe.com https://billing.stripe.com https://*.veyro.dk');
+  });
+
+  it('Kundelogin lader en med flere steder vælge, også kundepanelet', async () => {
+    await seedCustomer(stack, { email: 'kim@example.dk', name: 'Kim', cus: 'cus_K', sub: 'sub_K', price: 'price_starter_test', start: now() - 40 * DAY });
+    await seedKatalog(stack, { email: 'kim@example.dk', id: 'kim-lager', navn: 'Kim Byg', url: 'https://kim.veyro.dk' });
+    await seedKatalog(stack, { email: 'kim@example.dk', id: 'kim-andet-lager', navn: 'Andet Firma', url: 'https://andet.veyro.dk' });
+    const c = new Client(stack.base);
+    const page = await c.get('/login');
+    const res = await c.post('/login', { _csrf: csrfFrom(page.html), email: 'kim@example.dk' });
+    expect(res.status).toBe(200);
+    expect(res.html).toContain('Vælg, hvor du vil logge ind');
+    expect(res.html).toContain('href="https://kim.veyro.dk/login?email=kim%40example.dk"');
+    expect(res.html).toContain('href="https://andet.veyro.dk/login?email=kim%40example.dk"');
+    const before = (await emails()).length;
+    const sent = await c.post('/login', { _csrf: csrfFrom(res.html), email: 'kim@example.dk', kundepanel: '1' });
+    expect(sent.html).toContain('Tjek din indbakke');
+    await waitFor(async () => (await emails()).length > before);
   });
 
   it('rate-limiter link-anmodninger pr. IP', async () => {

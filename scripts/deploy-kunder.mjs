@@ -16,6 +16,7 @@
 // Valgfrit: EMAIL_FROM_STANDARD (afsender når kunden ikke har sin egen), WORKERS_SUBDOMAIN
 // (kontoens workers.dev-underdomæne, kræves for kunder uden eget domæne) og KUNDE_DOMAENE
 // (fx veyro.dk: kunder uden eget domæne får <adresse>.veyro.dk i stedet for workers.dev).
+// KUNDEKATALOG_ID overskriver ID'et på KV-navnerummet veyro-kundekatalog.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -30,6 +31,10 @@ const SYSTEMER = {
   lagerstyring: { kort: 'lager' },
   varebestilling: { kort: 'bestilling' },
 };
+
+// KV-navnerummet "veyro-kundekatalog", som Kundelogin på kunde.veyro.dk slår brugere op i.
+// Samme ID står i wrangler.toml i roden. Lagerstyringen skriver sine brugere (som hash) dertil.
+const KUNDEKATALOG_ID = process.env.KUNDEKATALOG_ID || '3c625abe4eca4137926bef27947a605f';
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const DOMAENE = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
@@ -169,6 +174,11 @@ export function bygKonfiguration(skabelon, inst, databaseId, { standardAfsender 
   t = erstat(t, /^EMAIL_FROM = .*$/m, `EMAIL_FROM = "${afsender}"`);
   t = erstat(t, /^DEV_MODE = .*$/m, 'DEV_MODE = "0"');
   if (/^DEMO_MODE = /m.test(t)) t = t.replace(/^DEMO_MODE = .*$/m, 'DEMO_MODE = "0"');
+  if (inst.system === 'lagerstyring') {
+    if (!/^[0-9a-f]{32}$/.test(KUNDEKATALOG_ID)) throw new Error('KUNDEKATALOG_ID er ugyldigt');
+    t = erstat(t, /^DEV_MODE = .*$/m, `DEV_MODE = "0"\nKATALOG_ID = "${inst.navn}"`);
+    t += `\n# Kundekataloget, så Kundelogin på kunde.veyro.dk kan sende brugerne hertil\n[[kv_namespaces]]\nbinding = "KATALOG"\nid = "${KUNDEKATALOG_ID}"\n`;
+  }
   if (inst.domaene) {
     t = erstat(
       t,

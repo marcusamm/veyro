@@ -78,6 +78,7 @@ export async function startStack({ minMonths = 12, devMode = false, resend = tru
   return {
     base,
     mock,
+    persist,
     logs: () => logs,
     async stop() {
       proc.kill('SIGTERM');
@@ -168,6 +169,18 @@ export async function waitFor(fn, timeout = 5000) {
 }
 
 /** Opretter en kunde + abonnement via en signeret checkout.session.completed-webhook. */
+/** Lægger en e-mail i det lokale kundekatalog, som en kundes lagerstyring ville gøre. */
+export async function seedKatalog(stack, { email, id, navn, url }) {
+  const { createHash } = await import('node:crypto');
+  const hash = createHash('sha256').update(email.toLowerCase()).digest('hex');
+  execFileSync(
+    path.join(ROOT, 'node_modules', '.bin', 'wrangler'),
+    ['kv', 'key', 'put', `e:${hash}:${id}`, '1', '--binding', 'KATALOG', '--local', '--persist-to', stack.persist,
+      '--metadata', JSON.stringify({ navn, url })],
+    { cwd: ROOT, env: childEnv(), stdio: 'pipe' },
+  );
+}
+
 export async function seedCustomer(stack, { email, name, cus, sub, price, start, status, periodEnd, cancelAtPeriodEnd }) {
   const { makeSubscription } = await import('./mock-server.mjs');
   const subscription = makeSubscription({ id: sub, customer: cus, price, start, status, periodEnd, cancelAtPeriodEnd });

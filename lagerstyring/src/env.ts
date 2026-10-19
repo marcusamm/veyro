@@ -14,6 +14,11 @@ export interface Env {
   /** "1" = demo: eksempeldata, login med ét klik som ejer eller medarbejder og nulstilling */
   DEMO_MODE?: string;
 
+  /** Fælles kundekatalog til Kundelogin på kunde.veyro.dk (sættes af scripts/deploy-kunder.mjs) */
+  KATALOG?: KVNamespace;
+  /** Installationens navn i kundekataloget, fx "einar-kornerup-lager" */
+  KATALOG_ID?: string;
+
   // Kun til test/udvikling: peg e-mail-kald mod en lokal mock
   RESEND_API_BASE?: string;
 
