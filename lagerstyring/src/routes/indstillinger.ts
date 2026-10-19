@@ -3,7 +3,7 @@ import type { AppEnv, MailRow, Role, User } from '../env';
 import { suppliers } from '../lib/catalog';
 import { emailConfigured } from '../lib/email';
 import { normalizeEmail, parseIntStrict, str } from '../lib/format';
-import { DIGEST_CHOICES, isHexColor, saveSettings } from '../lib/settings';
+import { DIGEST_CHOICES, LOGO_MAX_BYTES, deleteLogo, isHexColor, logoType, saveLogo, saveSettings } from '../lib/settings';
 import { idParam, isDemo, render } from '../render';
 import { mailsPage, settingsPage } from '../views/indstillinger';
 
@@ -55,6 +55,22 @@ indstillinger.post('/firma', async (c) => {
     alert_mail_enabled: body['alert_mail_enabled'] === '1',
   });
   return c.redirect('/lager/indstillinger?besked=gemt', 303);
+});
+
+indstillinger.post('/logo', async (c) => {
+  const file = (await c.req.parseBody())['logo'];
+  if (!(file instanceof File) || file.size === 0) return show(c, ['Vælg en billedfil.']);
+  if (file.size > LOGO_MAX_BYTES) return show(c, [`Logoet må højst fylde ${Math.round(LOGO_MAX_BYTES / 1024)} KB.`]);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const type = logoType(bytes);
+  if (!type) return show(c, ['Logoet skal være en PNG-, JPG-, WebP- eller SVG-fil.']);
+  await saveLogo(c.env.DB, type, bytes);
+  return c.redirect('/lager/indstillinger?besked=logo_gemt', 303);
+});
+
+indstillinger.post('/logo/slet', async (c) => {
+  await deleteLogo(c.env.DB);
+  return c.redirect('/lager/indstillinger?besked=logo_slettet', 303);
 });
 
 function userInput(body: Record<string, unknown>) {

@@ -42,6 +42,8 @@ export function pageHead(eyebrow: string | H, title: string | H, actions: H | st
 
 const FLASH: Record<string, [kind: 'ok' | 'info' | 'warn' | 'err', text: string]> = {
   gemt: ['ok', 'Ændringerne er gemt.'],
+  logo_gemt: ['ok', 'Logoet er gemt.'],
+  logo_slettet: ['ok', 'Logoet er fjernet.'],
   oprettet: ['ok', 'Oprettet.'],
   registreret: ['ok', 'Registreringen er gemt.'],
   dublet: ['info', 'Registreringen var allerede gennemført, så den er ikke lavet igen.'],

@@ -1,9 +1,9 @@
 import { html } from 'hono/html';
 import type { MailRow, SupplierRow, User } from '../env';
 import { formatDateTime } from '../lib/format';
-import { DIGEST_CHOICES, type Settings } from '../lib/settings';
+import { DIGEST_CHOICES, LOGO_MAX_BYTES, type Settings } from '../lib/settings';
 import { errors, flash, mailTag, pageHead } from './common';
-import { accentOf, alert, csrfField, type H } from './layout';
+import { accentOf, alert, brandMark, csrfField, type H } from './layout';
 
 const ROLE_LABEL: Record<User['role'], string> = { ejer: 'Ejer', indkober: 'Indkøber', medarbejder: 'Medarbejder' };
 
@@ -52,6 +52,22 @@ export function settingsPage(d: {
     <p class="hint">Der sendes kun en ny advarsel, når en vare bliver værre (genbestilling → kritisk → ingen disponible), ikke igen for samme behov. Der sendes aldrig noget til leverandører.</p>
     <div><button class="btn btn-primary" type="submit">Gem</button></div>
   </form>
+
+  <section class="card stack">
+    <h2>Logo</h2>
+    <p class="muted small">Vises i toppen af siden ved firmanavnet og som ikon i browserens faneblad. PNG, JPG, WebP eller SVG på højst ${Math.round(LOGO_MAX_BYTES / 1024)} KB. Et bredt logo med gennemsigtig baggrund ser bedst ud.</p>
+    <div class="row" style="flex-wrap:wrap;gap:12px">
+      <span class="brand">${brandMark(s)}<span class="brand-name">${s.company_name}</span></span>
+    </div>
+    <form method="post" action="/lager/indstillinger/logo" enctype="multipart/form-data" class="row" style="flex-wrap:wrap">
+      ${csrfField(d.csrf)}
+      <input type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" required aria-label="Logofil">
+      <button class="btn btn-primary" type="submit">${s.logo_version ? 'Skift logo' : 'Upload logo'}</button>
+    </form>
+    ${s.logo_version
+      ? html`<form method="post" action="/lager/indstillinger/logo/slet">${csrfField(d.csrf)}<button class="btn btn-secondary btn-small" type="submit">Fjern logo</button></form>`
+      : ''}
+  </section>
 
   <section class="card stack">
     <h2>Brugere og e-mail-modtagere</h2>
