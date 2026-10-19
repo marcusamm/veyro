@@ -6,6 +6,7 @@ import { adjustStock, isAdjustKind } from '../lib/inventory';
 import { MOVE_LABEL, Tx } from '../lib/ledger';
 import { addLine, getList, openPurchasesFor, stockList } from '../lib/purchasing';
 import { evaluateProducts } from '../lib/notices';
+import { normGtin } from '../lib/prices';
 import { requireManager } from '../lib/session';
 import { actorOf, idParam, isDemo, newOp, render, runTx } from '../render';
 import {
@@ -22,6 +23,7 @@ import indkob, { modtagelse } from './indkob';
 import demo from './demo';
 import faktura from './faktura';
 import indstillinger from './indstillinger';
+import priser from './priser';
 
 const lager = new Hono<AppEnv>();
 lager.use('*', requireManager);
@@ -88,6 +90,10 @@ interface ProductInput {
   max_stock: number | null;
   purchase_price: number | null;
   sale_price: number | null;
+  ean: string;
+  mpn: string;
+  brand: string;
+  variant: string;
   active: number;
   initial_stock: number;
 }
@@ -109,6 +115,10 @@ function formValues(body: Record<string, unknown>): ProductFormValues {
     max_stock: s('max_stock', 20),
     purchase_price: s('purchase_price', 20),
     sale_price: s('sale_price', 20),
+    ean: s('ean', 20),
+    mpn: s('mpn', 60),
+    brand: s('brand', 60),
+    variant: s('variant', 60),
     active: body['active'] === '1',
     initial_stock: s('initial_stock', 20),
   };
@@ -144,10 +154,15 @@ function parseProduct(v: ProductFormValues, isNew: boolean): { input?: ProductIn
     max_stock: opt(v.max_stock, parseQty, 'Maksimumbeholdning'),
     purchase_price: opt(v.purchase_price, parseKr, 'Indkøbspris'),
     sale_price: opt(v.sale_price, parseKr, 'Salgspris'),
+    ean: v.ean ? (normGtin(v.ean) ?? '') : '',
+    mpn: v.mpn,
+    brand: v.brand,
+    variant: v.variant,
     active: isNew || v.active ? 1 : 0,
     initial_stock: opt(v.initial_stock, parseQty, 'Startbeholdning') ?? 0,
   };
   if (input.whole_units && input.initial_stock % 1000) errs.push('Startbeholdningen skal være et helt antal.');
+  if (v.ean && !input.ean) errs.push('EAN er ikke gyldig (8, 12, 13 eller 14 cifre med korrekt kontrolciffer).');
   return errs.length ? { errs } : { input, errs };
 }
 
@@ -168,8 +183,8 @@ lager.post('/varer/ny', async (c) => {
     const row = await db
       .prepare(
         `INSERT INTO products (sku, name, unit, whole_units, category, supplier_id, lead_time_days, avg_daily_usage, safety_method, safety_qty, buffer_days,
-           max_stock, purchase_price, sale_price, stock, active, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?) RETURNING id`,
+           max_stock, purchase_price, sale_price, ean, mpn, brand, variant, stock, active, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?) RETURNING id`,
       )
       .bind(
         input.sku,
@@ -186,6 +201,10 @@ lager.post('/varer/ny', async (c) => {
         input.max_stock,
         input.purchase_price,
         input.sale_price,
+        input.ean,
+        input.mpn,
+        input.brand,
+        input.variant,
         input.initial_stock,
         tx.now,
         tx.now,
@@ -251,7 +270,8 @@ lager.post('/varer/:id{[0-9]+}', async (c) => {
   try {
     await c.env.DB.prepare(
       `UPDATE products SET sku = ?, name = ?, unit = ?, whole_units = ?, category = ?, supplier_id = ?, lead_time_days = ?, avg_daily_usage = ?,
-         safety_method = ?, safety_qty = ?, buffer_days = ?, max_stock = ?, purchase_price = ?, sale_price = ?, active = ?, updated_at = ? WHERE id = ?`,
+         safety_method = ?, safety_qty = ?, buffer_days = ?, max_stock = ?, purchase_price = ?, sale_price = ?,
+         ean = ?, mpn = ?, brand = ?, variant = ?, active = ?, updated_at = ? WHERE id = ?`,
     )
       .bind(
         input.sku,
@@ -268,6 +288,10 @@ lager.post('/varer/:id{[0-9]+}', async (c) => {
         input.max_stock,
         input.purchase_price,
         input.sale_price,
+        input.ean,
+        input.mpn,
+        input.brand,
+        input.variant,
         input.active,
         Math.floor(Date.now() / 1000),
         id,
@@ -378,5 +402,6 @@ lager.route('/modtagelse', modtagelse);
 lager.route('/demo', demo);
 lager.route('/faktura', faktura);
 lager.route('/indstillinger', indstillinger);
+lager.route('/priser', priser);
 
 export default lager;

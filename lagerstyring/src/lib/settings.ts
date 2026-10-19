@@ -12,6 +12,10 @@ export interface Settings {
   purchase_digest_hours: number;
   /** Tidspunktet for seneste samlede indkøbs-e-mail (unix-sekunder) */
   last_digest_at: number;
+  /** Momsgrundlag for prisestimater på indkøbslister: 'ekskl' eller 'inkl' */
+  estimate_vat: string;
+  /** Priser ældre end dette antal dage vises som "Tidligere pris – ikke bekræftet" */
+  price_max_age_days: number;
 }
 
 /** Standardfarve (signalorange som på veyro.dk). Kan ændres under Indstillinger. */
@@ -24,6 +28,8 @@ export const DEFAULT_SETTINGS: Settings = {
   alert_mail_enabled: true,
   purchase_digest_hours: 0,
   last_digest_at: 0,
+  estimate_vat: 'ekskl',
+  price_max_age_days: 7,
 };
 
 export const DIGEST_CHOICES = [0, 1, 4, 24];

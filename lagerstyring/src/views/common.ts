@@ -62,6 +62,10 @@ const FLASH: Record<string, [kind: 'ok' | 'info' | 'warn' | 'err', text: string]
   planlagt_mangler: ['warn', 'Det disponible er reserveret. Resten mangler og står nu på jobbets indkøbsliste, og jobbet afventer materialer.'],
   forbrug: ['ok', 'Forbruget er registreret og trukket fra lageret.'],
   job_oprettet: ['ok', 'Jobbet er oprettet.'],
+  forhandler_valgt: ['ok', 'Forhandleren er valgt. Valget bevares, når priserne opdateres.'],
+  pris_gemt: ['ok', 'Prisen er gemt.'],
+  alternativ_godkendt: ['ok', 'Alternativet er godkendt og tæller med i estimatet. Varen på listen er ikke ændret.'],
+  prisfil: ['ok', 'Prisfilen er indlæst.'],
 };
 
 export function flash(code: string | undefined): H | '' {

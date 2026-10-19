@@ -65,6 +65,21 @@ Advarsler vises i lagerportalen og sendes på e-mail til de valgte modtagere. Sa
 - Afsendelse sætter aldrig noget til "Bestilt".
 - Uden `RESEND_API_KEY` sendes intet: e-mails gemmes som **Simuleret, ikke sendt** i e-mail-loggen, og systemet skriver aldrig, at en e-mail er sendt, hvis den ikke er.
 
+## Prisestimat på indkøbslister
+
+Indkøbslisterne viser et vejledende estimat ud fra offentlige priser hos byggemarkeder og trælaster (STARK, BAUHAUS, Silvan, XL-BYG, Bygma, Davidsen og jem & fix). Der bruges aldrig kundens egne aftaler, rabatter eller priser bag login.
+
+- **Hvor priserne kommer fra:** en officiel prisfil fra forhandleren (CSV, indlæses eller hentes fra et feed på serveren højst hver 6. time) eller en manuelt indtastet pris med link til produktsiden. Siderne skrabes ikke, og login, CAPTCHA og adgangsbegrænsninger omgås aldrig. Ved undersøgelsen i oktober 2026 blev der ikke fundet en offentlig API eller et offentligt produktfeed hos nogen af forhandlerne, så de starter alle som "Produktlink og manuel pris" (se Indstillinger → Forhandlere og prisfiler).
+- **Match:** 1) samme EAN/GTIN, 2) producentens varenummer + mærke + variant, 3) navn og mål. Kun 1) og 2) er **Præcist match**; et navnematch er **Alternativ – kræver godkendelse** og erstatter aldrig varen på listen. Forhandlernes egne varenumre sammenlignes aldrig på tværs.
+- **Mængde:** den manglende mængde omregnes til forhandlerens salgsenhed med hele pakker og mindstekøb (12 stk. i pakker á 10 til 100 kr. = 2 pakker, 20 stk., 200 kr.). Tilbud bruges kun, når betingelserne er opfyldt, og de vises.
+- **Visning:** forhandler, fundet vare med link, match, pakning og foreslået køb, offentlig pris med moms, linjeestimat, kilde (Prisfil, Manuelt indtastet, Demodata) og tidspunkt for pristjek. Summen er i ét momsgrundlag (valgfrit inkl. eller ekskl. moms). Den laveste sammenlignelige materialepris blandt de fundne fremhæves; fragt tælles aldrig med og står som "Fragt og eventuelle gebyrer er ikke medregnet".
+- **Manglende og gamle priser:** "Pris mangler" med antal varer uden pris og summen af de kendte. Priser ældre end det valgte antal dage vises som "Tidligere pris – ikke bekræftet". En manuel pris overskrives aldrig uden accept.
+- **Valg af forhandler** pr. linje eller for hele listen bevares ved "Opdatér priser".
+- **E-mail:** indkøbslisten til ejer og indkøber får estimatet (evt. opdelt efter forhandler), varer uden pris, prisdatoer og teksten "Vejledende prisestimat baseret på offentlige priser. Endelig pris, tilgængelighed, fragt og eventuelle rabatter bekræftes hos leverandøren."
+- Prisopslag og afsendelse bestiller aldrig noget og ændrer ikke status. Estimaterne gemmes for sig selv med historik og blandes ikke med forventet pris, faktisk indkøbspris eller salgspris. En fejl hos en forhandler stopper aldrig registrering af forbrug eller lister.
+
+Prisfilens kolonner står på siden Forhandlere og prisfiler. Demoen bruger to fiktive forhandlere med opdigtede priser, markeret **Demodata** og uden produktlinks.
+
 ## Fakturagrundlag
 
 Grundlaget bygger på jobbets faktiske forbrug: udleveret fra lager minus returneret, brugt fra arbejdsstedet og varer uden varenummer købt til jobbet. Det, der allerede er på et godkendt grundlag, trækkes fra, så intet faktureres to gange, og en indkøbsliste bliver aldrig automatisk til en faktura. Kladden kan rettes (mængde, kostpris, salgspris, med eller ej); ved godkendelse låses mængder og priser. Salgsprisen er varens salgspris eller kostpris plus jobbets aftalte avance.

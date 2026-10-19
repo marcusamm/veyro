@@ -21,7 +21,9 @@ import {
   setPlanned,
   useFromSite,
 } from './materials';
+import { importCatalog, refreshList, type RetailerRow } from './estimates';
 import { sendPurchaseList } from './notices';
+import { ean13, type FeedItem } from './prices';
 import { addLine, createList, getList, getLine, lineStatus, LINE_STATUS_LABEL, registerOrder, receiveLine, stockList } from './purchasing';
 import { getSettings, saveSettings, type Settings } from './settings';
 import { STATUS_LABEL } from './stock';
@@ -65,6 +67,7 @@ export async function resetDemo(env: Env): Promise<void> {
   const db = env.DB;
   await db.batch(
     [
+      'DELETE FROM price_estimates',
       'DELETE FROM invoice_lines',
       'DELETE FROM invoice_bases',
       'DELETE FROM notices',
@@ -74,6 +77,8 @@ export async function resetDemo(env: Env): Promise<void> {
       'DELETE FROM purchase_lists',
       'DELETE FROM job_materials',
       'DELETE FROM jobs',
+      'DELETE FROM retailer_products',
+      "DELETE FROM retailers WHERE access = 'demo'",
       'DELETE FROM products',
       'DELETE FROM suppliers',
       'DELETE FROM ops',
@@ -354,6 +359,85 @@ async function seed(env: Env): Promise<void> {
   });
   const osbLine = await db.prepare('SELECT id FROM purchase_lines WHERE list_id = ? AND product_id = ?').bind(refill, osb.id).first<{ id: number }>();
   await run(BUYER, 'bestilling', now - DAY, async (tx) => registerOrder(tx, (await getLine(db, osbLine!.id))!, 10 * K, addDays(today, 3), 'ST-55190', null));
+
+  await seedPrices(env, list15!.id, P, now);
+}
+
+// --- Prisestimat med demodata ----------------------------------------------------------------
+// To fiktive forhandlere med opdigtede priser, markeret "Demodata" overalt. Der er ingen
+// produktlinks, fordi siderne ikke findes. EAN-numrene bruger præfiks 20 (internt brug), så de
+// ikke er rigtige varers numre.
+
+const DEMO_EAN = {
+  'GIP-13': '0' + ean13('200000000013'),
+  'VIN-90': '0' + ean13('200000000090'),
+};
+
+async function seedPrices(env: Env, listId: number, P: Map<string, ProductRow>, now: number): Promise<void> {
+  const db = env.DB;
+  const note = 'Fiktiv forhandler i demoen. Priserne er opdigtede (Demodata) og findes ikke hos nogen rigtig forhandler.';
+  await db.batch([
+    db.prepare("INSERT INTO retailers (key, name, website, access, terms_note, created_at) VALUES ('demo-nord', 'Byggecenter Nord (demo)', '', 'demo', ?, ?)").bind(note, now),
+    db.prepare("INSERT INTO retailers (key, name, website, access, terms_note, created_at) VALUES ('demo-syd', 'Trælast Syd (demo)', '', 'demo', ?, ?)").bind(note, now),
+    ...Object.entries(DEMO_EAN).map(([sku, ean]) => db.prepare("UPDATE products SET ean = ?, brand = 'Nordlys Demo' WHERE sku = ?").bind(ean, sku)),
+  ]);
+  const nord = (await db.prepare("SELECT * FROM retailers WHERE key = 'demo-nord'").first<RetailerRow>())!;
+  const syd = (await db.prepare("SELECT * FROM retailers WHERE key = 'demo-syd'").first<RetailerRow>())!;
+  const item = (o: Partial<FeedItem> & Pick<FeedItem, 'retailer_sku' | 'name' | 'price'>): FeedItem => ({
+    ean: '',
+    mpn: '',
+    brand: '',
+    variant: '',
+    url: '',
+    sales_unit: 'stk.',
+    pack_qty: 1 * K,
+    content_unit: 'stk.',
+    min_qty: 1 * K,
+    divisible: 0,
+    vat: 'inkl',
+    offer_price: null,
+    offer_text: '',
+    offer_min_qty: null,
+    offer_until: '',
+    stock_text: '',
+    ...o,
+  });
+  await importCatalog(
+    db,
+    nord,
+    [
+      item({ retailer_sku: 'N-1001', ean: DEMO_EAN['GIP-13'], name: 'Gipsplade 13 mm 900×2500', price: kr(79) }),
+      item({ retailer_sku: 'N-2040', ean: DEMO_EAN['VIN-90'], name: 'Vinkelbeslag 90 mm, 10 stk.', sales_unit: 'pk.', pack_qty: 10 * K, price: kr(100) }),
+      item({ retailer_sku: 'N-3310', name: 'Vægmaling glans 5 hvid 10 l (andet mærke)', sales_unit: 'spand', content_unit: 'spand', price: kr(649) }),
+    ],
+    'demodata',
+    now,
+  );
+  await importCatalog(
+    db,
+    syd,
+    [
+      item({ retailer_sku: 'S-77', ean: DEMO_EAN['GIP-13'], name: 'Gipsplade standard 13 mm 0,9×2,5 m', price: kr(72.5), offer_text: '' }),
+      item({ retailer_sku: 'S-91', ean: DEMO_EAN['VIN-90'], name: 'Vinkelbeslag 90 mm, 25 stk.', sales_unit: 'pk.', pack_qty: 25 * K, price: kr(219) }),
+    ],
+    'demodata',
+    now,
+  );
+  // En ældre pris, der vises som "Tidligere pris – ikke bekræftet"
+  await db.prepare("UPDATE retailer_products SET checked_at = ? WHERE retailer_id = ? AND retailer_sku = 'S-91'").bind(now - 20 * DAY, syd.id).run();
+
+  const list = (await getList(db, listId))!;
+  const vin = P.get('VIN-90')!;
+  const mal = P.get('MAL-10')!;
+  await must(
+    execTx(env, await getSettings(db), BUYER, 'linje', null, (tx) => {
+      for (const [p, q] of [[vin, 12 * K], [mal, 2 * K]] as const) {
+        addLine(tx, list, { product_id: p.id, sku: p.sku, name: p.name, unit: p.unit, supplier_id: p.supplier_id, qty: q, unit_price: p.purchase_price, expected_date: '', deliver_to: 'lager', note: '' });
+      }
+      addLine(tx, list, { product_id: null, sku: '', name: 'Specialbeslag til skakt (tegning 4B)', unit: 'stk.', supplier_id: null, qty: 4 * K, unit_price: null, expected_date: '', deliver_to: 'arbejdssted', note: 'Skal bestilles efter mål' });
+    }, now),
+  );
+  await refreshList(db, listId, BUYER.email, now);
 }
 
 // --- Demoforløb ------------------------------------------------------------------------------

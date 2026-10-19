@@ -28,6 +28,8 @@ try {
     { name: 'lager-vare', url: `/lager/varer/${pid('FUG-300')}`, who: owner },
     { name: 'lager-indkob', url: '/lager/indkob', who: owner },
     { name: 'lager-indkobsliste', url: `/lager/indkob/${list}`, who: owner },
+    { name: 'lager-prisestimat', url: `/lager/indkob/${list}`, who: owner, selector: '#prisestimat' },
+    { name: 'lager-forhandlere', url: '/lager/priser', who: owner },
     { name: 'lager-modtagelse', url: '/lager/modtagelse', who: owner },
     { name: 'lager-fakturagrundlag', url: `/lager/faktura/${basis}`, who: owner },
     { name: 'lager-indstillinger', url: '/lager/indstillinger', who: owner },
@@ -43,7 +45,12 @@ try {
       if (s.who) await ctx.addCookies(toCookies(s.who));
       const page = await ctx.newPage();
       await page.goto(stack.base + s.url, { waitUntil: 'networkidle' });
-      await page.screenshot({ path: path.join(OUT, `${s.name}-${label}.png`), fullPage: true });
+      const file = path.join(OUT, `${s.name}-${label}.png`);
+      if (s.selector) {
+        await page.addStyleTag({ content: 'header{position:static!important}' });
+        await page.locator(s.selector).screenshot({ path: file });
+      }
+      else await page.screenshot({ path: file, fullPage: true });
       console.log('Gemt:', `screenshots/${s.name}-${label}.png`);
       await ctx.close();
     }

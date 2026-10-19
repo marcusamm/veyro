@@ -9,7 +9,9 @@ import type { Env, PurchaseListRow, User } from '../env';
 import { formatDateTime, formatKr, formatQty, lineAmount, todayDk } from './format';
 import { nowSec } from './crypto';
 import { deliver, button, escapeHtml, table, wrapHtml, type DeliveryStatus } from './email';
+import { listEstimate, type EstimatedLine } from './estimates';
 import { PRODUCT_SQL, type ProductWithSupplier } from './materials';
+import { DISCLAIMER, FREIGHT_NOTE, STALE_LABEL, VAT_LABEL, type ListEstimate } from './prices';
 import { lineStatus, LINE_STATUS_LABEL, listLines, openPurchasesFor, outstanding, type LineView } from './purchasing';
 import type { Settings } from './settings';
 import { LEVEL, STATUS_LABEL, stockPlan, type StockPlan } from './stock';
@@ -134,6 +136,7 @@ export function purchaseListEmail(
   s: Settings,
   link: string,
   withPrices: boolean,
+  estimate?: { items: EstimatedLine<LineView>[]; summary: ListEstimate; bySupplier: boolean },
 ): { subject: string; text: string; html: string } {
   const title = list.job_number ? `${list.job_number} ${list.job_name}` : list.name;
   const live = lines.filter((l) => !l.cancelled);
@@ -159,14 +162,69 @@ export function purchaseListEmail(
     list.responsible && `Indkøbsansvarlig: ${list.responsible}`,
   ].filter(Boolean) as string[];
   const note = 'Dette er en orientering. Bestillingen hos leverandøren registreres særskilt i systemet.';
+  const est = withPrices && estimate ? estimateMail(estimate) : null;
   return {
     subject: `Indkøbsliste: ${title}`,
-    text: `${meta.join('\n')}\n\n${tb.text}${withPrices ? `\n\nI alt (forventet): ${formatKr(total)}` : ''}\n\n${note}\n\nÅbn listen: ${link}`,
+    text: `${meta.join('\n')}\n\n${tb.text}${withPrices ? `\n\nI alt (forventet): ${formatKr(total)}` : ''}${est ? `\n\n${est.text}` : ''}\n\n${note}\n\nÅbn listen: ${link}`,
     html: wrapHtml(
       s,
-      `<p style="margin:0 0 8px">${meta.map(escapeHtml).join('<br>')}</p>${tb.html}${withPrices ? `<p style="margin:8px 0 0"><strong>I alt (forventet): ${formatKr(total)}</strong></p>` : ''}${button(s, link, 'Åbn indkøbslisten')}<p style="color:#55534D;font-size:13px">${note}</p>`,
+      `<p style="margin:0 0 8px">${meta.map(escapeHtml).join('<br>')}</p>${tb.html}${withPrices ? `<p style="margin:8px 0 0"><strong>I alt (forventet): ${formatKr(total)}</strong></p>` : ''}${est ? est.html : ''}${button(s, link, 'Åbn indkøbslisten')}<p style="color:#55534D;font-size:13px">${note}</p>`,
     ),
   };
+}
+
+/** Prisestimatet i e-mailen: valgt forhandler, link, estimat, varer uden pris og prisdatoernes dato. */
+function estimateMail(e: { items: EstimatedLine<LineView>[]; summary: ListEstimate; bySupplier: boolean }): { text: string; html: string } {
+  const s = e.summary;
+  const basis = VAT_LABEL[s.basis];
+  const rows = e.items.filter((x) => x.est.need > 0);
+  const groups = new Map<string, typeof rows>();
+  for (const x of rows) {
+    const k = e.bySupplier ? (x.est.chosen?.est.retailer_name ?? 'Uden pris') : '';
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k)!.push(x);
+  }
+  const text: string[] = [`Prisestimat (${basis})`];
+  const htmlParts: string[] = [`<h3 style="margin:20px 0 6px;font-size:16px">Prisestimat (${escapeHtml(basis)})</h3>`];
+  for (const [name, items] of groups) {
+    const head = ['Vare', 'Mangler', 'Forhandler', 'Køb', 'Estimat', 'Pris tjekket', 'Link'];
+    const t = [head];
+    let sub = 0;
+    for (const { line, est } of items) {
+      const c = est.chosen;
+      if (c && c.plan.ok) sub += c.amount!;
+      t.push([
+        line.name,
+        `${formatQty(est.need)} ${line.unit}`,
+        c ? `${c.est.retailer_name}${c.est.match === 'alternativ' ? ' (godkendt alternativ)' : ''}${c.est.source === 'demodata' ? ' (Demodata)' : c.est.source === 'manuel' ? ' (manuelt indtastet)' : ''}` : 'Pris mangler',
+        c && c.plan.ok ? `${formatQty(c.plan.buy)} ${c.est.sales_unit}` : '–',
+        c ? formatKr(c.amount) : 'Pris mangler',
+        c ? `${formatDateTime(c.est.checked_at)}${c.stale ? ` (${STALE_LABEL})` : ''}` : '–',
+        c?.est.url || '–',
+      ]);
+    }
+    const tb = table(t, [1, 3, 4]);
+    if (name) {
+      text.push(`\n${name} (${formatKr(sub)})`);
+      htmlParts.push(`<p style="margin:12px 0 4px"><strong>${escapeHtml(name)}</strong> (${formatKr(sub)})</p>`);
+    }
+    text.push(tb.text);
+    htmlParts.push(tb.html);
+  }
+  const lines = [
+    `Estimat i alt (${basis}): ${formatKr(s.total)} for ${s.priced} af ${s.lines} varer med pris.`,
+    s.missing.length ? `Varer uden pris (Pris mangler): ${s.missing.map((m) => m.name).join(', ')}.` : '',
+    s.stale ? `${s.stale} ${s.stale === 1 ? 'pris er' : 'priser er'} markeret "${STALE_LABEL}".` : '',
+    s.oldest ? `Prisdata fra ${formatDateTime(s.oldest)}${s.newest && s.newest !== s.oldest ? ` til ${formatDateTime(s.newest)}` : ''}.` : '',
+    `${FREIGHT_NOTE}.`,
+    DISCLAIMER,
+  ].filter(Boolean);
+  text.push('', ...lines);
+  htmlParts.push(
+    `<p style="margin:8px 0 0"><strong>${escapeHtml(lines[0]!)}</strong></p>`,
+    ...lines.slice(1).map((l) => `<p style="margin:4px 0 0;font-size:14px">${escapeHtml(l)}</p>`),
+  );
+  return { text: text.join('\n'), html: htmlParts.join('') };
 }
 
 export async function sendPurchaseList(
@@ -175,9 +233,20 @@ export async function sendPurchaseList(
   list: PurchaseListRow & { job_number: string | null; job_name: string | null },
   to: User,
   actor: string,
+  opts: { bySupplier?: boolean } = {},
 ): Promise<DeliveryStatus> {
   const lines = await listLines(env.DB, list.id);
-  const msg = purchaseListEmail(list, lines, s, `${appUrl(env)}/${seesPrices(to) ? 'lager' : 'job'}/indkob/${list.id}`, seesPrices(to));
+  const prices = seesPrices(to);
+  // Prisestimatet er kun en tilføjelse: kan det ikke beregnes, sendes listen uden
+  const est = prices ? await listEstimate(env.DB, s, lines, nowSec()).catch(() => null) : null;
+  const msg = purchaseListEmail(
+    list,
+    lines,
+    s,
+    `${appUrl(env)}/${prices ? 'lager' : 'job'}/indkob/${list.id}`,
+    prices,
+    est ? { items: est.items, summary: est.summary, bySupplier: !!opts.bySupplier } : undefined,
+  );
   const { status } = await deliver(env, s, { to: to.email, ...msg }, { kind: 'indkobsliste', actor, list_id: list.id, list_version: list.version });
   return status;
 }

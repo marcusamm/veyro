@@ -20,6 +20,19 @@ import {
   updateLine,
 } from '../lib/purchasing';
 import { Conflict, type Tx } from '../lib/ledger';
+import {
+  acceptProposal,
+  approveAlternative,
+  dismissEstimate,
+  fetchFeeds,
+  getRetailer,
+  listEstimate,
+  refreshList,
+  retailers,
+  saveManual,
+  setPreferred,
+} from '../lib/estimates';
+import { estimateSection } from '../views/priser';
 import { actorOf, idParam, newOp, render, runTx } from '../render';
 import { listPage, purchasingPage, receivingPage } from '../views/indkob';
 
@@ -85,18 +98,29 @@ indkob.post('/ny', async (c) => {
   return c.redirect(`/lager/indkob/${id}?besked=oprettet`, 303);
 });
 
-async function showList(c: Context<AppEnv>, id: number, extra: { error?: string; mail?: { status: string; to: string }; status?: 200 | 400 | 409 } = {}) {
+type Refreshed = { checked: number; failed: number; feeds: { name: string; ok: boolean; message: string }[] };
+
+async function showList(
+  c: Context<AppEnv>,
+  id: number,
+  extra: { error?: string; mail?: { status: string; to: string }; status?: 200 | 400 | 409; refreshed?: Refreshed } = {},
+) {
   const db = c.env.DB;
   const [overview] = (await listsOverview(db, { archived: false })).filter((l) => l.id === id);
   const list = overview ?? (await listsOverview(db, { archived: true })).find((l) => l.id === id);
   if (!list) return c.notFound();
-  const [lines, sups, { results: products }, { results: users }, { results: mails }] = await Promise.all([
+  // Linjer, der aldrig er slået op (fx automatiske linjer fra et jobs mangel). Fejl i prisopslaget
+  // må aldrig forhindre, at listen vises.
+  if (!list.archived) await refreshList(db, id, actorOf(c).email, nowSec(), { onlyNew: true }).catch(() => null);
+  const [lines, sups, { results: products }, { results: users }, { results: mails }, rets] = await Promise.all([
     listLines(db, id),
     suppliers(db),
     db.prepare('SELECT id, sku, name, unit FROM products WHERE active = 1 ORDER BY name COLLATE NOCASE').all<{ id: number; sku: string; name: string; unit: string }>(),
     db.prepare('SELECT * FROM users WHERE active = 1 ORDER BY role, name').all<User>(),
     db.prepare('SELECT * FROM mails WHERE list_id = ? ORDER BY id DESC LIMIT 10').bind(id).all<MailRow>(),
+    retailers(db),
   ]);
+  const est = await listEstimate(db, c.get('settings'), lines, nowSec());
   return render(
     c,
     list.name,
@@ -112,6 +136,7 @@ async function showList(c: Context<AppEnv>, id: number, extra: { error?: string;
       flashCode: c.req.query('besked'),
       mail: extra.mail,
       error: extra.error,
+      estimate: estimateSection({ listId: id, ...est, retailers: rets, csrf: c.get('csrf'), archived: !!list.archived, refreshed: extra.refreshed }),
     }),
     NAV,
     extra.status ?? 200,
@@ -188,6 +213,8 @@ indkob.post('/:id{[0-9]+}/linje', async (c) => {
     }
   });
   if (!res.ok && !res.duplicate) return showList(c, id, { error: res.error, status: 409 });
+  // Prisopslag for den nye linje. Kører efter, at linjen er gemt, og en fejl her påvirker ikke listen.
+  if (res.ok) await refreshList(c.env.DB, id, actorOf(c).email, nowSec(), { onlyNew: true }).catch(() => null);
   return c.redirect(`/lager/indkob/${id}?besked=${res.ok ? 'oprettet' : 'dublet'}`, 303);
 });
 
@@ -212,7 +239,7 @@ indkob.post('/:id{[0-9]+}/send', async (c) => {
   ]);
   if (!list) return c.notFound();
   if (!user) return showList(c, id, { error: 'Vælg en modtager.', status: 400 });
-  const status = await sendPurchaseList(c.env, c.get('settings'), list, user, actorOf(c).email);
+  const status = await sendPurchaseList(c.env, c.get('settings'), list, user, actorOf(c).email, { bySupplier: body['split'] === '1' });
   return c.redirect(`/lager/indkob/${id}?mail=${status}&til=${encodeURIComponent(user.email)}`, 303);
 });
 
@@ -272,6 +299,106 @@ indkob.post('/linje/:lineId{[0-9]+}/annuller', (c) =>
     'annuller',
   ),
 );
+
+// --- Prisestimat -------------------------------------------------------------------------------
+// Prisopslag og valg af forhandler ændrer aldrig linjernes mængder eller status.
+
+const nowSec = () => Math.floor(Date.now() / 1000);
+
+indkob.post('/:id{[0-9]+}/priser', async (c) => {
+  const id = Number(c.req.param('id'));
+  if (!(await getList(c.env.DB, id))) return c.notFound();
+  const now = nowSec();
+  const feeds = await fetchFeeds(c.env, now, true).catch(() => []);
+  const r = await refreshList(c.env.DB, id, actorOf(c).email, now);
+  return showList(c, id, { refreshed: { ...r, feeds } });
+});
+
+indkob.post('/:id{[0-9]+}/forhandler', async (c) => {
+  const id = Number(c.req.param('id'));
+  const body = await c.req.parseBody();
+  const rid = idParam(String(body['retailer_id'] ?? ''));
+  if (rid && !(await getRetailer(c.env.DB, rid))) return c.notFound();
+  const { results } = await c.env.DB.prepare('SELECT id FROM purchase_lines WHERE list_id = ? AND cancelled = 0').bind(id).all<{ id: number }>();
+  await setPreferred(c.env.DB, results.map((r) => r.id), rid);
+  return c.redirect(`/lager/indkob/${id}?besked=forhandler_valgt#prisestimat`, 303);
+});
+
+indkob.post('/linje/:lineId{[0-9]+}/forhandler', async (c) => {
+  const line = await getLine(c.env.DB, Number(c.req.param('lineId')));
+  if (!line) return c.notFound();
+  const body = await c.req.parseBody();
+  const rid = idParam(String(body['retailer_id'] ?? ''));
+  if (rid && !(await getRetailer(c.env.DB, rid))) return c.notFound();
+  await setPreferred(c.env.DB, [line.id], rid);
+  return c.redirect(`/lager/indkob/${line.list_id}?besked=forhandler_valgt#pris-${line.id}`, 303);
+});
+
+indkob.post('/linje/:lineId{[0-9]+}/pris', async (c) => {
+  const db = c.env.DB;
+  const line = await getLine(db, Number(c.req.param('lineId')));
+  if (!line) return c.notFound();
+  const body = await c.req.parseBody();
+  const retailer = await getRetailer(db, idParam(String(body['retailer_id'] ?? '')) ?? 0);
+  const price = parseKr(body['price']);
+  const pack = parseQty(body['pack_qty']);
+  const minRaw = str(body['min_qty'], 20);
+  const min = minRaw ? parseQty(minRaw) : 1000;
+  const offerRaw = str(body['offer_price'], 20);
+  const offer = offerRaw ? parseKr(offerRaw) : null;
+  const url = str(body['url'], 500);
+  let host = '';
+  try {
+    const u = new URL(url);
+    host = u.protocol === 'https:' ? u.hostname : '';
+  } catch {
+    host = '';
+  }
+  const domain = retailer?.website ? new URL(retailer.website).hostname.replace(/^www\./, '') : '';
+  const errs: string[] = [];
+  if (!retailer || retailer.access === 'demo') errs.push('Vælg en forhandler.');
+  if (!host) errs.push('Angiv linket til produktsiden (https).');
+  else if (domain && host !== domain && !host.endsWith(`.${domain}`)) errs.push(`Linket skal pege på ${domain}.`);
+  if (price === null) errs.push('Angiv en gyldig pris.');
+  if (!pack) errs.push('Angiv indholdet pr. salgsenhed.');
+  if (!min) errs.push('Mindste køb er ikke gyldigt.');
+  if (offerRaw && offer === null) errs.push('Tilbudsprisen er ikke gyldig.');
+  if (errs.length) return showList(c, line.list_id, { error: errs.join(' '), status: 400 });
+  await saveManual(
+    db,
+    line,
+    {
+      retailer_id: retailer!.id,
+      match: body['match'] === 'alternativ' ? 'alternativ' : 'praecis',
+      name: str(body['name'], 200) || line.name,
+      url,
+      sales_unit: str(body['sales_unit'], 20) || line.unit,
+      pack_qty: pack!,
+      content_unit: str(body['content_unit'], 20) || line.unit,
+      min_qty: min!,
+      divisible: body['divisible'] === '1' ? 1 : 0,
+      price: price!,
+      vat: body['vat'] === 'ekskl' ? 'ekskl' : 'inkl',
+      offer_price: offer,
+      offer_text: str(body['offer_text'], 200),
+      note: str(body['note'], 200),
+    },
+    actorOf(c).email,
+    nowSec(),
+  );
+  return c.redirect(`/lager/indkob/${line.list_id}?besked=pris_gemt#pris-${line.id}`, 303);
+});
+
+async function estimateAction(c: Context<AppEnv>, fn: (id: number) => Promise<number | null>, code: string) {
+  const lineId = await fn(Number(c.req.param('eid')));
+  if (!lineId) return c.redirect('/lager/indkob', 303);
+  const line = await getLine(c.env.DB, lineId);
+  return c.redirect(`/lager/indkob/${line?.list_id ?? ''}?besked=${code}#pris-${lineId}`, 303);
+}
+
+indkob.post('/estimat/:eid{[0-9]+}/godkend', (c) => estimateAction(c, (id) => approveAlternative(c.env.DB, id, actorOf(c).name, nowSec()), 'alternativ_godkendt'));
+indkob.post('/estimat/:eid{[0-9]+}/accepter', (c) => estimateAction(c, (id) => acceptProposal(c.env.DB, id, nowSec()), 'pris_gemt'));
+indkob.post('/estimat/:eid{[0-9]+}/fjern', (c) => estimateAction(c, (id) => dismissEstimate(c.env.DB, id, nowSec()), 'gemt'));
 
 /** Varemodtagelse (også delvis) af bestilte linjer fra én leverandør. */
 export const modtagelse = new Hono<AppEnv>();

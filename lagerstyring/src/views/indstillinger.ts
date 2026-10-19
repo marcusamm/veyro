@@ -83,6 +83,11 @@ export function settingsPage(d: {
   </section>
 
   <section class="card stack">
+    <div class="row-between"><h2>Prisestimat</h2><a class="btn btn-secondary btn-small" href="/lager/priser">Forhandlere og prisfiler</a></div>
+    <p class="muted small" style="margin:0">Vejledende priser fra offentlige priser hos byggemarkeder og trælaster på indkøbslisterne: momsgrundlag, hvilke forhandlere der bruges, og indlæsning af officielle prisfiler.</p>
+  </section>
+
+  <section class="card stack">
     <h2>Leverandører</h2>
     <p class="muted small">Leveringstiden bruges i genbestillingspunktet, når varen ikke har sin egen. Alle tider er i kalenderdage.</p>
     <div class="table-wrap"><table class="list dense"><tbody>${d.suppliers.map(

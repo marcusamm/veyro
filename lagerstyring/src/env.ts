@@ -65,6 +65,10 @@ export interface ProductRow {
   max_stock: number | null;
   purchase_price: number | null;
   sale_price: number | null;
+  ean: string;
+  mpn: string;
+  brand: string;
+  variant: string;
   stock: number;
   reserved: number;
   alert_level: number;
@@ -142,6 +146,8 @@ export interface PurchaseLineRow {
   cancelled: number;
   auto: number;
   note: string;
+  preferred_retailer_id: number | null;
+  price_checked_at: number | null;
   created_at: number;
   updated_at: number;
 }

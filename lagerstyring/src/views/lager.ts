@@ -203,6 +203,10 @@ export interface ProductFormValues {
   max_stock: string;
   purchase_price: string;
   sale_price: string;
+  ean: string;
+  mpn: string;
+  brand: string;
+  variant: string;
   active: boolean;
   initial_stock: string;
 }
@@ -223,6 +227,10 @@ export function productValues(p: ProductOverview | null): ProductFormValues {
     max_stock: qtyInput(p?.max_stock),
     purchase_price: p?.purchase_price === null || p?.purchase_price === undefined ? '' : oereToInput(p.purchase_price),
     sale_price: p?.sale_price === null || p?.sale_price === undefined ? '' : oereToInput(p.sale_price),
+    ean: p?.ean ? p.ean.replace(/^0(?=\d{13}$)/, '') : '',
+    mpn: p?.mpn ?? '',
+    brand: p?.brand ?? '',
+    variant: p?.variant ?? '',
     active: p ? !!p.active : true,
     initial_stock: '',
   };
@@ -277,6 +285,18 @@ function productForm(v: ProductFormValues, d: { csrf: string; suppliers: Supplie
       <div class="field"><label for="sale_price">Salgspris pr. enhed (kr.)</label><input id="sale_price" class="in-num" name="sale_price" inputmode="decimal" value="${v.sale_price}"><p class="hint">Tom = indkøbspris plus jobbets avance.</p></div>
     </div>
     <p class="muted small">Priser vises kun for ejer og indkøber.</p>
+  </fieldset>
+  <fieldset class="card stack">
+    <legend>Produktdata til prisestimat</legend>
+    <p class="muted small">Bruges til at finde præcis samme vare hos byggemarkeder og trælaster. EAN giver det sikreste match; ellers producentens varenummer sammen med mærke og variant.</p>
+    <div class="fields fields-2">
+      <div class="field"><label for="ean">EAN/GTIN</label><input id="ean" class="in-num" name="ean" inputmode="numeric" maxlength="20" value="${v.ean}"></div>
+      <div class="field"><label for="mpn">Producentens varenummer</label><input id="mpn" name="mpn" maxlength="60" value="${v.mpn}"></div>
+    </div>
+    <div class="fields fields-2">
+      <div class="field"><label for="brand">Mærke</label><input id="brand" name="brand" maxlength="60" value="${v.brand}"></div>
+      <div class="field"><label for="variant">Variant</label><input id="variant" name="variant" maxlength="60" value="${v.variant}"><p class="hint">Fx farve, længde eller kvalitet.</p></div>
+    </div>
   </fieldset>
   <div class="row"><button class="btn btn-primary" type="submit">${d.isNew ? 'Opret vare' : 'Gem vare'}</button><a class="btn btn-ghost" href="${d.isNew ? '/lager/varer' : d.action}">Annullér</a></div>
 </form>`;

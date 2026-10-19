@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { AppEnv, Env } from './env';
+import { fetchFeeds } from './lib/estimates';
 import { appIcon } from './lib/icon';
 import { runPurchaseDigest } from './lib/notices';
 import { cleanup, csrfMiddleware, requireUser, sessionMiddleware } from './lib/session';
@@ -101,5 +102,7 @@ export default {
     ctx.waitUntil(cleanup(env.DB));
     // Samlet e-mail med nye indkøbsbehov med det valgte interval (slået fra som standard)
     ctx.waitUntil(getSettings(env.DB).then((s) => runPurchaseDigest(env, s)));
+    // Officielle prisfiler fra forhandlere med et feed (højst hver 6. time; fejl stopper intet andet)
+    ctx.waitUntil(fetchFeeds(env, Math.floor(Date.now() / 1000)).catch((e) => console.error('Prisfeed fejlede:', (e as Error)?.message)));
   },
 } satisfies ExportedHandler<Env>;
