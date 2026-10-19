@@ -101,6 +101,17 @@ export function table(rows: string[][], alignRight: number[] = []): { html: stri
   return { html, text };
 }
 
+export function inviteEmail(link: string, invitedBy: string, s: Settings): Omit<EmailMessage, 'to'> {
+  return {
+    subject: `Du er inviteret til ${s.company_name}`,
+    text: `${invitedBy} har givet dig adgang til ${s.company_name}s lager- og jobsystem.\n\nLog ind med din e-mailadresse her:\n${link}\n\nDu får et login-link på e-mail, når du logger ind. Der er ingen adgangskode.`,
+    html: wrapHtml(
+      s,
+      `<p>${escapeHtml(invitedBy)} har givet dig adgang til ${escapeHtml(s.company_name)}s lager- og jobsystem.</p>${button(s, link, 'Log ind')}<p style="color:#55534D;font-size:13px">Du logger ind med din e-mailadresse og får et login-link på e-mail. Der er ingen adgangskode.</p>`,
+    ),
+  };
+}
+
 export function loginEmail(link: string, s: Settings): Omit<EmailMessage, 'to'> {
   return {
     subject: `Log ind på ${s.company_name}`,
