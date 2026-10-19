@@ -1,0 +1,12 @@
+{
+  "navn": "Einar Kornerup",
+  "systemer": {
+    "lagerstyring": {
+      "admins": ["tjalfeschaffer@gmail.com", "marcus.ammitzboell@gmail.com"]
+    }
+  },
+  "udseende": {
+    "farve": "#006A64",
+    "logo": "einar-kornerup-logo.png"
+  }
+}

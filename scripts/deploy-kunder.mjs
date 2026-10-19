@@ -6,6 +6,7 @@
 //   2. skriver en wrangler-konfiguration ud fra systemets wrangler.toml-skabelon
 //   3. kører databasemigrationer
 //   4. deployer workeren og sætter RESEND_API_KEY som hemmelighed
+//   5. lagerstyring: lægger firmanavn, farve og logo fra kundefilen i databasen, når de er ændret
 //
 // Kræver CLOUDFLARE_API_TOKEN og CLOUDFLARE_ACCOUNT_ID i miljøet (og RESEND_API_KEY for e-mail).
 // Brug:
@@ -15,7 +16,8 @@
 // Valgfrit: EMAIL_FROM_STANDARD (afsender når kunden ikke har sin egen) og WORKERS_SUBDOMAIN
 // (kontoens workers.dev-underdomæne, kræves for kunder uden eget domæne).
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,6 +33,10 @@ const SYSTEMER = {
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const DOMAENE = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
 const EMAIL = /^[^\s@,"<>]+@[^\s@,"<>]+\.[^\s@,"<>]+$/;
+const FARVE = /^#[0-9a-fA-F]{6}$/;
+const LOGOFIL = /^[a-z0-9][a-z0-9._-]*\.(svg|png|jpe?g|webp)$/;
+// Samme grænse som logo-upload i lagerstyring/src/lib/settings.ts
+const LOGO_MAX_BYTES = 200 * 1024;
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
@@ -68,8 +74,67 @@ export function laesKunder(dir = KUNDER_DIR) {
       const navn = `${slug}-${SYSTEMER[system].kort}`;
       return { system, navn, domaene, admins, afsender };
     });
-    return { slug, navn: data.navn.trim(), systemer };
+    const udseende = laesUdseende(fil, dir, data.udseende);
+    return { slug, navn: data.navn.trim(), systemer, udseende };
   });
+}
+
+/** Billedtypen ud fra filens indhold, som logo-upload i lagerstyringen gør. */
+function logoType(bytes) {
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+  if (bytes.subarray(0, 4).toString('latin1') === 'RIFF' && bytes.subarray(8, 12).toString('latin1') === 'WEBP') return 'image/webp';
+  const head = bytes.subarray(0, 1024).toString('utf8').replace(/^\uFEFF/, '').trimStart();
+  if (/^(<\?xml[^>]*>\s*)?(<!--[\s\S]*?-->\s*)*(<!DOCTYPE svg[^>]*>\s*)?<svg[\s>]/i.test(head)) return 'image/svg+xml';
+  return null;
+}
+
+/** Valgfri "udseende": { "farve": "#RRGGBB", "logo": "fil i kunder/" }. */
+function laesUdseende(fil, dir, udseende) {
+  if (udseende === undefined) return null;
+  if (!udseende || typeof udseende !== 'object') fejl(fil, '"udseende" skal være et objekt');
+  const { farve = '', logo = '' } = udseende;
+  if (farve && (typeof farve !== 'string' || !FARVE.test(farve))) fejl(fil, '"udseende.farve" skal have formen "#RRGGBB"');
+  let logoData = '';
+  if (logo) {
+    if (typeof logo !== 'string' || !LOGOFIL.test(logo)) fejl(fil, '"udseende.logo" skal være et filnavn i kunder/, fx "nordlys-logo.svg"');
+    const bytes = readFileSync(join(dir, logo));
+    const type = logoType(bytes);
+    if (!type) fejl(fil, `${logo} er ikke et PNG-, JPG-, WebP- eller SVG-billede`);
+    if (bytes.length > LOGO_MAX_BYTES) fejl(fil, `${logo} fylder mere end 200 KB`);
+    logoData = `${type};${bytes.toString('base64')}`;
+  }
+  return { farve: farve.toUpperCase(), logoData };
+}
+
+const sqlTekst = (s) => `'${String(s).replace(/'/g, "''")}'`;
+
+/**
+ * SQL, der lægger firmanavn, farve og logo fra kundefilen i lagerstyringens indstillinger,
+ * når kundefilen har "udseende".
+ * Det sker kun, når værdierne i filen er ændret siden sidste deploy, så det, kunden selv
+ * retter under Indstillinger, bliver stående, indtil kundefilen ændres igen.
+ */
+export function bygUdseendeSql(kunde) {
+  if (!kunde.udseende) return '';
+  const vaerdier = [['company_name', kunde.navn]];
+  if (kunde.udseende?.farve) vaerdier.push(['accent_color', kunde.udseende.farve]);
+  if (kunde.udseende?.logoData) {
+    vaerdier.push(['logo', kunde.udseende.logoData]);
+    vaerdier.push(['logo_version', String(Date.now())]);
+  }
+  const hash = createHash('sha256')
+    .update(JSON.stringify(vaerdier.filter(([k]) => k !== 'logo_version')))
+    .digest('hex')
+    .slice(0, 16);
+  const ny = `NOT EXISTS (SELECT 1 FROM settings WHERE key = 'kundefil_udseende' AND value = ${sqlTekst(hash)})`;
+  return [...vaerdier, ['kundefil_udseende', hash]]
+    .map(
+      ([k, v]) =>
+        `INSERT INTO settings (key, value) SELECT ${sqlTekst(k)}, ${sqlTekst(v)} WHERE ${ny}\n` +
+        '  ON CONFLICT(key) DO UPDATE SET value = excluded.value;',
+    )
+    .join('\n');
 }
 
 /** Bygger kundens wrangler-konfiguration ud fra systemets skabelon, så cron og øvrige felter følger med. */
@@ -118,7 +183,7 @@ function findDatabase(cwd, navn) {
   return liste.find((db) => db.name === navn)?.uuid;
 }
 
-function deploy(inst) {
+function deploy(kunde, inst) {
   const cwd = join(ROOT, inst.system);
   const skabelon = readFileSync(join(cwd, 'wrangler.toml'), 'utf8');
   const config = `.wrangler-kunde-${inst.navn}.toml`;
@@ -135,12 +200,23 @@ function deploy(inst) {
     standardAfsender: process.env.EMAIL_FROM_STANDARD,
     workersSubdomain: dryRun ? process.env.WORKERS_SUBDOMAIN || 'konto' : process.env.WORKERS_SUBDOMAIN,
   });
+  const udseendeSql = inst.system === 'lagerstyring' ? bygUdseendeSql(kunde) : '';
   if (dryRun) {
     console.log(toml);
+    if (udseendeSql) console.log(udseendeSql.replace(/'image\/[^;']+;[^']{60,}'/g, "'<logo>'"));
     return;
   }
   writeFileSync(join(cwd, config), toml);
   wrangler(cwd, ['d1', 'migrations', 'apply', inst.navn, '--remote', '--config', config]);
+  if (udseendeSql) {
+    const sqlFil = `.wrangler-kunde-${inst.navn}-udseende.sql`;
+    writeFileSync(join(cwd, sqlFil), udseendeSql);
+    try {
+      wrangler(cwd, ['d1', 'execute', inst.navn, '--remote', '--yes', '--file', sqlFil, '--config', config]);
+    } finally {
+      unlinkSync(join(cwd, sqlFil));
+    }
+  }
   wrangler(cwd, ['deploy', '--config', config]);
   if (process.env.RESEND_API_KEY) {
     wrangler(cwd, ['secret', 'put', 'RESEND_API_KEY', '--config', config], process.env.RESEND_API_KEY);
@@ -157,7 +233,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     for (const inst of kunde.systemer) {
       console.log(`\n== ${kunde.navn}: ${inst.system} (${inst.navn})`);
       try {
-        deploy(inst);
+        deploy(kunde, inst);
       } catch (e) {
         // Én kundes fejl må ikke stoppe opdateringen af de andre
         console.error(`  FEJL: ${e.message}`);
