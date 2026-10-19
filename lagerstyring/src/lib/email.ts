@@ -10,6 +10,8 @@ export interface EmailMessage {
   subject: string;
   text: string;
   html: string;
+  /** Svar går hertil i stedet for til afsenderen (fx den medarbejder, der sendte en bestilling) */
+  replyTo?: string;
 }
 
 export type DeliveryStatus = 'sendt' | 'simuleret' | 'fejlet';
@@ -25,7 +27,7 @@ export async function sendEmail(env: Env, msg: EmailMessage, s: Settings): Promi
   const res = await fetch(`${base}/emails`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [msg.to], subject: msg.subject, text: msg.text, html: msg.html }),
+    body: JSON.stringify({ from, to: [msg.to], subject: msg.subject, text: msg.text, html: msg.html, ...(msg.replyTo ? { reply_to: msg.replyTo } : {}) }),
   });
   if (!res.ok) {
     // Log kun status, ikke modtager eller indhold

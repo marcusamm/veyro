@@ -3,7 +3,8 @@ import type { AppEnv, JobRow, MailRow, PurchaseLineRow, User } from '../env';
 import { suppliers } from '../lib/catalog';
 import { parseDay, parseKr, parseQty, str } from '../lib/format';
 import { getProduct } from '../lib/materials';
-import { sendPurchaseList } from '../lib/notices';
+import { sendPurchaseList, supplierOrderEmail } from '../lib/notices';
+import { deliver } from '../lib/email';
 import {
   addLine,
   cancelLine,
@@ -19,7 +20,7 @@ import {
   setReady,
   updateLine,
 } from '../lib/purchasing';
-import { Conflict, type Tx } from '../lib/ledger';
+import { Conflict, opToken, type Tx } from '../lib/ledger';
 import {
   acceptProposal,
   approveAlternative,
@@ -33,7 +34,7 @@ import {
   saveManual,
 } from '../lib/estimates';
 import { estimateSection } from '../views/priser';
-import { actorOf, idParam, newOp, render, runTx } from '../render';
+import { actorOf, idParam, isDemo, newOp, render, runTx } from '../render';
 import { listPage, purchasingPage, receivingPage } from '../views/indkob';
 
 const indkob = new Hono<AppEnv>();
@@ -51,7 +52,17 @@ async function showOverview(c: Context<AppEnv>, error?: string, status: 200 | 40
   return render(
     c,
     'Indkøb',
-    purchasingPage({ toOrder, lists, jobs, archived, csrf: c.get('csrf'), ops: Array.from({ length: groups }, newOp), flashCode: c.req.query('besked'), error }),
+    purchasingPage({
+      toOrder,
+      lists,
+      jobs,
+      archived,
+      csrf: c.get('csrf'),
+      ops: Array.from({ length: groups }, newOp),
+      flashCode: c.req.query('besked'),
+      mail: c.req.query('mail') ? { status: c.req.query('mail')!, to: c.req.query('til') ?? '' } : undefined,
+      error,
+    }),
     NAV,
     status,
   );
@@ -59,31 +70,89 @@ async function showOverview(c: Context<AppEnv>, error?: string, status: 200 | 40
 
 indkob.get('/', (c) => showOverview(c));
 
-/** Registrerer bestilling hos én leverandør for flere linjer på én gang. */
-indkob.post('/bestil', async (c) => {
-  const body = await c.req.parseBody();
-  const entries: { id: number; q: number; date: string }[] = [];
-  const errs: string[] = [];
+type OrderEntry = { id: number; q: number; date: string };
+
+/** Mængder og datoer fra bestillingsformularen for én leverandør. */
+function orderEntries(body: Record<string, unknown>): { entries: OrderEntry[]; error?: string } {
+  const entries: OrderEntry[] = [];
   for (const [k, v] of Object.entries(body)) {
     const m = /^o_(\d+)$/.exec(k);
     if (!m || typeof v !== 'string' || !v.trim()) continue;
     const q = parseQty(v);
     const date = parseDay(body[`d_${m[1]}`]);
-    if (q === null || date === null) errs.push('En mængde eller dato er ikke gyldig.');
-    else if (q > 0) entries.push({ id: Number(m[1]), q, date });
+    if (q === null || date === null) return { entries, error: 'En mængde eller dato er ikke gyldig.' };
+    if (q > 0) entries.push({ id: Number(m[1]), q, date });
   }
-  if (errs.length) return showOverview(c, errs[0], 400);
-  if (!entries.length) return c.redirect('/lager/indkob?besked=tom', 303);
-  const ref = str(body['ref'], 60);
-  const res = await runTx(c, 'bestilling', body['op'], async (tx) => {
+  return { entries };
+}
+
+function registerEntries(c: Context<AppEnv>, op: unknown, entries: OrderEntry[], ref: string) {
+  return runTx(c, 'bestilling', op, async (tx) => {
     for (const e of entries) {
       const line = await getLine(tx.db, e.id);
       if (!line) continue;
       registerOrder(tx, line, line.ordered + e.q, e.date || line.expected_date, ref || line.order_ref, null);
     }
   });
+}
+
+/** Registrerer bestilling hos én leverandør for flere linjer på én gang. */
+indkob.post('/bestil', async (c) => {
+  const body = await c.req.parseBody();
+  const { entries, error } = orderEntries(body);
+  if (error) return showOverview(c, error, 400);
+  if (!entries.length) return c.redirect('/lager/indkob?besked=tom', 303);
+  const res = await registerEntries(c, body['op'], entries, str(body['ref'], 60));
   if (!res.ok && !res.duplicate) return showOverview(c, res.error, 409);
   return c.redirect(`/lager/indkob?besked=${res.ok ? 'bestilt' : 'dublet'}`, 303);
+});
+
+/**
+ * Sender bestillingen til leverandøren på e-mail og registrerer den som bestilt. Bestillingen
+ * registreres kun, hvis e-mailen faktisk er sendt (i demoen også, når den er simuleret).
+ */
+indkob.post('/bestil-mail', async (c) => {
+  const body = await c.req.parseBody();
+  const { entries, error } = orderEntries(body);
+  if (error) return showOverview(c, error, 400);
+  if (!entries.length) return c.redirect('/lager/indkob?besked=tom', 303);
+  const op = opToken(body['op']);
+  if (!op) return showOverview(c, 'Formularen er udløbet. Genindlæs siden og prøv igen.', 400);
+  const db = c.env.DB;
+  const lines = (await Promise.all(entries.map((e) => getLine(db, e.id)))).filter((l): l is NonNullable<typeof l> => !!l && !l.cancelled);
+  const supplierIds = new Set(lines.map((l) => l.supplier_id));
+  if (!lines.length || supplierIds.size !== 1 || !lines[0]!.supplier_id) return showOverview(c, 'Bestillingen skal være til én leverandør.', 400);
+  const sup = lines[0]!;
+  if (!sup.supplier_email) return showOverview(c, `${sup.supplier_name} har ingen e-mail. Tilføj den under Indstillinger.`, 400);
+  // Engangsnøglen for e-mailen tages før afsendelse, så et dobbeltklik ikke sender to bestillinger
+  const actor = actorOf(c);
+  const claimed = await db
+    .prepare('INSERT INTO ops (token, kind, actor, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(token) DO NOTHING')
+    .bind(`${op}-mail`, 'bestillingsmail', actor.email, nowSec())
+    .run();
+  if (!claimed.meta.changes) return c.redirect('/lager/indkob?besked=dublet', 303);
+  const s = c.get('settings');
+  const jobIds = [...new Set(lines.filter((l) => l.deliver_to === 'arbejdssted' && l.job_id).map((l) => l.job_id!))];
+  const sites = new Map<number, string>();
+  for (const id of jobIds) {
+    const j = await db.prepare('SELECT site_address FROM jobs WHERE id = ?').bind(id).first<{ site_address: string }>();
+    sites.set(id, j?.site_address ?? '');
+  }
+  const byId = new Map(lines.map((l) => [l.id, l]));
+  const ref = str(body['ref'], 60);
+  const orderLines = entries
+    .filter((e) => byId.has(e.id))
+    .map((e) => {
+      const line = byId.get(e.id)!;
+      return { line, qty: e.q, date: e.date, address: line.deliver_to === 'arbejdssted' ? (sites.get(line.job_id!) ?? '') : s.company_address };
+    });
+  const msg = supplierOrderEmail(sup.supplier_name!, orderLines, s, { ref, orderedBy: actor });
+  const { status } = await deliver(c.env, s, { to: sup.supplier_email, replyTo: actor.email, ...msg }, { kind: 'bestilling', actor: actor.email });
+  const mailQs = `mail=${status}&til=${encodeURIComponent(sup.supplier_email)}`;
+  if (status !== 'sendt' && !(status === 'simuleret' && isDemo(c))) return c.redirect(`/lager/indkob?${mailQs}`, 303);
+  const res = await registerEntries(c, op, orderLines.map((o) => ({ id: o.line.id, q: o.qty, date: o.date })), ref);
+  if (!res.ok && !res.duplicate) return showOverview(c, `E-mailen er sendt, men bestillingen kunne ikke registreres: ${res.error}`, 409);
+  return c.redirect(`/lager/indkob?besked=${res.ok ? 'bestilt' : 'dublet'}&${mailQs}`, 303);
 });
 
 indkob.post('/ny', async (c) => {

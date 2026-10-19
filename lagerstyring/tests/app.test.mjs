@@ -369,4 +369,35 @@ describe('Med e-mail', () => {
     expect(toBuyer.text).toContain('kr.');
     expect(stack.sql(`SELECT ordered FROM purchase_lines WHERE list_id = ${list.id}`)[0].ordered).toBe(0);
   });
+
+  it('sender bestillingen til leverandøren på e-mail uden priser og registrerer den én gang', async () => {
+    const owner = await login(stack, ADMIN_EMAIL);
+    let page = await owner.get('/lager/indstillinger');
+    await owner.post('/lager/indstillinger/leverandor', { _csrf: csrfFrom(page.html), name: 'Byggemarked A/S', email: 'ordre@byggemarked.dk', phone: '', lead_time_days: '' });
+    const sup = stack.sql("SELECT id FROM suppliers WHERE name = 'Byggemarked A/S'")[0];
+    const line = stack.sql("SELECT l.* FROM purchase_lines l JOIN jobs j ON j.id = l.job_id WHERE j.number = 'J-1' AND l.cancelled = 0")[0];
+    stack.sql(`UPDATE purchase_lines SET supplier_id = ${sup.id} WHERE id = ${line.id}`);
+    page = await owner.get('/lager/indkob');
+    expect(page.html).toContain('Send bestilling til Byggemarked A/S');
+    const form = { _csrf: csrfFrom(page.html), op: opFrom(page.html), ref: 'J-1-A', [`o_${line.id}`]: '30', [`d_${line.id}`]: '' };
+    const before = stack.mail.emails.length;
+    let res = await owner.post('/lager/indkob/bestil-mail', form);
+    expect(res.headers.get('location')).toContain('besked=bestilt');
+    expect(res.headers.get('location')).toContain('mail=sendt');
+    const order = await waitFor(() => stack.mail.emails.slice(before).find((e) => e.to[0] === 'ordre@byggemarked.dk'));
+    expect(order.subject).toContain('J-1-A');
+    expect(order.reply_to).toBe(ADMIN_EMAIL);
+    expect(order.text).toContain('T-1');
+    expect(order.text).toContain('30 stk.');
+    expect(order.text).toContain('J-1');
+    expect(order.text).not.toContain('kr.');
+    expect(stack.sql(`SELECT ordered, order_ref FROM purchase_lines WHERE id = ${line.id}`)[0]).toMatchObject({ ordered: 30_000, order_ref: 'J-1-A' });
+    expect(stack.sql("SELECT COUNT(*) AS n FROM mails WHERE kind = 'bestilling'")[0].n).toBe(1);
+    // Samme formular igen (dobbeltklik) sender ikke en ny bestilling
+    res = await owner.post('/lager/indkob/bestil-mail', form);
+    expect(res.headers.get('location')).toContain('besked=dublet');
+    await new Promise((r) => setTimeout(r, 300));
+    expect(stack.mail.emails.slice(before).filter((e) => e.to[0] === 'ordre@byggemarked.dk').length).toBe(1);
+    expect(stack.sql(`SELECT ordered FROM purchase_lines WHERE id = ${line.id}`)[0].ordered).toBe(30_000);
+  });
 });
