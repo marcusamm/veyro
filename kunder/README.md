@@ -24,7 +24,8 @@ Opret `kunder/<kundenavn>.json` (små bogstaver og bindestreger, fx `nordlys.jso
 ```
 
 - `systemer`: `lagerstyring` og/eller `varebestilling`.
-- `domaene`: valgfri. Domænet skal ligge i Veyros Cloudflare-konto. Uden domæne kører systemet på `<kundenavn>-lager.<WORKERS_SUBDOMAIN>.workers.dev`.
+- `adresse`: valgfri, kort navn til kundens adresse, fx `"ek"`. Kunder uden eget domæne får lagerstyringen på `<adresse>.veyro.dk` og varebestillingen på `<adresse>-bestilling.veyro.dk`. Uden `adresse` bruges filnavnet.
+- `domaene`: valgfri. Domænet skal ligge i Veyros Cloudflare-konto. Uden domæne kører systemet på `<adresse>.veyro.dk` (se `KUNDE_DOMAENE`), eller på `<kundenavn>-lager.<WORKERS_SUBDOMAIN>.workers.dev`.
 - `admins`: e-mails, der kan logge ind som ejer første gang og oprette resten under Indstillinger.
 - `afsender`: valgfri. Uden den bruges repo-variablen `EMAIL_FROM_STANDARD`. Afsenderdomænet skal være verificeret i Resend.
 - `udseende`: valgfri. `farve` er kundens farve som `#RRGGBB`, og `logo` er en billedfil (PNG, JPG, WebP eller SVG, højst 200 KB), der ligger her i `kunder/`.
@@ -40,6 +41,6 @@ Fjernes en fil, bliver kundens worker og database **ikke** slettet; det gøres m
 Under *Settings → Secrets and variables → Actions*:
 
 - Secrets: `CLOUDFLARE_API_TOKEN` (skabelonen "Edit Cloudflare Workers" plus D1-redigering), `CLOUDFLARE_ACCOUNT_ID`, `RESEND_API_KEY`.
-- Variables (valgfrie): `EMAIL_FROM_STANDARD` (standard `Veyro <login@veyro.dk>`) og `WORKERS_SUBDOMAIN` (standard `marcus-ammitzboell`) overskriver standardværdierne i workflowet.
+- Variables (valgfrie): `EMAIL_FROM_STANDARD` (standard `Veyro <login@veyro.dk>`) og `WORKERS_SUBDOMAIN` (standard `marcus-ammitzboell`) overskriver standardværdierne i workflowet. `KUNDE_DOMAENE` (standard `veyro.dk`) giver alle kunder uden eget domæne en adresse på det domæne; domænet skal ligge i samme Cloudflare-konto.
 
 Deploy af én kunde manuelt: fanen *Actions → Deploy kunder → Run workflow* med kundens filnavn.

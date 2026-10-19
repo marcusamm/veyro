@@ -1,8 +1,12 @@
 {
   "navn": "Einar Kornerup",
+  "adresse": "ek",
   "systemer": {
     "lagerstyring": {
-      "admins": ["tjalfeschaffer@gmail.com", "marcus.ammitzboell@gmail.com"]
+      "admins": [
+        "tjalfeschaffer@gmail.com",
+        "marcus.ammitzboell@gmail.com"
+      ]
     }
   },
   "udseende": {
