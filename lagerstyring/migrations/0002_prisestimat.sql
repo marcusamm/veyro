@@ -14,19 +14,24 @@ ALTER TABLE products ADD COLUMN variant TEXT NOT NULL DEFAULT '';  -- fx farve e
 -- Forhandlere, der kan slås priser op hos. access fortæller, hvordan priserne kommer ind:
 --   manuel  = produktlink og manuelt indtastet pris (ingen tilladt automatisk adgang fundet)
 --   prisfil = forhandlerens officielle prisfil/feed (uploadet eller hentet fra feed_url)
+--   side    = læser offentlige produktsider (kun når vilkårene er bekræftet; robots.txt overholdes)
 --   demo    = fiktive demodata (kun i demoen)
 CREATE TABLE retailers (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
   key               TEXT NOT NULL UNIQUE,
   name              TEXT NOT NULL,
   website           TEXT NOT NULL DEFAULT '',
-  access            TEXT NOT NULL DEFAULT 'manuel' CHECK (access IN ('manuel', 'prisfil', 'demo')),
+  access            TEXT NOT NULL DEFAULT 'manuel' CHECK (access IN ('manuel', 'prisfil', 'side', 'demo')),
   terms_note        TEXT NOT NULL DEFAULT '',   -- hvad vi ved om adgang og vilkår
   feed_url          TEXT NOT NULL DEFAULT '',   -- officielt feed (https), hentes på serveren
   active            INTEGER NOT NULL DEFAULT 1,
   last_import_at    INTEGER,
   last_import_rows  INTEGER,
   last_error        TEXT NOT NULL DEFAULT '',
+  terms_confirmed_by TEXT,                      -- hvem der har bekræftet, at vilkårene tillader læsning af sider
+  terms_confirmed_at INTEGER,
+  robots_txt        TEXT,                       -- cache af butikkens robots.txt (NULL = ikke hentet)
+  robots_fetched_at INTEGER,
   created_at        INTEGER NOT NULL
 );
 
@@ -53,7 +58,8 @@ CREATE TABLE retailer_products (
   offer_min_qty  INTEGER,                       -- tilbuddet kræver mindst dette antal salgsenheder
   offer_until    TEXT NOT NULL DEFAULT '',      -- YYYY-MM-DD
   stock_text     TEXT NOT NULL DEFAULT '',      -- kun hvis kilden selv oplyser lagerstatus
-  source         TEXT NOT NULL CHECK (source IN ('prisfil', 'demodata')),
+  source         TEXT NOT NULL CHECK (source IN ('prisfil', 'side', 'demodata')),
+  product_id     INTEGER REFERENCES products(id) ON DELETE CASCADE, -- varen, en produktside er knyttet til
   checked_at     INTEGER NOT NULL,              -- hvornår prisen er hentet fra kilden
   UNIQUE (retailer_id, retailer_sku)
 );
@@ -88,7 +94,7 @@ CREATE TABLE price_estimates (
   need_qty             INTEGER NOT NULL DEFAULT 0,
   buy_qty              INTEGER,
   amount               INTEGER,
-  source               TEXT NOT NULL CHECK (source IN ('prisfil', 'demodata', 'manuel')),
+  source               TEXT NOT NULL CHECK (source IN ('prisfil', 'side', 'demodata', 'manuel')),
   status               TEXT NOT NULL CHECK (status IN ('aktuel', 'tidligere', 'forslag', 'erstattet')),
   note                 TEXT NOT NULL DEFAULT '',
   checked_at           INTEGER NOT NULL,
@@ -99,6 +105,24 @@ CREATE TABLE price_estimates (
 CREATE INDEX idx_price_estimates_line ON price_estimates(line_id, status);
 CREATE UNIQUE INDEX idx_price_estimates_live ON price_estimates(line_id, retailer_id) WHERE status IN ('aktuel', 'tidligere');
 CREATE UNIQUE INDEX idx_price_estimates_proposal ON price_estimates(line_id, retailer_id) WHERE status = 'forslag';
+
+-- Produktsider hos forhandlere, der læses automatisk (offentlige sider, robots.txt overholdes).
+-- Brugeren knytter én side pr. vare og forhandler; prisen hentes derefter på serveren.
+CREATE TABLE product_pages (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  retailer_id      INTEGER NOT NULL REFERENCES retailers(id) ON DELETE CASCADE,
+  product_id       INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  url              TEXT NOT NULL,
+  match            TEXT NOT NULL DEFAULT 'praecis' CHECK (match IN ('praecis', 'alternativ')),
+  sales_unit       TEXT NOT NULL,
+  pack_qty         INTEGER NOT NULL DEFAULT 1000 CHECK (pack_qty > 0),
+  last_status      TEXT NOT NULL DEFAULT '',     -- seneste resultat (fx "Pris læst" eller fejlen)
+  last_ok          INTEGER NOT NULL DEFAULT 0,
+  last_fetched_at  INTEGER,
+  created_by       TEXT NOT NULL,
+  created_at       INTEGER NOT NULL,
+  UNIQUE (retailer_id, product_id)
+);
 
 -- Seneste automatiske prisopslag for linjen
 ALTER TABLE purchase_lines ADD COLUMN price_checked_at INTEGER;

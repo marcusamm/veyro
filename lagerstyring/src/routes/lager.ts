@@ -7,6 +7,8 @@ import { MOVE_LABEL, Tx } from '../lib/ledger';
 import { addLine, getList, openPurchasesFor, stockList } from '../lib/purchasing';
 import { evaluateProducts } from '../lib/notices';
 import { normGtin } from '../lib/prices';
+import { fetchableUrl, getRetailer, onRetailerSite, productPages, readProductPages, retailers } from '../lib/estimates';
+import { productPagesCard } from '../views/priser';
 import { requireManager } from '../lib/session';
 import { actorOf, idParam, isDemo, newOp, render, runTx } from '../render';
 import {
@@ -220,11 +222,15 @@ lager.post('/varer/ny', async (c) => {
   }
 });
 
-async function showProduct(c: Context<AppEnv>, id: number, extra: { values?: ProductFormValues; errs?: string[]; moveError?: string; status?: 200 | 400 | 409 } = {}) {
+async function showProduct(
+  c: Context<AppEnv>,
+  id: number,
+  extra: { values?: ProductFormValues; errs?: string[]; moveError?: string; pageError?: string; status?: 200 | 400 | 409 } = {},
+) {
   const db = c.env.DB;
   const p = await productOverviewOne(db, id);
   if (!p) return c.notFound();
-  const [sups, open, { results: jobs }, { results: moves }] = await Promise.all([
+  const [sups, open, { results: jobs }, { results: moves }, pages, rets] = await Promise.all([
     suppliers(db),
     openPurchasesFor(db, id),
     db
@@ -236,6 +242,8 @@ async function showProduct(c: Context<AppEnv>, id: number, extra: { values?: Pro
       .bind(id)
       .all<{ job_id: number; number: string; name: string; reserved: number; waiting: number }>(),
     db.prepare(`${MOVE_SQL} WHERE m.product_id = ? ORDER BY m.id DESC LIMIT 30`).bind(id).all<MovementView>(),
+    productPages(db, id),
+    retailers(db, { activeOnly: true }),
   ]);
   return render(
     c,
@@ -253,6 +261,7 @@ async function showProduct(c: Context<AppEnv>, id: number, extra: { values?: Pro
       errs: extra.errs ?? [],
       moveError: extra.moveError,
       flashCode: c.req.query('besked'),
+      pagesCard: productPagesCard({ productId: id, unit: p.unit, pages, retailers: rets, csrf: c.get('csrf'), error: extra.pageError }),
     }),
     NAV('varer'),
     extra.status ?? 200,
@@ -304,6 +313,42 @@ lager.post('/varer/:id{[0-9]+}', async (c) => {
   // Nye grænser kan give (eller fjerne) en advarsel
   await evaluateProducts(c.env, c.get('settings'), [id], actorOf(c).email);
   return c.redirect(`/lager/varer/${id}?besked=gemt`, 303);
+});
+
+// Produktsider hos byggemarkederne (til automatisk pris eller manuel pris med link)
+lager.post('/varer/:id{[0-9]+}/produktside', async (c) => {
+  const id = Number(c.req.param('id'));
+  const db = c.env.DB;
+  const body = await c.req.parseBody();
+  const r = await getRetailer(db, idParam(String(body['retailer_id'] ?? '')) ?? 0);
+  const url = str(body['url'], 500);
+  const pack = parseQty(body['pack_qty']);
+  if (!r || r.access === 'demo') return showProduct(c, id, { pageError: 'Vælg en butik.', status: 400 });
+  if (!fetchableUrl(c.env, url) || !onRetailerSite(r, url)) return showProduct(c, id, { pageError: `Linket skal være en https-adresse hos ${r.website.replace(/^https?:\/\//, '')}.`, status: 400 });
+  if (!pack) return showProduct(c, id, { pageError: 'Angiv indholdet pr. salgsenhed.', status: 400 });
+  await db
+    .prepare(
+      `INSERT INTO product_pages (retailer_id, product_id, url, match, sales_unit, pack_qty, created_by, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+       ON CONFLICT(retailer_id, product_id) DO UPDATE SET url = ?3, match = ?4, sales_unit = ?5, pack_qty = ?6, last_status = '', last_ok = 0, last_fetched_at = NULL`,
+    )
+    .bind(r.id, id, url, body['match'] === 'alternativ' ? 'alternativ' : 'praecis', str(body['sales_unit'], 20) || 'stk.', pack, actorOf(c).email, Math.floor(Date.now() / 1000))
+    .run();
+  // Læs siden med det samme (hvis butikken er slået til); en fejl vises ved linket
+  await readProductPages(c.env, Math.floor(Date.now() / 1000), { productIds: [id], force: true }).catch(() => null);
+  return c.redirect(`/lager/varer/${id}?besked=gemt#produktsider`, 303);
+});
+
+lager.post('/varer/:id{[0-9]+}/produktside/:pid{[0-9]+}/slet', async (c) => {
+  const id = Number(c.req.param('id'));
+  const db = c.env.DB;
+  const pg = await db.prepare('SELECT * FROM product_pages WHERE id = ? AND product_id = ?').bind(Number(c.req.param('pid')), id).first<{ retailer_id: number }>();
+  if (pg) {
+    await db.batch([
+      db.prepare('DELETE FROM product_pages WHERE id = ?').bind(Number(c.req.param('pid'))),
+      db.prepare('DELETE FROM retailer_products WHERE retailer_id = ? AND retailer_sku = ?').bind(pg.retailer_id, `side:${id}`),
+    ]);
+  }
+  return c.redirect(`/lager/varer/${id}?besked=slettet#produktsider`, 303);
 });
 
 lager.post('/varer/:id{[0-9]+}/bevaegelse', async (c) => {

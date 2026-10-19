@@ -6,7 +6,7 @@ import { feedUrlAllowed, getRetailer, importCatalog, retailers } from '../lib/es
 import { parseIntStrict, str } from '../lib/format';
 import { parseFeed } from '../lib/prices';
 import { saveSettings } from '../lib/settings';
-import { render } from '../render';
+import { actorOf, render } from '../render';
 import { pricingPage } from '../views/priser';
 
 const priser = new Hono<AppEnv>();
@@ -39,8 +39,17 @@ priser.post('/:id{[0-9]+}', async (c) => {
   const body = await c.req.parseBody();
   const feed = str(body['feed_url'], 500);
   if (feed && !feedUrlAllowed(c.env, feed)) return show(c, { kind: 'err', text: 'Feedet skal være en https-adresse.', errors: [] }, 400);
-  await c.env.DB.prepare('UPDATE retailers SET active = ?, feed_url = ?, last_error = CASE WHEN feed_url = ? THEN last_error ELSE \'\' END WHERE id = ?')
-    .bind(body['active'] === '1' ? 1 : 0, feed, feed, r.id)
+  // Læsning af offentlige produktsider kræver, at nogen har tjekket butikkens vilkår og bekræftet det
+  const access = (['manuel', 'prisfil', 'side'] as const).find((a) => a === body['access']) ?? r.access;
+  if (access === 'side' && r.access !== 'side' && body['terms_ok'] !== '1')
+    return show(c, { kind: 'err', text: `Bekræft, at ${r.name}s vilkår tillader automatisk læsning af offentlige produktsider.`, errors: [] }, 400);
+  const confirm = access === 'side' && r.access !== 'side';
+  await c.env.DB.prepare(
+    `UPDATE retailers SET active = ?, feed_url = ?, last_error = CASE WHEN feed_url = ? THEN last_error ELSE '' END, access = ?,
+       terms_confirmed_by = CASE WHEN ? = 'side' THEN (CASE WHEN ? THEN ? ELSE terms_confirmed_by END) ELSE NULL END,
+       terms_confirmed_at = CASE WHEN ? = 'side' THEN (CASE WHEN ? THEN ? ELSE terms_confirmed_at END) ELSE NULL END WHERE id = ?`,
+  )
+    .bind(body['active'] === '1' ? 1 : 0, feed, feed, access, access, confirm ? 1 : 0, actorOf(c).email, access, confirm ? 1 : 0, now(), r.id)
     .run();
   return c.redirect('/lager/priser?besked=gemt', 303);
 });

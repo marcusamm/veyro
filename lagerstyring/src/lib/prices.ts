@@ -17,15 +17,15 @@ import { Q, parseDay, parseKr, parseQty, todayDk } from './format';
 export type Vat = 'inkl' | 'ekskl';
 export type MatchKind = 'praecis' | 'alternativ';
 export type MatchBasis = 'ean' | 'mpn' | 'navn' | 'manuel';
-export type EstimateSource = 'prisfil' | 'demodata' | 'manuel';
+export type EstimateSource = 'prisfil' | 'side' | 'demodata' | 'manuel';
 export type EstimateStatus = 'aktuel' | 'tidligere' | 'forslag' | 'erstattet';
-export type Access = 'manuel' | 'prisfil' | 'demo';
+export type Access = 'manuel' | 'prisfil' | 'side' | 'demo';
 
 export const VAT_LABEL: Record<Vat, string> = { inkl: 'inkl. moms', ekskl: 'ekskl. moms' };
 export const MATCH_LABEL: Record<MatchKind, string> = { praecis: 'Præcist match', alternativ: 'Alternativ – kræver godkendelse' };
 export const BASIS_LABEL: Record<MatchBasis, string> = { ean: 'samme EAN', mpn: 'samme producentnr., mærke og variant', navn: 'navn og mål', manuel: 'valgt manuelt' };
-export const SOURCE_LABEL: Record<EstimateSource, string> = { prisfil: 'Prisfil', demodata: 'Demodata', manuel: 'Manuelt indtastet' };
-export const ACCESS_LABEL: Record<Access, string> = { manuel: 'Produktlink og manuel pris', prisfil: 'Officiel prisfil', demo: 'Demodata' };
+export const SOURCE_LABEL: Record<EstimateSource, string> = { prisfil: 'Prisfil', side: 'Læst fra produktsiden', demodata: 'Demodata', manuel: 'Manuelt indtastet' };
+export const ACCESS_LABEL: Record<Access, string> = { manuel: 'Produktlink og manuel pris', prisfil: 'Officiel prisfil', side: 'Læser offentlige produktsider', demo: 'Demodata' };
 
 export const DISCLAIMER =
   'Vejledende prisestimat baseret på offentlige priser. Endelig pris, tilgængelighed, fragt og eventuelle rabatter bekræftes hos leverandøren.';
@@ -124,7 +124,8 @@ export interface CatalogRow {
   offer_min_qty: number | null;
   offer_until: string;
   stock_text: string;
-  source: 'prisfil' | 'demodata';
+  source: 'prisfil' | 'side' | 'demodata';
+  product_id?: number | null;
   checked_at: number;
 }
 

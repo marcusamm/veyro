@@ -1,5 +1,6 @@
 // Prisberegning og match uden database: pakker, moms, tilbud, match-rækkefølge og prisfiler.
 import { describe, expect, it } from 'vitest';
+import { parseProductPage, robotsAllows, robotsRules } from '../src/lib/pagereader.ts';
 import { buyPlan, convertVat, ean13, findMatch, lineEstimate, normGtin, parseFeed, summarize } from '../src/lib/prices.ts';
 
 const K = 1000;
@@ -107,5 +108,35 @@ describe('prisfil', () => {
     expect(r.items[0]).toMatchObject({ retailer_sku: '1001', pack_qty: 10 * K, content_unit: 'stk.', price: 10000, vat: 'inkl' });
     expect(r.skipped).toBe(1);
     expect(r.errors).toHaveLength(2);
+  });
+});
+
+describe('produktsider', () => {
+  it('følger robots.txt: egen gruppe før "*", længste regel vinder', () => {
+    const txt = 'User-agent: *\nDisallow: /\n\nUser-agent: VeyroLagerstyring\nDisallow: /kurv\nAllow: /kurv/vis$\n';
+    const own = robotsRules(txt);
+    expect(robotsAllows(own, '/p/123')).toBe(true);
+    expect(robotsAllows(own, '/kurv/tilfoej')).toBe(false);
+    expect(robotsAllows(own, '/kurv/vis')).toBe(true);
+    const all = robotsRules('User-agent: *\nDisallow: /privat/\nDisallow: /*?sort=\n');
+    expect(robotsAllows(all, '/privat/x')).toBe(false);
+    expect(robotsAllows(all, '/p/1?sort=pris')).toBe(false);
+    expect(robotsAllows(all, '/p/1')).toBe(true);
+    expect(robotsAllows(robotsRules(''), '/alt')).toBe(true);
+  });
+  const ld = (o) => `<script type="application/ld+json">${JSON.stringify(o)}</script>`;
+  it('læser én pris i kroner fra produktdata', () => {
+    const r = parseProductPage(ld({ '@graph': [{ '@type': 'Product', name: 'Skrue', gtin13: ean13('200000000003'), offers: { '@type': 'Offer', price: '1.299,95', priceCurrency: 'DKK', availability: 'https://schema.org/InStock' } }] }));
+    expect(r).toMatchObject({ ok: true, product: { price: 129995, name: 'Skrue', availability: 'På lager ifølge siden' } });
+    const og = parseProductPage('<meta property="product:price:amount" content="89.00"><meta property="product:price:currency" content="DKK">');
+    expect(og).toMatchObject({ ok: true, product: { price: 8900 } });
+  });
+  it('giver ingen pris ved andre valutaer, prisintervaller, flere priser eller robotkontrol', () => {
+    expect(parseProductPage(ld({ '@type': 'Product', offers: { price: '10', priceCurrency: 'EUR' } })).ok).toBe(false);
+    expect(parseProductPage(ld({ '@type': 'Product', offers: { '@type': 'AggregateOffer', lowPrice: '10', highPrice: '20', priceCurrency: 'DKK' } })).ok).toBe(false);
+    const many = parseProductPage(ld({ '@type': 'Product', offers: [{ price: '10', priceCurrency: 'DKK' }, { price: '12', priceCurrency: 'DKK' }] }));
+    expect(many).toMatchObject({ ok: false, reason: expect.stringContaining('flere forskellige priser') });
+    expect(parseProductPage('<div class="g-recaptcha">captcha</div>')).toMatchObject({ ok: false, reason: expect.stringContaining('CAPTCHA') });
+    expect(parseProductPage('<p>Kun 49,95 kr.</p>').ok).toBe(false);
   });
 });

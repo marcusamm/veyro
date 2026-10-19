@@ -77,6 +77,7 @@ export async function resetDemo(env: Env): Promise<void> {
       'DELETE FROM purchase_lists',
       'DELETE FROM job_materials',
       'DELETE FROM jobs',
+      'DELETE FROM product_pages',
       'DELETE FROM retailer_products',
       "DELETE FROM retailers WHERE access = 'demo'",
       'DELETE FROM products',

@@ -12,6 +12,8 @@ describe('Prisestimat', () => {
   let staff;
   let feed;
   let feedBody = '';
+  let productHtml = '';
+  const hits = [];
   let listId;
   const line = (where) => stack.sql(`SELECT * FROM purchase_lines WHERE list_id = ${listId} AND ${where}`)[0];
   const retailer = (key) => stack.sql(`SELECT * FROM retailers WHERE key = '${key}'`)[0];
@@ -25,7 +27,12 @@ describe('Prisestimat', () => {
 
   beforeAll(async () => {
     feed = http.createServer((req, res) => {
+      hits.push(req.url);
       if (req.url === '/feed.csv' && feedBody) res.writeHead(200, { 'Content-Type': 'text/csv' }).end(feedBody);
+      else if (req.url === '/robots.txt') res.writeHead(200, { 'Content-Type': 'text/plain' }).end('User-agent: *\nDisallow: /privat/\n');
+      else if (req.url === '/p/gips') res.writeHead(200, { 'Content-Type': 'text/html' }).end(productHtml);
+      else if (req.url === '/blokeret') res.writeHead(403).end('Forbidden');
+      else if (req.url.startsWith('/privat/')) res.writeHead(200, { 'Content-Type': 'text/html' }).end(productHtml);
       else res.writeHead(404).end();
     });
     await new Promise((r) => feed.listen(0, '127.0.0.1', r));
@@ -173,5 +180,57 @@ describe('Prisestimat', () => {
   it('medarbejdere har ikke adgang til forhandlere og prisfiler', async () => {
     const res = await staff.get('/lager/priser');
     expect(res.status).not.toBe(200);
+  });
+
+  it('læser offentlige produktsider, kun når vilkårene er bekræftet og robots.txt tillader det', async () => {
+    const base = `http://127.0.0.1:${feed.address().port}`;
+    stack.sql("UPDATE retailers SET website = 'https://127.0.0.1' WHERE key = 'silvan'");
+    const silvan = retailer('silvan');
+    const pid = (sku) => stack.sql(`SELECT id FROM products WHERE sku = '${sku}'`)[0].id;
+    const ean = stack.sql("SELECT ean FROM products WHERE sku = 'GIP-13'")[0].ean;
+    productHtml = `<html><head><script type="application/ld+json">${JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: 'Gipsplade 13 mm 900x2500',
+      gtin13: ean,
+      offers: { '@type': 'Offer', price: '49.95', priceCurrency: 'DKK', availability: 'https://schema.org/InStock' },
+    })}</script></head><body>Gipsplade</body></html>`;
+    const addPage = async (sku, url) => {
+      const p = await owner.get(`/lager/varer/${pid(sku)}`);
+      return owner.post(`/lager/varer/${pid(sku)}/produktside`, { _csrf: csrfFrom(p.html), retailer_id: String(silvan.id), match: 'praecis', url, sales_unit: 'stk.', pack_qty: '1' });
+    };
+    // Siden gemmes, men læses ikke, før butikken er slået til
+    expect((await addPage('GIP-13', `${base}/p/gips`)).status).toBe(303);
+    expect(hits).not.toContain('/p/gips');
+    expect((await owner.get(`/lager/varer/${pid('GIP-13')}`)).html).toContain('Læses ikke automatisk');
+    // Læsning af sider kræver bekræftelse af vilkårene
+    let p = await owner.get('/lager/priser');
+    let res = await owner.post(`/lager/priser/${silvan.id}`, { _csrf: csrfFrom(p.html), active: '1', feed_url: '', access: 'side' });
+    expect(res.status).toBe(400);
+    expect(retailer('silvan').access).toBe('manuel');
+    p = await owner.get('/lager/priser');
+    res = await owner.post(`/lager/priser/${silvan.id}`, { _csrf: csrfFrom(p.html), active: '1', feed_url: '', access: 'side', terms_ok: '1' });
+    expect(res.status).toBe(303);
+    expect(retailer('silvan')).toMatchObject({ access: 'side', terms_confirmed_by: expect.stringContaining('@') });
+    // En side, robots.txt ikke tillader, og en side, der afviser os, giver ingen pris
+    await addPage('VIN-90', `${base}/privat/vinkel`);
+    await addPage('MAL-10', `${base}/blokeret`);
+    res = await post(`/lager/indkob/${listId}/priser`);
+    expect(res.status).toBe(200);
+    expect(hits).toContain('/robots.txt');
+    expect(hits).not.toContain('/privat/vinkel');
+    expect(res.html).toContain('Silvan (Gipsplade');
+    expect(res.html).toContain('robots.txt tillader ikke');
+    expect(res.html).toContain('Siden afviser automatisk adgang (403)');
+    // Prisen fra siden er et præcist match og den billigste, så den bruges
+    const gip = line("sku = 'GIP-13'");
+    expect(stack.sql(`SELECT source, match, basis, price FROM price_estimates WHERE line_id = ${gip.id} AND retailer_id = ${silvan.id} AND status = 'aktuel'`)).toEqual([
+      { source: 'side', match: 'praecis', basis: 'ean', price: 4995 },
+    ]);
+    expect(res.html).toContain('Læst fra produktsiden');
+    expect(res.html).toMatch(/ekskl\. moms hos Silvan/);
+    expect((await owner.get(`/lager/varer/${pid('GIP-13')}`)).html).toContain('Pris læst: 49,95 kr. inkl. moms');
+    // Intet er bestilt
+    expect(gip.ordered).toBe(0);
   });
 });

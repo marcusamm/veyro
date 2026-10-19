@@ -188,7 +188,7 @@ export function pricingPage(d: { retailers: RetailerView[]; settings: Settings; 
     html`Lagerportal · <a href="/lager/indstillinger">Indstillinger</a>`,
     'Forhandlere og prisfiler',
     '',
-    'Prisestimater på indkøbslister bygger kun på offentlige priser uden login, medlemskab eller kundeaftale. Siderne skrabes ikke: priser kommer fra en officiel prisfil eller et feed, eller de indtastes manuelt med et link til produktsiden.',
+    'Prisestimater på indkøbslister bygger kun på offentlige priser uden login, medlemskab eller kundeaftale. Priserne kommer fra en officiel prisfil eller et feed, fra butikkens offentlige produktsider (kun hvor vilkårene er tjekket og robots.txt tillader det) eller indtastes manuelt med et link.',
   )}
   ${flash(d.flashCode)}
   ${d.result ? alert(d.result.kind, html`${d.result.text}${d.result.errors.length ? html`<ul>${d.result.errors.slice(0, 15).map((e) => html`<li>${e}</li>`)}${d.result.errors.length > 15 ? html`<li>… og ${d.result.errors.length - 15} mere</li>` : ''}</ul>` : ''}`) : ''}
@@ -198,7 +198,9 @@ export function pricingPage(d: { retailers: RetailerView[]; settings: Settings; 
       (r) => html`<tr${r.active ? '' : html` style="opacity:.6"`}>
       <td class="cell-main"><strong>${r.name}</strong>${r.website ? html`<small><a href="${r.website}" target="_blank" rel="noopener noreferrer">${r.website.replace(/^https:\/\//, '')}</a></small>` : ''}${r.active ? '' : html`<small>Slået fra</small>`}</td>
       <td data-label="Prisadgang"><span class="tag ${r.access === 'demo' ? 'tag-demo' : r.access === 'prisfil' ? 'tag-ok' : 'tag-off'}">${ACCESS_LABEL[r.access]}</span>${r.feed_url ? html`<small>Feed: ${r.feed_url}</small>` : ''}</td>
-      <td data-label="Vilkår" class="small">${r.terms_note}${r.last_error ? html`<small class="err-text">Seneste fejl: ${r.last_error}</small>` : ''}</td>
+      <td data-label="Vilkår" class="small">${r.terms_note}${r.access === 'side' && r.terms_confirmed_at
+        ? html`<small class="ok-text">Vilkår bekræftet af ${r.terms_confirmed_by} ${formatDateTime(r.terms_confirmed_at)}</small>${r.robots_fetched_at ? html`<small>robots.txt hentet ${formatDateTime(r.robots_fetched_at)}</small>` : html`<small>robots.txt hentes ved første læsning</small>`}`
+        : ''}${r.last_error ? html`<small class="err-text">Seneste fejl: ${r.last_error}</small>` : ''}</td>
       <td class="num" data-label="Priser">${r.catalog_count}</td>
       <td data-label="Senest hentet">${formatDateTime(r.catalog_checked_at ?? r.last_import_at)}</td>
       <td>${r.access === 'demo'
@@ -207,6 +209,9 @@ export function pricingPage(d: { retailers: RetailerView[]; settings: Settings; 
         <form method="post" action="/lager/priser/${r.id}" class="stack" style="display:grid">
           ${csrfField(d.csrf)}
           <label class="check"><input type="checkbox" name="active" value="1"${r.active ? html` checked` : ''}> Brug forhandleren i prisestimater</label>
+          <div class="field"><label>Prisadgang</label><select name="access">${(['manuel', 'prisfil', 'side'] as const).map((a) => html`<option value="${a}"${r.access === a ? html` selected` : ''}>${ACCESS_LABEL[a]}</option>`)}</select>
+            <p class="hint">Offentlige produktsider læses kun for de varer, der har et link til butikken, og kun hvor robots.txt tillader det. Login og robotkontrol omgås aldrig.</p></div>
+          ${r.access === 'side' ? '' : html`<label class="check"><input type="checkbox" name="terms_ok" value="1"> Jeg har læst ${r.name}s vilkår, og de tillader automatisk læsning af offentlige produktsider (kræves for at læse sider)</label>`}
           <div class="field"><label>Officielt feed (https, valgfrit)</label><input name="feed_url" type="url" maxlength="500" value="${r.feed_url}" placeholder="https://"><p class="hint">Kun et feed, forhandleren selv stiller til rådighed til formålet. Hentes på serveren højst hver 6. time.</p></div>
           <button class="btn btn-dark btn-small" type="submit">Gem</button>
         </form>
@@ -234,5 +239,44 @@ export function pricingPage(d: { retailers: RetailerView[]; settings: Settings; 
       <dl class="kv small">${FEED_COLUMNS.map(([k, t]) => html`<dt><code>${k}</code></dt><dd>${t}</dd>`)}</dl>
     </div>
   </div>
+</div>`;
+}
+
+type PageView = Awaited<ReturnType<typeof import('../lib/estimates').productPages>>[number];
+
+/** Produktsider hos byggemarkederne for én vare (på varens side). */
+export function productPagesCard(d: { productId: number; unit: string; pages: PageView[]; retailers: RetailerView[]; csrf: string; error?: string }): H {
+  const rs = d.retailers.filter((r) => r.access !== 'demo');
+  return html`<div class="card stack" id="produktsider">
+  <h2>Produktsider hos byggemarkeder</h2>
+  <p class="muted small" style="margin:0">Link til varen hos hver butik. Hos butikker, hvor læsning af offentlige sider er slået til, hentes prisen automatisk (robots.txt overholdes, og login eller robotkontrol omgås aldrig). Ellers bruges linket til manuel pris.</p>
+  ${d.error ? alert('err', d.error) : ''}
+  ${d.pages.length
+    ? html`<div class="table-wrap"><table class="mini"><thead><tr><th>Butik</th><th>Side</th><th>Pakning</th><th>Seneste læsning</th><th></th></tr></thead><tbody>${d.pages.map(
+        (p) => html`<tr>
+        <td>${p.retailer_name}${p.retailer_access === 'side' && p.terms_confirmed_at ? '' : html`<small>Læses ikke automatisk</small>`}</td>
+        <td><a href="${p.url}" target="_blank" rel="noopener noreferrer nofollow">${p.url.replace(/^https?:\/\//, '').slice(0, 60)}</a><small>${p.match === 'praecis' ? 'Samme vare' : 'Alternativ'}</small></td>
+        <td>${p.pack_qty === 1000 ? `pr. ${p.sales_unit}` : `${p.sales_unit} á ${formatQty(p.pack_qty)} ${d.unit}`}</td>
+        <td>${p.last_fetched_at ? html`<span class="${p.last_ok ? 'ok-text' : 'err-text'}">${p.last_status}</span><small>${formatDateTime(p.last_fetched_at)}</small>` : html`<span class="muted">Ikke læst endnu</span>`}</td>
+        <td><form method="post" action="/lager/varer/${d.productId}/produktside/${p.id}/slet">${csrfField(d.csrf)}<button class="btn btn-ghost btn-small" type="submit">Fjern</button></form></td>
+      </tr>`,
+      )}</tbody></table></div>`
+    : ''}
+  ${rs.length
+    ? html`<details class="act"><summary>Tilføj produktside</summary><div class="act-body">
+    <form method="post" action="/lager/varer/${d.productId}/produktside" class="stack" style="display:grid">
+      ${csrfField(d.csrf)}
+      <div class="fields fields-2">
+        <div class="field"><label>Butik</label><select name="retailer_id">${rs.map((r) => html`<option value="${r.id}">${r.name}</option>`)}</select></div>
+        <div class="field"><label>Er det samme vare?</label><select name="match"><option value="praecis">Ja, samme vare</option><option value="alternativ">Nej, et alternativ (kræver godkendelse)</option></select></div>
+      </div>
+      <div class="field"><label>Link til produktsiden</label><input name="url" type="url" maxlength="500" required placeholder="https://"></div>
+      <div class="fields fields-2">
+        <div class="field"><label>Sælges pr.</label><input name="sales_unit" maxlength="20" required value="${d.unit}"><p class="hint">Fx pk. hvis butikken sælger i pakker</p></div>
+        <div class="field"><label>Indhold pr. salgsenhed (${d.unit})</label><input class="in-num" name="pack_qty" inputmode="decimal" value="1" required></div>
+      </div>
+      <button class="btn btn-dark btn-small" type="submit">Gem produktside</button>
+    </form></div></details>`
+    : ''}
 </div>`;
 }

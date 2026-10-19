@@ -7,6 +7,7 @@
 
 import type { Env, PurchaseLineRow } from '../env';
 import { todayDk } from './format';
+import { USER_AGENT, parseProductPage, robotsAllows, robotsRules } from './pagereader';
 import {
   buyPlan,
   findMatch,
@@ -43,6 +44,10 @@ export interface RetailerRow {
   last_import_at: number | null;
   last_import_rows: number | null;
   last_error: string;
+  terms_confirmed_by: string | null;
+  terms_confirmed_at: number | null;
+  robots_txt: string | null;
+  robots_fetched_at: number | null;
   created_at: number;
 }
 
@@ -110,7 +115,7 @@ export async function importCatalog(db: D1Database, r: RetailerRow, items: FeedI
       );
   for (let i = 0; i < items.length; i += 50) await db.batch(items.slice(i, i + 50).map(ins));
   await db.batch([
-    db.prepare('DELETE FROM retailer_products WHERE retailer_id = ? AND checked_at < ?').bind(r.id, now),
+    db.prepare('DELETE FROM retailer_products WHERE retailer_id = ? AND source = ? AND checked_at < ?').bind(r.id, source, now),
     db
       .prepare(
         `UPDATE retailers SET last_import_at = ?, last_import_rows = ?, last_error = '', access = CASE WHEN access = 'manuel' THEN 'prisfil' ELSE access END WHERE id = ?`,
@@ -160,6 +165,133 @@ export function feedUrlAllowed(env: Pick<Env, 'DEV_MODE'>, url: string): boolean
   } catch {
     return false;
   }
+}
+
+// --- Offentlige produktsider ----------------------------------------------------------------
+
+export interface ProductPageRow {
+  id: number;
+  retailer_id: number;
+  product_id: number;
+  url: string;
+  match: MatchKind;
+  sales_unit: string;
+  pack_qty: number;
+  last_status: string;
+  last_ok: number;
+  last_fetched_at: number | null;
+  created_by: string;
+  created_at: number;
+}
+
+const PAGE_MAX_AGE = 6 * 3600;
+const ROBOTS_MAX_AGE = 24 * 3600;
+
+/** http(s)-adresse, der må hentes fra serveren (http kun til lokale tests). */
+export function fetchableUrl(env: Pick<Env, 'DEV_MODE'>, url: string): boolean {
+  return feedUrlAllowed(env, url);
+}
+
+/** Ligger adressen hos forhandleren selv (samme domæne som hjemmesiden)? */
+export function onRetailerSite(r: Pick<RetailerRow, 'website'>, url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    const site = new URL(r.website).hostname.toLowerCase().replace(/^www\./, '');
+    return !!site && (host === site || host.endsWith(`.${site}`));
+  } catch {
+    return false;
+  }
+}
+
+async function robotsFor(env: Env, r: RetailerRow, origin: string, now: number): Promise<string | null> {
+  if (r.robots_txt !== null && r.robots_fetched_at && now - r.robots_fetched_at < ROBOTS_MAX_AGE) return r.robots_txt;
+  const res = await fetch(`${origin}/robots.txt`, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(10_000) });
+  // 404: ingen regler. Andre fejl: vi ved ikke, hvad der er tilladt, så intet læses.
+  const txt = res.ok ? (await res.text()).slice(0, 500_000) : res.status === 404 || res.status === 410 ? '' : null;
+  if (txt === null) return null;
+  await env.DB.prepare('UPDATE retailers SET robots_txt = ?, robots_fetched_at = ? WHERE id = ?').bind(txt, now, r.id).run();
+  return txt;
+}
+
+/**
+ * Læser prisen på de produktsider, brugeren har knyttet til varerne, hos forhandlere hvor
+ * læsning af sider er slået til (og vilkårene bekræftet). robots.txt overholdes, siderne hentes
+ * én ad gangen med timeout, og resultatet caches i 6 timer. En side bag login eller en
+ * robotkontrol giver ingen pris.
+ */
+export async function readProductPages(
+  env: Env,
+  now: number,
+  opts: { productIds?: number[]; force?: boolean } = {},
+): Promise<{ name: string; ok: boolean; message: string }[]> {
+  const db = env.DB;
+  const ids = opts.productIds;
+  if (ids && !ids.length) return [];
+  const { results } = await db
+    .prepare(
+      `SELECT pp.*, p.unit AS product_unit, p.ean AS product_ean, p.name AS product_name FROM product_pages pp
+       JOIN retailers r ON r.id = pp.retailer_id JOIN products p ON p.id = pp.product_id
+       WHERE r.active = 1 AND r.access = 'side' AND r.terms_confirmed_at IS NOT NULL
+       ${ids ? `AND pp.product_id IN (${ids.map(() => '?').join(',')})` : ''} ORDER BY pp.retailer_id, pp.id LIMIT 200`,
+    )
+    .bind(...(ids ?? []))
+    .all<ProductPageRow & { product_unit: string; product_ean: string; product_name: string }>();
+  const out: { name: string; ok: boolean; message: string }[] = [];
+  const retailerCache = new Map<number, RetailerRow | null>();
+  for (const pg of results) {
+    if (!opts.force && pg.last_fetched_at && now - pg.last_fetched_at < PAGE_MAX_AGE) continue;
+    if (!retailerCache.has(pg.retailer_id)) retailerCache.set(pg.retailer_id, await getRetailer(db, pg.retailer_id));
+    const r = retailerCache.get(pg.retailer_id);
+    if (!r) continue;
+    let status = '';
+    let ok = false;
+    try {
+      if (!fetchableUrl(env, pg.url) || !onRetailerSite(r, pg.url)) throw new Error(`Linket peger ikke på ${r.website}.`);
+      const u = new URL(pg.url);
+      const robots = await robotsFor(env, r, u.origin, now);
+      if (robots === null) throw new Error('robots.txt kunne ikke hentes, så siden læses ikke.');
+      if (!robotsAllows(robotsRules(robots), u.pathname + u.search)) throw new Error('Butikkens robots.txt tillader ikke automatisk læsning af siden.');
+      const res = await fetch(pg.url, { headers: { 'User-Agent': USER_AGENT, Accept: 'text/html', 'Accept-Language': 'da-DK,da' }, redirect: 'follow', signal: AbortSignal.timeout(10_000) });
+      if (res.status === 401 || res.status === 403 || res.status === 429) throw new Error(`Siden afviser automatisk adgang (${res.status}). Den omgås ikke.`);
+      if (!res.ok) throw new Error(`Siden svarede ${res.status}.`);
+      if (!onRetailerSite(r, res.url || pg.url)) throw new Error('Siden viderestiller væk fra butikken.');
+      if (/\/(login|log-ind|signin)/i.test(new URL(res.url || pg.url).pathname)) throw new Error('Siden kræver login. Den omgås ikke.');
+      const html = (await res.text()).slice(0, 3_000_000);
+      const parsed = parseProductPage(html);
+      if (!parsed.ok) throw new Error(parsed.reason);
+      const p = parsed.product;
+      // Er sidens EAN en anden end varens, er det ikke samme vare (markeres som alternativ ved opslaget)
+      const ean = p.gtin || (pg.match === 'praecis' ? pg.product_ean : '');
+      await db
+        .prepare(
+          `INSERT INTO retailer_products (retailer_id, retailer_sku, ean, mpn, brand, variant, name, url, sales_unit, pack_qty, content_unit, min_qty, divisible,
+             price, vat, offer_price, offer_text, offer_min_qty, offer_until, stock_text, source, product_id, checked_at)
+           VALUES (?1, ?2, ?3, ?4, ?5, '', ?6, ?7, ?8, ?9, ?10, 1000, 0, ?11, 'inkl', NULL, '', NULL, '', ?12, 'side', ?13, ?14)
+           ON CONFLICT(retailer_id, retailer_sku) DO UPDATE SET ean = ?3, mpn = ?4, brand = ?5, name = ?6, url = ?7, sales_unit = ?8, pack_qty = ?9,
+             content_unit = ?10, price = ?11, vat = 'inkl', stock_text = ?12, source = 'side', product_id = ?13, checked_at = ?14`,
+        )
+        .bind(r.id, `side:${pg.product_id}`, ean, p.mpn, p.brand, p.name || pg.url, pg.url, pg.sales_unit, pg.pack_qty, pg.product_unit, p.price, p.availability, pg.product_id, now)
+        .run();
+      status = `Pris læst: ${(p.price / 100).toFixed(2).replace('.', ',')} kr. inkl. moms`;
+      ok = true;
+    } catch (err) {
+      status = String((err as Error)?.message ?? err).slice(0, 300);
+    }
+    await db.prepare('UPDATE product_pages SET last_status = ?, last_ok = ?, last_fetched_at = ? WHERE id = ?').bind(status, ok ? 1 : 0, now, pg.id).run();
+    out.push({ name: `${r.name} (${pg.product_name})`, ok, message: status });
+  }
+  return out;
+}
+
+export async function productPages(db: D1Database, productId: number): Promise<(ProductPageRow & { retailer_name: string; retailer_access: Access; terms_confirmed_at: number | null })[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT pp.*, r.name AS retailer_name, r.access AS retailer_access, r.terms_confirmed_at FROM product_pages pp
+       JOIN retailers r ON r.id = pp.retailer_id WHERE pp.product_id = ? ORDER BY r.name COLLATE NOCASE`,
+    )
+    .bind(productId)
+    .all<ProductPageRow & { retailer_name: string; retailer_access: Access; terms_confirmed_at: number | null }>();
+  return results;
 }
 
 // --- Prisopslag pr. linje -------------------------------------------------------------------
@@ -275,11 +407,11 @@ async function candidates(db: D1Database, w: WantedLine): Promise<CandRow[]> {
   const { results } = await db
     .prepare(
       `SELECT p.*, r.access AS retailer_access FROM retailer_products p JOIN retailers r ON r.id = p.retailer_id
-       WHERE r.active = 1 AND r.access IN ('prisfil', 'demo')
-         AND (p.ean = ?1 OR (p.mpn <> '' AND p.brand = ?2 COLLATE NOCASE) OR p.name LIKE ?3 OR p.name LIKE ?4)
+       WHERE r.active = 1 AND r.access IN ('prisfil', 'side', 'demo')
+         AND (p.ean = ?1 OR (p.mpn <> '' AND p.brand = ?2 COLLATE NOCASE) OR p.name LIKE ?3 OR p.name LIKE ?4 OR p.product_id = ?5)
        LIMIT 500`,
     )
-    .bind(normGtin(w.ean ?? '') ?? '\u0000', w.brand || '\u0000', like(0), like(1))
+    .bind(normGtin(w.ean ?? '') ?? '\u0000', w.brand || '\u0000', like(0), like(1), w.product_id ?? -1)
     .all<CandRow>();
   return results;
 }
@@ -297,10 +429,12 @@ export async function refreshLines(db: D1Database, lineIds: number[], actor: str
       const w = await db.prepare(`${WANTED_SQL} WHERE l.id = ?`).bind(id).first<WantedLine>();
       if (!w || w.cancelled || missingQty(w) <= 0) continue;
       const wanted = { ean: w.ean ?? '', mpn: w.mpn ?? '', brand: w.brand ?? '', variant: w.variant ?? '', name: w.name, unit: w.unit };
-      const [cands, { results: current }] = await Promise.all([
+      const [cands, { results: current }, { results: pages }] = await Promise.all([
         candidates(db, w),
         db.prepare("SELECT e.*, r.name AS retailer_name, r.access AS retailer_access FROM price_estimates e JOIN retailers r ON r.id = e.retailer_id WHERE e.line_id = ? AND e.status <> 'erstattet'").bind(id).all<EstimateView>(),
+        db.prepare('SELECT retailer_id, match FROM product_pages WHERE product_id = ?').bind(w.product_id ?? -1).all<{ retailer_id: number; match: MatchKind }>(),
       ]);
+      const pageMatch = new Map(pages.map((p) => [p.retailer_id, p.match]));
       const byRetailer = new Map<number, CandRow[]>();
       for (const c of cands) {
         if (!byRetailer.has(c.retailer_id)) byRetailer.set(c.retailer_id, []);
@@ -309,7 +443,14 @@ export async function refreshLines(db: D1Database, lineIds: number[], actor: str
       const stmts: D1PreparedStatement[] = [];
       const seen = new Set<number>();
       for (const [rid, list] of byRetailer) {
-        const m = findMatch(wanted, list);
+        // En produktside, brugeren selv har knyttet til varen, bruges før søgning i prisdata
+        const linked = w.product_id ? list.find((c) => c.product_id === w.product_id) : undefined;
+        const g = normGtin(wanted.ean);
+        const m: { row: CandRow; match: MatchKind; basis: MatchBasis } | null = linked
+          ? g && normGtin(linked.ean) === g
+            ? { row: linked, match: 'praecis', basis: 'ean' }
+            : { row: linked, match: g && linked.ean ? 'alternativ' : (pageMatch.get(rid) ?? 'alternativ'), basis: 'manuel' }
+          : findMatch(wanted, list);
         if (!m) continue;
         seen.add(rid);
         const live = current.find((e) => e.retailer_id === rid && (e.status === 'aktuel' || e.status === 'tidligere'));
@@ -336,7 +477,7 @@ export async function refreshLines(db: D1Database, lineIds: number[], actor: str
         stmts.push(insertEstimate(db, next, w, actor, now));
       }
       for (const e of current) {
-        if (e.source !== 'manuel' && e.status === 'aktuel' && !seen.has(e.retailer_id) && (e.retailer_access === 'prisfil' || e.retailer_access === 'demo')) {
+        if (e.source !== 'manuel' && e.status === 'aktuel' && !seen.has(e.retailer_id) && (e.retailer_access === 'prisfil' || e.retailer_access === 'side' || e.retailer_access === 'demo')) {
           stmts.push(db.prepare("UPDATE price_estimates SET status = 'tidligere' WHERE id = ?").bind(e.id));
         }
       }

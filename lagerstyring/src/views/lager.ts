@@ -322,6 +322,7 @@ export function productPage(d: {
   errs: string[];
   moveError?: string;
   flashCode?: string;
+  pagesCard?: H;
 }): H {
   const p = d.p;
   const u = p.unit;
@@ -368,6 +369,7 @@ export function productPage(d: {
         </form>
         <p class="hint">Forslaget fylder op til ${p.max_stock !== null ? `den ønskede maksimumbeholdning (${qtyUnit(p.max_stock, u)})` : 'genbestillingspunktet plus én leveringstids forbrug'}, minus det, der allerede er på vej. Indkøberen godkender mængden.</p>
       </div>
+      ${d.pagesCard ?? ''}
       <div class="card stack">
         <h2>Reserveret til job</h2>
         ${d.jobs.length

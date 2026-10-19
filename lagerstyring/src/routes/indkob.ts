@@ -25,6 +25,7 @@ import {
   approveAlternative,
   dismissEstimate,
   fetchFeeds,
+  readProductPages,
   getRetailer,
   listEstimate,
   refreshList,
@@ -309,8 +310,12 @@ indkob.post('/:id{[0-9]+}/priser', async (c) => {
   if (!(await getList(c.env.DB, id))) return c.notFound();
   const now = nowSec();
   const feeds = await fetchFeeds(c.env, now, true).catch(() => []);
+  const { results: prods } = await c.env.DB.prepare('SELECT DISTINCT product_id FROM purchase_lines WHERE list_id = ? AND product_id IS NOT NULL')
+    .bind(id)
+    .all<{ product_id: number }>();
+  const pages = await readProductPages(c.env, now, { productIds: prods.map((p) => p.product_id), force: true }).catch(() => []);
   const r = await refreshList(c.env.DB, id, actorOf(c).email, now);
-  return showList(c, id, { refreshed: { ...r, feeds } });
+  return showList(c, id, { refreshed: { ...r, feeds: [...feeds, ...pages] } });
 });
 
 indkob.post('/linje/:lineId{[0-9]+}/pris', async (c) => {
