@@ -32,7 +32,7 @@ function themeStyle(s: Settings): H {
   return html`<style>${raw(`:root{--accent:${accent};--accent-ink:${inkOn(accent)};--accent-rgb:${rgb};--accent-soft:rgba(${rgb},.1)}`)}</style>`;
 }
 
-const V = '1';
+const V = '2';
 
 function head(title: string, s: Settings): H {
   return html`<meta charset="utf-8">
