@@ -15,6 +15,10 @@ Opret `kunder/<kundenavn>.json` (små bogstaver og bindestreger, fx `nordlys.jso
       "admins": ["ejer@nordlys.dk"],
       "afsender": "Nordlys Lager <login@veyro.dk>"
     }
+  },
+  "udseende": {
+    "farve": "#FF5A1F",
+    "logo": "nordlys-logo.svg"
   }
 }
 ```
@@ -23,8 +27,11 @@ Opret `kunder/<kundenavn>.json` (små bogstaver og bindestreger, fx `nordlys.jso
 - `domaene`: valgfri. Domænet skal ligge i Veyros Cloudflare-konto. Uden domæne kører systemet på `<kundenavn>-lager.<WORKERS_SUBDOMAIN>.workers.dev`.
 - `admins`: e-mails, der kan logge ind som ejer første gang og oprette resten under Indstillinger.
 - `afsender`: valgfri. Uden den bruges repo-variablen `EMAIL_FROM_STANDARD`. Afsenderdomænet skal være verificeret i Resend.
+- `udseende`: valgfri. `farve` er kundens farve som `#RRGGBB`, og `logo` er en billedfil (PNG, JPG, WebP eller SVG, højst 200 KB), der ligger her i `kunder/`.
 
-Worker og database får navnet `<kundenavn>-lager` eller `<kundenavn>-bestilling`. Farver, logo og firmanavn sættes i systemets Indstillinger efter første login.
+Worker og database får navnet `<kundenavn>-lager` eller `<kundenavn>-bestilling`. I lagerstyringen lægges firmanavnet (`navn`), farven og logoet ind ved deploy, så systemet er klar ved første login. Det sker kun, når de ændres i kundefilen, så det, kunden selv retter under Indstillinger, bliver stående. Varebestillingen sættes stadig op under Indstillinger.
+
+Databaser oprettes i EU (`--jurisdiction eu`), så data bliver i EU og ligger tæt på kunderne. En databases placering kan ikke ændres bagefter; den skal slettes og oprettes igen.
 
 Fjernes en fil, bliver kundens worker og database **ikke** slettet; det gøres manuelt i Cloudflare.
 
