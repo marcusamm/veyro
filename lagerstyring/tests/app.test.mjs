@@ -203,6 +203,40 @@ describe('Demo uden e-mail (simuleret)', () => {
     expect(page.html).not.toContain('Beløb');
   });
 
+  it('ejeren kan uploade og fjerne et logo, og et SVG-logo kan ikke køre kode', async () => {
+    const upload = async (client, bytes, name) => {
+      const page = await client.get('/lager/indstillinger');
+      const fd = new FormData();
+      fd.append('_csrf', csrfFrom(page.html));
+      fd.append('logo', new Blob([bytes]), name);
+      return client.postMultipart('/lager/indstillinger/logo', fd);
+    };
+    const png = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64'));
+
+    expect((await upload(owner, new TextEncoder().encode('ikke et billede'), 'logo.txt')).html).toContain('PNG-, JPG-, WebP- eller SVG-fil');
+    const res = await upload(owner, png, 'logo.png');
+    expect(res.headers.get('location')).toContain('logo_gemt');
+    const page = await owner.get('/lager');
+    const src = page.html.match(/class="brand-logo" src="([^"]+)"/)?.[1];
+    expect(src).toMatch(/^\/logo\?v=\d+$/);
+    const logo = await new Client(stack.base).get(src);
+    expect(logo.headers.get('content-type')).toBe('image/png');
+
+    await upload(owner, new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'), 'logo.svg');
+    const svg = await new Client(stack.base).get('/logo');
+    expect(svg.headers.get('content-type')).toBe('image/svg+xml');
+    expect(svg.headers.get('content-security-policy')).toContain('sandbox');
+
+    const fd = new FormData();
+    fd.append('_csrf', csrfFrom((await staff.get('/job')).html));
+    fd.append('logo', new Blob([png]), 'logo.png');
+    expect((await staff.postMultipart('/lager/indstillinger/logo', fd)).headers.get('location') ?? '').not.toContain('logo_gemt');
+    const del = await owner.submit('/lager/indstillinger', '/lager/indstillinger/logo/slet');
+    expect(del.headers.get('location')).toContain('logo_slettet');
+    expect((await owner.get('/lager')).html).toContain('brand-dot');
+    expect((await new Client(stack.base).get('/logo')).status).toBe(404);
+  });
+
   it('nulstilling lægger demodata ind igen', async () => {
     const page = await owner.get('/lager/indstillinger');
     const res = await owner.post('/lager/demo/nulstil', { _csrf: csrfFrom(page.html) });

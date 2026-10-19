@@ -3,7 +3,7 @@ import type { AppEnv, Env } from './env';
 import { appIcon } from './lib/icon';
 import { runPurchaseDigest } from './lib/notices';
 import { cleanup, csrfMiddleware, requireUser, sessionMiddleware } from './lib/session';
-import { getSettings } from './lib/settings';
+import { getLogo, getSettings } from './lib/settings';
 import { render } from './render';
 import auth from './routes/auth';
 import job from './routes/job';
@@ -20,7 +20,8 @@ const app = new Hono<AppEnv>();
 app.use('*', async (c, next) => {
   await next();
   const h = c.res.headers;
-  h.set(
+  // Ruter med deres egen, strengere politik (fx /logo) beholder den
+  if (!h.has('Content-Security-Policy')) h.set(
     'Content-Security-Policy',
     [
       "default-src 'self'",
@@ -62,6 +63,18 @@ app.use('*', async (c, next) => {
 });
 app.get('/favicon.svg', (c) => c.body(favicon(c.get('settings')), 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': STATIC_CACHE }));
 app.get('/favicon.ico', (c) => c.redirect('/favicon.svg', 301));
+
+// Virksomhedens logo (vises også på login-siden, så det kræver ikke login)
+app.get('/logo', async (c) => {
+  const logo = await getLogo(c.env.DB);
+  if (!logo) return c.notFound();
+  return c.body(logo.bytes, 200, {
+    'Content-Type': logo.type,
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    // Et SVG-logo må aldrig kunne køre kode, heller ikke hvis det åbnes direkte
+    'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+  });
+});
 
 // Installerbar app (manifest, ikoner og service worker)
 app.get('/manifest.webmanifest', (c) =>
