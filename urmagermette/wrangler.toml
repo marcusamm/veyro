@@ -1,0 +1,40 @@
+# UrmagerMette – hjemmeside med tidsbestilling og administration.
+# Demoversion: DEMO_MODE = "1" sender ingen e-mails, viser demobanner og beder søgemaskiner om ikke at indeksere.
+name = "urmagermette-demo"
+main = "src/worker/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = false
+preview_urls = false
+
+# Demoadressen. Når ejeren har godkendt, flyttes den til urmagermette.dk (se README).
+routes = [
+  { pattern = "urmagermette.veyro.dk", custom_domain = true }
+]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "auto-trailing-slash"
+not_found_handling = "none"
+
+[observability]
+enabled = true
+
+# Alle bookinger, indstillinger og brugere ligger i én Durable Object med SQLite.
+[[durable_objects.bindings]]
+name = "VAERKSTED"
+class_name = "Vaerksted"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Vaerksted"]
+
+# Offentlige indstillinger. Hemmeligheder (RESEND_API_KEY, TURNSTILE_SECRET) sættes med
+# `npx wrangler secret put NAVN` – aldrig her.
+[vars]
+DEMO_MODE = "1"
+APP_URL = "https://urmagermette.veyro.dk"
+ADMIN_EMAIL = "demo@urmagermette.dk"
+# Hash (PBKDF2) af demoens adgangskode til administrationen. Selve adgangskoden står ikke i koden.
+ADMIN_PASSWORD_HASH = "pbkdf2$100000$JD8JGG78xdBzY2R6spQzOA==$CQGp97zcz6lh/gRomwJOo64z+cH0oR78lqIALUvhi0w="
