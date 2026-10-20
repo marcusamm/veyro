@@ -32,6 +32,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898699+github-actions[bot]@users.noreply.github.com"
-          git add urmagermette/billeder urmagermette/public/billeder 2>/dev/null || true
+          git add urmagermette/billeder urmagermette/public/billeder urmagermette/src/app/billedkilder.json 2>/dev/null || true
           git commit -m "UrmagerMette: billeder hentet af workflow" || exit 0
-          git push
+          git pull --rebase origin claude/project-thread-h5ssqk && git push

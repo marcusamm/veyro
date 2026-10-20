@@ -1,52 +1,64 @@
 #!/usr/bin/env node
-// Søger efter frit licenserede billeder (CC0, Public Domain, CC BY, CC BY-SA) via Openverse
+// Søger efter frit licenserede billeder (Public Domain, CC0, CC BY, CC BY-SA) på Wikimedia Commons
 // og gemmer små forhåndsvisninger + licensoplysninger, så billederne kan udvælges.
 // Køres af workflowet "UrmagerMette: billeder" (kræver internetadgang).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import sharp from 'sharp';
 
 const UD = process.argv[2] || 'urmagermette/billeder/_kandidater';
 const SOEGNINGER = {
-  urmager: 'watchmaker',
-  urvaerk: 'watch movement',
-  vaerktoej: 'watchmaker tools',
-  lommeur: 'pocket watch',
+  urmager: 'watchmaker repairing watch',
+  urvaerk: 'mechanical watch movement macro',
+  vaerktoej: 'watchmaker tools workbench',
+  lommeur: 'pocket watch open',
   standur: 'longcase clock',
-  bornholmer: 'bornholm clock',
-  taffelur: 'mantel clock',
+  bornholmer: 'Bornholmerur',
+  bornholmer2: 'Bornholm clock',
+  taffelur: 'mantel clock antique',
   vintage: 'vintage wristwatch',
   armbaandsur: 'mechanical wristwatch',
-  vaerksted: 'clock repair',
+  vaerksted: 'clockmaker workshop',
 };
-const UA = 'UrmagerMette-demo/1.0 (billedudvaelgelse; kontakt via github.com/marcusamm/veyro)';
+const UA = 'UrmagerMette-demo/1.0 (https://github.com/marcusamm/veyro; billedudvaelgelse)';
+const TILLADT = /^(public domain|pd|cc0|cc by(-sa)? \d(\.\d)?( \w+)?|cc-by(-sa)?-\d(\.\d)?)$/i;
 const meta = {};
+mkdirSync(UD, { recursive: true });
 for (const [navn, q] of Object.entries(SOEGNINGER)) {
-  const url = `https://api.openverse.org/v1/images/?q=${encodeURIComponent(q)}&license=cc0,pdm,by,by-sa&page_size=14&mature=false&size=large`;
+  const url = 'https://commons.wikimedia.org/w/api.php?' + new URLSearchParams({
+    action: 'query', format: 'json', generator: 'search', gsrsearch: `${q} filetype:bitmap`, gsrnamespace: '6', gsrlimit: '30',
+    prop: 'imageinfo', iiprop: 'url|size|extmetadata|mime', iiurlwidth: '520',
+  });
   let data;
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': UA } });
-    data = await res.json();
+    data = await (await fetch(url, { headers: { 'User-Agent': UA } })).json();
   } catch (e) {
     console.log(`Søgning fejlede: ${q}: ${e}`);
     continue;
   }
+  const sider = Object.values(data.query?.pages ?? {}).sort((a, b) => a.index - b.index);
   mkdirSync(join(UD, navn), { recursive: true });
   let n = 0;
-  for (const r of data.results ?? []) {
+  for (const s of sider) {
+    const ii = s.imageinfo?.[0];
+    if (!ii || ii.mime !== 'image/jpeg' || ii.width < 1400) continue;
+    const em = ii.extmetadata ?? {};
+    const licens = (em.LicenseShortName?.value ?? '').trim();
+    if (!TILLADT.test(licens)) continue;
     try {
-      const res = await fetch(r.url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(30000) });
+      const res = await fetch(ii.thumburl, { headers: { 'User-Agent': UA } });
       if (!res.ok) continue;
-      const buf = Buffer.from(await res.arrayBuffer());
-      const info = await sharp(buf).metadata();
-      if ((info.width ?? 0) < 1200) continue;
       n++;
       const id = `${navn}-${String(n).padStart(2, '0')}`;
-      await sharp(buf).rotate().resize({ width: 520 }).jpeg({ quality: 70 }).toFile(join(UD, navn, `${id}.jpg`));
-      meta[id] = { url: r.url, side: r.foreign_landing_url, titel: r.title, fotograf: r.creator, fotografUrl: r.creator_url, licens: r.license, licensVersion: r.license_version, licensUrl: r.license_url, kilde: r.source, bredde: info.width, hoejde: info.height };
+      writeFileSync(join(UD, navn, `${id}.jpg`), Buffer.from(await res.arrayBuffer()));
+      const strip = (h) => (h ?? '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+      meta[id] = {
+        titel: s.title.replace(/^File:/, '').replace(/\.[a-z]+$/i, ''), fil: ii.url, side: ii.descriptionurl, fotograf: strip(em.Artist?.value),
+        licens, licensUrl: em.LicenseUrl?.value ?? '', kreditering: strip(em.Credit?.value), bredde: ii.width, hoejde: ii.height,
+      };
     } catch (e) {
-      console.log(`Kunne ikke hente ${r.url}: ${e}`);
+      console.log(`Kunne ikke hente ${ii.thumburl}: ${e}`);
     }
+    if (n >= 12) break;
   }
   console.log(`${q}: ${n} billeder`);
 }
