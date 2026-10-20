@@ -3,7 +3,7 @@
 // seneste ordrer svarer til eksemplet på veyro.dk. Alle navne og tal er fiktive.
 //
 //   node scripts/demo-data.mjs > demo.sql
-//   npx wrangler d1 execute <database> --remote --file demo.sql --config wrangler.demo.toml
+//   npx wrangler d1 execute <database> --remote --file demo.sql
 //
 // SLETTER alle varer, ordrer og lagerhistorik i databasen, før demodata indsættes.
 
