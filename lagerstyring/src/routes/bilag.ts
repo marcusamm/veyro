@@ -313,7 +313,7 @@ export function bilagRoutes(portal: Portal) {
         users,
         suggestions,
         dupOf,
-        vatRegistered: s.vat_registered !== '0',
+        vatRegistered: s.vat_registered !== 'nej',
         flashCode: c.req.query('besked'),
         message,
         errs,

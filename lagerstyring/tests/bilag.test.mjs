@@ -10,7 +10,7 @@ const K = 1000;
 describe('Bilag: upload, aflæsning, fordeling, godkendelse og eksport', () => {
   let stack, owner, staff, sample;
   const bilag = (id) => stack.sql(`SELECT * FROM bilag WHERE id = ${id}`)[0];
-  const stock = (pid) => stack.sql(`SELECT stock FROM products WHERE id = ${pid}`)[0]?.on_hand;
+  const stock = (pid) => stack.sql(`SELECT stock FROM products WHERE id = ${pid}`)[0]?.stock;
 
   beforeAll(async () => {
     const out = path.join(mkdtempSync(path.join(os.tmpdir(), 'samplepdf-')), 's.mjs');
@@ -104,5 +104,44 @@ describe('Bilag: upload, aflæsning, fordeling, godkendelse og eksport', () => {
     const b = bilag(id);
     expect(b.version).toBe(2);
     expect(b.status).toBe('klar');
+  });
+
+  it('betalinger: delvis betaling, dublet-advarsel, påmindelse som udkast og opfølgning', async () => {
+    const inv = stack.sql("SELECT * FROM invoices WHERE kind = 'faktura' AND status = 'udstedt' ORDER BY number LIMIT 1")[0];
+    const page = `/job/faktura/${inv.id}`;
+    let r = await owner.submit(page, `${page}/betaling`, { paid_on: '2026-10-01', amount: '10,00', currency: 'DKK', method: 'bankoverforsel', reference: 'T1' });
+    expect(r.headers.get('location')).toContain('betaling_registreret');
+    r = await owner.submit(page, `${page}/betaling`, { paid_on: '2026-10-01', amount: '10,00', currency: 'DKK', method: 'bankoverforsel', reference: 'T1' });
+    expect(r.headers.get('location')).toContain('betalingsfejl');
+    expect(stack.sql(`SELECT COUNT(*) AS n FROM invoice_payments WHERE invoice_id = ${inv.id} AND reference = 'T1'`)[0].n).toBe(1);
+    r = await owner.submit(page, `${page}/paamindelse`);
+    const pdf = await owner.get(r.headers.get('location'));
+    expect(pdf.headers.get('content-type')).toBe('application/pdf');
+    expect((await owner.get('/job/faktura/opfolgning?vis=aabne')).status).toBe(200);
+    expect((await staff.get('/job/faktura/opfolgning')).status).toBe(303);
+    // Medarbejderen kan stadig bruge jobportalen
+    expect((await staff.get('/job')).status).toBe(200);
+  });
+
+  it('retur: beskadiget vare kommer ikke på lager; leverandørretur trækker fra lageret', async () => {
+    const m = stack.sql('SELECT job_id, product_id, issued - returned AS n FROM job_materials WHERE issued - returned > 0 LIMIT 1')[0];
+    const s0 = stock(m.product_id);
+    let r = await owner.submit('/lager/retur', '/lager/retur/job', { op: 'x'.repeat(20) + 'a', job_id: String(m.job_id), product_id: String(m.product_id), qty: '1', condition: 'beskadiget' });
+    expect(r.status).toBe(200);
+    expect(stock(m.product_id)).toBe(s0);
+    const page = await owner.get('/lager/retur');
+    r = await owner.post('/lager/retur/leverandor', { _csrf: csrfFrom(page.html), op: opFrom(page.html), product_id: String(m.product_id), qty: '1' });
+    expect(r.status).toBe(200);
+    expect(stock(m.product_id)).toBe(s0 - K);
+    expect(stack.sql("SELECT credit_state FROM returns WHERE kind = 'leverandor' ORDER BY id DESC LIMIT 1")[0].credit_state).toBe('afventer');
+  });
+
+  it('det 14-trins bilagsforløb giver de forventede resultater', async () => {
+    const page = await owner.get('/lager/demo/bilag');
+    const r = await owner.post('/lager/demo/bilag', { _csrf: csrfFrom(page.html) });
+    expect(r.status).toBe(200);
+    expect(r.html).toContain('Alle trin gav det forventede resultat.');
+    expect((r.html.match(/Som forventet/g) || []).length).toBe(14);
+    expect((await owner.get('/lager/guide')).status).toBe(200);
   });
 });

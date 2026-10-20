@@ -521,7 +521,7 @@ export function invoicesPage(d: { rows: (InvoiceRow & { job_number: string; job_
   ${d.ready.length
     ? html`<section class="card stack"><h2>Afsluttede job, der ikke er faktureret</h2><ul>${d.ready.map((j) => html`<li><a href="/job/${j.id}/faktura">${j.number} ${j.name}</a>${j.customer_name ? ` · ${j.customer_name}` : ''}</li>`)}</ul></section>`
     : ''}
-  <nav class="tabs">${tabs.map(([k, l]) => html`<a href="/job/faktura${k ? `?vis=${k}` : ''}"${d.filter === k ? html` aria-current="page"` : ''}>${l}</a>`)}</nav>
+  <nav class="tabs">${tabs.map(([k, l]) => html`<a href="/job/faktura${k ? `?vis=${k}` : ''}"${d.filter === k ? html` aria-current="page"` : ''}>${l}</a>`)}<a href="/job/faktura/opfolgning">Betalingsopfølgning</a></nav>
   ${invoiceTable(d.rows, true)}
   <p class="hint"><a href="/lager/faktura">Tidligere fakturagrundlag</a> (fra før fakturering kom i jobportalen) kan stadig ses.</p>
 </div>`;
@@ -554,6 +554,8 @@ export function invoicePage(d: {
   csrf: string;
   flashCode?: string;
   errs?: string[];
+  /** Betalinger og påmindelser (udstedte fakturaer) */
+  payments?: H;
 }): H {
   const inv = d.inv;
   const draft = inv.status === 'kladde';
@@ -642,6 +644,7 @@ export function invoicePage(d: {
         : ''}
     </aside>
   </div>
+  ${d.payments ?? ''}
 </div>`;
 }
 

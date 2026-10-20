@@ -21,6 +21,7 @@ import {
   useFromSite,
 } from './materials';
 import { seedDemoCatalog } from './katalogdemo';
+import { seedBilag } from './bilagdemo';
 import { importCatalog, refreshList, retailers, type RetailerRow } from './estimates';
 import { buildCredit, buildDraft, getInvoice, issueInvoice } from './invoicing';
 import { jobItems, lookupItems, manualPriceStmt, preferredRetailerId } from './jobitems';
@@ -82,6 +83,20 @@ export async function resetDemo(env: Env): Promise<void> {
   const db = env.DB;
   await db.batch(
     [
+      'DELETE FROM export_items',
+      'UPDATE bilag SET export_id = NULL',
+      'UPDATE invoices SET export_id = NULL',
+      'DELETE FROM exports',
+      'DELETE FROM returns',
+      'DELETE FROM bilag_events',
+      'DELETE FROM bilag_allocations',
+      'DELETE FROM bilag_lines',
+      'UPDATE bilag SET dup_of = NULL, credit_of = NULL',
+      'DELETE FROM bilag',
+      'DELETE FROM file_chunks',
+      'DELETE FROM files',
+      'DELETE FROM invoice_reminders',
+      'DELETE FROM invoice_payments',
       'DELETE FROM price_estimates',
       'DELETE FROM invoice_items',
       'DELETE FROM invoices',
@@ -427,6 +442,8 @@ async function seed(env: Env): Promise<void> {
   await seedJobEconomy(env, { j11, j14, j15 }, now);
   // Produktkatalog med fiktive demovarer (importeret gennem den rigtige import; ændrer intet lager)
   await seedDemoCatalog(db, OWNER.email, now - 2 * DAY);
+  // Fiktive bilag (en godkendt faktura og et udlæg) og en delvis betaling
+  await seedBilag(env, await getSettings(db), OWNER, STAFF, now);
 }
 
 // --- Job: materialer med priser, timer, prisoverslag og fakturaer ---------------------------------

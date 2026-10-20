@@ -50,7 +50,7 @@ export function settingsPage(d: {
           ? html`<span class="tag">Administrator</span>`
           : '';
   return html`<div class="stack-lg" style="max-width:1000px">
-  ${pageHead('Lagerportal', 'Indstillinger', html`<a class="btn btn-secondary" href="/lager/indstillinger/mails">E-mail-log</a>`)}
+  ${pageHead('Lagerportal', 'Indstillinger', html`<a class="btn btn-primary" href="/lager/guide">Opsætningsguide</a><a class="btn btn-secondary" href="/lager/indstillinger/mails">E-mail-log</a>`)}
   ${flash(d.flashCode)}${errors(d.errs)}
   ${d.mailConfigured
     ? alert('ok', 'E-mail er sat op. Advarsler og indkøbslister sendes til de valgte modtagere.')

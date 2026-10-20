@@ -25,6 +25,7 @@ import { Conflict } from '../lib/ledger';
 import { defaultJobList, getJob, getMaterial, getProduct, jobMaterials, setPlanned } from '../lib/materials';
 import { invoicePdf, quotePdf } from '../lib/pdf';
 import { jobBilagCost } from '../lib/bilag';
+import { paymentsFor } from './betalinger';
 import { agreedQuote, companyInfo, computeQuote, customerInfo, getQuote, jobQuotes, saveQuote } from '../lib/quotes';
 import { requireUser } from '../lib/session';
 import { actorOf, isDemo, newOp, render, runTx } from '../render';
@@ -792,7 +793,7 @@ async function showInvoice(c: Context<AppEnv>, inv: InvoiceRow, errs: string[] =
   return render(
     c,
     inv.number ? `${inv.kind === 'kreditnota' ? 'Kreditnota' : 'Faktura'} ${inv.number}` : 'Fakturakladde',
-    invoicePage({ inv, items, job: j, quote, credited, problems, csrf: c.get('csrf'), flashCode: c.req.query('besked'), errs }),
+    invoicePage({ inv, items, job: j, quote, credited, problems, csrf: c.get('csrf'), flashCode: c.req.query('besked'), errs, payments: await paymentsFor(db, inv, c.get('csrf'), c.req.query('betalingsfejl') ? [String(c.req.query('betalingsfejl')).slice(0, 500)] : []) }),
     NAV('faktura'),
     errs.length ? 400 : 200,
   );

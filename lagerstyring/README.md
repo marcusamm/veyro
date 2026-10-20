@@ -108,6 +108,18 @@ Et fælles katalog for begge portaler (Lager → Produktkatalog og Job → Produ
 
 **Demo.** Demoen har et katalog med 25 fiktive varer ("Nordlys Demo" og "Demo VVS", varenumre `DEMO-…`, EAN med præfiks 20) og version 2 af filen som CSV og Excel til at prøve genimport. Kilden KEMPER er oprettet uden varer; der er ikke hentet eller opfundet KEMPER-data. Demovarer kan kun importeres i en demokilde. En belastningstest lægger 10.000 syntetiske varer (`DEMO-LT-00001` …) i en separat kilde og kan fjernes igen. Tilladelse til at bruge en producents data i produktion afklares før officiel lancering.
 
+## Bilag, betalinger, returer og eksport
+
+- **Bilag** (Lager → Bilag og Job → Bilag): upload af kvitteringer, leverandørfakturaer og kreditnotaer (PDF, JPG, PNG, HEIC; flere filer eller kamera). Originalen gemmes uændret i databasen. PDF'er med tekst aflæses af en indbygget PDF-læser; usikre værdier markeres. Fotos og indskannede PDF'er kræver OCR, som ikke er sat op, og registreres manuelt.
+- **Digital visning af originalbilag** vises ved siden af originalen og kan hentes som PDF. Interne oplysninger (betaling, fordeling, godkendelse) står for sig.
+- **Fordeling** på job, lageropfyldning eller drift. En ny varemodtagelse eller et direkte køb til et job registreres kun ved et bevidst tryk og kun én gang; et eksisterende køb knyttes uden at tælle igen. Upload og godkendelse ændrer aldrig lageret, salgspriser, overslag eller udstedte fakturaer.
+- **Dubletter** markeres (samme fil eller samme leverandør, nummer og beløb) og slås aldrig sammen. **Udlæg** fra medarbejdere følges til de er refunderet.
+- **Betalinger** registreres manuelt på udstedte fakturaer (ingen bankafstemning). Status beregnes ud fra faktura, kreditnotaer og betalinger. Påmindelser er kun udkast som PDF uden gebyrer eller renter.
+- **Returer** (Varemodtagelse → Returer): brugbare varer fra job kommer på lager, beskadigede gør ikke. Retur til leverandør trækker fra lageret og afventer kreditnotaen.
+- **Eksport til bogholder** (Bilag → Eksport): ZIP med originaler, digitale visninger, fakturaer og CSV (UTF-8, semikolon, komma som decimaltegn). Ingen integration til regnskabsprogram, og intet markeres som bogført. En eksport kan markeres som fejlet og laves igen.
+- **Opsætningsguide**: Indstillinger → Opsætningsguide.
+- **Demo**: `/lager/demo/bilag` kører et 14-trins bilagsforløb.
+
 ## Roller
 
 | Rolle | Kan |

@@ -582,7 +582,7 @@ export async function saveBilag(db: D1Database, b: BilagRow, d: BilagData, lines
   }
   if (!changes.length) return [];
   // Et felt, som brugeren har rettet eller bekræftet, er ikke længere usikkert
-  const onlyInternal = changes.every((c) => /^(Betaling|Udlæg af|Intern bemærkning)/.test(c));
+  const onlyInternal = changes.every((c) => /^(Betaling:|Udlæg af:|Intern bemærkning:)/.test(c));
   // Gemmes oplysningerne, har brugeren kontrolleret dem mod originalen
   const unc = onlyInternal ? uncertainOf(b) : [];
   stmts.unshift(
