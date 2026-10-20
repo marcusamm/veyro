@@ -96,7 +96,7 @@ form.inline{display:inline}
 /* Formularer */
 label{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
 .hint{font-size:14px;color:var(--muted);margin-top:4px}
-input[type=email],input[type=text],input[type=number],input[type=password],textarea,select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;
+input[type=email],input[type=text],input[type=number],input[type=password],input[type=tel],input[type=date],textarea,select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;
   border:1px solid var(--line-strong);border-radius:var(--r-btn);padding:11px 14px;min-height:46px}
 textarea{min-height:140px;resize:vertical;line-height:1.5}
 select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
@@ -200,6 +200,11 @@ details[open] summary{margin-bottom:6px}
 .label-like{display:block;font-weight:600;margin-bottom:6px}
 .check{display:flex;gap:10px;align-items:center;font-weight:400}
 .check input{width:auto;margin:0}
+.h-small{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:8px 0 0}
+.offer-table th{font-weight:500;text-align:left;white-space:normal;font-size:15px;color:var(--ink,inherit);border-bottom:1px solid var(--line);padding:12px 12px 12px 0}
+.offer-table td{padding:12px 0 12px 12px}
+.offer-table tr.total th,.offer-table tr.total td{border-top:2px solid var(--line)}
+tr.row-err td{background:rgba(220,38,38,.06)}
 `;
 
 export const JS = `

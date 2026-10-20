@@ -284,7 +284,7 @@ export function dashboardPage(args: {
         <span class="badge ${badgeClass(state.tone)}">${state.label}</span>
       </div>
       <dl class="facts">
-        <div><dt>Pris</dt><dd>${formatKr(sub.amount)} /md.</dd></div>
+        <div><dt>Pris</dt><dd>${formatKr(sub.amount)} ${sub.interval === 'year' ? '/år' : '/md.'}${plan ? '' : ' ekskl. moms'}</dd></div>
         <div><dt>Startdato</dt><dd>${formatDate(sub.started_at)}</dd></div>
         ${state.cancelPending
           ? html`<div><dt>Abonnementet slutter</dt><dd>${formatDate(state.cancelDate)}</dd></div>
@@ -297,7 +297,7 @@ export function dashboardPage(args: {
     <section class="card stack" aria-labelledby="actions-h">
       <h2 id="actions-h">Administrer</h2>
       <div class="stack">
-        ${state.manageable && !state.cancelPending
+        ${plan && state.manageable && !state.cancelPending
           ? html`<a class="btn btn-primary btn-block" href="/konto/plan">Skift plan</a>`
           : ''}
         <a class="btn btn-secondary btn-block" href="/konto/henvendelser">Send ændringsønske${args.openRequests ? ` (${args.openRequests} åbne)` : ''}</a>
@@ -446,6 +446,11 @@ export function invoicesPage(args: { csrf: string; invoices: StripeInvoice[] | n
       ? html`<form method="post" action="/konto/betalingskort">
           ${csrfField(args.csrf)}
           <button class="btn btn-primary" type="submit" data-loading="Åbner Stripe …">Skift betalingskort</button>
+        </form>
+        <form method="post" action="/konto/portal" style="margin-top:12px">
+          ${csrfField(args.csrf)}
+          <button class="btn btn-secondary" type="submit" data-loading="Åbner Stripe …">Åbn Stripes kundeportal</button>
+          <p class="small muted">I Stripes kundeportal kan du også hente alle fakturaer og kvitteringer.</p>
         </form>`
       : html`<p class="small muted">Der er endnu ikke tilknyttet et betalingskort til din konto.</p>`}
   </section>

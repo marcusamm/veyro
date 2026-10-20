@@ -3,6 +3,20 @@ import type { AppEnv, Env } from '../env';
 import { attachCardFromSession } from '../lib/card-link';
 import { nowSec } from '../lib/crypto';
 import { getCustomerByStripeId, normalizeEmail, upsertCustomer, upsertSubscription } from '../lib/db';
+import { adminNoticeEmail, offerActivatedEmail, sendEmail } from '../lib/email';
+import { logError } from '../lib/errlog';
+import { formatKr } from '../lib/format';
+import {
+  activateFromSession,
+  cancelDuplicate,
+  getOfferBySubscription,
+  INTERVAL_LABEL,
+  offerTotals,
+  onAsyncPaymentFailed,
+  onSessionExpired,
+  onSubscriptionEnded,
+  recordInvoice,
+} from '../lib/offers';
 import {
   idOf,
   stripeRequest,
@@ -55,6 +69,40 @@ function invoiceSubscriptionId(inv: any): string | null {
   );
 }
 
+/** Mail til Veyro (NOTIFY_EMAIL). Fejler mailen, logges det, men webhooken gennemføres. */
+async function notifyAdmin(env: Env, subject: string, lines: string[], path?: string) {
+  if (!env.NOTIFY_EMAIL) return;
+  const link = path ? `${env.APP_URL.replace(/\/+$/, '')}${path}` : undefined;
+  await sendEmail(env, { to: env.NOTIFY_EMAIL, ...adminNoticeEmail(subject, lines, link) }).catch((err) => logError(env.DB, 'webhook.notify', err));
+}
+
+/** Tilmelding via et tilbud: aktivér først, når Stripe har bekræftet betalingen. */
+async function handleOfferSession(env: Env, sessionId: string) {
+  const r = await activateFromSession(env, sessionId);
+  if (r.kind === 'ignored') return;
+  if (r.kind === 'duplicate') {
+    // Sidste sikkerhedsnet: tilbuddet har allerede et abonnement, så det nye stoppes straks.
+    await cancelDuplicate(env, r.subId);
+    await notifyAdmin(env, `Dobbelt tilmelding stoppet: ${r.offer.service}`, [
+      `${r.offer.email} gennemførte en ekstra betaling på et tilbud, der allerede har abonnementet ${r.offer.subscription_id}.`,
+      `Det ekstra abonnement ${r.subId} er stoppet. Tjek i Stripe, om en betaling skal refunderes.`,
+    ], `/admin/tilbud/${r.offer.id}`);
+    return;
+  }
+  if (r.kind === 'activated') {
+    const o = r.offer;
+    const t = offerTotals(o);
+    const priceLine = `${formatKr(t.recurringNet)} ekskl. moms ${INTERVAL_LABEL[o.interval].per}`;
+    await sendEmail(env, {
+      to: o.email,
+      replyTo: 'kontakt@veyro.dk',
+      ...offerActivatedEmail({ name: o.name, service: o.service, priceLine, loginLink: `${env.APP_URL.replace(/\/+$/, '')}/login` }),
+    }).catch((err) => logError(env.DB, 'webhook.offer-welcome', err));
+    await notifyAdmin(env, `Ny kunde aktiv: ${o.company ?? o.name}`, [`${o.company ?? o.name} (${o.email}) har tilmeldt sig ${o.service}: ${priceLine}.`, 'Stripe har bekræftet tilmelding og første betaling.'], `/admin/tilbud/${o.id}`);
+  }
+  await syncSubscription(env, r.subId);
+}
+
 webhook.post('/stripe/webhook', async (c) => {
   const payload = await c.req.text();
   const valid = await verifyStripeSignature(payload, c.req.header('Stripe-Signature'), c.env.STRIPE_WEBHOOK_SECRET);
@@ -80,6 +128,10 @@ webhook.post('/stripe/webhook', async (c) => {
           break;
         }
         if (obj.mode !== 'subscription') break;
+        if (obj.metadata?.veyro_offer) {
+          await handleOfferSession(c.env, obj.id);
+          break;
+        }
         const email = normalizeEmail(obj.customer_details?.email ?? obj.customer_email);
         const stripeCustomerId = idOf(obj.customer);
         if (email) {
@@ -89,19 +141,56 @@ webhook.post('/stripe/webhook', async (c) => {
         if (subId) await syncSubscription(c.env, subId);
         break;
       }
+      case 'checkout.session.async_payment_succeeded':
+        if (obj.metadata?.veyro_offer) await handleOfferSession(c.env, obj.id);
+        break;
+      case 'checkout.session.async_payment_failed': {
+        const o = await onAsyncPaymentFailed(c.env, obj.id);
+        if (o) await notifyAdmin(c.env, `Betaling mislykkedes: ${o.service}`, [`Betalingen fra ${o.email} blev afvist. Tilbudslinket virker stadig, så kunden kan prøve igen.`], `/admin/tilbud/${o.id}`);
+        break;
+      }
+      case 'checkout.session.expired':
+        await onSessionExpired(c.env, obj.id);
+        break;
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
+        await syncSubscription(c.env, obj.id, obj as StripeSubscription);
+        break;
       case 'customer.subscription.deleted':
         await syncSubscription(c.env, obj.id, obj as StripeSubscription);
+        await onSubscriptionEnded(c.env, obj.id);
+        break;
+      case 'invoice.finalized':
+        await recordInvoice(c.env, obj, 'open', invoiceSubscriptionId(obj));
+        break;
+      case 'invoice.voided':
+        await recordInvoice(c.env, obj, 'void', invoiceSubscriptionId(obj));
         break;
       case 'invoice.paid': {
         const subId = invoiceSubscriptionId(obj);
+        await recordInvoice(c.env, obj, 'paid', subId);
         if (subId) await syncSubscription(c.env, subId, undefined, { paymentFailed: false });
         break;
       }
       case 'invoice.payment_failed': {
         const subId = invoiceSubscriptionId(obj);
-        if (subId) await syncSubscription(c.env, subId, undefined, { paymentFailed: true });
+        const recorded = await recordInvoice(c.env, obj, 'failed', subId);
+        // En forsinket fejlhændelse for en faktura, der siden er betalt, ændrer intet.
+        if (subId && recorded === 'failed') {
+          await syncSubscription(c.env, subId, undefined, { paymentFailed: true });
+          const offer = await getOfferBySubscription(c.env.DB, subId);
+          const who = offer ? `${offer.company ?? offer.name} (${offer.email})` : (obj.customer_email ?? 'En kunde');
+          const customer = await getCustomerByStripeId(c.env.DB, idOf(obj.customer) ?? '');
+          await notifyAdmin(
+            c.env,
+            `Betaling mislykkedes: ${who}`,
+            [
+              `Betalingen af faktura ${obj.number ?? obj.id} på ${formatKr(obj.amount_due ?? 0)} mislykkedes (forsøg ${obj.attempt_count ?? 1}).`,
+              obj.next_payment_attempt ? 'Stripe prøver automatisk igen. Kunden kan skifte kort i kundepanelet.' : 'Stripe prøver ikke igen automatisk. Kontakt kunden.',
+            ],
+            customer ? `/admin/kunder/${customer.id}` : undefined,
+          );
+        }
         break;
       }
       default:

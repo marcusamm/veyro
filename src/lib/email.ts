@@ -165,3 +165,84 @@ Se og opdater status: ${args.adminUrl}`;
 <p style="margin:0"><a href="${escapeHtml(args.adminUrl)}" style="color:#0F0F0D">Åbn i admin</a></p>`);
   return { subject: `Ny henvendelse: ${args.title}`.slice(0, 150), text, html };
 }
+
+// ---------- Tilbud og abonnementer med individuel pris ----------
+
+function button(link: string, label: string): string {
+  return `<p style="margin:0 0 24px"><a href="${escapeHtml(link)}" style="display:inline-block;background:#FF5A1F;color:#0F0F0D;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:600">${escapeHtml(label)}</a></p>`;
+}
+
+function hello(name: string): string {
+  const first = name.trim().split(' ')[0];
+  return first ? `Hej ${first}` : 'Hej';
+}
+
+/** Mail med det personlige betalingslink. `lines` er tilbuddets nøgletal som korte linjer. */
+export function offerEmail(args: { name: string; service: string; lines: string[]; link: string; validUntil: string }): Omit<EmailMessage, 'to'> {
+  const h = hello(args.name);
+  const text = `${h}
+
+Tak for en god snak. Her er vores tilbud på ${args.service}:
+
+${args.lines.map((l) => `- ${l}`).join('\n')}
+
+Se hele tilbuddet og tilmeld dig her:
+
+${args.link}
+
+Du ser pris, moms, betalingsinterval og opsigelsesvilkår, før du godkender. Betalingen sker sikkert hos Stripe. Linket gælder til og med ${args.validUntil}.
+
+Har du spørgsmål, så svar på denne mail.
+
+Venlig hilsen
+Veyro`;
+  const html = wrapHtml(`<p style="margin:0 0 16px">${escapeHtml(h)}</p>
+<p style="margin:0 0 16px">Tak for en god snak. Her er vores tilbud på <strong>${escapeHtml(args.service)}</strong>:</p>
+<ul style="margin:0 0 24px;padding-left:20px">${args.lines.map((l) => `<li>${escapeHtml(l)}</li>`).join('')}</ul>
+${button(args.link, 'Se tilbuddet og tilmeld dig')}
+<p style="margin:0 0 8px;color:#55534D;font-size:14px">Du ser pris, moms, betalingsinterval og opsigelsesvilkår, før du godkender. Betalingen sker sikkert hos Stripe. Linket gælder til og med ${escapeHtml(args.validUntil)}.</p>`);
+  return { subject: `Tilbud fra Veyro: ${args.service}`, text, html };
+}
+
+export function offerActivatedEmail(args: { name: string; service: string; priceLine: string; loginLink: string }): Omit<EmailMessage, 'to'> {
+  const h = hello(args.name);
+  const text = `${h}
+
+Tak. Dit abonnement på ${args.service} er nu aktivt (${args.priceLine}).
+
+Du får en kvittering og faktura fra Stripe ved hver betaling. I kundepanelet kan du se fakturaer, skifte betalingskort og opsige abonnementet:
+
+${args.loginLink}
+
+Venlig hilsen
+Veyro`;
+  const html = wrapHtml(`<p style="margin:0 0 16px">${escapeHtml(h)}</p>
+<p style="margin:0 0 16px">Tak. Dit abonnement på <strong>${escapeHtml(args.service)}</strong> er nu aktivt (${escapeHtml(args.priceLine)}).</p>
+<p style="margin:0 0 24px">Du får en kvittering og faktura fra Stripe ved hver betaling. I kundepanelet kan du se fakturaer, skifte betalingskort og opsige abonnementet.</p>
+${button(args.loginLink, 'Gå til kundepanelet')}`);
+  return { subject: `Velkommen til Veyro – ${args.service} er aktivt`, text, html };
+}
+
+export function priceChangeEmail(args: { name: string; service: string; oldPrice: string; newPrice: string; effective: string }): Omit<EmailMessage, 'to'> {
+  const h = hello(args.name);
+  const body = `Prisen på dit abonnement (${args.service}) ændres fra ${args.oldPrice} til ${args.newPrice}. Den nye pris gælder fra betalingen den ${args.effective}. Indtil da betaler du den nuværende pris, og der sker ingen efterregning.`;
+  const text = `${h}
+
+${body}
+
+Har du spørgsmål, så svar på denne mail. Du kan altid opsige abonnementet i kundepanelet til udgangen af en betalt periode.
+
+Venlig hilsen
+Veyro`;
+  const html = wrapHtml(`<p style="margin:0 0 16px">${escapeHtml(h)}</p>
+<p style="margin:0 0 16px">${escapeHtml(body)}</p>
+<p style="margin:0 0 8px;color:#55534D;font-size:14px">Har du spørgsmål, så svar på denne mail. Du kan altid opsige abonnementet i kundepanelet til udgangen af en betalt periode.</p>`);
+  return { subject: 'Ny pris på dit abonnement hos Veyro', text, html };
+}
+
+/** Kort besked til Veyro selv (NOTIFY_EMAIL). */
+export function adminNoticeEmail(subject: string, lines: string[], link?: string): Omit<EmailMessage, 'to'> {
+  const text = `${lines.join('\n')}${link ? `\n\n${link}` : ''}`;
+  const html = wrapHtml(`${lines.map((l) => `<p style="margin:0 0 12px">${escapeHtml(l)}</p>`).join('')}${link ? button(link, 'Åbn i admin') : ''}`);
+  return { subject, text, html };
+}

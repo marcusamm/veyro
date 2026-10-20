@@ -9,7 +9,7 @@ Selvbetjening til Veyros abonnementskunder. Kunderne kan:
 - se og downloade fakturaer og skifte betalingskort
 - sende ændringsønsker, fejlmeldinger og spørgsmål og følge status
 
-Der er også en lille admin-del (`/admin`), hvor Veyro kan se kunder og henvendelser og ændre status.
+Der er også en admin-del (`/admin`), hvor Veyro kan se kunder og henvendelser, ændre status og oprette abonnementer med individuel pris ud fra et tilbud, som kunden tilmelder sig via et personligt Stripe-betalingslink (se [afsnit 14](#14-tilbud-med-individuel-pris-og-betalingslink)).
 
 Teknik: Cloudflare Workers + D1 (database), Hono, Stripe Billing (via Stripes REST API) og Resend til e-mail.
 
@@ -30,6 +30,7 @@ Teknik: Cloudflare Workers + D1 (database), Hono, Stripe Billing (via Stripes RE
 11. [Indstillinger (alle variabler)](#11-indstillinger-alle-variabler)
 12. [Cookies og GDPR](#12-cookies-og-gdpr)
 13. [Udvikling og tests (for udviklere)](#13-udvikling-og-tests-for-udviklere)
+14. [Tilbud med individuel pris og betalingslink](#14-tilbud-med-individuel-pris-og-betalingslink)
 
 ---
 
@@ -165,11 +166,16 @@ Webhooken holder databasen opdateret, når der sker noget i Stripe (nyt køb, be
 2. **Endpoint-URL:** `https://kunde.veyro.dk/stripe/webhook`
 3. Vælg disse hændelser:
    - `checkout.session.completed`
+   - `checkout.session.expired`
+   - `checkout.session.async_payment_succeeded`
+   - `checkout.session.async_payment_failed`
    - `customer.subscription.created`
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
+   - `invoice.finalized`
    - `invoice.paid`
    - `invoice.payment_failed`
+   - `invoice.voided`
 4. Gem, og kopiér **Signing secret** (`whsec_...`). Sæt den som `STRIPE_WEBHOOK_SECRET` (trin 6).
 
 Kunden oprettes i kundepanelet, når betalingen er gennemført. Derefter kan kunden logge ind med den e-mail, der blev brugt i Stripe Checkout.
@@ -282,7 +288,7 @@ Uden `RESEND_API_KEY` og med `DEV_MODE=1` vises login-linket direkte på skærme
 | `npm test` | Automatiske tests (se nedenfor) |
 | `npm run screenshots` | Skærmbilleder med Playwright (kræver Chromium) |
 
-**Tests** (`tests/`): Starter en lokal mock af Stripe og Resend (`tests/mock-server.mjs`), kører migrations på en midlertidig lokal D1 og starter `wrangler dev --local` med `STRIPE_API_BASE`/`RESEND_API_BASE` peget mod mocken. Testene dækker bl.a. login med engangslink, dashboard, planskift, opsigelse/genoptagelse inkl. bindingsperiode, fakturaer og kortskift, henvendelser, admin-adgang, CSRF-afvisning og webhook-signaturer (gyldig, ugyldig og for gammel).
+**Tests** (`tests/`): Starter en lokal mock af Stripe og Resend (`tests/mock-server.mjs`), kører migrations på en midlertidig lokal D1 og starter `wrangler dev --local` med `STRIPE_API_BASE`/`RESEND_API_BASE` peget mod mocken. Mocken simulerer også Checkout, fornyelser, mislykkede betalinger og abonnementsskemaer, så `tests/offers.test.mjs` kan køre hele tilbudsforløbet uden at ramme Stripe. Testene dækker bl.a. login med engangslink, dashboard, planskift, opsigelse/genoptagelse inkl. bindingsperiode, fakturaer og kortskift, henvendelser, admin-adgang, CSRF-afvisning og webhook-signaturer (gyldig, ugyldig og for gammel).
 
 **Projektstruktur:**
 
@@ -300,3 +306,54 @@ scripts/              Skærmbillede-script
 ```
 
 **Sikkerhed i korte træk:** engangslinks (15 min., gemt som SHA-256-hash, forbruges atomisk, login kræver et klik på en knap så e-mail-scannere ikke bruger linket), sessions-cookie `HttpOnly`/`Secure`/`SameSite=Lax` med `__Host-`-præfiks, CSRF-token + Origin-tjek på alle formularer, rate-limiting pr. e-mail (3/15 min.) og pr. IP (10/15 min.), samme svar uanset om e-mailen findes, parametriserede D1-forespørgsler, streng Content-Security-Policy, webhook-signatur verificeret med Web Crypto (HMAC-SHA256, 5 minutters tolerance) og idempotent hændelsesbehandling.
+
+---
+
+## 14. Tilbud med individuel pris og betalingslink
+
+Bruges, når Veyro aftaler ydelse, pris og interval med en kunde og sender et tilbud.
+
+**Forløb**
+
+1. Admin opretter tilbuddet under **/admin/tilbud**: kunde (navn, firma, e-mail, CVR, adresse), ydelse, pris ekskl. moms, månedlig eller årlig betaling, evt. et engangsbeløb (oprettelse/udvikling) og hvor længe linket gælder.
+2. Kunden og en fast pris oprettes med det samme i Stripe. Hvert tilbud får sin egen Stripe-pris, så en kundes pris aldrig påvirker andre.
+3. Admin sender linket (`https://kunde.veyro.dk/tilbud/<kode>`) på mail fra admin-siden eller kopierer det ind i tilbuddet.
+4. Kunden ser ydelse, pris, moms, interval, engangsbeløb, opsigelsesvilkår og gyldighed, sætter kryds og sendes til Stripe Checkout (Stripe-hostet side) for netop den kunde og pris. Beløbet kan ikke ændres via linket.
+5. Når en **verificeret webhook** fra Stripe bekræfter tilmelding og første betaling, bliver tilbuddet og kunden aktive, og kunden får en velkomstmail med adgang til kundepanelet. Takkesiden efter betaling er ikke nok i sig selv.
+6. Abonnementet fornyes automatisk, til kunden opsiger. Stripe sender kvittering/faktura ved hver betaling.
+
+**Shopify og Stripe er to adskilte systemer.** Shopify (veyro.dk) modtager kun forespørgsler fra kurven og opkræver intet. Shopify Payments og Stripe Billing synkroniserer ikke, og der oprettes ingen betalingsforpligtelse i Shopify. Stripe Billing i kundepanelet er det eneste sted, abonnementet opkræves. Kunden kobles på e-mail: tilbud, Stripe-kunde og kundepanel bruger samme e-mail. Der er derfor hverken brug for en Shopify-app eller en ekstra backend.
+
+**Tilbud, betalingsanmodning og faktura**
+
+- *Tilbud* er rækken i kundepanelet (`offers`) og siden `/tilbud/<kode>`. Det opkræver intet.
+- *Betalingsanmodning* er Stripe Checkout-sessionen, som linket åbner. Der findes højst én åben session pr. tilbud. Den udløber efter 23 timer, og linket laver så automatisk en ny.
+- *Faktura* laver Stripe ved hver opkrævning (første betaling og hver fornyelse).
+
+**Undgå dobbelt opkrævning**
+
+- Har kunden allerede fået en faktura for engangsbeløbet, så markér det under «Allerede faktureret». Så opkræves det ikke via linket.
+- Har kunden allerede betalt første periode, så angiv datoen for første opkrævning. Stripe trækker først den dag (mindst 3 dage frem).
+- Feltet «Hvilken faktura dækker det?» er påkrævet i begge tilfælde, så det kan ses bagefter.
+- Har kunden i forvejen et abonnement, en faktura fra de sidste 90 dage eller et åbent tilbud, skal admin bekræfte, før et nyt tilbud oprettes.
+- Gentagne eller samtidige klik på linket giver samme Checkout-session. Et tilbud kan kun få ét abonnement. Opstår der alligevel et ekstra, stoppes det straks, og Veyro får en mail om at tjekke for refusion.
+
+**Administration (/admin/kunder → kunden)**
+
+Her vises navn, firma, e-mail, CVR og faktureringsadresse, ydelse, pris og interval, status, næste betaling og opsigelsesdato, samt betalingshistorik med fakturaer og mislykkede betalinger.
+
+- **Prisændring** gælder kun den ene kunde. Standard er fra næste betalingsperiode uden forholdsmæssig afregning. Der kan også vælges en senere fornyelsesdato. Kunden får en mail med den nye pris og datoen.
+- **Opsigelse** stopper fornyelsen ved udgangen af den betalte periode, og opsigelsen kan fortrydes.
+- **Mislykket betaling:** status «Betaling fejlet» vises for admin og kunde, og Veyro får en mail. Stripe prøver automatisk igen efter indstillingerne i Stripe.
+
+Kunden kan selv skifte kort, hente fakturaer og opsige i kundepanelet, og via Stripes kundeportal.
+
+**Før det sættes i drift**
+
+1. Kør migrationen `migrations/0004_offers.sql` på den rigtige database (`npm run migrate`, eller indsæt filen i D1-konsollen) **før** den nye kode udgives. Migrationen tilføjer kun kolonner og tabeller, så eksisterende data bevares.
+2. Tilføj de nye hændelser til webhooken (se [afsnit 8](#8-stripe-webhook)).
+3. Stripe → **Indstillinger → Billing → Kundeportal**: slå «Kunder kan opsige abonnementer» til med «Ved periodens udløb» og uden forholdsmæssig afregning. Lad fakturahistorik og opdatering af betalingsmetoder være slået til.
+4. Stripe → **Indstillinger → Kundemails**: slå mails om gennemførte og mislykkede betalinger til. Under **Billing → Revenue recovery** kan automatiske genforsøg (Smart Retries) indstilles.
+5. Afprøv hele forløbet i Stripes testtilstand med testkort `4242 4242 4242 4242` (godkendt) og `4000 0000 0000 0341` (afvises ved senere betalinger). Fornyelser kan afprøves uden at vente med Stripes *test clocks*.
+
+**Rul tilbage:** Udgiv den forrige version i Cloudflare (**Workers → veyro → Deployments → Rollback**). De nye tabeller og kolonner kan blive stående. Den gamle kode bruger dem ikke.

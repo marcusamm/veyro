@@ -31,6 +31,33 @@ import {
 } from '../lib/admin-subscriptions';
 import { parseKr } from '../lib/invoices';
 import { createLoginToken, isAdmin } from '../lib/session';
+import { getCustomerByEmail, getCustomerById, upsertSubscription } from '../lib/db';
+import { offerEmail, priceChangeEmail } from '../lib/email';
+import { formatDate, formatKr } from '../lib/format';
+import { getPlan } from '../lib/plans';
+import { stripeRequest, type StripeSubscription } from '../lib/stripe';
+import {
+  changeSubscriptionPrice,
+  createOffer,
+  ensureStripeCustomer,
+  existingBilling,
+  extendOffer,
+  getOffer,
+  hasExisting,
+  INTERVAL_LABEL,
+  listOffers,
+  listPayments,
+  listPriceChanges,
+  markPriceChangeNotified,
+  offerLink,
+  readOfferForm,
+  renewalDates,
+  validateOffer,
+  withdrawOffer,
+  type ExistingBilling,
+  type OfferForm,
+} from '../lib/offers';
+import { adminCustomerPage, adminOfferDetailPage, adminOffersPage, offerSummaryLines, type CustomerSubView } from '../views/offers';
 import { render } from '../render';
 import { adminCustomersPage, adminInvoicesPage, adminLoginPage, adminOverviewPage, adminRequestsPage, adminSubscriptionsPage } from '../views/admin';
 import { errorPage } from '../views/pages';
@@ -291,5 +318,206 @@ admin.post('/fakturaer/:id/:action', async (c) => {
   }
   return c.redirect(`/admin/fakturaer?besked=${act.flash}`, 303);
 });
+
+// ---- Tilbud med individuel pris og personligt betalingslink ----
+
+async function offersView(
+  c: Context<AppEnv>,
+  extra: { form?: OfferForm | null; error?: string | null; errorField?: string | null; existing?: ExistingBilling | null; status?: 400 | 409 | 502; formKey?: string } = {},
+) {
+  const offers = await listOffers(c.env.DB);
+  return render(
+    c,
+    'Tilbud',
+    adminOffersPage({
+      csrf: c.get('csrf'),
+      formKey: extra.formKey ?? crypto.randomUUID(),
+      offers,
+      form: extra.form ?? null,
+      error: extra.error ?? null,
+      errorField: extra.errorField ?? null,
+      existing: extra.existing ?? null,
+      flash: extra.form || extra.error ? null : (c.req.query('besked') ?? null),
+    }),
+    { nav: 'admin-tilbud', admin: true, status: extra.status },
+  );
+}
+
+admin.get('/tilbud', (c) => offersView(c));
+
+admin.post('/tilbud', async (c) => {
+  const body = await c.req.parseBody();
+  const form = readOfferForm(body);
+  const key = typeof body['key'] === 'string' && /^[0-9a-f-]{36}$/.test(body['key']) ? body['key'] : crypto.randomUUID();
+  const v = validateOffer(form);
+  if ('error' in v) return offersView(c, { form, error: v.error, errorField: v.field, status: 400, formKey: key });
+  try {
+    // Undgå dobbelt fakturering: vis kundens eksisterende abonnementer, fakturaer og tilbud, før der laves et nyt link.
+    const found = await stripeRequest<{ data: Array<{ id: string }> }>(c.env, 'GET', '/v1/customers', { email: v.draft.email, limit: 1 });
+    const existing = await existingBilling(c.env, v.draft.email, found.data?.[0]?.id ?? null);
+    if (hasExisting(existing) && !form.confirm_existing) {
+      return offersView(c, { form, existing, error: 'Kunden har allerede et abonnement, en faktura eller et tilbud. Tjek listen, og bekræft nederst.', status: 409, formKey: key });
+    }
+    const customerId = await ensureStripeCustomer(c.env, v.draft, `admin-offer-${key}`);
+    const offer = await createOffer(c.env, v.draft, { key, createdBy: c.get('session')!.email, stripeCustomerId: customerId });
+    return c.redirect(`/admin/tilbud/${offer.id}?besked=oprettet`, 303);
+  } catch (err) {
+    await logError(c.env.DB, 'admin.offers.create', err);
+    const detail = err instanceof StripeError ? ` Stripe svarede: ${err.message}` : '';
+    return offersView(c, { form, error: `Tilbuddet kunne ikke oprettes.${detail}`, status: 502, formKey: key });
+  }
+});
+
+async function offerDetail(c: Context<AppEnv>, id: number, extra: { error?: string; status?: 400 | 502 } = {}) {
+  const offer = await getOffer(c.env.DB, id);
+  if (!offer) return render(c, 'Findes ikke', errorPage('Tilbuddet findes ikke', '', { href: '/admin/tilbud', label: 'Til tilbud' }), { status: 404, admin: true });
+  const customer = await getCustomerByEmail(c.env.DB, offer.email);
+  return render(
+    c,
+    `Tilbud: ${offer.service}`,
+    adminOfferDetailPage({
+      csrf: c.get('csrf'),
+      offer,
+      link: offerLink(c.env, offer),
+      customerId: customer?.id ?? null,
+      flash: extra.error ? null : (c.req.query('besked') ?? null),
+      error: extra.error ?? null,
+    }),
+    { nav: 'admin-tilbud', admin: true, status: extra.status },
+  );
+}
+
+const idParam = (raw: string) => {
+  const n = Number.parseInt(raw, 10);
+  return Number.isSafeInteger(n) && n > 0 && String(n) === raw ? n : null;
+};
+
+admin.get('/tilbud/:id', (c) => {
+  const id = idParam(c.req.param('id'));
+  if (!id) return c.text('Ugyldig anmodning.', 400);
+  return offerDetail(c, id);
+});
+
+admin.post('/tilbud/:id/:action', async (c) => {
+  const id = idParam(c.req.param('id'));
+  const offer = id ? await getOffer(c.env.DB, id) : null;
+  if (!offer) return c.text('Ugyldig anmodning.', 400);
+  const action = c.req.param('action');
+  try {
+    if (action === 'send') {
+      if (offer.status !== 'open' || offer.valid_until < Math.floor(Date.now() / 1000)) return offerDetail(c, offer.id, { error: 'Kun åbne tilbud kan sendes.', status: 400 });
+      const ok = await sendEmail(c.env, {
+        to: offer.email,
+        replyTo: 'kontakt@veyro.dk',
+        ...offerEmail({ name: offer.name, service: offer.service, lines: offerSummaryLines(offer), link: offerLink(c.env, offer), validUntil: formatDate(offer.valid_until) }),
+      });
+      if (!ok) return offerDetail(c, offer.id, { error: 'Mailen kunne ikke sendes (RESEND_API_KEY mangler). Kopiér linket i stedet.', status: 502 });
+      await c.env.DB.prepare('UPDATE offers SET emailed_at = ?, updated_at = ? WHERE id = ?').bind(Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000), offer.id).run();
+      return c.redirect(`/admin/tilbud/${offer.id}?besked=sendt`, 303);
+    }
+    if (action === 'tilbagetraek') {
+      await withdrawOffer(c.env, offer);
+      return c.redirect(`/admin/tilbud/${offer.id}?besked=trukket-tilbage`, 303);
+    }
+    if (action === 'forlaeng') {
+      await extendOffer(c.env, offer);
+      return c.redirect(`/admin/tilbud/${offer.id}?besked=forlaenget`, 303);
+    }
+  } catch (err) {
+    await logError(c.env.DB, `admin.offers.${action}`, err);
+    const msg = err instanceof StripeError ? err.message : 'Ukendt fejl';
+    return offerDetail(c, offer.id, { error: `Handlingen mislykkedes: ${msg}`, status: 502 });
+  }
+  return c.text('Ugyldig anmodning.', 400);
+});
+
+// ---- Én kunde: fakturering, abonnementer, betalinger ----
+
+async function customerView(c: Context<AppEnv>, customerId: number, extra: { error?: string; status?: 400 | 502 } = {}) {
+  const customer = await getCustomerById(c.env.DB, customerId);
+  if (!customer) return render(c, 'Findes ikke', errorPage('Kunden findes ikke', '', { href: '/admin/kunder', label: 'Til kunder' }), { status: 404, admin: true });
+  const { results: subs } = await c.env.DB.prepare('SELECT * FROM subscriptions WHERE customer_id = ? ORDER BY COALESCE(started_at, 0) DESC').bind(customer.id).all<any>();
+  const offers = await listOffers(c.env.DB, customer.email);
+  const views: CustomerSubView[] = subs.map((sub) => {
+    const offer = offers.find((o) => o.subscription_id === sub.id || (sub.offer_id && o.id === sub.offer_id));
+    const interval = sub.interval === 'year' ? 'year' : 'month';
+    return {
+      sub,
+      service: offer?.service ?? getPlan(sub.plan)?.name ?? 'Abonnement',
+      renewals: sub.current_period_end ? renewalDates(sub.current_period_end, interval, 6) : [],
+    };
+  });
+  const [payments, priceChanges] = await Promise.all([
+    customer.stripe_customer_id ? listPayments(c.env.DB, customer.stripe_customer_id) : Promise.resolve([]),
+    listPriceChanges(c.env.DB, subs.map((s) => s.id)),
+  ]);
+  return render(
+    c,
+    customer.company ?? customer.name ?? customer.email,
+    adminCustomerPage({ csrf: c.get('csrf'), customer, subs: views, offers, payments, priceChanges, flash: extra.error ? null : (c.req.query('besked') ?? null), error: extra.error ?? null }),
+    { nav: 'admin-kunder', admin: true, status: extra.status },
+  );
+}
+
+admin.get('/kunder/:id', (c) => {
+  const id = idParam(c.req.param('id'));
+  if (!id) return c.text('Ugyldig anmodning.', 400);
+  return customerView(c, id);
+});
+
+admin.post('/kunder/:id/abonnement/:sub/:action', async (c) => {
+  const id = idParam(c.req.param('id'));
+  const subId = c.req.param('sub');
+  const action = c.req.param('action');
+  if (!id || !isSubscriptionId(subId)) return c.text('Ugyldig anmodning.', 400);
+  const customer = await getCustomerById(c.env.DB, id);
+  const owned = customer && (await c.env.DB.prepare('SELECT 1 FROM subscriptions WHERE id = ? AND customer_id = ?').bind(subId, customer.id).first());
+  if (!customer || !owned) return c.text('Ugyldig anmodning.', 400);
+  const body = await c.req.parseBody();
+  let flash: string;
+  try {
+    if (action === 'pris') {
+      const amount = parseKr(body['price']);
+      if (!amount) return customerView(c, id, { error: 'Skriv en gyldig ny pris i kr. ekskl. moms, fx 1.500 eller 1499,50.', status: 400 });
+      const eff = body['effective'];
+      const effectiveAt = eff === 'next' || eff === undefined ? null : Number.parseInt(String(eff), 10);
+      if (effectiveAt !== null && !Number.isSafeInteger(effectiveAt)) return customerView(c, id, { error: 'Vælg en gyldig dato.', status: 400 });
+      const key = typeof body['key'] === 'string' && /^[0-9a-f-]{36}$/.test(body['key']) ? body['key'] : crypto.randomUUID();
+      const res = await changeSubscriptionPrice(c.env, subId, amount, effectiveAt, { key: `price-change-${key}`, createdBy: c.get('session')!.email });
+      const offer = await c.env.DB.prepare('SELECT service FROM offers WHERE subscription_id = ?').bind(subId).first<{ service: string }>();
+      const per = INTERVAL_LABEL[res.interval].per;
+      let mailed = false;
+      try {
+        mailed = await sendEmail(c.env, {
+          to: customer.email,
+          replyTo: 'kontakt@veyro.dk',
+          ...priceChangeEmail({
+            name: customer.name ?? '',
+            service: offer?.service ?? 'abonnement hos Veyro',
+            oldPrice: `${formatKr(res.oldAmount)} ekskl. moms ${per}`,
+            newPrice: `${formatKr(amount)} ekskl. moms ${per}`,
+            effective: formatDate(res.effectiveAt),
+          }),
+        });
+      } catch (err) {
+        await logError(c.env.DB, 'admin.price-change.mail', err);
+      }
+      if (mailed) await markPriceChangeNotified(c.env.DB, res.changeId);
+      flash = mailed ? 'pris' : 'pris-uden-mail';
+    } else if (action === 'opsig' || action === 'genoptag') {
+      await setCancelAtPeriodEnd(c.env, subId, action === 'opsig');
+      flash = action === 'opsig' ? 'opsagt' : 'genoptaget';
+    } else return c.text('Ugyldig anmodning.', 400);
+    // Opdatér med det samme (webhooken gør det også).
+    const fresh = await stripeRequest<StripeSubscription>(c.env, 'GET', `/v1/subscriptions/${subId}`);
+    await upsertSubscription(c.env, customer.id, fresh);
+  } catch (err) {
+    await logError(c.env.DB, `admin.customer.${action}`, err);
+    const msg = err instanceof StripeError ? err.message : 'Ukendt fejl';
+    return customerView(c, id, { error: `Handlingen mislykkedes. Stripe svarede: ${msg}`, status: 502 });
+  }
+  return c.redirect(`/admin/kunder/${id}?besked=${flash}#${subId}`, 303);
+});
+
 
 export default admin;

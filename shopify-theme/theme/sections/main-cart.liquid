@@ -1,7 +1,8 @@
 {%- comment -%}
   Kurv som tilbudsforespørgsel. Der betales ikke på hjemmesiden: kurvens indhold sendes
-  med Shopifys kontaktformular, og Veyro sender et tilbud og opretter kunden som fast
-  kunde med løbende faktura i kundepanelet. Kurven tømmes, når forespørgslen er sendt.
+  med Shopifys kontaktformular, og Veyro sender et tilbud med et personligt betalingslink
+  (Stripe, via kundepanelet på kunde.veyro.dk). Shopify opkræver intet, så samme ydelse
+  ikke kan blive betalt to steder. Kurven tømmes, når forespørgslen er sendt.
 {%- endcomment -%}
 {%- liquid
   assign fid = 'CartRequest'
@@ -128,11 +129,11 @@
   "settings": [
     { "type": "text", "id": "subscription_type", "label": "Produkttype for abonnementer", "default": "Abonnement" },
     { "type": "text", "id": "heading", "label": "Overskrift over forespørgsel", "default": "Send forespørgsel" },
-    { "type": "richtext", "id": "text", "label": "Tekst over forespørgsel", "default": "<p>Du betaler ikke noget nu. Vi sender dig et tilbud på det, du har valgt. Når du har sagt ja, opretter vi dig som fast kunde, og du får løbende en faktura, indtil du opsiger abonnementet.</p>" },
+    { "type": "richtext", "id": "text", "label": "Tekst over forespørgsel", "default": "<p>Du betaler ikke noget nu. Vi sender dig et tilbud på det, du har valgt. Siger du ja, får du et personligt link, hvor du tilmelder dig sikkert hos Stripe. Derefter trækkes betalingen automatisk, og du får en faktura hver gang, indtil du opsiger abonnementet.</p>" },
     { "type": "text", "id": "form_name", "label": "Formularens navn i e-mailen", "default": "Kurv – forespørgsel på abonnement" },
     { "type": "text", "id": "submit_label", "label": "Knaptekst", "default": "Send forespørgsel" },
     { "type": "text", "id": "success_heading", "label": "Succes – overskrift", "default": "Tak, vi har modtaget din forespørgsel" },
-    { "type": "richtext", "id": "success_text", "label": "Succes – tekst", "default": "<p>Vi sender dig et tilbud på e-mail. Når du har accepteret det, opretter vi dig som fast kunde og sender den første faktura.</p>" }
+    { "type": "richtext", "id": "success_text", "label": "Succes – tekst", "default": "<p>Vi sender dig et tilbud på e-mail med et personligt link, hvor du ser pris, moms og vilkår og tilmelder dig sikkert hos Stripe.</p>" }
   ]
 }
 {% endschema %}
