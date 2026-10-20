@@ -9,11 +9,6 @@ on:
         description: 'Kunden (filnavnet i kunder/ uden .json)'
         required: true
         default: 'einar-kornerup'
-  push:
-    branches: ['claude/project-thread-m8ox59']
-    paths:
-      - 'scripts/produktionstest.mjs'
-      - '.github/workflows/produktionstest.yml'
 
 concurrency:
   group: produktionstest
