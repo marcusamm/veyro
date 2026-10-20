@@ -24,8 +24,11 @@ for (const [navn, valg] of Object.entries(valgte)) {
     img = img.extract({ left: Math.round(beskaer.left * m.width), top: Math.round(beskaer.top * m.height), width: Math.round(beskaer.width * m.width), height: Math.round(beskaer.height * m.height) });
   }
   const forberedt = await img.toBuffer();
-  await sharp(forberedt).resize({ width: 1600, height: 1067, fit: 'cover', position: 'attention' }).jpeg({ quality: 80, mozjpeg: true }).toFile(join(ud, `${navn}.jpg`));
-  await sharp(forberedt).resize({ width: 800, height: 534, fit: 'cover', position: 'attention' }).jpeg({ quality: 78, mozjpeg: true }).toFile(join(ud, `${navn}-800.jpg`));
+  const b = valg.b ?? 1600;
+  const h = valg.h ?? 1067;
+  const pos = valg.position ?? 'attention';
+  await sharp(forberedt).resize({ width: b, height: h, fit: 'cover', position: pos }).jpeg({ quality: 80, mozjpeg: true }).toFile(join(ud, `${navn}.jpg`));
+  await sharp(forberedt).resize({ width: 800, height: Math.round((800 * h) / b), fit: 'cover', position: pos }).jpeg({ quality: 78, mozjpeg: true }).toFile(join(ud, `${navn}-800.jpg`));
   kilder.push({ fil: navn, titel: k.titel, fotograf: k.fotograf, licens: k.licens, licensUrl: k.licensUrl, side: k.side });
   console.log(`${navn}: ${id}`);
 }
