@@ -11,6 +11,7 @@ import offer from './routes/offer';
 import pub from './routes/public';
 import webhook from './routes/webhook';
 import adminSite from './routes/admin-site';
+import adminStats from './routes/admin-stats';
 import site, { isSiteRequest } from './site/app';
 import { purgeOldLeads } from './site/leads';
 import { CSS, FAVICON, JS } from './views/assets';
@@ -79,6 +80,7 @@ app.route('/', card);
 app.route('/', offer);
 app.route('/konto', account);
 app.route('/admin', adminSite);
+app.route('/admin', adminStats);
 app.route('/admin', admin);
 
 app.notFound((c) =>

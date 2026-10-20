@@ -383,6 +383,10 @@ Salgshjemmesiden kører nu i samme Worker som kundepanelet. Domænet afgør, hva
 
 **Sikkerhed og hastighed.** Hjemmesiden har sin egen CSP med nonce på alle scripts; Trustpilots widget indlæses kun efter samtykke. Færdige sider gemmes pr. indholdsversion (i hukommelsen og i `site_cache`), så de kun gengives igen efter en ændring.
 
+### Statistik og Excel
+
+**Admin › Statistik** (`/admin/statistik`) viser sidevisninger, forespørgsler, konvertering, betalt omsætning, sendte tilbud, nye kunder, aktive abonnementer og fast månedlig omsætning for en periode (7/30/90 dage, 12 måneder eller en kalendermåned), med ændringen i forhold til perioden før og grafer pr. dag. Omsætningen hentes direkte fra Stripe (betalte fakturaer efter betalingsdato); svarer Stripe ikke, bruges kundepanelets egne betalinger. **Download Excel** giver en .xlsx-fil for perioden med arkene Oversigt, Pr. dag, Sider, Forespørgsler, Tilbud, Betalinger og Nye kunder (`src/lib/stats.ts`, `src/lib/xlsx.ts`).
+
 ### Flytning fra Shopify (rækkefølge)
 
 1. Flet pull requesten, og kør derefter **Actions › Deploy kundepanel › Run workflow** på GitHub. Den opretter migrationsloggen, hvis den mangler (produktionsdatabasen blev oprettet uden, så `npm run migrate` stopper ved 0001), kører de manglende migrationer (0004 og 0005, kun nye kolonner og tabeller), udruller koden og tjekker siderne. Loggen viser et D1 Time Travel-bogmærke fra før migrationerne til en eventuel tilbagerulning.
