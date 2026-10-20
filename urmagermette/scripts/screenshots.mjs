@@ -23,8 +23,20 @@ async function side(viewport, navn) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: viewport.width < 500 ? 2 : 1, locale: 'da-DK', timezoneId: 'Europe/Copenhagen' });
   const p = await ctx.newPage();
   p.on('console', (m) => {
-    if (m.type() === 'error' && !/Failed to load resource.*(401|409)/.test(m.text()) && !(p.url().includes('findes-ikke') && /404/.test(m.text()))) problemer.push(`[${navn}] konsolfejl: ${m.text().slice(0, 300)}`);
+    if (m.type() === 'error' && !/ERR_TUNNEL|ERR_PROXY|cloudflareinsights|502/.test(m.text()) && !/Failed to load resource.*(401|409)/.test(m.text()) && !(p.url().includes('findes-ikke') && /404/.test(m.text()))) problemer.push(`[${navn}] konsolfejl: ${m.text().slice(0, 300)}`);
   });
+  // Forsøg igen ved midlertidige netværksfejl
+  const goto = p.goto.bind(p);
+  p.goto = async (url, opts) => {
+    for (let i = 0; ; i++) {
+      try {
+        return await goto(url, opts);
+      } catch (e) {
+        if (i >= 3) throw e;
+        await p.waitForTimeout(1500);
+      }
+    }
+  };
   p.on('pageerror', (e) => problemer.push(`[${navn}] sidefejl: ${e.message.slice(0, 300)}`));
   return { ctx, p };
 }
