@@ -1,6 +1,6 @@
 {%- comment -%}
   Abonnementer: løbende vedligeholdelse med eller uden hosting.
-  Har blokken et Shopify-produkt med en abonnementsplan, kan abonnementet lægges i kurven.
+  Har blokken et aktivt Shopify-produkt, kan abonnementet lægges i kurven (sendes som forespørgsel).
   Ellers går knappen til knaplinket eller kontaktformularen. „Hent tilbud“ går altid
   til kontaktformularen med abonnementet forvalgt.
 {%- endcomment -%}
@@ -68,7 +68,7 @@
     { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Abonnement" },
     { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Løbende vedligeholdelse – med eller uden hosting" },
     { "type": "richtext", "id": "text", "label": "Tekst" },
-    { "type": "text", "id": "terms", "label": "Abonnementsvilkår under prisen", "default": "Løbende abonnement, der betales hver måned" },
+    { "type": "text", "id": "terms", "label": "Abonnementsvilkår under prisen", "default": "Løbende abonnement med fast månedspris, til du opsiger det" },
     { "type": "richtext", "id": "footnote", "label": "Fodnote" }
   ],
   "blocks": [
@@ -88,7 +88,7 @@
         { "type": "text", "id": "button_label", "label": "Knaptekst", "default": "Hør mere" },
         { "type": "url", "id": "link", "label": "Knaplink", "info": "Tomt felt linker til kontaktformularen med abonnementet forvalgt." },
         { "type": "text", "id": "form_key", "label": "Forvalg i kontaktformular", "default": "abonnement-vedligeholdelse" },
-        { "type": "product", "id": "product", "label": "Abonnementsprodukt i Shopify (valgfrit)", "info": "Har produktet en abonnementsplan (Shopify Subscriptions), vises „Læg i kurv“, og prisen hentes fra produktet. Uden plan bruges knaplinket." }
+        { "type": "product", "id": "product", "label": "Abonnementsprodukt i Shopify (valgfrit)", "info": "Er produktet aktivt i webshoppen, vises „Læg i kurv“, og prisen hentes fra produktet. Ellers bruges knaplinket." }
       ]
     }
   ],

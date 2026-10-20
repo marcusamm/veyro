@@ -161,11 +161,14 @@
   "subscriptions": {
     "get_quote": "Hent tilbud",
     "per_month": "/md.",
-    "terms": "Løbende abonnement, der betales hver måned.",
-    "choose_plan": "Vælg abonnement",
+    "terms": "Løbende abonnement med fast månedspris, til du opsiger det.",
+    "line": "Løbende abonnement",
+    "no_payment": "Du betaler ikke nu. Fra kurven sender du en forespørgsel, og vi sender dig et tilbud og derefter løbende en faktura.",
     "quote_text": "Skal løsningen tilpasses, eller har du allerede en hjemmeside? Så giver vi dig et tilbud.",
-    "cart_note": "Abonnementer i kurven er løbende og betales hver måned, til du opsiger dem.",
     "cart_quote": "Har du brug for noget andet end et fast abonnement?",
-    "see_plans": "Se abonnementerne"
+    "see_plans": "Se abonnementerne",
+    "phone": "Telefon",
+    "request_message": "Besked",
+    "request_placeholder": "Fx hvornår du gerne vil i gang, eller hvad din hjemmeside skal kunne."
   }
 }

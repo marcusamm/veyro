@@ -236,7 +236,6 @@
             "note": "",
             "button_label": "Vælg Starter",
             "form_key": "abonnement-starter",
-            "link": "https://kunde.veyro.dk/bestil?plan=starter",
             "product": "starter"
           }
         },
@@ -253,7 +252,6 @@
             "note": "",
             "button_label": "Vælg Business",
             "form_key": "abonnement-business",
-            "link": "https://kunde.veyro.dk/bestil?plan=business",
             "product": "business"
           }
         },
@@ -270,7 +268,6 @@
             "note": "",
             "button_label": "Vælg Premium",
             "form_key": "abonnement-premium",
-            "link": "https://kunde.veyro.dk/bestil?plan=premium",
             "product": "premium"
           }
         }
@@ -285,9 +282,9 @@
         "anchor": "abonnement",
         "eyebrow": "Abonnement",
         "heading": "Hjemmeside som abonnement",
-        "text": "<p>Vi bygger, hoster og vedligeholder din hjemmeside for en fast pris om måneden. Vælg et abonnement, eller hent et tilbud, hvis din løsning skal tilpasses.</p>",
+        "text": "<p>Vi bygger, hoster og vedligeholder din hjemmeside for en fast pris om måneden. Læg et abonnement i kurven og send en forespørgsel, eller hent et tilbud, hvis din løsning skal tilpasses. Du betaler ikke på hjemmesiden: vi sender dig et tilbud og derefter løbende en faktura.</p>",
         "footnote": "<p>Alle priser er inkl. moms. Har du allerede en hjemmeside og hosting, kan vi også nøjes med at vedligeholde den, hvor den ligger. Skriv til os for en pris. Abonnementet kan opsiges til udgangen af den betalte periode, og du styrer det selv i kundepanelet.</p>",
-        "terms": "Løbende abonnement, der betales hver måned"
+        "terms": "Løbende abonnement med fast månedspris, til du opsiger det"
       }
     },
     "solutions": {

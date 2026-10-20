@@ -35,6 +35,7 @@ const G = {};
 const engine = new Liquid({ globals: G, root: [path.join(THEME, 'snippets')], extname: '.liquid', strictFilters: false, jsTruthy: false });
 const t = (key, args = {}) => { let v = key.split('.').reduce((o, k) => o?.[k], locale); if (v == null) return `MISSING:${key}`; return String(v).replace(/{{\s*(\w+)\s*}}/g, (_, k) => args[k] ?? ''); };
 engine.registerFilter('t', function (key, ...args) { const o = {}; for (const a of args) if (Array.isArray(a)) o[a[0]] = a[1]; return t(key, o); });
+engine.registerFilter('cart_clear', () => '');
 engine.registerFilter('asset_url', (f) => `/assets/${f}`);
 engine.registerFilter('stylesheet_tag', (u) => `<link rel="stylesheet" href="${u}">`);
 engine.registerFilter('preload_tag', (u) => `<link rel="preload" href="${u}" as="font" type="font/woff2" crossorigin>`);
@@ -104,7 +105,7 @@ for (const [name, url, tpl, title] of routes) {
   const pageType = name === 'index' ? 'index' : name === '404' ? '404' : name === 'cart' ? 'cart' : name.startsWith('product') ? 'product' : 'page';
   const pageObj = pages[url.split('/').pop()] || { title, content: '' };
   if (name === 'cookiepolitik') pageObj.content = '<h2>Cookies</h2><p>Lokal testtekst.</p>';
-  const globals = { product: products.business, cart, settings, pages, linklists, shop: { name: 'Veyro', url: 'https://veyro.dk', email: 'salg@veyro.dk' }, routes: { root_url: '/', cart_url: '/cart', search_url: '/search' }, request: { locale: { iso_code: 'da' }, page_type: pageType }, page: pageObj, page_title: title, canonical_url: 'https://veyro.dk' + url, template: { name: pageType, suffix: tpl.startsWith('page.') && tpl !== 'page.json' ? tpl.slice(5, -5) : null }, current_page: 1, content_for_header: '' };
+  const globals = { product: products.business, cart, settings, pages, linklists, shop: { name: 'Veyro', url: 'https://veyro.dk', email: 'salg@veyro.dk' }, routes: { root_url: '/', cart_url: '/cart', cart_clear_url: '/cart/clear', search_url: '/search' }, request: { locale: { iso_code: 'da' }, page_type: pageType }, page: pageObj, page_title: title, canonical_url: 'https://veyro.dk' + url, template: { name: pageType, suffix: tpl.startsWith('page.') && tpl !== 'page.json' ? tpl.slice(5, -5) : null }, current_page: 1, content_for_header: '' };
   for (const k of Object.keys(G)) delete G[k]; Object.assign(G, globals);
   const tj = readJson('templates/' + tpl);
   let main = '';

@@ -5,22 +5,14 @@
 {%- liquid
   assign current_variant = product.selected_or_first_available_variant
   assign kontakt = pages['kontakt'].url | default: '/pages/kontakt'
-  assign has_plans = false
-  if product.selling_plan_groups.size > 0
-    assign has_plans = true
-    assign current_plan = current_variant.selected_selling_plan_allocation.selling_plan | default: product.selling_plan_groups.first.selling_plans.first
-  endif
   comment
-    Et abonnement (produkttypen fra temaindstillingen eller et produkt, der kræver en plan) kan kun købes med en abonnementsplan.
+    Abonnementer betales ikke her: kurven sendes som en forespørgsel, og Veyro sender tilbud og faktura.
   endcomment
-  assign is_subscription = has_plans
-  if product.requires_selling_plan or product.type == section.settings.subscription_type
+  assign is_subscription = false
+  if product.type == section.settings.subscription_type
     assign is_subscription = true
   endif
-  assign can_buy = true
-  if is_subscription and has_plans == false
-    assign can_buy = false
-  endif
+  assign can_buy = current_variant.available
   assign quote_url = kontakt | append: '#formular'
   if is_subscription
     assign quote_url = kontakt | append: '?ydelse=abonnement-' | append: product.handle | append: '#formular'
@@ -62,26 +54,6 @@
 
       {%- if can_buy -%}
       {%- form 'product', product, id: 'ProductForm', class: 'product__form' -%}
-        {%- if has_plans -%}
-          {%- assign plan_count = 0 -%}
-          {%- for group in product.selling_plan_groups -%}{%- assign plan_count = plan_count | plus: group.selling_plans.size -%}{%- endfor -%}
-          {%- if plan_count > 1 -%}
-            <fieldset class="field sub-plans">
-              <legend>{{ 'subscriptions.choose_plan' | t }}</legend>
-              {%- for group in product.selling_plan_groups -%}
-                {%- for plan in group.selling_plans -%}
-                  <label class="sub-plans__option">
-                    <input type="radio" name="selling_plan" value="{{ plan.id }}"{% if plan.id == current_plan.id %} checked{% endif %}>
-                    <span>{{ plan.name | escape }}</span>
-                  </label>
-                {%- endfor -%}
-              {%- endfor -%}
-            </fieldset>
-          {%- else -%}
-            <input type="hidden" name="selling_plan" value="{{ current_plan.id }}">
-            <p class="small muted">{{ current_plan.name | escape }}</p>
-          {%- endif -%}
-        {%- endif -%}
         {%- unless product.has_only_default_variant -%}
           <div class="field">
             <label for="ProductVariant">{{ 'products.options' | t }}</label>
@@ -104,11 +76,12 @@
           <button type="submit" name="add" class="btn btn--{% if is_subscription %}primary{% else %}secondary{% endif %} btn--block"{% unless current_variant.available %} disabled{% endunless %}>
             {%- if current_variant.available -%}{{ 'products.add_to_cart' | t }}{%- else -%}{{ 'products.sold_out' | t }}{%- endif -%}
           </button>
-          {%- if section.settings.show_dynamic_checkout -%}
+          {%- if section.settings.show_dynamic_checkout and is_subscription == false -%}
             {{ form | payment_button }}
           {%- endif -%}
         </div>
       {%- endform -%}
+      {%- if is_subscription -%}<p class="small muted product__no-payment">{{ 'subscriptions.no_payment' | t }}</p>{%- endif -%}
       {%- endif -%}
 
       <div class="product__quote">
@@ -152,7 +125,7 @@
   "name": "Produkt / pakke",
   "tag": "div",
   "settings": [
-    { "type": "text", "id": "subscription_type", "label": "Produkttype for abonnementer", "info": "Produkter med denne type vises som månedlige abonnementer og kan kun lægges i kurven med en abonnementsplan.", "default": "Abonnement" },
+    { "type": "text", "id": "subscription_type", "label": "Produkttype for abonnementer", "info": "Produkter med denne type vises som månedlige abonnementer. Kurven sendes som en forespørgsel uden betaling.", "default": "Abonnement" },
     { "type": "checkbox", "id": "show_dynamic_checkout", "label": "Vis dynamiske betalingsknapper", "info": "F.eks. Shop Pay, Apple Pay og MobilePay, hvis de er aktiveret i Shopify Payments.", "default": true },
     { "type": "richtext", "id": "note", "label": "Note under beskrivelsen", "default": "<p>I tvivl om pakken passer til din hjemmeside? <a href=\"/pages/kontakt\">Skriv til os</a> før du køber.</p>" }
   ]
