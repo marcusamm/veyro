@@ -200,6 +200,32 @@ textarea.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:
 .file-grid li{display:flex;flex-direction:column;gap:8px}
 .file-grid img{width:100%;aspect-ratio:4/3;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:10px}
 tr.row-new td{background:rgba(255,90,31,.06)}
+.stats-filter select{width:auto;min-width:210px}
+.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(min-width:900px){.kpi-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.kpi{padding:18px 20px}
+.kpi__value{font-size:26px;font-weight:650;letter-spacing:-.02em;line-height:1.2;margin:4px 0;overflow-wrap:anywhere}
+.delta{font-weight:600;color:var(--muted)}
+.delta.up{color:var(--ok)}
+.delta.down{color:var(--err)}
+.chart{margin:0;position:relative}
+.chart figcaption{margin-bottom:8px}
+.chart__svg{display:block;width:100%;height:auto;overflow:visible}
+.chart__svg .grid{stroke:var(--line);stroke-width:1}
+.chart__svg .axis{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.chart__svg .now{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.chart__svg .area{fill:var(--accent);opacity:.08}
+.chart__svg .prev{fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 4;opacity:.6}
+.chart__svg .hit{fill:transparent;cursor:crosshair}
+.chart__svg .bar{fill:var(--accent)}
+.chart__svg [hidden]{display:none}
+@media(max-width:639px){.chart__svg .axis{font-size:22px}.chart__svg .now{stroke-width:3}}
+.chart__svg .cross{stroke:var(--line-strong);stroke-width:1}
+.chart__svg .dot{fill:var(--accent);stroke:var(--surface);stroke-width:2}
+.chart__legend{display:inline-flex;align-items:center;gap:6px}
+.lg{display:inline-block;width:16px;height:0;border-top:2px solid var(--accent);margin-left:8px}
+.lg-prev{border-top:2px dashed var(--muted);opacity:.7}
+.chart__tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);font-size:13px;padding:6px 10px;border-radius:8px;white-space:nowrap;transform:translate(-50%,-100%);z-index:2}
 .tabs{gap:8px}
 input[type=color]{width:64px;height:40px;padding:2px;border:1px solid var(--line-strong);border-radius:8px;background:#fff}
 input[type=file]{font:inherit;font-size:15px}
@@ -267,6 +293,27 @@ window.addEventListener('pageshow', function (e) {
     delete f.dataset.submitted;
     f.querySelectorAll('[aria-disabled]').forEach(function (b) { b.removeAttribute('aria-disabled'); });
   });
+});
+// Grafer i statistik: krydslinje og tooltip ved musen
+document.querySelectorAll('svg[data-chart]').forEach(function (svg) {
+  var fig = svg.closest('figure'); if (!fig) return;
+  var tip = fig.querySelector('.chart__tip'), cross = svg.querySelector('.cross'), dot = svg.querySelector('.dot');
+  var show = function (r) {
+    var x = r.dataset.x, y = r.dataset.y;
+    cross.setAttribute('x1', x); cross.setAttribute('x2', x); cross.removeAttribute('hidden');
+    dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.removeAttribute('hidden');
+    var box = svg.getBoundingClientRect(), fb = fig.getBoundingClientRect(), k = box.width / svg.viewBox.baseVal.width;
+    tip.textContent = r.dataset.tip; tip.hidden = false;
+    var left = box.left - fb.left + x * k, half = tip.offsetWidth / 2;
+    tip.style.left = Math.min(Math.max(left, half), fb.width - half) + 'px';
+    tip.style.top = (box.top - fb.top + y * k - 10) + 'px';
+  };
+  var hide = function () { tip.hidden = true; cross.setAttribute('hidden', ''); dot.setAttribute('hidden', ''); };
+  svg.querySelectorAll('.hit').forEach(function (r) {
+    r.addEventListener('mouseenter', function () { show(r); });
+    r.addEventListener('touchstart', function () { show(r); }, { passive: true });
+  });
+  svg.addEventListener('mouseleave', hide);
 });
 // Tegntæller for tekstfelter med maxlength
 document.querySelectorAll('textarea[maxlength][data-counter]').forEach(function (t) {

@@ -446,6 +446,53 @@ describe('Admin: forespørgsler → tilbud', () => {
   });
 });
 
+describe('Admin: statistik', () => {
+  /** Læser en ukomprimeret ZIP (som buildXlsx laver) til { filnavn: tekst } */
+  function unzip(buf) {
+    const files = {};
+    let i = 0;
+    while (buf.readUInt32LE(i) === 0x04034b50) {
+      const size = buf.readUInt32LE(i + 18);
+      const nameLen = buf.readUInt16LE(i + 26);
+      const extra = buf.readUInt16LE(i + 28);
+      const name = buf.subarray(i + 30, i + 30 + nameLen).toString('utf8');
+      const start = i + 30 + nameLen + extra;
+      files[name] = buf.subarray(start, start + size).toString('utf8');
+      i = start + size;
+    }
+    return files;
+  }
+
+  it('viser nøgletal og grafer for en periode', async () => {
+    expect((await new Client(stack.base).get('/admin/statistik')).headers.get('location')).toBe('/admin/login');
+    const r = await admin.get('/admin/statistik?periode=30');
+    expect(r.status).toBe(200);
+    expect(r.html).toContain('Sidevisninger pr. dag');
+    expect(r.html).toContain('Forespørgsler pr. kilde');
+    expect(r.html).toContain('data-chart');
+    expect(r.html).toContain('href="/admin/statistik/excel?periode=30"');
+    const month = new Date().toISOString().slice(0, 7);
+    const m = await admin.get(`/admin/statistik?periode=${month}`);
+    expect(m.status).toBe(200);
+    expect(m.html).toContain(`value="${month}" selected`);
+    // Ukendt periode falder tilbage til 30 dage
+    expect((await admin.get('/admin/statistik?periode=x')).html).toContain('value="30" selected');
+  });
+
+  it('downloader måneden som Excel-fil med et ark pr. emne', async () => {
+    const month = new Date().toISOString().slice(0, 7);
+    const res = await fetch(`${stack.base}/admin/statistik/excel?periode=${month}`, { headers: { Cookie: admin.cookieHeader() } });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('spreadsheetml.sheet');
+    expect(res.headers.get('content-disposition')).toContain(`veyro-statistik-${month}.xlsx`);
+    const files = unzip(Buffer.from(await res.arrayBuffer()));
+    expect(Object.keys(files)).toEqual(expect.arrayContaining(['[Content_Types].xml', 'xl/workbook.xml', 'xl/styles.xml', 'xl/worksheets/sheet7.xml']));
+    for (const name of ['Oversigt', 'Pr. dag', 'Sider', 'Forespørgsler', 'Tilbud', 'Betalinger', 'Nye kunder']) expect(files['xl/workbook.xml']).toContain(`name="${name}"`);
+    expect(files['xl/worksheets/sheet4.xml']).toContain('mette@firma.dk');
+    expect(files['xl/worksheets/sheet3.xml']).toContain('/pages/om-os');
+  });
+});
+
 describe('Temapakken', () => {
   it('src/site/theme.generated.ts svarer til site/', () => {
     execFileSync('node', [path.join(ROOT, 'scripts/build-site.mjs'), '--check'], { cwd: ROOT, stdio: 'pipe' });
