@@ -28,6 +28,7 @@ Opret `kunder/<kundenavn>.json` (små bogstaver og bindestreger, fx `nordlys.jso
 - `domaene`: valgfri. Domænet skal ligge i Veyros Cloudflare-konto. Uden domæne kører systemet på `<adresse>.veyro.dk` (se `KUNDE_DOMAENE`), eller på `<kundenavn>-lager.<WORKERS_SUBDOMAIN>.workers.dev`.
 - `admins`: e-mails, der kan logge ind som ejer første gang og oprette resten under Indstillinger.
 - `afsender`: valgfri. Uden den bruges repo-variablen `EMAIL_FROM_STANDARD`. Afsenderdomænet skal være verificeret i Resend.
+- `demo`: valgfri. `true` gør installationen til en demomodel: fiktive eksempeldata lægges ind ved første besøg, login med ét klik som ejer, indkøber eller medarbejder, og demodata kan nulstilles. Brug det aldrig til en rigtig kunde.
 - `udseende`: valgfri. `farve` er kundens farve som `#RRGGBB`, og `logo` er en billedfil (PNG, JPG, WebP eller SVG, højst 200 KB), der ligger her i `kunder/`.
 
 Worker og database får navnet `<kundenavn>-lager` eller `<kundenavn>-bestilling`. I lagerstyringen lægges firmanavnet (`navn`), farven og logoet ind ved deploy, så systemet er klar ved første login. Det sker kun, når de ændres i kundefilen, så det, kunden selv retter under Indstillinger, bliver stående. Varebestillingen sættes stadig op under Indstillinger.
