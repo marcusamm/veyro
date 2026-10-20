@@ -21,6 +21,16 @@ import { SERVICE_WORKER, iconColors, manifest } from './views/pwa';
 
 const app = new Hono<AppEnv>();
 
+// http:// på systemets egen adresse sendes videre til https://, så intet (fx login-links) går ukrypteret
+app.use('*', async (c, next) => {
+  const url = new URL(c.req.url);
+  if (url.protocol === 'http:' && c.env.APP_URL?.startsWith('https://') && new URL(c.env.APP_URL).host === url.host) {
+    url.protocol = 'https:';
+    return c.redirect(url.toString(), 301);
+  }
+  await next();
+});
+
 // Sikkerheds-headers på alle svar
 app.use('*', async (c, next) => {
   await next();

@@ -50,3 +50,12 @@ Under *Settings → Secrets and variables → Actions*:
 - Variables (valgfrie): `EMAIL_FROM_STANDARD` (standard `Veyro <login@veyro.dk>`) og `WORKERS_SUBDOMAIN` (standard `marcus-ammitzboell`) overskriver standardværdierne i workflowet. `KUNDE_DOMAENE` (standard `veyro.dk`) giver alle kunder uden eget domæne en adresse på det domæne; domænet skal ligge i samme Cloudflare-konto.
 
 Deploy af én kunde manuelt: fanen *Actions → Deploy kunder → Run workflow* med kundens filnavn.
+
+## Kontrol efter aflevering eller opdatering
+
+Fanen *Actions → Produktionstest → Run workflow* med kundens filnavn kontrollerer den publicerede lagerstyring fra start til slut: login-siden, hovedsiderne på desktop og mobil, oprettelse af et job og registrering af forbrug. Testen logger ind med en midlertidig session for en eksisterende ejer (repo-variablen `PRODUKTIONSTEST_EMAIL`, ellers den sidste admin i kundefilen), så der ikke sendes mails eller oprettes testkonti, og den fjerner sit kontroljob og sætter beholdningen tilbage bagefter. Skærmbillederne gemmes som artefakt på kørslen.
+
+## Gendannelse
+
+- Kode: *Cloudflare → Workers → `<kundenavn>-lager` → Deployments* kan rulle tilbage til en tidligere version.
+- Data: D1 Time Travel gendanner databasen til et tidspunkt inden for de seneste 30 dage, fx `npx wrangler d1 time-travel restore <kundenavn>-lager --timestamp=2026-10-20T03:25:00Z`.
