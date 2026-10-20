@@ -385,8 +385,8 @@ Salgshjemmesiden kører nu i samme Worker som kundepanelet. Domænet afgør, hva
 
 ### Flytning fra Shopify (rækkefølge)
 
-1. Kør migrationerne mod produktionen, før koden udrulles: `npm run migrate` (0004 og 0005).
-2. Flet pull requesten. Workers Builds udruller, og `ny.veyro.dk` oprettes automatisk som prøveadresse (den er skjult for søgemaskiner). Shopify kører videre uændret på `veyro.dk`.
+1. Flet pull requesten, og kør derefter **Actions › Deploy kundepanel › Run workflow** på GitHub. Den opretter migrationsloggen, hvis den mangler (produktionsdatabasen blev oprettet uden, så `npm run migrate` stopper ved 0001), kører de manglende migrationer (0004 og 0005, kun nye kolonner og tabeller), udruller koden og tjekker siderne. Loggen viser et D1 Time Travel-bogmærke fra før migrationerne til en eventuel tilbagerulning.
+2. `ny.veyro.dk` oprettes ved udrulningen som prøveadresse (den er skjult for søgemaskiner). Shopify kører videre uændret på `veyro.dk`.
 3. Gennemgå siden på `https://ny.veyro.dk`, send en test-forespørgsel, og ret indhold i admin.
 4. **Domæneskiftet (kræver jeres godkendelse):** I Cloudflare › veyro.dk › DNS slettes de poster for `veyro.dk` og `www`, der peger på Shopify (Shopifys standard er A `23.227.38.65` og CNAME `shops.myshopify.com`; tjek de faktiske poster og notér dem til en eventuel tilbagerulning). **MX-, SPF-, DKIM- og andre mailposter må ikke røres**, ellers stopper e-mailen. Derefter tilføjes `veyro.dk` og `www.veyro.dk` som custom domains i `wrangler.toml` (som `kunde.veyro.dk`) og udrulles.
 5. Tjek `https://veyro.dk`, en formular og kurven. Indsend `https://veyro.dk/sitemap.xml` i Google Search Console.
