@@ -1,0 +1,43 @@
+{%- comment -%}
+  Købsknapper til et abonnement: „Læg i kurv“ og „Hent tilbud“.
+  Der betales ikke på hjemmesiden: kurven sendes som en forespørgsel (se main-cart).
+  „Læg i kurv“ vises, når produktet er tilgængeligt i webshoppen. Ellers bruges fallback-linket.
+  Parametre: product, quote_url, fallback_url, fallback_label, primary (bool), id
+{%- endcomment -%}
+{%- liquid
+  assign can_subscribe = false
+  if product != blank
+    assign sub_variant = product.selected_or_first_available_variant
+    if sub_variant.available
+      assign can_subscribe = true
+    endif
+  endif
+  assign style_main = 'secondary'
+  if primary
+    assign style_main = 'primary'
+  endif
+  assign quote_label = 'subscriptions.get_quote' | t
+-%}
+<div class="sub-buy">
+  {%- if can_subscribe -%}
+    {%- form 'product', product, id: id, class: 'sub-buy__form' -%}
+      <input type="hidden" name="id" value="{{ sub_variant.id }}">
+      <button type="submit" name="add" class="btn btn--{{ style_main }} btn--block">
+        <span>{{ 'products.add_to_cart' | t }}</span>
+        <span class="btn__icon">{% render 'icon', name: 'cart', size: 18 %}</span>
+      </button>
+    {%- endform -%}
+  {%- elsif fallback_url != blank -%}
+    {%- if primary -%}
+      {% render 'button', label: fallback_label, url: fallback_url, style: 'primary', arrow: settings.button_arrow, class: 'btn--block' %}
+    {%- else -%}
+      {% render 'button', label: fallback_label, url: fallback_url, style: 'secondary', class: 'btn--block' %}
+    {%- endif -%}
+  {%- endif -%}
+  {%- if quote_url != blank and quote_url != fallback_url or can_subscribe -%}
+    <a class="btn btn--link sub-buy__quote" href="{{ quote_url }}">
+      <span>{{ quote_label }}</span>
+      <span class="btn__icon">{% render 'icon', name: 'arrow-right', size: 18 %}</span>
+    </a>
+  {%- endif -%}
+</div>

@@ -1,0 +1,150 @@
+{%- comment -%}
+  Trustpilot-anmeldelser. Profil-link og business unit id sættes under
+  Temaindstillinger › Trustpilot. Widgetten (TrustBox) henter et script fra
+  widget.trustpilot.com og sætter cookies, så den indlæses først, når den
+  besøgende har givet samtykke til den valgte kategori (se scriptet herunder).
+  Indtil da – og uden business unit id – vises kun knappen med link til profilen.
+{%- endcomment -%}
+{%- liquid
+  assign tp_url = settings.trustpilot_url | strip
+  assign tp_id = settings.trustpilot_business_unit_id | strip
+  assign tp_template = section.settings.widget
+  assign tp_height = '20px'
+  case section.settings.widget
+    when 'mini'
+      assign tp_template = '53aa8807dec7e10d38f59f32'
+      assign tp_height = '150px'
+    when 'micro_combo'
+      assign tp_template = '5419b6ffb0d04a076446a9af'
+    when 'micro_trustscore'
+      assign tp_template = '5419b637fa0340045cd0c936'
+    when 'micro_star'
+      assign tp_template = '5419b732fbfb950b10de65e5'
+    when 'custom'
+      assign tp_template = section.settings.custom_template_id | strip
+      assign tp_height = section.settings.custom_height | append: 'px'
+  endcase
+  if section.settings.scheme == 'dark'
+    assign tp_theme = 'dark'
+  else
+    assign tp_theme = 'light'
+  endif
+  assign consent_key = 'cookies.' | append: settings.trustpilot_consent
+  assign consent_label = consent_key | t | downcase
+-%}
+
+{%- if tp_url != blank or request.design_mode -%}
+<section class="section section--{{ section.settings.scheme }} note-banner trustpilot" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container">
+    <div class="note-banner__box trustpilot__box" data-reveal>
+      <span class="note-banner__icon"><svg class="icon icon--star" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></span>
+      <div class="note-banner__content">
+        <h2 class="h3 note-banner__title">{{ section.settings.heading }}</h2>
+        {%- if section.settings.text != blank -%}<div class="rte note-banner__text">{{ section.settings.text }}</div>{%- endif -%}
+
+        {%- if tp_url == blank -%}
+          <p class="small muted trustpilot__note">{{ 'trustpilot.editor_missing_url' | t }}</p>
+        {%- elsif tp_id != blank and tp_template != blank -%}
+          <div class="trustpilot__widget" data-trustpilot data-trustpilot-consent="{{ settings.trustpilot_consent }}">
+            <div class="trustpilot-widget"
+              data-locale="da-DK"
+              data-template-id="{{ tp_template | escape }}"
+              data-businessunit-id="{{ tp_id | escape }}"
+              data-style-height="{{ tp_height }}"
+              data-style-width="100%"
+              data-theme="{{ tp_theme }}"></div>
+            <p class="small muted trustpilot__note" data-trustpilot-consent-note>
+              {{ 'trustpilot.consent_note' | t: category: consent_label }}
+              {% if settings.cookie_banner_enabled -%}
+                <button type="button" class="link-button" data-cookie-open>{{ 'footer.cookie_settings' | t }}</button>
+              {%- endif -%}
+            </p>
+          </div>
+          <script>
+            (() => {
+              // Trustpilots script sætter cookies, så det hentes først efter samtykke.
+              const SRC = 'https://widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js';
+              const box = document.currentScript.previousElementSibling;
+              const category = box.dataset.trustpilotConsent || 'marketing';
+              const allowed = () => {
+                if (window.Shopify && window.Shopify.designMode) return true;
+                try {
+                  const d = JSON.parse(localStorage.getItem('theme-cookie-consent') || 'null');
+                  if (d && d.consent && category in d.consent) return !!d.consent[category];
+                } catch (e) {}
+                const api = window.Shopify && window.Shopify.customerPrivacy;
+                return !!(api && api.currentVisitorConsent && (api.currentVisitorConsent() || {})[category] === 'yes');
+              };
+              const render = () => window.Trustpilot && window.Trustpilot.loadFromElement(box.querySelector('.trustpilot-widget'), true);
+              const update = () => {
+                const ok = allowed();
+                box.querySelector('[data-trustpilot-consent-note]').hidden = ok;
+                if (!ok || box.dataset.loaded) return;
+                box.dataset.loaded = 'true';
+                if (window.Trustpilot) return render();
+                let script = document.querySelector(`script[src="${SRC}"]`);
+                if (!script) {
+                  script = document.createElement('script');
+                  script.src = SRC;
+                  script.async = true;
+                  document.head.appendChild(script);
+                }
+                script.addEventListener('load', render);
+              };
+              update();
+              document.addEventListener('theme:consent', update);
+              document.addEventListener('visitorConsentCollected', update);
+              // Shopifys samtykke-API indlæses asynkront; tjek igen, når det er klar.
+              if (window.Shopify && typeof window.Shopify.loadFeatures === 'function') {
+                window.Shopify.loadFeatures([{ name: 'consent-tracking-api', version: '0.1' }], (error) => { if (!error) update(); });
+              }
+            })();
+          </script>
+        {%- elsif request.design_mode -%}
+          <p class="small muted trustpilot__note">{{ 'trustpilot.editor_missing_id' | t }}</p>
+        {%- endif -%}
+      </div>
+      {%- if tp_url != blank -%}
+        <div class="note-banner__actions">
+          {%- if section.settings.link_label != blank -%}
+            <a class="btn btn--secondary" href="{{ tp_url | escape }}" target="_blank" rel="noopener"><span>{{ section.settings.link_label | escape }}</span></a>
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+{%- endif -%}
+
+{% stylesheet %}
+  .trustpilot__widget { margin-top: var(--space-4); }
+  .trustpilot__note { margin: var(--space-3) 0 0; max-width: 42em; }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Trustpilot",
+  "tag": "div",
+  "settings": [
+    { "type": "paragraph", "content": "Link og business unit id indstilles under Temaindstillinger › Trustpilot. Uden link vises sektionen ikke på siden." },
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
+    ], "default": "surface" },
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "anmeldelser" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Se hvad vores kunder siger" },
+    { "type": "richtext", "id": "text", "label": "Tekst", "default": "<p>Vi beder alle kunder om en ærlig anmeldelse på Trustpilot, når et projekt er afsluttet.</p>" },
+    { "type": "text", "id": "link_label", "label": "Knaptekst", "default": "Læs anmeldelserne" },
+    { "type": "header", "content": "Widget" },
+    { "type": "select", "id": "widget", "label": "Trustpilot-widget", "info": "Micro- og Mini-widgets er med i Trustpilots gratis abonnement. Vælg Andet for en betalt widget, f.eks. Carousel.", "options": [
+      { "value": "micro_combo", "label": "Micro Combo (stjerner og antal)" },
+      { "value": "micro_trustscore", "label": "Micro TrustScore" },
+      { "value": "micro_star", "label": "Micro Star" },
+      { "value": "mini", "label": "Mini" },
+      { "value": "custom", "label": "Andet (template-id)" }
+    ], "default": "micro_combo" },
+    { "type": "text", "id": "custom_template_id", "label": "Template-id", "info": "Kun ved Andet. Findes i Trustpilot Business › Integrationer › TrustBox." },
+    { "type": "range", "id": "custom_height", "label": "Højde ved Andet", "min": 20, "max": 600, "step": 10, "unit": "px", "default": 240 }
+  ],
+  "presets": [{ "name": "Trustpilot" }]
+}
+{% endschema %}

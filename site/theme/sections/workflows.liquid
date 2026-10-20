@@ -1,0 +1,74 @@
+{%- comment -%}
+  Arbejdsgange side om side: fx kundens onlinebestilling og medarbejderens interne ordreoprettelse.
+  Hvert trin skrives på sin egen linje som „Titel | Forklaring“.
+{%- endcomment -%}
+<section class="section section--{{ section.settings.scheme }} workflows" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container">
+    {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
+
+    <div class="workflows__grid">
+      {%- for block in section.blocks -%}
+        {%- assign steps = block.settings.steps | newline_to_br | split: '<br />' -%}
+        <article class="workflow" data-reveal style="--delay: {{ forloop.index0 | times: 90 }}ms" {{ block.shopify_attributes }}>
+          <header class="workflow__head">
+            <span class="workflow__icon">{% render 'icon', name: block.settings.icon, size: 22 %}</span>
+            <div>
+              {%- if block.settings.label != blank -%}<p class="workflow__label">{{ block.settings.label | escape }}</p>{%- endif -%}
+              <h3 class="h4 workflow__title">{{ block.settings.title | escape }}</h3>
+            </div>
+          </header>
+          <ol class="workflow__steps" role="list">
+            {%- for s in steps -%}
+              {%- assign line = s | strip -%}
+              {%- if line != blank -%}
+                {%- assign parts = line | split: '|' -%}
+                <li class="workflow__step">
+                  <span class="workflow__num" aria-hidden="true">{{ forloop.index }}</span>
+                  <div>
+                    <strong>{{ parts[0] | strip | escape }}</strong>
+                    {%- if parts[1] != blank -%}<span>{{ parts[1] | strip | escape }}</span>{%- endif -%}
+                  </div>
+                </li>
+              {%- endif -%}
+            {%- endfor -%}
+          </ol>
+          {%- if block.settings.note != blank -%}<p class="workflow__note small">{{ block.settings.note | escape }}</p>{%- endif -%}
+        </article>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Arbejdsgange",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
+    ], "default": "light" },
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "arbejdsgang" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Sådan fungerer det" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Fra bestilling til opdateret lager" },
+    { "type": "richtext", "id": "text", "label": "Tekst" }
+  ],
+  "blocks": [
+    {
+      "type": "flow",
+      "name": "Arbejdsgang",
+      "limit": 3,
+      "settings": [
+        { "type": "select", "id": "icon", "label": "Ikon", "options": [
+          { "value": "cart", "label": "Kurv" }, { "value": "user", "label": "Person" }, { "value": "phone", "label": "Telefon" },
+          { "value": "list", "label": "Liste" }, { "value": "box", "label": "Vare" }
+        ], "default": "cart" },
+        { "type": "text", "id": "label", "label": "Mærkat", "default": "Løsning 1" },
+        { "type": "text", "id": "title", "label": "Titel", "default": "Kunden bestiller online" },
+        { "type": "textarea", "id": "steps", "label": "Trin (én pr. linje: Titel | Forklaring)" },
+        { "type": "text", "id": "note", "label": "Note" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Arbejdsgange", "blocks": [{ "type": "flow" }, { "type": "flow" }] }]
+}
+{% endschema %}

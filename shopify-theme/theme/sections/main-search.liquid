@@ -1,0 +1,32 @@
+{%- paginate search.results by 12 -%}
+<section class="section section--light search">
+  <div class="container container--narrow">
+    <h1 class="h1">{{ 'search.title' | t }}</h1>
+    <form action="{{ routes.search_url }}" method="get" role="search" class="search__form">
+      <label class="visually-hidden" for="SearchInput">{{ 'search.label' | t }}</label>
+      <input class="search__input" type="search" id="SearchInput" name="q" value="{{ search.terms | escape }}" placeholder="{{ 'search.placeholder' | t }}">
+      <button class="btn btn--primary" type="submit">{{ 'search.submit' | t }}</button>
+    </form>
+    {%- if search.performed -%}
+      {%- if search.results_count > 0 -%}
+        <h2 class="h4">{{ 'search.results_for' | t: terms: search.terms }}</h2>
+        <ul class="search__results" role="list">
+          {%- for item in search.results -%}
+            <li class="card">
+              <h3 class="h5"><a href="{{ item.url }}">{{ item.title | escape }}</a></h3>
+              <p class="muted small">{{ item.content | strip_html | truncatewords: 30 }}</p>
+            </li>
+          {%- endfor -%}
+        </ul>
+        {% render 'pagination', paginate: paginate %}
+      {%- else -%}
+        <p>{{ 'search.no_results' | t: terms: search.terms }}</p>
+      {%- endif -%}
+    {%- endif -%}
+  </div>
+</section>
+{%- endpaginate -%}
+
+{% schema %}
+{ "name": "Søgning", "tag": "div", "settings": [] }
+{% endschema %}

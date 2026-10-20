@@ -1,0 +1,100 @@
+{%- comment -%}
+  Én ydelse i detaljer: problem, indhold, målgruppe, leverancer og CTA.
+  Tilføj sektionen én gang pr. ydelse på siden „Ydelser“.
+{%- endcomment -%}
+{%- liquid
+  assign anchor = section.settings.anchor | default: section.settings.title | handle
+  assign kontakt = pages['kontakt'].url | default: '/pages/kontakt'
+  assign cta_url = section.settings.cta_link
+  if cta_url == blank
+    assign cta_url = kontakt | append: '?ydelse=' | append: section.settings.form_key | append: '#formular'
+  endif
+-%}
+<section class="section section--{{ section.settings.scheme }} service-detail" id="{{ anchor }}" aria-labelledby="Title-{{ section.id }}">
+  <div class="container">
+  <div class="service-detail__inner">
+    <header class="service-detail__head" data-reveal>
+      <div class="service-detail__meta">
+        <span class="service-card__icon">{% render 'icon', name: section.settings.icon, size: 26 %}</span>
+        {%- if section.settings.number != blank -%}<span class="service-detail__num">{{ section.settings.number | escape }}</span>{%- endif -%}
+      </div>
+      <h2 class="h1" id="Title-{{ section.id }}">{{ section.settings.title | escape }}</h2>
+      {%- if section.settings.intro != blank -%}<div class="lead rte">{{ section.settings.intro }}</div>{%- endif -%}
+      <div class="service-detail__cta">
+        {% render 'button', label: section.settings.cta_label, url: cta_url, style: 'primary', arrow: settings.button_arrow %}
+        {% render 'button', label: section.settings.secondary_label, url: section.settings.secondary_link, style: 'link' %}
+      </div>
+    </header>
+
+    <div class="service-detail__body">
+      <div class="service-detail__block service-detail__block--problem" data-reveal>
+        <h3 class="tag tag--muted">{{ section.settings.problem_label | escape }}</h3>
+        <div class="rte">{{ section.settings.problem }}</div>
+      </div>
+
+      {%- assign includes = section.settings.includes | newline_to_br | split: '<br />' -%}
+      <div class="service-detail__block" data-reveal>
+        <h3 class="tag">{{ section.settings.includes_label | escape }}</h3>
+        <ul class="checklist" role="list">
+          {%- for i in includes -%}
+            {%- assign line = i | strip -%}
+            {%- if line != blank -%}<li>{% render 'icon', name: 'check', size: 16 %}<span>{{ line | escape }}</span></li>{%- endif -%}
+          {%- endfor -%}
+        </ul>
+      </div>
+
+      <div class="service-detail__split">
+        <div class="service-detail__block" data-reveal>
+          <h3 class="tag">{{ section.settings.audience_label | escape }}</h3>
+          <div class="rte">{{ section.settings.audience }}</div>
+        </div>
+        {%- assign deliverables = section.settings.deliverables | newline_to_br | split: '<br />' -%}
+        <div class="service-detail__block service-detail__block--deliver" data-reveal>
+          <h3 class="tag tag--accent">{{ section.settings.deliverables_label | escape }}</h3>
+          <ul class="deliverables" role="list">
+            {%- for d in deliverables -%}
+              {%- assign line = d | strip -%}
+              {%- if line != blank -%}<li>{{ line | escape }}</li>{%- endif -%}
+            {%- endfor -%}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Ydelse (detaljer)",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
+    ], "default": "light" },
+    { "type": "text", "id": "anchor", "label": "Anker-id", "info": "Bruges i links som /pages/ydelser#website-optimering", "default": "ydelse" },
+    { "type": "text", "id": "number", "label": "Nummer", "default": "01" },
+    { "type": "select", "id": "icon", "label": "Ikon", "options": [
+      { "value": "speed", "label": "Hastighed" }, { "value": "conversion", "label": "Konvertering" }, { "value": "code", "label": "Kode" },
+      { "value": "design", "label": "Design" }, { "value": "wrench", "label": "Værktøj" }, { "value": "integration", "label": "Integration" },
+      { "value": "automation", "label": "Automatisering" }, { "value": "layers", "label": "Lag" }, { "value": "target", "label": "Mål" }
+    ], "default": "speed" },
+    { "type": "text", "id": "title", "label": "Titel", "default": "Ydelse" },
+    { "type": "richtext", "id": "intro", "label": "Intro" },
+    { "type": "text", "id": "problem_label", "label": "Mærkat: problem", "default": "Problemet, vi løser" },
+    { "type": "richtext", "id": "problem", "label": "Problem" },
+    { "type": "text", "id": "includes_label", "label": "Mærkat: indhold", "default": "Det indeholder ydelsen" },
+    { "type": "textarea", "id": "includes", "label": "Indhold (én pr. linje)" },
+    { "type": "text", "id": "audience_label", "label": "Mærkat: målgruppe", "default": "Passer til dig, der" },
+    { "type": "richtext", "id": "audience", "label": "Målgruppe" },
+    { "type": "text", "id": "deliverables_label", "label": "Mærkat: leverancer", "default": "Det får du" },
+    { "type": "textarea", "id": "deliverables", "label": "Leverancer (én pr. linje)" },
+    { "type": "text", "id": "cta_label", "label": "Knaptekst", "default": "Få en gratis vurdering" },
+    { "type": "url", "id": "cta_link", "label": "Knaplink", "info": "Tomt felt linker til kontaktformularen med ydelsen forvalgt." },
+    { "type": "text", "id": "form_key", "label": "Forvalg i kontaktformular", "info": "Håndtaget for valgmuligheden i formularen, f.eks. website-optimering", "default": "gratis-vurdering-af-min-hjemmeside" },
+    { "type": "text", "id": "secondary_label", "label": "Sekundært link – tekst" },
+    { "type": "url", "id": "secondary_link", "label": "Sekundært link" }
+  ],
+  "presets": [{ "name": "Ydelse (detaljer)" }]
+}
+{% endschema %}

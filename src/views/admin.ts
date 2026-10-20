@@ -31,7 +31,7 @@ export function adminOverviewPage(args: { customers: CustomerListRow[]; requests
     <a class="card" href="/admin/kunder" style="text-decoration:none"><div class="muted small">Betaling fejlet</div><div class="price-big">${failed}</div></a>
     <a class="card" href="/admin/henvendelser" style="text-decoration:none"><div class="muted small">Åbne henvendelser</div><div class="price-big">${open}</div></a>
   </div>
-  <div class="row"><a class="btn btn-accent" href="/admin/abonnementer">Opret abonnement</a><a class="btn btn-secondary" href="/admin/fakturaer">Engangsfaktura</a></div>
+  <div class="row"><a class="btn btn-accent" href="/admin/tilbud">Nyt tilbud med betalingslink</a><a class="btn btn-secondary" href="/admin/abonnementer">Abonnement via faktura</a><a class="btn btn-secondary" href="/admin/fakturaer">Engangsfaktura</a></div>
   <section class="card">
     <div class="row between"><h2 style="margin:0">Seneste åbne henvendelser</h2><a href="/admin/henvendelser" class="small">Se alle</a></div>
     ${requestsList(args.requests.filter((r) => r.status !== 'resolved').slice(0, 5), null)}
@@ -49,8 +49,8 @@ export function adminCustomersPage(args: { customers: CustomerListRow[] }): H {
       <thead><tr><th scope="col">Kunde</th><th scope="col">Plan</th><th scope="col">Status</th><th scope="col">Åbne henv.</th><th scope="col">Oprettet</th></tr></thead>
       <tbody>${args.customers.map(
         (c) => html`<tr>
-          <td data-label="Kunde"><strong>${c.name ?? '–'}</strong><br><a href="mailto:${c.email}" class="small">${c.email}</a></td>
-          <td data-label="Plan">${getPlan(c.plan)?.name ?? '–'}</td>
+          <td data-label="Kunde"><a href="/admin/kunder/${c.id}"><strong>${c.company ?? c.name ?? '–'}</strong></a><br><span class="small">${c.email}</span></td>
+          <td data-label="Plan">${getPlan(c.plan)?.name ?? (c.status ? 'Individuel pris' : '–')}</td>
           <td data-label="Status">${custStatus(c)}</td>
           <td data-label="Åbne henv.">${c.open_requests}</td>
           <td data-label="Oprettet">${formatDateShort(c.created_at)}</td>

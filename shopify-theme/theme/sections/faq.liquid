@@ -1,0 +1,55 @@
+{%- comment -%}
+  Ofte stillede spørgsmål med <details> (virker uden JavaScript) og FAQPage-data til søgemaskiner.
+{%- endcomment -%}
+<section class="section section--{{ section.settings.scheme }} faq" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container faq__inner">
+    <div class="faq__intro">
+      {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
+    </div>
+    <div class="faq__list" data-reveal>
+      {%- for block in section.blocks -%}
+        <details class="faq__item" {{ block.shopify_attributes }}>
+          <summary><span>{{ block.settings.question | escape }}</span><span class="faq__icon" aria-hidden="true">{% render 'icon', name: 'plus', size: 20 %}</span></summary>
+          <div class="rte faq__answer">{{ block.settings.answer }}</div>
+        </details>
+      {%- endfor -%}
+    </div>
+  </div>
+  {%- if section.settings.schema and section.blocks.size > 0 -%}
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {%- for block in section.blocks -%}
+            { "@type": "Question", "name": {{ block.settings.question | json }}, "acceptedAnswer": { "@type": "Answer", "text": {{ block.settings.answer | strip_html | json }} } }{% unless forloop.last %},{% endunless %}
+          {%- endfor -%}
+        ]
+      }
+    </script>
+  {%- endif -%}
+</section>
+
+{% schema %}
+{
+  "name": "Spørgsmål og svar",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
+    ], "default": "light" },
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "faq" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Spørgsmål og svar" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Godt at vide" },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "checkbox", "id": "schema", "label": "Tilføj FAQ-data til søgemaskiner", "default": true }
+  ],
+  "blocks": [
+    { "type": "question", "name": "Spørgsmål", "settings": [
+      { "type": "text", "id": "question", "label": "Spørgsmål", "default": "Spørgsmål" },
+      { "type": "richtext", "id": "answer", "label": "Svar", "default": "<p>Svar</p>" }
+    ] }
+  ],
+  "presets": [{ "name": "Spørgsmål og svar", "blocks": [{ "type": "question" }, { "type": "question" }] }]
+}
+{% endschema %}

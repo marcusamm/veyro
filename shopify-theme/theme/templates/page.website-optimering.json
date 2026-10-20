@@ -1,0 +1,264 @@
+{
+  "sections": {
+    "hero": {
+      "type": "page-hero",
+      "settings": {
+        "scheme": "light",
+        "style": "technical",
+        "show_breadcrumbs": true,
+        "eyebrow": "Website-optimering",
+        "heading": "Hurtigere hjemmesider, baseret på målinger",
+        "text": "<p>Vi måler først, prioriterer derefter og implementerer kun det, der giver mening for din side, uanset om den kører på Shopify, WordPress, WooCommerce eller noget andet, og uanset hvor den er hostet. Undervejs er vi ærlige om, hvad vi selv kan rette, og hvad der afhænger af platform, tema, plugins, hosting eller andre leverandører.</p>",
+        "primary_label": "Få en gratis vurdering",
+        "primary_link": "/pages/kontakt?ydelse=website-optimering#formular",
+        "secondary_label": "Se hvad vi kigger på",
+        "secondary_link": "#omraader",
+        "nav_label": "Gå til"
+      }
+    },
+    "areas": {
+      "type": "optimization-areas",
+      "blocks": {
+        "theme": {
+          "type": "area",
+          "settings": {
+            "icon": "code",
+            "title": "Tema, kode og platform",
+            "text": "<p>Hvordan siden indlæser CSS og JavaScript, og om der ligger ubrugt eller dobbelt kode i tema eller skabeloner.</p>",
+            "checks": "Kritisk CSS og JavaScript\nUbrugt kode og gamle skabeloner\nVersioner af platform, tema og plugins",
+            "scope": "both",
+            "note": "Ældre eller kraftigt tilpassede temaer og platforme kan sætte grænser for, hvor meget der kan opnås uden en større ombygning."
+          }
+        },
+        "cwv": {
+          "type": "area",
+          "settings": {
+            "icon": "speed",
+            "title": "Sidehastighed og Core Web Vitals",
+            "text": "<p>Vi måler LCP, INP og CLS på de vigtigste sidetyper, i både laboratorie- og feltdata, hvor de findes.</p>",
+            "checks": "Største synlige element (LCP)\nReaktionstid ved klik (INP)\nLayoutskift under indlæsning (CLS)",
+            "scope": "both",
+            "note": "Feltdata fra Google kræver en vis mængde trafik. Servere og CDN styres af hostingudbyderen eller platformen."
+          }
+        },
+        "mobile": {
+          "type": "area",
+          "settings": {
+            "icon": "mobile",
+            "title": "Mobil brugervenlighed",
+            "text": "<p>Størrelse på knapper, læsbarhed, menu, filtre og formularer på små skærme.</p>",
+            "checks": "Klikflader og afstande\nMobilmenu og søgning\nFormularer og tastaturtyper",
+            "scope": "direct"
+          }
+        },
+        "pdp": {
+          "type": "area",
+          "settings": {
+            "icon": "design",
+            "title": "Sidestruktur og indhold",
+            "text": "<p>Om de vigtigste informationer som pris, fordele, levering og kontakt er lette at finde og forstå på produkt-, service- og landingssider.</p>",
+            "checks": "Rækkefølge og hierarki\nBilleder, varianter og indhold\nTryghedsinformation tæt på knapperne",
+            "scope": "direct"
+          }
+        },
+        "nav": {
+          "type": "area",
+          "settings": {
+            "icon": "search",
+            "title": "Navigation og søgning",
+            "text": "<p>Om de besøgende kan finde vej: menustruktur, kategorier, filtre og søgning.</p>",
+            "checks": "Menustruktur og navngivning\nFiltre og sortering\nTomme eller tynde sider",
+            "scope": "both",
+            "note": "Avancerede filtre og søgning leveres ofte af plugins eller apps, hvis muligheder bestemmer, hvad der kan ændres."
+          }
+        },
+        "apps": {
+          "type": "area",
+          "settings": {
+            "icon": "puzzle",
+            "title": "Plugins, apps og scripts",
+            "text": "<p>Hvilke plugins, apps og tredjepartsscripts der indlæses, hvor tunge de er, og om de stadig er i brug.</p>",
+            "checks": "Rester fra afinstallerede plugins og apps\nOverlappende funktioner\nSporingsscripts og tag managers",
+            "scope": "both",
+            "note": "Hvordan et plugin eller en app indlæser sin kode, styres af udvikleren. Vi kan fjerne, udskifte eller udskyde den, men ikke ombygge den."
+          }
+        },
+        "friction": {
+          "type": "area",
+          "settings": {
+            "icon": "conversion",
+            "title": "Friktion i købs- og kontaktflowet",
+            "text": "<p>Små forhindringer på vejen til køb eller henvendelse, der får besøgende til at falde fra.</p>",
+            "checks": "Kurv, formularer og fragtinformation\nOverraskende omkostninger\nVejen til checkout eller kontakt",
+            "scope": "both",
+            "note": "Hostede checkouts, f.eks. Shopifys, kan kun tilpasses inden for platformens rammer."
+          }
+        },
+        "seo": {
+          "type": "area",
+          "settings": {
+            "icon": "chart",
+            "title": "Teknisk SEO-grundlag",
+            "text": "<p>Det tekniske fundament, der gør det lettere for søgemaskiner at forstå webshoppen.</p>",
+            "checks": "Titler, beskrivelser og overskrifter\nStrukturerede data (JSON-LD)\nAlt-tekster, interne links og omdirigeringer",
+            "scope": "direct",
+            "note": "Placeringer i Google afhænger af mange faktorer uden for webshoppen, og kan ikke garanteres."
+          }
+        },
+        "hosting": {
+          "type": "area",
+          "settings": {
+            "icon": "layers",
+            "title": "Hosting og server",
+            "text": "<p>Svartider, caching, komprimering og serveropsætning, hos din nuværende hostingudbyder eller hos os.</p>",
+            "checks": "Serverens svartid (TTFB)\nCaching og CDN\nKomprimering og HTTP/2-3",
+            "scope": "depends",
+            "note": "Kræver adgang til hostingen, og nogle ændringer kan kun foretages af hostingudbyderen. Shopify-butikker hostes altid af Shopify."
+          }
+        }
+      },
+      "block_order": [
+        "theme",
+        "cwv",
+        "hosting",
+        "mobile",
+        "pdp",
+        "nav",
+        "apps",
+        "friction",
+        "seo"
+      ],
+      "settings": {
+        "scheme": "surface",
+        "anchor": "omraader",
+        "eyebrow": "Det kigger vi på",
+        "heading": "Sådan vurderer vi din hjemmeside",
+        "text": "<p>Hvert område markeres, så du kan se, om forbedringen er noget, vi kan implementere direkte, eller om den afhænger af platform, tema, plugins, hosting eller andre forhold.</p>",
+        "direct_label": "Implementerer vi direkte",
+        "direct_text": "ændringer i tema, kode og indhold, som vi selv kan lave og teste.",
+        "depends_label": "Afhænger af rammerne",
+        "depends_text": "kræver ændringer hos en plugin- eller app-udbyder, hostingudbyderen eller platformen, eller en beslutning fra dig.",
+        "note_label": "Bemærk:",
+        "filter_label": "Filtrér områder",
+        "filter_all": "Alle områder"
+      }
+    },
+    "process": {
+      "type": "process",
+      "blocks": {
+        "p1": {
+          "type": "step",
+          "settings": {
+            "title": "Måling",
+            "lead": "Vi måler udgangspunktet.",
+            "text": "<p>Vi måler de vigtigste sidetyper og dokumenterer, hvor tiden og friktionen opstår.</p>"
+          }
+        },
+        "p2": {
+          "type": "step",
+          "settings": {
+            "title": "Prioritering",
+            "lead": "Vi vælger de rigtige forbedringer.",
+            "text": "<p>Du får en liste med forventet effekt, indsats og eventuelle afhængigheder. Du vælger selv, hvad vi går videre med.</p>"
+          }
+        },
+        "p3": {
+          "type": "step",
+          "settings": {
+            "title": "Implementering",
+            "lead": "Vi arbejder i en kopi eller et testmiljø.",
+            "text": "<p>Ændringerne laves og testes, så din live side ikke påvirkes undervejs.</p>"
+          }
+        },
+        "p4": {
+          "type": "step",
+          "settings": {
+            "title": "Opfølgning",
+            "lead": "Vi måler igen og dokumenterer.",
+            "text": "<p>Efter udgivelse måler vi igen og sender en kort rapport om, hvad der er ændret.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ],
+      "settings": {
+        "scheme": "light",
+        "anchor": "forloeb",
+        "eyebrow": "Forløbet",
+        "heading": "Sådan foregår en optimering",
+        "link_label": "Få en gratis vurdering",
+        "link": "/pages/kontakt?ydelse=website-optimering#formular"
+      }
+    },
+    "faq": {
+      "type": "faq",
+      "blocks": {
+        "q1": {
+          "type": "question",
+          "settings": {
+            "question": "Kan I garantere en bestemt score i PageSpeed Insights?",
+            "answer": "<p>Nej. Scoren afhænger af platform, tema, plugins og apps, indhold og hosting, og den svinger fra måling til måling. Vi lover i stedet at dokumentere udgangspunktet, forklare hvad der påvirker det, og vise hvad vores ændringer har betydet.</p>"
+          }
+        },
+        "q2": {
+          "type": "question",
+          "settings": {
+            "question": "Skal vi fjerne plugins eller apps?",
+            "answer": "<p>Ikke nødvendigvis. Vi vurderer, hvad hver enkelt bidrager med, og hvad den koster i hastighed. Du beslutter, hvad der skal blive, udskiftes eller fjernes.</p>"
+          }
+        },
+        "q3": {
+          "type": "question",
+          "settings": {
+            "question": "Påvirker optimeringen vores live side?",
+            "answer": "<p>Ikke før du har godkendt. Vi arbejder i en kopi eller et testmiljø og udgiver først, når ændringerne er testet.</p>"
+          }
+        },
+        "q4": {
+          "type": "question",
+          "settings": {
+            "question": "Skal vi flytte hjemmesiden til jer for at få den optimeret?",
+            "answer": "<p>Nej. Vi optimerer den, hvor den ligger. Ønsker du, at vi også står for hosting, er hosting inkluderet i vores abonnementer.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "q1",
+        "q2",
+        "q3",
+        "q4"
+      ],
+      "settings": {
+        "scheme": "surface",
+        "anchor": "faq",
+        "eyebrow": "Spørgsmål og svar",
+        "heading": "Ærlige svar om optimering",
+        "schema": true
+      }
+    },
+    "cta": {
+      "type": "cta-banner",
+      "settings": {
+        "scheme": "light",
+        "eyebrow": "Næste skridt",
+        "heading": "Vil du vide, hvad der gør din hjemmeside langsom?",
+        "text": "<p>Send os linket, så kigger vi på de vigtigste sidetyper og fortæller, hvor vi ser de største muligheder.</p>",
+        "label": "Få en gratis vurdering",
+        "link": "/pages/kontakt?ydelse=website-optimering#formular",
+        "show_email": true,
+        "email_prefix": "Eller skriv direkte til"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "areas",
+    "process",
+    "faq",
+    "cta"
+  ]
+}

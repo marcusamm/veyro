@@ -1,0 +1,163 @@
+{
+  "pages": [
+    {
+      "handle": "ydelser",
+      "title": "Ydelser",
+      "template": "ydelser",
+      "body": "",
+      "published": true,
+      "description": ""
+    },
+    {
+      "handle": "website-optimering",
+      "title": "Website-optimering",
+      "template": "website-optimering",
+      "body": "",
+      "published": true,
+      "description": ""
+    },
+    {
+      "handle": "custom-losninger",
+      "title": "Custom løsninger",
+      "template": "custom-losninger",
+      "body": "",
+      "published": true,
+      "description": ""
+    },
+    {
+      "handle": "om-os",
+      "title": "Om os",
+      "template": "om-os",
+      "body": "",
+      "published": true,
+      "description": ""
+    },
+    {
+      "handle": "kontakt",
+      "title": "Kontakt",
+      "template": "kontakt",
+      "body": "",
+      "published": true,
+      "description": ""
+    },
+    {
+      "handle": "privatlivspolitik",
+      "title": "Privatlivspolitik",
+      "template": "",
+      "body": "<p><em>Senest opdateret: 20. oktober 2026</em></p>\n<p>Her kan du læse, hvilke personoplysninger Veyro behandler, hvorfor vi gør det, og hvilke rettigheder du har.</p>\n<h2>Dataansvarlig</h2>\n<p>Veyro<br>Jasminvej 45, 4200 Slagelse<br>Telefon: +45 61 66 39 31<br>E-mail: <a href=\"mailto:kontakt@veyro.dk\">kontakt@veyro.dk</a></p>\n<h2>Når du kontakter os</h2>\n<p>Når du udfylder kontaktformularen, formularen til en gratis vurdering eller sender en forespørgsel fra kurven, eller skriver eller ringer til os, behandler vi de oplysninger, du giver os: navn, e-mail, eventuelt telefonnummer, virksomhed, link til din hjemmeside, de ydelser du har valgt, og din besked.</p>\n<p>Vi bruger oplysningerne til at besvare din henvendelse og eventuelt give dig et tilbud. Grundlaget er, at du selv har bedt om det, og at det er nødvendigt for at kunne indgå en aftale (databeskyttelsesforordningens artikel 6, stk. 1, litra b), samt vores legitime interesse i at besvare henvendelser (litra f).</p>\n<p>Fører henvendelsen ikke til et samarbejde, sletter vi den senest 12 måneder efter vores sidste kontakt.</p>\n<h2>Når du er kunde hos os</h2>\n<p>Er du kunde, behandler vi kontakt- og faktureringsoplysninger og den korrespondance, der hører til opgaven. Det sker for at levere den aftalte ydelse og fakturere den (artikel 6, stk. 1, litra b) og for at overholde bogføringsloven (litra c). Regnskabsmateriale gemmer vi i 5 år efter regnskabsårets udløb, som loven kræver. Øvrige oplysninger sletter vi, når samarbejdet er slut og de ikke længere er nødvendige.</p>\n<h2>Når du besøger hjemmesiden</h2>\n<p>Når du besøger veyro.dk, behandles tekniske oplysninger som IP-adresse og browser kortvarigt, så siden kan leveres sikkert og beskyttes mod misbrug. Vi tæller, hvor mange gange hver side bliver vist, uden cookies og uden at gemme din IP-adresse. Cookies til markedsføring bruges kun, hvis du har givet samtykke. Læs mere i vores <a href=\"/pages/cookiepolitik\">cookiepolitik</a>.</p>\n<h2>Hvem vi deler oplysninger med</h2>\n<p>Vi sælger aldrig dine oplysninger. Vi bruger nogle leverandører som databehandlere, der kun må behandle oplysningerne efter vores instruks:</p>\n<ul>\n<li>Cloudflare, som hoster hjemmesiden og kundepanelet og gemmer henvendelser i vores database.</li>\n<li>Resend, som sender e-mails fra hjemmesiden og kundepanelet.</li>\n<li>Google (Google Workspace), som vi bruger til e-mail.</li>\n<li>Stripe, som håndterer betaling og fakturaer, når du er kunde.</li>\n</ul>\n<p>Leverandørerne kan overføre oplysninger til lande uden for EU/EØS, bl.a. USA. Det sker på grundlag af EU-Kommissionens standardkontraktbestemmelser eller EU-US Data Privacy Framework.</p>\n<p>Vi kan også videregive oplysninger, hvis loven kræver det.</p>\n<h2>Dine rettigheder</h2>\n<p>Du har ret til at få indsigt i de oplysninger, vi har om dig, og til at få dem rettet eller slettet. Du kan også gøre indsigelse mod behandlingen, få den begrænset og få dine oplysninger udleveret (dataportabilitet). Har du givet samtykke, kan du altid trække det tilbage. Det påvirker ikke behandling, der er sket før.</p>\n<p>Skriv til <a href=\"mailto:kontakt@veyro.dk\">kontakt@veyro.dk</a>, hvis du vil bruge dine rettigheder. Vi svarer inden for en måned.</p>\n<h2>Klage</h2>\n<p>Du kan klage til Datatilsynet, Carl Jacobsens Vej 35, 2500 Valby, <a href=\"https://www.datatilsynet.dk\" target=\"_blank\" rel=\"noopener\">datatilsynet.dk</a>. Vi vil dog gerne høre fra dig først, så vi kan prøve at løse det.</p>\n<h2>Ændringer</h2>\n<p>Vi opdaterer politikken, hvis vores behandling ændrer sig. Datoen øverst viser, hvornår den sidst blev ændret.</p>\n",
+      "published": true,
+      "description": ""
+    },
+    {
+      "handle": "cookiepolitik",
+      "title": "Cookiepolitik",
+      "template": "",
+      "body": "<p><em>Senest opdateret: 20. oktober 2026</em></p>\n<p>En cookie er en lille tekstfil, som gemmes i din browser, så hjemmesiden kan genkende den. Her kan du læse, hvordan veyro.dk bruger cookies.</p>\n<h2>Dit samtykke</h2>\n<p>Første gang du besøger siden, kan du vælge, hvilke cookies du accepterer. Nødvendige cookies sættes altid, fordi siden ikke virker uden dem. Alle andre cookies sættes kun, hvis du siger ja.</p>\n<p>Du kan altid ændre eller trække dit samtykke tilbage via <strong>Cookieindstillinger</strong> nederst på siden. Valget gemmes i din browser i 12 måneder, hvorefter du bliver spurgt igen.</p>\n<h2>Nødvendige cookies</h2>\n<ul>\n<li><strong>veyro_cart</strong> (veyro.dk): husker, hvad du har lagt i kurven. Slettes efter 30 dage, eller når du sender forespørgslen.</li>\n<li><strong>theme-cookie-consent</strong> (gemt lokalt i browseren): husker dit cookievalg i 12 måneder.</li>\n</ul>\n<h2>Markedsføring</h2>\n<p>Siger du ja til markedsføring, viser vi vores anmeldelser fra Trustpilot. Trustpilots widget hentes fra trustpilot.com og sætter Trustpilots egne cookies. Siger du nej, vises kun et link til vores Trustpilot-profil.</p>\n<h2>Statistik</h2>\n<p>Vi bruger ikke cookies til statistik. Vi tæller kun, hvor mange gange hver side bliver vist, uden cookies og uden at gemme din IP-adresse.</p>\n<h2>Slet cookies</h2>\n<p>Du kan slette cookies i din browsers indstillinger. Sletter du dem, bliver du spurgt om samtykke igen ved næste besøg.</p>\n<h2>Spørgsmål</h2>\n<p>Skriv til <a href=\"mailto:kontakt@veyro.dk\">kontakt@veyro.dk</a>. Læs også vores <a href=\"/pages/privatlivspolitik\">privatlivspolitik</a>.</p>\n",
+      "published": true,
+      "description": ""
+    }
+  ],
+  "menus": {
+    "main-menu": {
+      "title": "Hovedmenu",
+      "items": [
+        {
+          "title": "Forside",
+          "url": "/"
+        },
+        {
+          "title": "Ydelser",
+          "url": "/pages/ydelser"
+        },
+        {
+          "title": "Om os",
+          "url": "/pages/om-os"
+        },
+        {
+          "title": "Kontakt",
+          "url": "/pages/kontakt"
+        }
+      ]
+    },
+    "footer": {
+      "title": "Footer (ydelser)",
+      "items": [
+        {
+          "title": "Website-optimering",
+          "url": "/pages/website-optimering"
+        },
+        {
+          "title": "Konverteringsoptimering",
+          "url": "/pages/ydelser#konverteringsoptimering"
+        },
+        {
+          "title": "Custom løsninger",
+          "url": "/pages/custom-losninger"
+        },
+        {
+          "title": "Web- og webshopdesign",
+          "url": "/pages/ydelser#webdesign"
+        },
+        {
+          "title": "Fejlfinding",
+          "url": "/pages/ydelser#fejlfinding"
+        },
+        {
+          "title": "Integrationer",
+          "url": "/pages/ydelser#integrationer"
+        },
+        {
+          "title": "Vedligeholdelse og hosting",
+          "url": "/pages/ydelser#vedligeholdelse"
+        }
+      ]
+    },
+    "juridisk": {
+      "title": "Juridisk",
+      "items": [
+        {
+          "title": "Privatlivspolitik",
+          "url": "/pages/privatlivspolitik"
+        },
+        {
+          "title": "Cookiepolitik",
+          "url": "/pages/cookiepolitik"
+        }
+      ]
+    }
+  },
+  "products": [
+    {
+      "handle": "starter",
+      "title": "Starter abonnement",
+      "type": "Abonnement",
+      "price": 29900,
+      "interval": "month",
+      "status": "active",
+      "description": "<ul>\n<li>Enkel, professionel hjemmeside</li>\n<li>Webhosting og SSL-certifikat</li>\n<li>Tilkobling af domæne</li>\n<li>Grundlæggende vedligeholdelse</li>\n</ul>"
+    },
+    {
+      "handle": "business",
+      "title": "Business abonnement",
+      "type": "Abonnement",
+      "price": 59900,
+      "interval": "month",
+      "status": "active",
+      "description": "<ul>\n<li>Skræddersyet virksomhedshjemmeside</li>\n<li>Webhosting, SSL og sikkerhedskopier</li>\n<li>Løbende opdateringer</li>\n<li>Mindre indholdsændringer hver måned</li>\n</ul>"
+    },
+    {
+      "handle": "premium",
+      "title": "Premium abonnement",
+      "type": "Abonnement",
+      "price": 109900,
+      "interval": "month",
+      "status": "active",
+      "description": "<ul>\n<li>Avanceret hjemmeside</li>\n<li>Webhosting og udvidet vedligeholdelse</li>\n<li>Flere indholdsændringer</li>\n<li>Prioriteret kundesupport</li>\n</ul>"
+    }
+  ],
+  "shop": {
+    "name": "Veyro",
+    "email": "salg@veyro.dk",
+    "url": "https://veyro.dk"
+  }
+}

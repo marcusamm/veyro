@@ -1,0 +1,101 @@
+/*
+ * Shopifys eget cookiebanner (Indstillinger > Kundernes privatliv) i temaets stil.
+ * Shopify styrer indholdet og samtykket; her ændres kun udseendet.
+ * Vælg placeringen "Nederst til venstre" i Shopify for at matche temaets banner.
+ */
+#shopify-pc__banner {
+  left: var(--space-4) !important;
+  right: var(--space-4) !important;
+  bottom: var(--space-4) !important;
+  width: auto !important;
+  max-width: 520px !important;
+  font-family: var(--font-body) !important;
+  color: var(--color-ink) !important;
+  background: var(--color-surface) !important;
+  border: 1px solid rgba(var(--ink-rgb), .14) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: 0 30px 80px -20px rgba(var(--ink-rgb), .35) !important;
+  overflow: hidden;
+}
+@media (min-width: 600px) {
+  #shopify-pc__banner { left: var(--space-5) !important; bottom: var(--space-5) !important; right: auto !important; }
+}
+#shopify-pc__banner * { font-family: var(--font-body) !important; }
+#shopify-pc__banner > *,
+#shopify-pc__banner [class*='banner__dialog'],
+#shopify-pc__banner [class*='banner__wrapper'] {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  max-width: none !important;
+}
+#shopify-pc__banner [class*='banner__wrapper'] {
+  display: grid !important;
+  gap: var(--space-4) !important;
+  padding: var(--space-5) !important;
+}
+#shopify-pc__banner h2,
+#shopify-pc__banner [class*='title'] {
+  margin: 0 0 .5rem !important;
+  font-size: 1.15rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -.01em !important;
+  color: var(--color-ink) !important;
+}
+#shopify-pc__banner p,
+#shopify-pc__banner [class*='body'] {
+  font-size: .95rem !important;
+  line-height: 1.55 !important;
+  color: var(--color-muted) !important;
+}
+#shopify-pc__banner a { color: var(--color-ink) !important; }
+
+/* Knapper: Afvis og Acceptér side om side, Administrer præferencer under */
+#shopify-pc__banner :has(> #shopify-pc__banner__btn-accept) {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: .5rem !important;
+  width: 100% !important;
+  margin: 0 !important;
+}
+#shopify-pc__banner button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-height: 48px !important;
+  margin: 0 !important;
+  padding: .8em 1.35em !important;
+  font-size: .98rem !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  text-decoration: none !important;
+  border-radius: var(--radius-button) !important;
+  transition: background-color .2s ease, color .2s ease !important;
+  cursor: pointer;
+}
+#shopify-pc__banner__btn-accept,
+#shopify-pc__banner__btn-decline {
+  color: var(--color-surface) !important;
+  background: var(--color-ink) !important;
+  border: 1px solid var(--color-ink) !important;
+}
+#shopify-pc__banner__btn-accept:hover,
+#shopify-pc__banner__btn-decline:hover {
+  color: var(--color-ink) !important;
+  background: transparent !important;
+}
+#shopify-pc__banner__btn-decline { order: 1; }
+#shopify-pc__banner__btn-accept { order: 2; }
+#shopify-pc__banner__btn-manage-prefs {
+  order: 3;
+  grid-column: 1 / -1 !important;
+  color: var(--color-ink) !important;
+  background: transparent !important;
+  border: 1px solid rgba(var(--ink-rgb), .3) !important;
+}
+#shopify-pc__banner__btn-manage-prefs:hover { border-color: var(--color-ink) !important; }
+#shopify-pc__banner button:focus-visible {
+  outline: 2px solid var(--color-accent) !important;
+  outline-offset: 2px !important;
+}

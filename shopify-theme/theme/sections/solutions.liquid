@@ -1,0 +1,84 @@
+{%- comment -%}
+  Veyros hovedløsninger præsenteret som ligeværdige kort (typisk to).
+  Hver løsning har et kort udsagn, hvad den indeholder, hvem den passer til og et link.
+{%- endcomment -%}
+<section class="section section--{{ section.settings.scheme }} solutions" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container">
+    {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
+
+    <ul class="solutions__grid" role="list" style="--cols: {{ section.blocks.size | at_most: 3 }}">
+      {%- for block in section.blocks -%}
+        {%- assign points = block.settings.points | newline_to_br | split: '<br />' -%}
+        <li class="solution card" data-reveal style="--delay: {{ forloop.index0 | times: 90 }}ms" id="{{ block.settings.anchor | default: block.id | handle }}" {{ block.shopify_attributes }}>
+          <div class="solution__top">
+            <span class="solution__icon">{% render 'icon', name: block.settings.icon, size: 24 %}</span>
+            {%- if block.settings.label != blank -%}<span class="solution__label">{{ block.settings.label | escape }}</span>{%- endif -%}
+          </div>
+          <h3 class="h3 solution__title">{{ block.settings.title | escape }}</h3>
+          <div class="rte solution__text">{{ block.settings.text }}</div>
+          {%- if block.settings.points != blank -%}
+            <ul class="solution__points" role="list">
+              {%- for p in points -%}
+                {%- assign line = p | strip -%}
+                {%- if line != blank -%}<li>{% render 'icon', name: 'check', size: 18 %}<span>{{ line | escape }}</span></li>{%- endif -%}
+              {%- endfor -%}
+            </ul>
+          {%- endif -%}
+          {%- if block.settings.fit != blank -%}
+            <p class="solution__fit"><strong>{{ section.settings.fit_label | escape }}</strong> {{ block.settings.fit | escape }}</p>
+          {%- endif -%}
+          <div class="solution__actions">
+            {% render 'button', label: block.settings.button_label, url: block.settings.button_link, style: 'primary', arrow: settings.button_arrow %}
+            {% render 'button', label: block.settings.link_label, url: block.settings.link, style: 'link' %}
+          </div>
+        </li>
+      {%- endfor -%}
+    </ul>
+
+    {%- if section.settings.note != blank -%}
+      <div class="solutions__note rte small muted" data-reveal>{{ section.settings.note }}</div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Løsninger",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
+    ], "default": "surface" },
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "losninger" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Løsninger" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "To måder at få styr på ordrer og lager" },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "fit_label", "label": "Tekst før målgruppe", "default": "Passer til:" },
+    { "type": "richtext", "id": "note", "label": "Note under kortene" }
+  ],
+  "blocks": [
+    {
+      "type": "solution",
+      "name": "Løsning",
+      "limit": 3,
+      "settings": [
+        { "type": "select", "id": "icon", "label": "Ikon", "options": [
+          { "value": "cart", "label": "Kurv" }, { "value": "box", "label": "Vare" }, { "value": "list", "label": "Liste" },
+          { "value": "design", "label": "Hjemmeside" }, { "value": "layers", "label": "Lag" }, { "value": "integration", "label": "Integration" }
+        ], "default": "cart" },
+        { "type": "text", "id": "label", "label": "Mærkat", "default": "Løsning 1" },
+        { "type": "text", "id": "anchor", "label": "Anker-id" },
+        { "type": "text", "id": "title", "label": "Titel", "default": "Hjemmeside med bestilling og lagerstyring" },
+        { "type": "richtext", "id": "text", "label": "Tekst" },
+        { "type": "textarea", "id": "points", "label": "Indhold (én pr. linje)" },
+        { "type": "text", "id": "fit", "label": "Passer til" },
+        { "type": "text", "id": "button_label", "label": "Knaptekst", "default": "Book en demo" },
+        { "type": "url", "id": "button_link", "label": "Knaplink" },
+        { "type": "text", "id": "link_label", "label": "Linktekst" },
+        { "type": "url", "id": "link", "label": "Link" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Løsninger", "blocks": [{ "type": "solution" }, { "type": "solution" }] }]
+}
+{% endschema %}

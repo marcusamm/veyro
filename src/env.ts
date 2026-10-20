@@ -12,6 +12,13 @@ export interface Env {
   EMAIL_FROM?: string;
   DEV_MODE?: string;
   STRIPE_TAX_RATE_ID?: string;
+  /** Valgfri Stripe-kundeportal-konfiguration (bpc_...) til kortskift, fakturaer og opsigelse */
+  STRIPE_PORTAL_CONFIGURATION?: string;
+
+  /** Domæner, hvor salgshjemmesiden vises (kommasepareret), fx "veyro.dk,www.veyro.dk,ny.veyro.dk" */
+  SITE_HOSTS?: string;
+  /** Hjemmesidens kanoniske adresse (til søgemaskiner og delingslinks) */
+  SITE_URL?: string;
 
   /** Fælles kundekatalog: hvilke kundesystemer en e-mail har adgang til (valgfri) */
   KATALOG?: KVNamespace;
@@ -37,6 +44,12 @@ export interface CustomerRow {
   email: string;
   name: string | null;
   stripe_customer_id: string | null;
+  company?: string | null;
+  cvr?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -56,6 +69,8 @@ export interface SubscriptionRow {
   cancel_at: number | null;
   canceled_at: number | null;
   payment_failed: number;
+  interval?: string | null;
+  offer_id?: number | null;
   updated_at: number;
 }
 

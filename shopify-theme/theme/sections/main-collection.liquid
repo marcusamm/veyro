@@ -1,0 +1,32 @@
+{%- paginate collection.products by section.settings.per_page -%}
+<section class="section section--light collection">
+  <div class="container">
+    <header class="section-head">
+      <p class="eyebrow">{{ section.settings.eyebrow | escape }}</p>
+      <h1 class="h1">{{ collection.title | escape }}</h1>
+      {%- if collection.description != blank -%}<div class="section-head__text rte">{{ collection.description }}</div>{%- endif -%}
+    </header>
+    {%- if collection.products.size > 0 -%}
+      <ul class="packages__grid" role="list">
+        {%- for product in collection.products -%}
+          <li>{% render 'product-card', product: product %}</li>
+        {%- endfor -%}
+      </ul>
+      {% render 'pagination', paginate: paginate %}
+    {%- else -%}
+      <p class="muted">{{ 'products.packages_empty' | t }}</p>
+    {%- endif -%}
+  </div>
+</section>
+{%- endpaginate -%}
+
+{% schema %}
+{
+  "name": "Kollektion",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Pakker" },
+    { "type": "range", "id": "per_page", "label": "Pr. side", "min": 6, "max": 24, "step": 3, "default": 12 }
+  ]
+}
+{% endschema %}

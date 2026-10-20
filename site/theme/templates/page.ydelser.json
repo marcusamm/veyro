@@ -1,0 +1,369 @@
+{
+  "sections": {
+    "hero": {
+      "type": "page-hero",
+      "blocks": {
+        "a1": {
+          "type": "anchor",
+          "settings": {
+            "label": "Website-optimering",
+            "target": "website-optimering"
+          }
+        },
+        "a2": {
+          "type": "anchor",
+          "settings": {
+            "label": "Konverteringsoptimering",
+            "target": "konverteringsoptimering"
+          }
+        },
+        "a3": {
+          "type": "anchor",
+          "settings": {
+            "label": "Custom løsninger",
+            "target": "custom-losninger"
+          }
+        },
+        "a4": {
+          "type": "anchor",
+          "settings": {
+            "label": "Webdesign",
+            "target": "webdesign"
+          }
+        },
+        "a5": {
+          "type": "anchor",
+          "settings": {
+            "label": "Fejlfinding",
+            "target": "fejlfinding"
+          }
+        },
+        "a6": {
+          "type": "anchor",
+          "settings": {
+            "label": "Integrationer",
+            "target": "integrationer"
+          }
+        },
+        "a7": {
+          "type": "anchor",
+          "settings": {
+            "label": "Vedligeholdelse og hosting",
+            "target": "abonnement"
+          }
+        },
+        "a0": {
+          "type": "anchor",
+          "settings": {
+            "label": "Ordrer og lager",
+            "target": "losninger"
+          }
+        }
+      },
+      "block_order": [
+        "a0",
+        "a1",
+        "a2",
+        "a3",
+        "a4",
+        "a5",
+        "a6",
+        "a7"
+      ],
+      "settings": {
+        "scheme": "light",
+        "style": "technical",
+        "show_breadcrumbs": true,
+        "eyebrow": "Ydelser",
+        "heading": "Vores ydelser",
+        "text": "<p>Vores hovedløsninger er hjemmesider med kundebestilling og lagerstyring samt interne systemer til ordrer og varekontrol. Vi laver også almindelige hjemmesider som abonnement med fast månedspris og hjælper med optimering, fejlfinding og integrationer på Shopify, WordPress, WooCommerce og specialudviklede sider.</p>",
+        "primary_label": "Book en demo",
+        "primary_link": "/pages/kontakt?ydelse=book-en-demo#formular",
+        "nav_label": "Gå til ydelse"
+      }
+    },
+    "s1": {
+      "type": "service-detail",
+      "settings": {
+        "scheme": "light",
+        "anchor": "website-optimering",
+        "number": "",
+        "icon": "speed",
+        "title": "Website-optimering",
+        "intro": "<p>Hurtigere indlæsning, bedre mobiloplevelse og højere teknisk kvalitet, på Shopify, WordPress, WooCommerce og andre platforme.</p>",
+        "problem": "<p>Med tiden samler de fleste hjemmesider plugins, apps, scripts og store billeder op. Resultatet er sider, der indlæser langsomt, hopper rundt under indlæsning og føles tunge på mobilen.</p>",
+        "includes": "Måling af hastighed og Core Web Vitals på vigtige sidetyper\nGennemgang af tema, plugins, apps og tredjepartsscripts\nOptimering af billeder, skrifttyper og indlæsningsrækkefølge\nCaching og serveropsætning, hvor platform og hosting tillader det\nForbedringer af mobiloplevelsen\nTeknisk SEO-grundlag: titler, overskrifter og strukturerede data",
+        "audience": "<p>har en hjemmeside eller webshop, der føles langsom, har mange plugins eller apps installeret eller har fået at vide, at siden scorer dårligt i Googles målinger.</p>",
+        "deliverables": "Rapport med målinger før og efter\nGennemførte optimeringer, testet før udgivelse\nListe over forhold, der kræver beslutninger, hosting eller tredjepart\nAnbefalinger til at holde siden hurtig",
+        "cta_label": "Få en gratis vurdering",
+        "form_key": "website-optimering",
+        "secondary_label": "Sådan optimerer vi",
+        "secondary_link": "/pages/website-optimering"
+      }
+    },
+    "s2": {
+      "type": "service-detail",
+      "settings": {
+        "scheme": "light",
+        "anchor": "konverteringsoptimering",
+        "number": "",
+        "icon": "conversion",
+        "title": "Konverteringsoptimering (CRO)",
+        "intro": "<p>Færre forhindringer mellem besøgende og køb eller henvendelse, baseret på data og på, hvordan de besøgende faktisk bruger siden.</p>",
+        "problem": "<p>Trafikken kommer, men for få køber eller tager kontakt. Typisk skyldes det uklar navigation, sider uden de vigtigste svar, manglende tryghed eller små irritationer i formularer, kurv og checkout.</p>",
+        "includes": "Gennemgang af brugerrejsen fra første besøg til køb eller henvendelse\nAnalyse af data fra f.eks. GA4 eller platformens egne rapporter\nForbedring af produkt-, landings- og kontaktsider samt navigation\nTryghedsskabende elementer: levering, retur, betaling og kontakt\nForslag til A/B-tests, hvor trafikken gør det meningsfuldt",
+        "audience": "<p>har en stabil strøm af besøgende, men oplever, at for få bliver til kunder, eller vil sikre, at ny trafik ikke spildes.</p>",
+        "deliverables": "Prioriteret liste over forbedringer (effekt og indsats)\nImplementerede ændringer\nOpsætning af målepunkter, så effekten kan følges\nOpfølgning og justering",
+        "cta_label": "Få en gratis vurdering",
+        "form_key": "konverteringsoptimering-cro"
+      }
+    },
+    "s3": {
+      "type": "service-detail",
+      "settings": {
+        "scheme": "light",
+        "anchor": "custom-losninger",
+        "number": "",
+        "icon": "code",
+        "title": "Custom Shopify-løsninger",
+        "intro": "<p>Funktioner, sektioner og integrationer bygget til netop din Shopify-webshop, som du selv kan redigere i Shopify. Custom-udvikling er vores særlige speciale på Shopify. Bruger du en anden platform, hjælper vi med tilpasninger under Fejlfinding og Integrationer.</p>",
+        "problem": "<p>Dit tema eller dine apps kan ikke det, du har brug for. Eller du betaler for flere apps, der tilsammen gør noget, som kunne løses enklere og hurtigere direkte i temaet.</p>",
+        "includes": "Egne sektioner og blokke til Shopifys temaeditor\nLiquid-komponenter og temaændringer\nFunktionalitet på produktsiden, f.eks. konfiguratorer og bundles\nStorefront-funktioner med JavaScript\nIntegrationer via Shopifys API'er",
+        "audience": "<p>har en konkret idé eller et behov, som standardtemaer og apps ikke dækker, eller vil erstatte tunge apps med en lettere løsning.</p>",
+        "deliverables": "Specifikation, du godkender før udvikling\nFærdig og testet løsning i dit tema\nRedigerbare indstillinger i temaeditoren\nKort dokumentation af løsningen",
+        "cta_label": "Fortæl os om din idé",
+        "form_key": "custom-shopify-loesning",
+        "secondary_label": "Se hvad vi kan bygge",
+        "secondary_link": "/pages/custom-losninger"
+      }
+    },
+    "s4": {
+      "type": "service-detail",
+      "settings": {
+        "scheme": "light",
+        "anchor": "webdesign",
+        "number": "",
+        "icon": "design",
+        "title": "Web- og webshopdesign",
+        "intro": "<p>Redesign og et layout, der gør det let at finde, forstå og handle, implementeret på din nuværende platform.</p>",
+        "problem": "<p>Siden ser ikke ud, som brandet fortjener, eller den er vokset i forskellige retninger, så sider og elementer ikke længere hænger sammen.</p>",
+        "includes": "Gennemgang af visuel identitet og layout\nDesign af nøglesider: forside, produkt-, service- og kontaktsider\nEnsartede komponenter: knapper, kort, typografi og farver\nMobil først og med fokus på tilgængelighed\nImplementering på din nuværende platform",
+        "audience": "<p>vil løfte det visuelle udtryk, står foran et rebrand eller har et tema, der er blevet uoverskueligt at vedligeholde.</p>",
+        "deliverables": "Designforslag til godkendelse\nImplementeret design\nGenbrugelige komponenter og skabeloner\nOverdragelse med gennemgang af, hvordan du redigerer",
+        "cta_label": "Få en gratis vurdering",
+        "form_key": "web-og-webshopdesign"
+      }
+    },
+    "s5": {
+      "type": "service-detail",
+      "settings": {
+        "scheme": "light",
+        "anchor": "fejlfinding",
+        "number": "",
+        "icon": "wrench",
+        "title": "Fejlfinding og teknisk hjælp",
+        "intro": "<p>Når noget ikke virker, som det skal, finder vi årsagen og løser den ordentligt, på Shopify, WordPress, WooCommerce og specialudviklede sider.</p>",
+        "problem": "<p>Layoutet er gået i stykker efter en opdatering, knapper virker ikke på mobilen, eller et plugin eller en app opfører sig mærkeligt.</p>",
+        "includes": "Fejlsøgning i tema, skabeloner, CSS, JavaScript og PHP\nPlugin- og app-konflikter og rester efter afinstallationer\nØdelagte layouts og visningsfejl på mobil\nOpdatering af ældre temaer og plugins\nLøbende teknisk hjælp, også som abonnement",
+        "audience": "<p>har brug for hurtig og kompetent hjælp til et konkret problem, eller ønsker en fast teknisk sparringspartner.</p>",
+        "deliverables": "Rettet fejl, testet på relevante enheder\nForklaring af årsagen\nForslag til, hvordan lignende fejl undgås",
+        "cta_label": "Beskriv problemet",
+        "form_key": "fejlfinding-og-teknisk-hjaelp"
+      }
+    },
+    "s6": {
+      "type": "service-detail",
+      "settings": {
+        "scheme": "light",
+        "anchor": "integrationer",
+        "number": "",
+        "icon": "integration",
+        "title": "Integrationer og automatisering",
+        "intro": "<p>Din hjemmeside eller webshop forbundet med dine øvrige systemer, så færre opgaver skal klares i hånden.</p>",
+        "problem": "<p>Data flyttes manuelt mellem hjemmeside, webshop, lager, fragt, bogføring, CRM og marketing. Det tager tid og giver fejl.</p>",
+        "includes": "Kortlægning af systemer og arbejdsgange\nOpsætning af eksisterende plugins, apps og integrationer\nAutomatisering med f.eks. Shopify Flow, Zapier eller Make\nWebhooks og skræddersyede integrationer via API\nSikker håndtering af adgangsnøgler på serversiden",
+        "audience": "<p>bruger meget tid på gentagne opgaver eller har systemer, der ikke taler sammen.</p>",
+        "deliverables": "Overblik over arbejdsgange og forslag til automatisering\nOpsatte og testede integrationer\nDokumentation og overvågning af fejl",
+        "cta_label": "Få en gratis vurdering",
+        "form_key": "integrationer-og-automatisering"
+      }
+    },
+    "cta": {
+      "type": "cta-banner",
+      "settings": {
+        "scheme": "light",
+        "eyebrow": "Usikker på, hvor du skal starte?",
+        "heading": "Skal din løsning tilpasses?",
+        "text": "<p>Fortæl kort, hvad du har brug for, og send gerne et link til din nuværende hjemmeside. Så giver vi dig et konkret tilbud.</p>",
+        "label": "Hent tilbud",
+        "link": "/pages/kontakt?ydelse=andet-ved-ikke-endnu#formular",
+        "show_email": true,
+        "email_prefix": "Eller skriv direkte til"
+      }
+    },
+    "s7": {
+      "type": "service-detail",
+      "settings": {
+        "scheme": "light",
+        "anchor": "vedligeholdelse",
+        "number": "",
+        "icon": "shield",
+        "title": "Vedligeholdelse og hosting",
+        "intro": "<p>Løbende pasning af din hjemmeside som abonnement, hos din nuværende hostingudbyder eller hos os.</p>",
+        "problem": "<p>Opdateringer bliver udskudt, fejl opdages først, når en kunde klager, og ingen har ansvaret for, at siden bliver ved med at være hurtig og sikker.</p>",
+        "includes": "Hjemmeside, hosting, SSL og domæne samlet i ét abonnement\nOpdateringer og sikkerhedskopier\nIndholdsændringer hver måned\nVedligeholdelse af eksisterende sider, hvor de ligger i dag",
+        "audience": "<p>vil have en fast teknisk partner til sin hjemmeside eller webshop, uanset om den kører på Shopify, WordPress, WooCommerce eller noget andet, og uanset hvor den er hostet.</p>",
+        "deliverables": "Fast månedligt abonnement\nOvervågning og opdateringer\nSupport ved fejl\nStatusrapport",
+        "cta_label": "Hør om abonnementet",
+        "form_key": "vedligeholdelse-af-eksisterende-hjemmeside",
+        "secondary_label": "Se abonnementerne",
+        "secondary_link": "#abonnement"
+      }
+    },
+    "plans": {
+      "type": "plans",
+      "blocks": {
+        "starter": {
+          "type": "plan",
+          "settings": {
+            "title": "Starter",
+            "badge": "",
+            "highlight": false,
+            "text": "",
+            "price": "299 kr.",
+            "price_note": "/md. inkl. moms",
+            "features": "Enkel, professionel hjemmeside\nWebhosting og SSL-certifikat\nTilkobling af domæne\nGrundlæggende vedligeholdelse",
+            "note": "",
+            "button_label": "Vælg Starter",
+            "form_key": "abonnement-starter",
+            "product": "starter"
+          }
+        },
+        "business": {
+          "type": "plan",
+          "settings": {
+            "title": "Business",
+            "badge": "Mest populær",
+            "highlight": true,
+            "text": "",
+            "price": "599 kr.",
+            "price_note": "/md. inkl. moms",
+            "features": "Skræddersyet virksomhedshjemmeside\nWebhosting, SSL og sikkerhedskopier\nLøbende opdateringer\nMindre indholdsændringer hver måned",
+            "note": "",
+            "button_label": "Vælg Business",
+            "form_key": "abonnement-business",
+            "product": "business"
+          }
+        },
+        "premium": {
+          "type": "plan",
+          "settings": {
+            "title": "Premium",
+            "badge": "",
+            "highlight": false,
+            "text": "",
+            "price": "1.099 kr.",
+            "price_note": "/md. inkl. moms",
+            "features": "Avanceret hjemmeside\nWebhosting og udvidet vedligeholdelse\nFlere indholdsændringer\nPrioriteret kundesupport",
+            "note": "",
+            "button_label": "Vælg Premium",
+            "form_key": "abonnement-premium",
+            "product": "premium"
+          }
+        }
+      },
+      "block_order": [
+        "starter",
+        "business",
+        "premium"
+      ],
+      "settings": {
+        "scheme": "surface",
+        "anchor": "abonnement",
+        "eyebrow": "Abonnement",
+        "heading": "Hjemmeside som abonnement",
+        "text": "<p>Vi bygger, hoster og vedligeholder din hjemmeside for en fast pris om måneden. Læg et abonnement i kurven og send en forespørgsel, eller hent et tilbud, hvis din løsning skal tilpasses. Du betaler ikke på hjemmesiden: vi sender dig et tilbud med et personligt link, hvor du tilmelder dig sikkert hos Stripe, og du får en faktura ved hver betaling.</p>",
+        "footnote": "<p>Alle priser er inkl. moms. Har du allerede en hjemmeside og hosting, kan vi også nøjes med at vedligeholde den, hvor den ligger. Skriv til os for en pris. Abonnementet kan opsiges til udgangen af den betalte periode, og du styrer det selv i kundepanelet.</p>",
+        "terms": "Løbende abonnement med fast månedspris, til du opsiger det"
+      }
+    },
+    "solutions": {
+      "type": "solutions",
+      "blocks": {
+        "s1": {
+          "type": "solution",
+          "settings": {
+            "icon": "cart",
+            "label": "Løsning 1",
+            "anchor": "bestilling-og-lager",
+            "title": "Hjemmeside med bestilling og lagerstyring",
+            "text": "<p>En hjemmeside, hvor dine kunder kan se jeres produkter og afgive bestillinger. Ordren lander straks i dit administrationspanel, du får en notifikation, og varerne trækkes fra den disponible beholdning, når ordren bekræftes.</p>",
+            "points": "Kunderne ser produkter og bestiller selv\nNye ordrer vises straks i administrationspanelet\nNotifikation ved hver ny bestilling\nLageret opdateres automatisk ved ordrebekræftelse\nKundernes bestillinger hænger sammen med jeres interne ordre- og lagerstyring",
+            "fit": "virksomheder, hvor kunderne skal kunne bestille selv.",
+            "button_label": "Book en demo",
+            "button_link": "/pages/kontakt?ydelse=hjemmeside-med-bestilling-og-lagerstyring#formular",
+            "link_label": "Se et eksempel",
+            "link": "/#demo"
+          }
+        },
+        "s2": {
+          "type": "solution",
+          "settings": {
+            "icon": "list",
+            "label": "Løsning 2",
+            "anchor": "internt-system",
+            "title": "Internt system til ordrer og varekontrol",
+            "text": "<p>Et selvstændigt system med login, kun for jer og jeres medarbejdere. Det kræver hverken en offentlig webshop, et produktkatalog til kunder eller onlinebetaling.</p>",
+            "points": "Opret ordrer fra telefon, e-mail eller direkte salg\nFølg hver ordre gennem hele behandlingen\nOverblik over varebeholdningen\nLageret opdateres automatisk, når ordrer bekræftes\nKun adgang for medarbejdere med login",
+            "fit": "virksomheder, der tager imod ordrer på telefon, e-mail eller ved direkte salg.",
+            "button_label": "Book en demo",
+            "button_link": "/pages/kontakt?ydelse=internt-system-til-ordrer-og-varekontrol#formular",
+            "link_label": "Se et eksempel",
+            "link": "/#demo"
+          }
+        }
+      },
+      "block_order": [
+        "s1",
+        "s2"
+      ],
+      "settings": {
+        "scheme": "surface",
+        "anchor": "losninger",
+        "eyebrow": "Hovedløsninger",
+        "heading": "Ordrestyring og varekontrol",
+        "text": "<p>Vælg den løsning, der passer til den måde, jeres kunder bestiller på. Begge bygger på de samme funktioner til ordrer og lager.</p>",
+        "fit_label": "Passer til",
+        "note": "<p>Begge løsninger har de samme kernefunktioner: ordreoversigt, ordredetaljer, varer og lagerantal, automatisk lageropdatering, manuel lagerregulering, advarsler ved lav beholdning og historik. <a href=\"/#funktioner\">Se funktionerne på forsiden</a>.</p>"
+      }
+    },
+    "web_intro": {
+      "type": "note-banner",
+      "settings": {
+        "scheme": "light",
+        "anchor": "webloesninger",
+        "icon": "design",
+        "heading": "Hjemmesider og øvrige webløsninger",
+        "text": "<p>Har du blot brug for en hjemmeside, eller skal din nuværende side forbedres? Her er de ydelser, vi også tilbyder, uden ordre- og lagerstyring. Hjemmesider laver vi som abonnement med fast månedspris fra 299 kr./md.</p>",
+        "primary_label": "Se abonnementerne",
+        "primary_link": "#abonnement",
+        "secondary_label": "Hent tilbud",
+        "secondary_link": "/pages/kontakt?ydelse=almindelig-hjemmeside-eller-landingsside#formular"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "solutions",
+    "web_intro",
+    "s1",
+    "s2",
+    "s3",
+    "s4",
+    "s5",
+    "s6",
+    "s7",
+    "plans",
+    "cta"
+  ]
+}

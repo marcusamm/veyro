@@ -1,0 +1,75 @@
+<section class="section section--{{ section.settings.scheme }} services" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container">
+    <div class="section-head-row">
+      {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
+      {% render 'button', label: section.settings.link_label, url: section.settings.link, style: 'secondary', class: 'section-head-row__btn' %}
+    </div>
+
+    <ul class="services__grid" role="list">
+      {%- for block in section.blocks -%}
+        <li class="service-card card card--interactive" data-reveal style="--delay: {{ forloop.index0 | modulo: 3 | times: 70 }}ms" {{ block.shopify_attributes }}>
+          <div class="service-card__top">
+            <span class="service-card__icon">{% render 'icon', name: block.settings.icon, size: 26 %}</span>
+          </div>
+          <h3 class="h3 service-card__title">
+            {%- if block.settings.link != blank -%}
+              <a class="card__link" href="{{ block.settings.link }}">{{ block.settings.title | escape }}</a>
+            {%- else -%}
+              {{ block.settings.title | escape }}
+            {%- endif -%}
+          </h3>
+          <div class="rte service-card__text">{{ block.settings.text }}</div>
+          {%- assign benefits = block.settings.benefits | newline_to_br | split: '<br />' -%}
+          {%- if block.settings.benefits != blank -%}
+            <ul class="checklist" role="list">
+              {%- for b in benefits -%}
+                {%- assign benefit = b | strip -%}
+                {%- if benefit != blank -%}<li>{% render 'icon', name: 'check', size: 16 %}<span>{{ benefit | escape }}</span></li>{%- endif -%}
+              {%- endfor -%}
+            </ul>
+          {%- endif -%}
+          {%- if block.settings.link_label != blank and block.settings.link != blank -%}
+            <span class="service-card__cta" aria-hidden="true">{{ block.settings.link_label | escape }} {% render 'icon', name: 'arrow-up-right', size: 18 %}</span>
+          {%- endif -%}
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Ydelser (kort)",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
+    ], "default": "light" },
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "ydelser" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Ydelser" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Alt det, der får en hjemmeside eller webshop til at fungere bedre" },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "link_label", "label": "Knaptekst", "default": "Se alle ydelser" },
+    { "type": "url", "id": "link", "label": "Knaplink" }
+  ],
+  "blocks": [
+    {
+      "type": "service",
+      "name": "Ydelse",
+      "settings": [
+        { "type": "select", "id": "icon", "label": "Ikon", "options": [
+          { "value": "speed", "label": "Hastighed" }, { "value": "conversion", "label": "Konvertering" }, { "value": "code", "label": "Kode" },
+          { "value": "design", "label": "Design" }, { "value": "wrench", "label": "Værktøj" }, { "value": "integration", "label": "Integration" },
+          { "value": "automation", "label": "Automatisering" }, { "value": "layers", "label": "Lag" }, { "value": "target", "label": "Mål" }
+        ], "default": "speed" },
+        { "type": "text", "id": "title", "label": "Titel", "default": "Website-optimering" },
+        { "type": "richtext", "id": "text", "label": "Beskrivelse", "default": "<p>Hurtigere indlæsning, bedre mobiloplevelse og højere teknisk kvalitet.</p>" },
+        { "type": "textarea", "id": "benefits", "label": "Fordele (én pr. linje)", "default": "Hurtigere sider\nBedre mobiloplevelse" },
+        { "type": "text", "id": "link_label", "label": "Linktekst", "default": "Læs mere" },
+        { "type": "url", "id": "link", "label": "Link", "info": "Hele kortet bliver klikbart." }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Ydelser (kort)", "blocks": [{ "type": "service" }, { "type": "service" }, { "type": "service" }] }]
+}
+{% endschema %}

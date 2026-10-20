@@ -1,0 +1,14 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-collection",
+      "settings": {
+        "eyebrow": "Pakker",
+        "per_page": 12
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

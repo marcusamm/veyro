@@ -107,8 +107,8 @@ export async function upsertSubscription(
   const statusFailed = sub.status === 'past_due' || sub.status === 'unpaid' ? 1 : sub.status === 'active' ? 0 : null;
   await env.DB.prepare(
     `INSERT INTO subscriptions (id, customer_id, status, plan, price_id, item_id, amount, currency, started_at,
-        current_period_end, cancel_at_period_end, cancel_at, canceled_at, payment_failed, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, COALESCE(?14, ?15, 0), ?16)
+        current_period_end, cancel_at_period_end, cancel_at, canceled_at, payment_failed, updated_at, interval, offer_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, COALESCE(?14, ?15, 0), ?16, ?17, ?18)
      ON CONFLICT(id) DO UPDATE SET
        customer_id = excluded.customer_id,
        status = excluded.status,
@@ -123,7 +123,9 @@ export async function upsertSubscription(
        cancel_at = excluded.cancel_at,
        canceled_at = excluded.canceled_at,
        payment_failed = COALESCE(?14, ?15, subscriptions.payment_failed),
-       updated_at = excluded.updated_at`,
+       updated_at = excluded.updated_at,
+       interval = COALESCE(excluded.interval, subscriptions.interval),
+       offer_id = COALESCE(excluded.offer_id, subscriptions.offer_id)`,
   )
     .bind(
       sub.id,
@@ -142,8 +144,15 @@ export async function upsertSubscription(
       pf,
       statusFailed,
       now,
+      item?.price?.recurring?.interval ?? null,
+      offerIdOf(sub),
     )
     .run();
+}
+
+function offerIdOf(sub: StripeSubscription): number | null {
+  const n = Number.parseInt(sub.metadata?.veyro_offer ?? '', 10);
+  return Number.isSafeInteger(n) && n > 0 ? n : null;
 }
 
 export async function setPaymentFailed(db: D1Database, subId: string, failed: boolean): Promise<void> {

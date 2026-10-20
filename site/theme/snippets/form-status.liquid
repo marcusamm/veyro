@@ -1,0 +1,39 @@
+{%- comment -%}
+  Succes- og fejltilstande for Shopify-kontaktformularer.
+  Parametre: form (Liquid form-objekt), success_heading, success_text
+{%- endcomment -%}
+{%- liquid
+  assign default_success_heading = 'forms.success_heading' | t
+  assign default_success_text = 'forms.success_text' | t
+-%}
+{%- if form.posted_successfully? -%}
+  <div class="form-status form-status--success" role="status" tabindex="-1" data-form-success>
+    <span class="form-status__icon">{% render 'icon', name: 'check', size: 22 %}</span>
+    <div>
+      <h3 class="h4">{{ success_heading | default: default_success_heading }}</h3>
+      <div class="rte">{{ success_text | default: default_success_text }}</div>
+    </div>
+  </div>
+{%- elsif form.errors -%}
+  <div class="form-status form-status--error" role="alert" tabindex="-1" data-form-error>
+    <div>
+      <h3 class="h4">{{ 'forms.error_heading' | t }}</h3>
+      <ul>
+        {%- for field in form.errors -%}
+          <li>
+            {%- if field == 'form' -%}
+              {{ form.errors.messages[field] }}
+            {%- elsif field == 'email' -%}
+              {{ 'forms.shopify_errors.email' | t }}
+            {%- else -%}
+              {{ form.errors.translated_fields[field] | capitalize }} {{ form.errors.messages[field] }}
+            {%- endif -%}
+          </li>
+        {%- endfor -%}
+      </ul>
+      {%- if settings.company_email != blank -%}
+        <p>{{ 'forms.server_error' | t: email: settings.company_email }}</p>
+      {%- endif -%}
+    </div>
+  </div>
+{%- endif -%}

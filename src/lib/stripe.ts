@@ -85,9 +85,10 @@ export interface StripeSubscription {
       id: string;
       current_period_end?: number; // nyere API-versioner
       quantity?: number;
-      price: { id: string; unit_amount: number | null; currency: string };
+      price: { id: string; unit_amount: number | null; currency: string; recurring?: { interval: string } | null };
     }>;
   };
+  metadata?: Record<string, string>;
 }
 
 export interface StripeCustomer {

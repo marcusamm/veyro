@@ -1,0 +1,259 @@
+{
+  "sections": {
+    "hero": {
+      "type": "page-hero",
+      "settings": {
+        "scheme": "dark",
+        "style": "technical",
+        "show_breadcrumbs": true,
+        "eyebrow": "Custom Shopify-løsninger",
+        "heading": "Når standardløsningen ikke er nok",
+        "text": "<p>Custom-udvikling på Shopify er vores særlige speciale. Vi udvikler sektioner, funktioner og integrationer, der passer til din forretning, bygget efter Shopifys anbefalinger, så de er hurtige, stabile og til at redigere.</p>",
+        "primary_label": "Fortæl os om din idé",
+        "primary_link": "/pages/kontakt?ydelse=custom-shopify-loesning#formular",
+        "secondary_label": "Se hvad vi kan bygge",
+        "secondary_link": "#kompetencer",
+        "nav_label": "Gå til"
+      }
+    },
+    "intro": {
+      "type": "image-text",
+      "settings": {
+        "scheme": "light",
+        "image_position": "right",
+        "anchor": "tilgang",
+        "eyebrow": "Teknisk, men forståeligt",
+        "heading": "Du behøver ikke kunne kode for at samarbejde med os",
+        "text": "<p>Vi starter med dit behov. Du beskriver, hvad der skal kunne lade sig gøre, og vi oversætter det til en løsning, du kan se, teste og godkende, før den går live.</p><p>Alt, vi bygger, kan redigeres i Shopifys temaeditor, hvor det giver mening. Så kan du selv skifte tekster, billeder og rækkefølge bagefter.</p>",
+        "statement": "Vi bygger direkte i Shopify, så du selv kan redigere bagefter."
+      }
+    },
+    "caps": {
+      "type": "capabilities",
+      "blocks": {
+        "c1": {
+          "type": "capability",
+          "settings": {
+            "title": "Custom sektioner til temaet",
+            "text": "<p>Egne sektioner og blokke, som du selv kan tilføje, flytte og redigere i Shopifys temaeditor, uden at skulle røre koden.</p>",
+            "example": "En sektion med produktfordele, der kan genbruges på alle produktsider.",
+            "tags": "Liquid, JSON, CSS"
+          }
+        },
+        "c2": {
+          "type": "capability",
+          "settings": {
+            "title": "Liquid-komponenter",
+            "text": "<p>Genbrugelige komponenter, der holder temaet ensartet og let at vedligeholde.</p>",
+            "example": "Ensartede produktkort på tværs af forside, kollektioner og søgning.",
+            "tags": "Liquid, snippets"
+          }
+        },
+        "c3": {
+          "type": "capability",
+          "settings": {
+            "title": "Temaændringer",
+            "text": "<p>Tilpasninger af dit eksisterende tema, lavet så de er til at forstå og kan overleve fremtidige ændringer.</p>",
+            "example": "Nyt layout på kollektionssiden med andre filtre og en ny produktvisning.",
+            "tags": "Liquid, CSS, JavaScript"
+          }
+        },
+        "c4": {
+          "type": "capability",
+          "settings": {
+            "title": "Funktioner på produktsiden",
+            "text": "<p>Funktionalitet, der hjælper kunden med at vælge rigtigt og købe trygt.</p>",
+            "example": "Størrelsesguide, bundles, produktkonfigurator eller leveringsestimat.",
+            "tags": "Liquid, JavaScript, metafelter"
+          }
+        },
+        "c5": {
+          "type": "capability",
+          "settings": {
+            "title": "Storefront-funktioner",
+            "text": "<p>Interaktive elementer, der gør webshoppen mere brugbar, bygget lette og uden unødvendige afhængigheder.</p>",
+            "example": "Hurtigkøb fra kollektionssiden eller en kurv, der opdateres uden genindlæsning.",
+            "tags": "JavaScript, Ajax API"
+          }
+        },
+        "c6": {
+          "type": "capability",
+          "settings": {
+            "title": "Shopify app-integrationer",
+            "text": "<p>Opsætning og tilpasning af apps, så de passer ind i temaet og ikke trækker unødigt på hastigheden.</p>",
+            "example": "App-blokke placeret korrekt i Online Store 2.0-temaet.",
+            "tags": "App blocks, theme app extensions"
+          }
+        },
+        "c7": {
+          "type": "capability",
+          "settings": {
+            "title": "API-baserede integrationer og automatiseringer",
+            "text": "<p>Forbindelser mellem Shopify og dine øvrige systemer via Shopifys Admin API, webhooks og Shopify Flow.</p>",
+            "example": "Ordrer sendes automatisk til lager- eller ERP-systemet.",
+            "tags": "Admin API, GraphQL, webhooks, Flow"
+          }
+        },
+        "c8": {
+          "type": "capability",
+          "settings": {
+            "title": "Skræddersyede løsninger til arbejdsgange",
+            "text": "<p>Små værktøjer, der fjerner gentagne opgaver og passer til den måde, I arbejder på.</p>",
+            "example": "Automatisk tagging af ordrer eller en ugentlig rapport sendt på e-mail.",
+            "tags": "Shopify Flow, scripts, API"
+          }
+        }
+      },
+      "block_order": [
+        "c1",
+        "c2",
+        "c3",
+        "c4",
+        "c5",
+        "c6",
+        "c7",
+        "c8"
+      ],
+      "settings": {
+        "scheme": "dark",
+        "anchor": "kompetencer",
+        "eyebrow": "Det kan vi bygge",
+        "heading": "Fra en enkelt sektion til en hel integration",
+        "text": "<p>Et udsnit af de typer løsninger, vi udvikler. Har du en idé, der ikke står her, så spørg alligevel.</p>",
+        "example_label": "Eksempel:",
+        "show_code": true,
+        "code_label": "Kodeeksempler",
+        "code_1_name": "produkt-fordele.liquid",
+        "code_1": "[% comment %] sections/produkt-fordele.liquid [% endcomment %]\n<div class=\"usp-grid\">\n  [%- for block in section.blocks -%]\n    <div class=\"usp\" [[ block.shopify_attributes ]]>\n      [% render 'icon', name: block.settings.icon %]\n      <h3>[[ block.settings.title | escape ]]</h3>\n      <p>[[ block.settings.text ]]</p>\n    </div>\n  [%- endfor -%]\n</div>",
+        "code_2_name": "schema.json",
+        "code_2": "{\n  \"name\": \"Produktfordele\",\n  \"blocks\": [{\n    \"type\": \"usp\",\n    \"name\": \"Fordel\",\n    \"settings\": [\n      { \"type\": \"text\", \"id\": \"title\", \"label\": \"Titel\" },\n      { \"type\": \"inline_richtext\", \"id\": \"text\", \"label\": \"Tekst\" }\n    ]\n  }],\n  \"presets\": [{ \"name\": \"Produktfordele\" }]\n}",
+        "code_3_name": "webhook.js",
+        "code_3": "// Kører på serveren, aldrig i browseren.\n// Adgangsnøglen ligger i en miljøvariabel.\nexport async function onOrderCreated(req) {\n  verifyShopifyHmac(req, process.env.SHOPIFY_WEBHOOK_SECRET);\n  const order = await req.json();\n  await erp.createOrder({\n    reference: order.name,\n    lines: order.line_items.map(toErpLine),\n  });\n}",
+        "code_caption": "Forenklede eksempler på den type kode, vi skriver."
+      }
+    },
+    "quality": {
+      "type": "features",
+      "blocks": {
+        "q1": {
+          "type": "feature",
+          "settings": {
+            "icon": "layers",
+            "title": "Online Store 2.0",
+            "text": "<p>Sektioner og blokke, der virker i temaeditoren og følger Shopifys arkitektur.</p>"
+          }
+        },
+        "q2": {
+          "type": "feature",
+          "settings": {
+            "icon": "speed",
+            "title": "Let kode",
+            "text": "<p>Ingen tunge biblioteker, hvor et par linjer kode kan gøre arbejdet.</p>"
+          }
+        },
+        "q3": {
+          "type": "feature",
+          "settings": {
+            "icon": "shield",
+            "title": "Sikker håndtering",
+            "text": "<p>Private API-nøgler holdes på serveren og aldrig i sidens kode.</p>"
+          }
+        },
+        "q4": {
+          "type": "feature",
+          "settings": {
+            "icon": "user",
+            "title": "Tilgængelighed",
+            "text": "<p>Semantisk HTML, tastaturnavigation og god kontrast som standard.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "q1",
+        "q2",
+        "q3",
+        "q4"
+      ],
+      "settings": {
+        "scheme": "light",
+        "layout": "split",
+        "anchor": "kvalitet",
+        "eyebrow": "Kvalitet",
+        "heading": "Sådan bygger vi",
+        "text": "<p>Principper, vi følger i alt, hvad vi udvikler.</p>"
+      }
+    },
+    "process": {
+      "type": "process",
+      "blocks": {
+        "p1": {
+          "type": "step",
+          "settings": {
+            "title": "Behov",
+            "lead": "Vi afklarer, hvad løsningen skal kunne.",
+            "text": "<p>Kort samtale om mål, brugere og afgrænsning.</p>"
+          }
+        },
+        "p2": {
+          "type": "step",
+          "settings": {
+            "title": "Specifikation",
+            "lead": "Du godkender, før vi koder.",
+            "text": "<p>En klar beskrivelse af løsningen, tidsplan og pris.</p>"
+          }
+        },
+        "p3": {
+          "type": "step",
+          "settings": {
+            "title": "Udvikling",
+            "lead": "Vi bygger og tester i en kopi.",
+            "text": "<p>Du får et preview-link og kan teste undervejs.</p>"
+          }
+        },
+        "p4": {
+          "type": "step",
+          "settings": {
+            "title": "Overdragelse",
+            "lead": "Live, dokumenteret og redigerbart.",
+            "text": "<p>Vi udgiver, gennemgår løsningen med dig og står klar til justeringer.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ],
+      "settings": {
+        "scheme": "surface",
+        "anchor": "forloeb",
+        "eyebrow": "Forløbet",
+        "heading": "Fra idé til færdig løsning",
+        "link_label": "Fortæl os om din idé",
+        "link": "/pages/kontakt?ydelse=custom-shopify-loesning#formular"
+      }
+    },
+    "cta": {
+      "type": "cta-banner",
+      "settings": {
+        "scheme": "light",
+        "eyebrow": "Har du en idé?",
+        "heading": "Lad os finde ud af, hvordan den bedst bygges",
+        "text": "<p>Beskriv kort, hvad du gerne vil kunne. Vi vender tilbage med vores bud på en løsning og næste skridt.</p>",
+        "label": "Fortæl os om din idé",
+        "link": "/pages/kontakt?ydelse=custom-shopify-loesning#formular",
+        "show_email": true,
+        "email_prefix": "Eller skriv direkte til"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "intro",
+    "caps",
+    "quality",
+    "process",
+    "cta"
+  ]
+}

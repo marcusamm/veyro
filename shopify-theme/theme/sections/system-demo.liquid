@@ -1,0 +1,112 @@
+{%- comment -%}
+  Visuel demonstration af et Veyro-system: ordreoversigt, lagerstatus og advarsler.
+  Alt indhold i demoen er fiktivt og markeret som eksempel. Ingen billedfiler, kun HTML/CSS.
+  Disponibel = fysisk beholdning − reserveret.
+{%- endcomment -%}
+{%- assign rules = section.settings.rules | newline_to_br | split: '<br />' -%}
+<section class="section section--{{ section.settings.scheme }} demo" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container">
+    {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
+
+    <figure class="demo__figure" data-reveal>
+      <p class="demo__badge"><span aria-hidden="true"></span>{{ section.settings.badge | escape }}</p>
+      <div class="demo__app">
+        <div class="demo__bar" aria-hidden="true">
+          <span class="hv__dots"><i></i><i></i><i></i></span>
+          <span class="demo__app-name">Administrationspanel</span>
+          <span class="demo__toast">{% render 'icon', name: 'bell', size: 14 %}Ny ordre #1048 fra hjemmesiden</span>
+        </div>
+
+        <div class="demo__grid">
+          <div class="demo__panel demo__panel--orders">
+            <h3 class="demo__title">{% render 'icon', name: 'list', size: 16 %}Ordreoversigt</h3>
+            <ul class="demo__tabs" role="list">
+              <li class="is-active">Nye <b>2</b></li><li>Igangværende <b>1</b></li><li>Afsluttede <b>1</b></li><li>Annullerede <b>1</b></li>
+            </ul>
+            <table class="demo__table">
+              <caption class="visually-hidden">Eksempel på ordrer</caption>
+              <thead><tr><th scope="col">Ordre</th><th scope="col">Kunde</th><th scope="col">Kilde</th><th scope="col" class="num">Varer</th><th scope="col">Status</th></tr></thead>
+              <tbody>
+                <tr><td>#1048</td><td>M. Larsen</td><td>Hjemmeside</td><td class="num">3</td><td><span class="pill pill--new">Ny</span></td></tr>
+                <tr><td>#1047</td><td>J. Holm</td><td>Telefon</td><td class="num">5</td><td><span class="pill pill--new">Ny</span></td></tr>
+                <tr><td>#1046</td><td>S. Nielsen</td><td>E-mail</td><td class="num">2</td><td><span class="pill pill--busy">Igangværende</span></td></tr>
+                <tr><td>#1045</td><td>A. Berg</td><td>Direkte salg</td><td class="num">1</td><td><span class="pill pill--done">Afsluttet</span></td></tr>
+                <tr><td>#1044</td><td>K. Due</td><td>Hjemmeside</td><td class="num">4</td><td><span class="pill pill--void">Annulleret</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="demo__panel demo__panel--stock">
+            <h3 class="demo__title">{% render 'icon', name: 'box', size: 16 %}Lagerstatus</h3>
+            <table class="demo__table">
+              <caption class="visually-hidden">Eksempel på lagerstatus</caption>
+              <thead><tr><th scope="col">Vare</th><th scope="col" class="num">Fysisk</th><th scope="col" class="num">Reserveret</th><th scope="col" class="num">Disponibel</th></tr></thead>
+              <tbody>
+                <tr><td>Arbejdshandsker, str. L<small>VN-1001</small></td><td class="num">120</td><td class="num">24</td><td class="num"><b>96</b></td></tr>
+                <tr><td>Skruer 4×40, 200 stk.<small>VN-1022</small></td><td class="num">64</td><td class="num">8</td><td class="num"><b>56</b></td></tr>
+                <tr class="is-low"><td>Malertape 25 mm<small>VN-1014</small></td><td class="num">18</td><td class="num">12</td><td class="num"><b>6</b><span class="pill pill--low">Lav</span></td></tr>
+                <tr class="is-low"><td>Spartelmasse 1 L<small>VN-1041</small></td><td class="num">7</td><td class="num">2</td><td class="num"><b>5</b><span class="pill pill--low">Lav</span></td></tr>
+                <tr class="is-out"><td>Afdækningsplast 4×5 m<small>VN-1030</small></td><td class="num">9</td><td class="num">9</td><td class="num"><b>0</b><span class="pill pill--out">Udsolgt</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="demo__panel demo__panel--alerts">
+            <h3 class="demo__title">{% render 'icon', name: 'alert', size: 16 %}Advarsler</h3>
+            <ul class="demo__alerts" role="list">
+              <li class="is-out"><b>Afdækningsplast 4×5 m</b><span>Udsolgt. 0 disponible.</span></li>
+              <li><b>Malertape 25 mm</b><span>Lav beholdning: 6 disponible (minimum 10).</span></li>
+              <li><b>Spartelmasse 1 L</b><span>Lav beholdning: 5 disponible (minimum 8).</span></li>
+            </ul>
+            <h3 class="demo__title demo__title--sub">{% render 'icon', name: 'history', size: 16 %}Seneste ændringer</h3>
+            <ul class="demo__log" role="list">
+              <li><span>Ordre #1047 bekræftet</span><em>5 varer reserveret</em></li>
+              <li><span>Varemodtagelse</span><em>Skruer 4×40 +50</em></li>
+              <li><span>Optælling (svind)</span><em>Malertape 25 mm −2</em></li>
+              <li><span>Ordre #1044 annulleret</span><em>4 varer frigivet</em></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      {%- if section.settings.caption != blank -%}
+        <figcaption class="demo__caption small muted">{{ section.settings.caption | escape }}</figcaption>
+      {%- endif -%}
+    </figure>
+
+    {%- if section.settings.rules != blank -%}
+      <div class="demo__rules" data-reveal>
+        {%- if section.settings.rules_heading != blank -%}<h3 class="h4 demo__rules-title">{{ section.settings.rules_heading | escape }}</h3>{%- endif -%}
+        <ul class="demo__rules-list" role="list">
+          {%- for r in rules -%}
+            {%- assign line = r | strip -%}
+            {%- if line != blank -%}
+              {%- assign parts = line | split: '|' -%}
+              <li>{% render 'icon', name: 'check', size: 18 %}<div><strong>{{ parts[0] | strip | escape }}</strong>{%- if parts[1] != blank -%} <span>{{ parts[1] | strip | escape }}</span>{%- endif -%}</div></li>
+            {%- endif -%}
+          {%- endfor -%}
+        </ul>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Systemdemo",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
+    ], "default": "dark" },
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "demo" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Eksempel" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Sådan kan dit overblik se ud" },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "badge", "label": "Mærkat på demoen", "default": "Eksempel med fiktive data" },
+    { "type": "text", "id": "caption", "label": "Billedtekst", "default": "Eksemplet viser, hvordan et system kan se ud. Indhold og opbygning tilpasses din virksomhed." },
+    { "type": "text", "id": "rules_heading", "label": "Overskrift over lagerregler", "default": "Sådan holder systemet styr på lageret" },
+    { "type": "textarea", "id": "rules", "label": "Lagerregler (én pr. linje: Titel | Forklaring)" }
+  ],
+  "presets": [{ "name": "Systemdemo" }]
+}
+{% endschema %}

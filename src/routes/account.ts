@@ -286,6 +286,25 @@ account.post('/betalingskort', async (c) => {
   }
 });
 
+// Stripes kundeportal: betalingskort, fakturaer og (hvis slået til i portalens opsætning) opsigelse ved periodens udløb.
+account.post('/portal', async (c) => {
+  const customer = c.get('customer');
+  if (!customer.stripe_customer_id) return c.redirect('/konto/fakturaer', 303);
+  const base = c.env.APP_URL.replace(/\/+$/, '');
+  try {
+    const ps = await stripeRequest<{ url: string }>(c.env, 'POST', '/v1/billing_portal/sessions', {
+      customer: customer.stripe_customer_id,
+      return_url: `${base}/konto`,
+      locale: 'da',
+      configuration: c.env.STRIPE_PORTAL_CONFIGURATION || undefined,
+    });
+    return c.redirect(ps.url, 303);
+  } catch (err) {
+    await logStripe(c, 'Kundeportal', err);
+    return c.redirect('/konto/fakturaer?besked=stripe-fejl', 303);
+  }
+});
+
 // ---------- Henvendelser ----------
 account.get('/henvendelser', async (c) => {
   const requests = await listRequestsForCustomer(c.env.DB, c.get('customer').id);

@@ -1,0 +1,53 @@
+<section class="section section--{{ section.settings.scheme }} process" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container">
+    {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
+
+    <ol class="process__steps" role="list" data-process style="--steps: {{ section.blocks.size }}">
+      {%- for block in section.blocks -%}
+        <li class="process__step" data-reveal style="--delay: {{ forloop.index0 | times: 90 }}ms" {{ block.shopify_attributes }}>
+          <span class="process__num" aria-hidden="true">{{ forloop.index }}</span>
+          <h3 class="h3 process__title"><span class="visually-hidden">{{ forloop.index }}. </span>{{ block.settings.title | escape }}</h3>
+          <p class="process__lead">{{ block.settings.lead | escape }}</p>
+          <div class="rte process__text">{{ block.settings.text }}</div>
+        </li>
+      {%- endfor -%}
+    </ol>
+
+    {%- if section.settings.link_label != blank -%}
+      <div class="process__cta" data-reveal>
+        {% render 'button', label: section.settings.link_label, url: section.settings.link, fallback: pages['kontakt'].url, style: 'primary', arrow: settings.button_arrow %}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Proces",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
+    ], "default": "light" },
+    { "type": "text", "id": "anchor", "label": "Anker-id", "info": "Menupunktet „Sådan arbejder vi“ kan linke til /#proces", "default": "proces" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Sådan arbejder vi" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Fire trin fra analyse til forbedring" },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "link_label", "label": "Knaptekst", "default": "Få en gratis vurdering" },
+    { "type": "url", "id": "link", "label": "Knaplink" }
+  ],
+  "blocks": [
+    {
+      "type": "step",
+      "name": "Trin",
+      "limit": 6,
+      "settings": [
+        { "type": "text", "id": "title", "label": "Titel", "default": "Analyse" },
+        { "type": "text", "id": "lead", "label": "Kort beskrivelse", "default": "Vi undersøger din hjemmeside." },
+        { "type": "richtext", "id": "text", "label": "Uddybning" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Proces", "blocks": [{ "type": "step" }, { "type": "step" }, { "type": "step" }, { "type": "step" }] }]
+}
+{% endschema %}

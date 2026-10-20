@@ -1,0 +1,18 @@
+<section class="section section--light not-found">
+  <div class="hero__grid-bg" aria-hidden="true"></div>
+  <div class="container not-found__inner">
+    <p class="eyebrow">404</p>
+    <h1 class="h-display">{{ 'not_found.title' | t }}</h1>
+    <p class="lead">{{ 'not_found.text' | t }}</p>
+    <div class="hero__actions">
+      {%- assign home_label = 'not_found.cta' | t -%}
+      {% render 'button', label: home_label, url: routes.root_url, style: 'primary', arrow: settings.button_arrow %}
+      {%- assign contact_label = 'footer.contact' | t -%}
+      {% render 'button', label: contact_label, url: pages['kontakt'].url, style: 'secondary' %}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{ "name": "404", "tag": "div", "settings": [] }
+{% endschema %}

@@ -1,0 +1,142 @@
+{%- comment -%}
+  Kontakt- og tilbudsformular. Bruger Shopifys indbyggede kontaktformular
+  ({% form 'contact' %}): henvendelsen sendes som e-mail til butikkens
+  kontakt-e-mail, og Shopify beskytter mod spam. Ingen tredjepartstjenester.
+  Ekstra felter sendes som contact[Feltnavn] og vises i e-mailen.
+  ?ydelse=<håndtag> i URL'en forvælger en ydelse (f.eks. ?ydelse=konverteringsoptimering-cro).
+{%- endcomment -%}
+{%- liquid
+  assign fid = 'Contact-' | append: section.id
+  assign services = section.settings.services | newline_to_br | split: '<br />'
+  assign submit_default = 'forms.submit' | t
+-%}
+<section class="section section--{{ section.settings.scheme }} contact" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container contact__inner">
+    <div class="contact__aside">
+      {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text, tag: section.settings.heading_tag, size: 'lg' %}
+
+      {%- if section.blocks.size > 0 -%}
+        <div class="contact__next" data-reveal>
+          <h2 class="h5 contact__next-title">{{ section.settings.steps_heading | escape }}</h2>
+          <ol role="list">
+            {%- for block in section.blocks -%}
+              <li {{ block.shopify_attributes }}>
+                <span class="contact__step-num" aria-hidden="true">{{ forloop.index }}</span>
+                <div><strong>{{ block.settings.title | escape }}</strong><span>{{ block.settings.text | escape }}</span></div>
+              </li>
+            {%- endfor -%}
+          </ol>
+        </div>
+      {%- endif -%}
+
+      <div class="contact__direct" data-reveal>
+        <p class="eyebrow">{{ section.settings.direct_heading | escape }}</p>
+        {%- if settings.company_email != blank -%}
+          <a class="contact__direct-link" href="mailto:{{ settings.company_email | escape }}">{% render 'icon', name: 'mail', size: 20 %}{{ settings.company_email | escape }}</a>
+        {%- endif -%}
+        {%- if settings.company_phone != blank -%}
+          <a class="contact__direct-link" href="tel:{{ settings.company_phone | remove: ' ' | escape }}">{% render 'icon', name: 'phone', size: 20 %}{{ settings.company_phone | escape }}</a>
+        {%- endif -%}
+        {%- if settings.company_hours != blank -%}
+          <p class="muted small">{{ settings.company_hours | escape }}</p>
+        {%- endif -%}
+      </div>
+    </div>
+
+    <div class="contact__form-wrap card" data-reveal>
+      {%- form 'contact', id: fid, class: 'form js-validate', novalidate: 'novalidate' -%}
+        {% render 'form-status', form: form, success_heading: section.settings.success_heading, success_text: section.settings.success_text %}
+
+        {%- unless form.posted_successfully? -%}
+          <div class="form__error-summary" role="alert" tabindex="-1" hidden data-error-summary></div>
+          <input type="hidden" name="contact[Formular]" value="{{ section.settings.form_name | escape }}">
+          <p class="form__legend small muted">{{ 'forms.required_legend' | t }}</p>
+
+          <div class="form__grid">
+            <div class="field">
+              <label for="{{ fid }}-name">{{ 'forms.fields.name' | t }} <span class="req" aria-hidden="true">*</span></label>
+              <input type="text" id="{{ fid }}-name" name="contact[name]" autocomplete="name" required maxlength="120" value="{{ form.name | escape }}" placeholder="{{ 'forms.placeholders.name' | t }}" data-label="{{ 'forms.fields.name' | t }}" aria-describedby="{{ fid }}-name-error">
+              <p class="field__error" id="{{ fid }}-name-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="{{ fid }}-company">{{ 'forms.fields.company' | t }} <span class="field__opt">({{ 'forms.optional' | t }})</span></label>
+              <input type="text" id="{{ fid }}-company" name="contact[Virksomhed]" autocomplete="organization" maxlength="120" placeholder="{{ 'forms.placeholders.company' | t }}">
+            </div>
+            <div class="field">
+              <label for="{{ fid }}-email">{{ 'forms.fields.email' | t }} <span class="req" aria-hidden="true">*</span></label>
+              <input type="email" id="{{ fid }}-email" name="contact[email]" autocomplete="email" inputmode="email" spellcheck="false" autocapitalize="off" required maxlength="160" value="{{ form.email | escape }}" placeholder="{{ 'forms.placeholders.email' | t }}" data-label="{{ 'forms.fields.email' | t }}" aria-describedby="{{ fid }}-email-error"{% if form.errors contains 'email' %} aria-invalid="true"{% endif %}>
+              <p class="field__error" id="{{ fid }}-email-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="{{ fid }}-url">{{ 'forms.fields.store_url' | t }} <span class="field__opt">({{ 'forms.optional' | t }})</span></label>
+              <input type="text" id="{{ fid }}-url" name="contact[Hjemmeside]" autocomplete="url" inputmode="url" spellcheck="false" autocapitalize="off" maxlength="200" placeholder="{{ 'forms.placeholders.store_url' | t }}" data-type="url" data-label="{{ 'forms.fields.store_url' | t }}" aria-describedby="{{ fid }}-url-error">
+              <p class="field__error" id="{{ fid }}-url-error" hidden></p>
+            </div>
+            <div class="field field--full">
+              <label for="{{ fid }}-service">{{ 'forms.fields.service' | t }} <span class="req" aria-hidden="true">*</span></label>
+              <div class="select">
+                <select id="{{ fid }}-service" name="contact[Ydelse]" required data-label="{{ 'forms.fields.service' | t }}" aria-describedby="{{ fid }}-service-error" data-preselect="ydelse">
+                  <option value="">{{ 'forms.choose' | t }}</option>
+                  {%- for s in services -%}
+                    {%- assign option = s | strip -%}
+                    {%- if option != blank -%}<option value="{{ option | escape }}" data-key="{{ option | handle }}">{{ option | escape }}</option>{%- endif -%}
+                  {%- endfor -%}
+                </select>
+                {% render 'icon', name: 'arrow-down', size: 18 %}
+              </div>
+              <p class="field__error" id="{{ fid }}-service-error" hidden></p>
+            </div>
+            <div class="field field--full">
+              <label for="{{ fid }}-body">{{ 'forms.fields.message' | t }} <span class="req" aria-hidden="true">*</span></label>
+              <textarea id="{{ fid }}-body" name="contact[body]" rows="6" required minlength="10" maxlength="5000" placeholder="{{ 'forms.placeholders.message' | t }}" data-label="{{ 'forms.fields.message' | t }}" aria-describedby="{{ fid }}-body-error">{{ form.body }}</textarea>
+              <p class="field__error" id="{{ fid }}-body-error" hidden></p>
+            </div>
+          </div>
+
+          {% render 'form-consent', id: fid %}
+
+          <div class="form__footer">
+            <button class="btn btn--primary btn--lg" type="submit" data-submit>
+              <span>{{ section.settings.submit_label | default: submit_default | escape }}</span>
+              {% render 'icon', name: 'arrow-right', size: 18 %}
+            </button>
+            <p class="small muted">{{ 'forms.spam_notice' | t }}</p>
+          </div>
+        {%- endunless -%}
+      {%- endform -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Kontaktformular",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
+    ], "default": "light" },
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "formular" },
+    { "type": "select", "id": "heading_tag", "label": "Overskriftsniveau", "info": "Brug H1, når formularen er sidens første sektion.", "options": [
+      { "value": "h1", "label": "H1" }, { "value": "h2", "label": "H2" }
+    ], "default": "h1" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Kontakt" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Fortæl os om din hjemmeside" },
+    { "type": "richtext", "id": "text", "label": "Tekst", "default": "<p>Beskriv kort, hvad du gerne vil have hjælp til. Vi kigger på din hjemmeside og vender tilbage med en uforpligtende vurdering og et forslag til næste skridt.</p>" },
+    { "type": "text", "id": "form_name", "label": "Formularens navn i e-mailen", "default": "Kontakt / tilbud" },
+    { "type": "textarea", "id": "services", "label": "Valgmuligheder for hjælp (én pr. linje)", "default": "Gratis vurdering af min hjemmeside\nWebsite-optimering\nKonverteringsoptimering (CRO)\nCustom Shopify-løsning\nWeb- og webshopdesign\nFejlfinding og teknisk hjælp\nIntegrationer og automatisering\nAndet / ved ikke endnu" },
+    { "type": "text", "id": "submit_label", "label": "Knaptekst", "default": "Send henvendelse" },
+    { "type": "text", "id": "success_heading", "label": "Succes – overskrift", "default": "Tak – vi har modtaget din henvendelse" },
+    { "type": "richtext", "id": "success_text", "label": "Succes – tekst", "default": "<p>Vi kigger på din besked og vender tilbage på e-mail. Har du flere oplysninger i mellemtiden, er du velkommen til at svare på vores mail.</p>" },
+    { "type": "text", "id": "steps_heading", "label": "Overskrift over trin", "default": "Det sker der, når du skriver" },
+    { "type": "text", "id": "direct_heading", "label": "Overskrift over direkte kontakt", "default": "Foretrækker du at skrive direkte?" }
+  ],
+  "blocks": [
+    { "type": "step", "name": "Trin", "limit": 4, "settings": [
+      { "type": "text", "id": "title", "label": "Titel", "default": "Vi læser din henvendelse" },
+      { "type": "text", "id": "text", "label": "Tekst", "default": "og kigger på din hjemmeside." }
+    ] }
+  ],
+  "presets": [{ "name": "Kontaktformular", "blocks": [{ "type": "step" }] }]
+}
+{% endschema %}

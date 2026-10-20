@@ -1,6 +1,6 @@
 // Starter mock-Stripe/Resend + `wrangler dev --local` med en midlertidig lokal D1.
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -27,13 +27,27 @@ function childEnv() {
   return env;
 }
 
+/**
+ * wrangler dev omskriver værtsnavnet til det første route-domæne (kunde.veyro.dk), så hjemmesiden og
+ * kundepanelet ikke kan skelnes. Testene kører derfor med en kopi af konfigurationen uden routes.
+ */
+function testConfig() {
+  const src = readFileSync(path.join(ROOT, 'wrangler.toml'), 'utf8');
+  const out = src.replace(/^routes = \[[\s\S]*?^\]\s*$/m, '');
+  if (/^routes\s*=/m.test(out)) throw new Error('Kunne ikke fjerne routes fra wrangler.toml');
+  const file = path.join(ROOT, '.wrangler-test.toml');
+  writeFileSync(file, out);
+  return file;
+}
+
 export async function startStack({ minMonths = 12, devMode = false, resend = true } = {}) {
   const mock = await startMock();
+  const config = testConfig();
   const port = await freePort();
   const persist = mkdtempSync(path.join(os.tmpdir(), 'vk-d1-'));
   const wrangler = path.join(ROOT, 'node_modules', '.bin', 'wrangler');
 
-  execFileSync(wrangler, ['d1', 'migrations', 'apply', 'veyro-kundepanel', '--local', '--persist-to', persist], {
+  execFileSync(wrangler, ['d1', 'migrations', 'apply', 'veyro-kundepanel', '--local', '--persist-to', persist, '--config', config], {
     cwd: ROOT,
     env: childEnv(),
     stdio: 'pipe',
@@ -53,8 +67,11 @@ export async function startStack({ minMonths = 12, devMode = false, resend = tru
     ADMIN_EMAILS: ADMIN_EMAIL,
     NOTIFY_EMAIL: 'kontakt@veyro.dk',
     DEV_MODE: devMode ? '1' : '0',
+    // Salgshjemmesiden svarer på localhost; kundepanelet på 127.0.0.1
+    SITE_HOSTS: 'localhost',
+    SITE_URL: `http://localhost:${port}`,
   };
-  const args = ['dev', '--local', '--ip', '127.0.0.1', '--port', String(port), '--persist-to', persist,
+  const args = ['dev', '--config', config, '--local', '--ip', '127.0.0.1', '--port', String(port), '--persist-to', persist,
     '--show-interactive-dev-session=false', '--log-level', 'log'];
   for (const [k, v] of Object.entries(vars)) args.push('--var', `${k}:${v}`);
 
@@ -77,6 +94,7 @@ export async function startStack({ minMonths = 12, devMode = false, resend = tru
 
   return {
     base,
+    site: `http://localhost:${port}`,
     mock,
     persist,
     logs: () => logs,

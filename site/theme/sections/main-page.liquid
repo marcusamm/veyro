@@ -1,0 +1,22 @@
+{%- comment -%} Sidens eget indhold fra Shopify-admin (Online butik > Sider). Bruges til juridiske sider m.m. {%- endcomment -%}
+<section class="section section--{{ section.settings.scheme }} main-page">
+  <div class="container container--narrow">
+    {%- if section.settings.show_title -%}
+      <h1 class="h1 main-page__title">{{ page.title | escape }}</h1>
+    {%- endif -%}
+    <div class="rte rte--long">{{ page.content }}</div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Sideindhold",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }
+    ], "default": "light" },
+    { "type": "checkbox", "id": "show_title", "label": "Vis sidetitel", "info": "Slå fra, hvis siden har en Sidetop-sektion.", "default": true }
+  ]
+}
+{% endschema %}

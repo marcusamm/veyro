@@ -1,0 +1,22 @@
+{
+  "type": "footer",
+  "name": "Footer",
+  "sections": {
+    "footer": {
+      "type": "footer",
+      "blocks": {
+        "menu_main": { "type": "menu", "settings": { "heading": "Navigation", "menu": "main-menu" } },
+        "menu_services": { "type": "menu", "settings": { "heading": "Ydelser", "menu": "footer" } },
+        "contact": { "type": "contact", "settings": { "heading": "Kontakt" } },
+        "company": { "type": "company", "settings": { "heading": "Virksomhed" } }
+      },
+      "block_order": ["menu_main", "menu_services", "contact", "company"],
+      "settings": {
+        "cta_label": "Book en demo",
+        "cta_link": "/pages/kontakt?ydelse=book-en-demo#formular",
+        "legal_menu": "juridisk"
+      }
+    }
+  },
+  "order": ["footer"]
+}
