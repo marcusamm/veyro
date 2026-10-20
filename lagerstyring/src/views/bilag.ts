@@ -54,6 +54,7 @@ const BILAG_FLASH: Record<string, [kind: 'ok' | 'info' | 'warn', text: string]> 
   match: ['ok', 'Varematchet er godkendt.'],
   eksporteret: ['ok', 'Eksporten er dannet. Den er ikke sendt til noget regnskabsprogram.'],
   fejlet: ['warn', 'Eksporten er markeret som fejlet. Bilagene kan eksporteres igen.'],
+  slettet: ['ok', 'Bilaget er slettet.'],
 };
 
 function bflash(code: string | undefined, extra?: string): H | '' {
@@ -235,6 +236,7 @@ export interface DetailData {
   events: BilagEventRow[];
   checks: Checks;
   canEdit: boolean;
+  canDelete: boolean;
   manager: boolean;
   jobs: { id: number; number: string; name: string }[];
   products: { id: number; sku: string; name: string; unit: string }[];
@@ -399,6 +401,7 @@ export function detailPage(d: DetailData): H {
       ${d.manager && (b.status === 'afklaring' || b.status === 'arkiveret') ? act('klar', b.status === 'arkiveret' ? 'Genåbn' : 'Afklaret') : ''}
       ${d.manager && b.status === 'godkendt' ? act('arkiver', 'Arkivér', 'btn-ghost') : ''}
       ${d.manager && b.payment === 'medarbejder' && !b.reimbursed_at && b.status === 'godkendt' ? act('refunder', 'Markér udlæg refunderet') : ''}
+      ${d.canDelete ? html`<form method="post" action="${d.base}/${b.id}" class="inline" data-confirm="Slet bilaget og filen? Det kan ikke fortrydes.">${csrfField(d.csrf)}<input type="hidden" name="do" value="slet"><button class="btn btn-danger btn-small" type="submit">Slet bilag</button></form>` : ''}
     </div>
     <p class="hint">Godkendelse ændrer ikke lageret, salgspriser, overslag eller udstedte fakturaer. Den sætter kun den faktiske indkøbspris på knyttede køb.</p>
   </section>

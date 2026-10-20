@@ -37,7 +37,27 @@ export interface Reading {
   notes: string[];
 }
 
-const MONTHS = ['januar', 'februar', 'marts', 'april', 'maj', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'december'];
+const MONTHS = [
+  ['januar', 'january'],
+  ['februar', 'february'],
+  ['marts', 'march'],
+  ['april'],
+  ['maj', 'may'],
+  ['juni', 'june'],
+  ['juli', 'july'],
+  ['august'],
+  ['september'],
+  ['oktober', 'october'],
+  ['november'],
+  ['december'],
+];
+
+/** Et dansk eller engelsk månedsnavn (også forkortet, fx "okt" og "Oct") → 1-12, ellers 0. */
+function monthOf(word: string): number {
+  const w = word.toLowerCase().replace(/\.$/, '');
+  if (w.length < 3) return 0;
+  return MONTHS.findIndex((names) => names.some((n) => n.startsWith(w))) + 1;
+}
 
 /** Et beløb i dansk eller engelsk skrivemåde → øre. */
 export function parseMoney(raw: string): number | null {
@@ -59,8 +79,23 @@ export function parseMoney(raw: string): number | null {
 
 const MONEY = /-?\d{1,3}(?:\.\d{3})+,\d{2}-?|-?\d+,\d{2}-?|-?\d{1,3}(?:,\d{3})+\.\d{2}|-?\d+\.\d{2}(?!\d)/g;
 
+/** Fjerner tal, der ikke er beløb: datoer ("20.10.2026" er ikke 20,10 kr.) og momsgrundlag ("25% on 581.42"). */
+function moneyText(line: string): string {
+  return line
+    .replace(/\b\d{1,2}[.\-/]\d{1,2}[.\-/](?:\d{4}|\d{2})\b/g, ' ')
+    .replace(/\b\d{4}-\d{2}-\d{2}\b/g, ' ')
+    .replace(/\d+(?:[.,]\d+)?\s*%\s*(?:on|of|af|på)\s+[^\s)]+/gi, ' ');
+}
+
 function moneyIn(line: string): number[] {
-  return [...line.matchAll(MONEY)].map((m) => parseMoney(m[0])).filter((v): v is number => v !== null);
+  return [...moneyText(line).matchAll(MONEY)].map((m) => parseMoney(m[0])).filter((v): v is number => v !== null);
+}
+
+/** En linje med kun ét beløb (evt. med kr./DKK), fx når beløbet står på linjen under eller over sin tekst. */
+function onlyMoney(line: string | undefined): number | null {
+  if (!line || !/^\s*-?\s*(?:kr\.?|DKK)?\s*-?[\d.,]+\s*(?:kr\.?|DKK)?\s*-?\s*$/i.test(line)) return null;
+  const m = moneyIn(line);
+  return m.length === 1 ? m[0]! : null;
 }
 
 /** Antal (dansk decimalkomma) → tusindedele. */
@@ -76,50 +111,58 @@ function pad(n: number): string {
 
 /** Datoer i teksten → YYYY-MM-DD. */
 export function datesIn(line: string): string[] {
-  const out: string[] = [];
+  const out: { at: number; d: string }[] = [];
+  const add = (at: number, y: number, mo: number, d: number) => {
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) out.push({ at, d: `${y}-${pad(mo)}-${pad(d)}` });
+  };
   for (const m of line.matchAll(/\b(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4}|\d{2})\b/g)) {
     const y = m[3]!.length === 2 ? 2000 + parseInt(m[3]!, 10) : parseInt(m[3]!, 10);
-    const mo = parseInt(m[2]!, 10);
-    const d = parseInt(m[1]!, 10);
-    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) out.push(`${y}-${pad(mo)}-${pad(d)}`);
+    add(m.index!, y, parseInt(m[2]!, 10), parseInt(m[1]!, 10));
   }
-  for (const m of line.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b/g)) out.push(`${m[1]}-${m[2]}-${m[3]}`);
-  for (const m of line.matchAll(/\b(\d{1,2})\.\s*([a-zæøå]+)\s+(\d{4})\b/gi)) {
-    const mo = MONTHS.findIndex((x) => x.startsWith(m[2]!.toLowerCase().slice(0, 3)));
-    if (mo >= 0) out.push(`${m[3]}-${pad(mo + 1)}-${pad(parseInt(m[1]!, 10))}`);
-  }
-  return out;
+  for (const m of line.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b/g)) add(m.index!, parseInt(m[1]!, 10), parseInt(m[2]!, 10), parseInt(m[3]!, 10));
+  // "20. oktober 2026", "20 Oct 2026"
+  for (const m of line.matchAll(/\b(\d{1,2})\.?\s*([a-zæøå]+\.?),?\s+(\d{4})\b/gi)) add(m.index!, parseInt(m[3]!, 10), monthOf(m[2]!), parseInt(m[1]!, 10));
+  // "October 20, 2026"
+  for (const m of line.matchAll(/\b([a-z]+\.?)\s+(\d{1,2}),?\s+(\d{4})\b/gi)) add(m.index!, parseInt(m[3]!, 10), monthOf(m[1]!), parseInt(m[2]!, 10));
+  return out.sort((a, b) => a.at - b.at).map((x) => x.d);
 }
 
 const LABEL = {
-  total: /\b(at betale|i alt inkl|total inkl|beløb i alt|til betaling|totalt|total|i alt|sum)\b/i,
-  totalStrong: /\b(at betale|i alt inkl|total inkl|til betaling)\b/i,
-  net: /(ekskl\.?\s*moms|excl\.?\s*vat|subtotal|netto|momsgrundlag|momspligtigt beløb)/i,
-  vat: /(^|\s)(heraf moms|moms|vat|mva)\b/i,
-  vatNot: /(ekskl|inkl|excl|incl|grundlag|fri|momspligtig|nr\.)/i,
+  total: /\b(at betale|i alt inkl|total inkl|beløb i alt|til betaling|amount due|total due|balance due|grand total|totalt|total|i alt|sum)\b/i,
+  totalStrong: /\b(at betale|i alt inkl|total inkl|til betaling|amount due|total due|balance due)\b/i,
+  net: /(ekskl\.?\s*moms|excl\.?\s*vat|excluding (?:tax|vat)|subtotal|netto|momsgrundlag|momspligtigt beløb)/i,
+  vat: /(^|\s)(heraf moms|moms|vat|mva|tax)\b/i,
+  // Ikke en momslinje: ekskl./inkl.-tekster og momsnumre (fx "IE VAT IE4143435AH", "VAT no.")
+  vatNot: /(ekskl|inkl|excl|incl|grundlag|fri|momspligtig|nr\.|\b(?:vat|tax)\s*(?:no|nr|number|id|reg)|\b[A-Z]{2}\d{6,})/i,
   rounding: /(øreafrunding|afrunding)/i,
-  number: /(kreditnota\s*nr\.?|kreditnotanr\.?|faktura\s*nr\.?|fakturanr\.?|fakturanummer|bilagsnr\.?|bilag\s*nr\.?|kvitteringsnr\.?|kvittering\s*nr\.?|bon\s*nr\.?|bonnr\.?|ordrenr\.?|ordre\s*nr\.?)\s*[:.#]?\s*([A-Za-z0-9][A-Za-z0-9\-/]{0,30})/i,
-  date: /(fakturadato|kreditnotadato|købsdato|udstedelsesdato|bilagsdato|\bdato\b|\bdate\b)/i,
-  due: /(forfaldsdato|forfald|betalingsfrist|betales senest|sidste rettidige|due date)/i,
+  number: /(invoice\s*(?:number|no\.?|nr\.?|#)|receipt\s*(?:number|no\.?|#)|credit\s*note\s*(?:number|no\.?)|order\s*(?:number|no\.?)|kreditnota\s*nr\.?|kreditnotanr\.?|faktura\s*nr\.?|fakturanr\.?|fakturanummer|bilagsnr\.?|bilag\s*nr\.?|kvitteringsnr\.?|kvittering\s*nr\.?|bon\s*nr\.?|bonnr\.?|ordrenr\.?|ordre\s*nr\.?)\s*[:.#]?\s*([A-Za-z0-9][A-Za-z0-9\-/]{0,30})/i,
+  date: /(fakturadato|kreditnotadato|købsdato|udstedelsesdato|bilagsdato|date of issue|issue date|invoice date|\bdato\b|\bdate\b)/i,
+  due: /(forfaldsdato|forfald|betalingsfrist|betales senest|sidste rettidige|due date|date due|payment due)/i,
   payment: /(\bFIK\b|\+7[135]<|\breg\.?\s*nr|\bkontonr|\bkonto nr|\bkonto:|\bIBAN\b|\bBIC\b|\bSWIFT\b|\bMobilePay\b|\bbetalings-?id)/i,
   cvr: /\b(?:CVR|SE)(?:[-\s.]?nr)?\.?\s*[:.]?\s*(?:DK)?\s*(\d{2}\s?\d{2}\s?\d{2}\s?\d{2})\b/gi,
-  header: /(beskrivelse|varetekst|tekst|vare\b|varenr|produkt|antal|stk\.?|enhed|á|a-pris|stykpris|pris|beløb|rabat|moms)/gi,
+  header: /(beskrivelse|varetekst|tekst|vare\b|varenr|produkt|ydelse|antal|stk\.?|enhed|á|a-pris|stykpris|pris|beløb|rabat|moms|description|qty|quantity|unit price|price|amount|tax)/gi,
 };
 
 type Col = 'name' | 'sku' | 'qty' | 'unit' | 'price' | 'discount' | 'vat' | 'amount' | 'skip';
 
 function colOf(label: string): Col {
   const l = label.toLowerCase();
-  if (/varenr|^nr\.?$|art\.?\s*nr/.test(l)) return 'sku';
-  if (/beskrivelse|tekst|vare|produkt|ydelse/.test(l)) return 'name';
-  if (/antal|mængde|stk/.test(l)) return 'qty';
-  if (/enhed/.test(l)) return 'unit';
-  if (/rabat/.test(l)) return 'discount';
-  if (/moms/.test(l)) return 'vat';
-  if (/beløb|i alt|total|sum/.test(l)) return 'amount';
-  if (/pris|á|a-pris/.test(l)) return 'price';
+  if (/varenr|^nr\.?$|art\.?\s*nr|sku|item no/.test(l)) return 'sku';
+  if (/beløb|i alt|total|sum|amount/.test(l)) return 'amount';
+  // Før "enhed": "Enhedspris" og "Unit price" er stykprisen
+  if (/pris|price|á|a-pris/.test(l)) return 'price';
+  if (/rabat|discount/.test(l)) return 'discount';
+  if (/moms|tax|vat/.test(l)) return 'vat';
+  if (/antal|mængde|stk|qty|quantity/.test(l)) return 'qty';
+  if (/enhed|unit/.test(l)) return 'unit';
+  if (/beskrivelse|tekst|vare|produkt|ydelse|description|item/.test(l)) return 'name';
   return 'skip';
 }
+
+/** Et varenummer alene på en linje, fx "TEST-M001" under varenavnet. */
+const SKU_ONLY = /^(?=[A-Z0-9\-./]*\d)[A-Z0-9][A-Z0-9\-./]{2,24}$/;
+
+const isNumberCol = (c: string) => /^-?\d+(?:[.,]\d{1,3})?\s*[a-zæøå²³.]*$/i.test(c) || moneyIn(c).length > 0;
 
 function vatRateOf(raw: string): number | null {
   const m = /(\d{1,2}(?:[.,]\d{1,2})?)\s*%/.exec(raw);
@@ -128,10 +171,21 @@ function vatRateOf(raw: string): number | null {
 
 /** Varelinjer mellem en kolonneoverskrift og den første total. */
 function readLines(lines: string[]): ReadLine[] {
-  const hi = lines.findIndex((l) => new Set([...l.matchAll(LABEL.header)].map((m) => m[1]!.toLowerCase())).size >= 3 && moneyIn(l).length === 0);
+  const hi = lines.findIndex(
+    (l) => new Set([...l.matchAll(LABEL.header)].map((m) => m[1]!.toLowerCase())).size >= 3 && l.trim().split(/\s{2,}/).filter((c) => colOf(c) !== 'skip').length >= 3 && moneyIn(l).length === 0,
+  );
   if (hi < 0) return [];
   const heads = lines[hi]!.trim().split(/\s{2,}/).map(colOf);
   const out: ReadLine[] = [];
+  // Tekstlinjer uden beløb: enten fortsættelsen af forrige vare eller navnet på den næste
+  // (nogle fakturaer skriver varenavnet på linjen over tallene)
+  let pending: string[] = [];
+  let justAdded = false;
+  const flushToPrev = () => {
+    const prev = out[out.length - 1];
+    if (prev && pending.length) prev.name = `${prev.name} ${pending.join(' ')}`.trim().slice(0, 200);
+    pending = [];
+  };
   for (let i = hi + 1; i < lines.length; i++) {
     const l = lines[i]!;
     if (!l.trim()) continue;
@@ -148,15 +202,23 @@ function readLines(lines: string[]): ReadLine[] {
       continue;
     }
     if (!money.length) {
-      // Fortsættelse af forrige linjes tekst
-      if (out.length && cols.length === 1 && out[out.length - 1]!.name.length < 120) out[out.length - 1]!.name += ` ${cols[0]}`;
+      if (cols.length !== 1) continue;
+      // Et varenummer lige under en vare hører til den
+      if (justAdded && !pending.length && SKU_ONLY.test(cols[0]!) && out.length) {
+        const prev = out[out.length - 1]!;
+        prev.name = `${cols[0]} ${prev.name}`.slice(0, 200);
+      } else pending.push(cols[0]!);
+      justAdded = false;
       continue;
     }
     const r: ReadLine = { name: '', qty: null, unit: '', unit_price: null, discount: 0, amount: null, vat_rate: null, uncertain: false };
     let sku = '';
-    if (cols.length === heads.length) {
+    // Rækken mangler navnekolonnen (navnet stod på linjen over)
+    const nameless = heads[0] === 'name' && isNumberCol(cols[0]!) && cols.length === heads.length - 1;
+    const rowHeads = nameless ? heads.slice(1) : heads;
+    if (cols.length === rowHeads.length) {
       cols.forEach((v, k) => {
-        switch (heads[k]) {
+        switch (rowHeads[k]) {
           case 'name':
             r.name = v;
             break;
@@ -191,7 +253,7 @@ function readLines(lines: string[]): ReadLine[] {
     } else {
       // Uden entydige kolonner: tekst først, beløb sidst, evt. antal og stykpris imellem
       r.uncertain = true;
-      r.name = cols.filter((c) => !moneyIn(c).length && !/^\d+([.,]\d+)?\s*[a-zæøå.]*$/i.test(c)).join(' ');
+      r.name = cols.filter((c) => !moneyIn(c).length && !/^\d+([.,]\d+)?\s*[a-zæøå.]*$/i.test(c) && !/^-?\d+([.,]\d+)?\s*%$/.test(c)).join(' ');
       r.amount = money[money.length - 1]!;
       if (money.length >= 2) r.unit_price = money[money.length - 2]!;
       const q = cols.map((c) => /^(\d+(?:[.,]\d{1,3})?)\s*([a-zæøå.]*)$/i.exec(c)).find((m) => m && !/,\d{2}$/.test(m[1]!));
@@ -201,16 +263,27 @@ function readLines(lines: string[]): ReadLine[] {
       }
       r.vat_rate = vatRateOf(l);
     }
+    if (!r.name && pending.length) {
+      r.name = pending.join(' ');
+      pending = [];
+    } else flushToPrev();
     if (sku) r.name = `${sku} ${r.name}`.trim();
     if (!r.name) r.name = cols[0]!;
     if (r.amount === null || r.qty === null || r.unit_price === null) r.uncertain = true;
     else if (Math.abs(Math.round((r.qty * r.unit_price) / 1000) - r.discount - r.amount) > 2) r.uncertain = true;
     out.push(r);
+    justAdded = true;
   }
+  flushToPrev();
   return out;
 }
 
-export function readText(pages: string[][], opts: { ownCvr?: string; suppliers?: { id: number; name: string }[] } = {}): Reading {
+const SUPPLIER_HEAD = /^(leverandør|sælger|afsender|fra|from|supplier|seller|vendor)\s*:?\s*(.*)$/i;
+const CUSTOMER_HEAD = /(faktureres til|bill to|billed to|sold to|ship to|kunde\b|leveringsadresse|modtager)/i;
+const COMPANY = /\b(ApS|A\/S|I\/S|IVS|K\/S|P\/S|AMBA|Limited|Ltd\.?|GmbH|AB|AS|Oy|Inc\.?|LLC|B\.V\.|BV|S\.A\.|SARL|SRL|Corp\.?)(?=$|[\s,.)])/;
+const NOT_NAME = /faktura|invoice|kvittering|receipt|kreditnota|credit note|digital visning|side \d|page \d|dato|date|^til\b|^kunde\b|bill to|leverandør\b|oplysninger|^(cvr|vat|moms)\b/i;
+
+export function readText(pages: string[][], opts: { ownCvr?: string; ownName?: string; suppliers?: { id: number; name: string }[] } = {}): Reading {
   const lines = pages.flat();
   const text = lines.join('\n');
   const values: Reading['values'] = {};
@@ -231,12 +304,39 @@ export function readText(pages: string[][], opts: { ownCvr?: string; suppliers?:
   }
 
   // Leverandør: en kendt leverandør, der står i teksten, ellers første linje med bogstaver
-  const known = (opts.suppliers ?? []).find((s) => s.name.length >= 3 && text.toLowerCase().includes(s.name.toLowerCase()));
+  // Ellers: teksten under "Leverandør"/"Fra", så et firmanavn (ApS, A/S, Limited …), så første linje med
+  // bogstaver. Vores eget firma og kundeblokken ("Faktureres til", "Bill to") springes over.
+  const ownName = (opts.ownName ?? '').trim().toLowerCase();
+  const isOwn = (v: string) => ownName.length >= 3 && v.toLowerCase().includes(ownName);
+  const known = (opts.suppliers ?? []).find((s) => s.name.length >= 3 && !isOwn(s.name) && text.toLowerCase().includes(s.name.toLowerCase()));
   if (known) values.supplier_name = known.name;
   else {
-    const first = lines.map((l) => l.trim().split(/\s{2,}/)[0]!).find((l) => /[a-zæøå]{3}/i.test(l) && !/faktura|kvittering|kreditnota|digital visning|side \d|dato|^til\b|^kunde\b/i.test(l));
-    if (first) {
-      values.supplier_name = first.slice(0, 120);
+    const grid = lines.map((l) => l.trim().split(/\s{2,}/));
+    const customer = new Set<string>();
+    grid.forEach((cols, i) =>
+      cols.forEach((c, k) => {
+        if (CUSTOMER_HEAD.test(c)) for (let j = i; j <= i + 5; j++) customer.add(`${j}:${k}`);
+      }),
+    );
+    const ok = (v: string | undefined, i: number, k: number): v is string =>
+      !!v && /[a-zæøå]{2}/i.test(v) && !customer.has(`${i}:${k}`) && !isOwn(v) && !NOT_NAME.test(v);
+    let name: string | undefined;
+    for (let i = 0; i < grid.length && !name; i++) {
+      grid[i]!.forEach((c, k) => {
+        const m = SUPPLIER_HEAD.exec(c);
+        if (!m || name) return;
+        if (m[2] && ok(m[2], i, k)) name = m[2];
+        else {
+          const next = grid[i + 1];
+          const v = next?.[Math.min(k, next.length - 1)];
+          if (ok(v, i + 1, Math.min(k, (next?.length ?? 1) - 1))) name = v;
+        }
+      });
+    }
+    for (let i = 0; i < grid.length && !name; i++) name = grid[i]!.find((c, k) => COMPANY.test(c) && ok(c, i, k));
+    for (let i = 0; i < grid.length && !name; i++) name = ok(grid[i]![0], i, 0) && /[a-zæøå]{3}/i.test(grid[i]![0]!) ? grid[i]![0] : undefined;
+    if (name) {
+      values.supplier_name = name.slice(0, 120);
       uncertain.add('supplier_name');
     }
   }
@@ -252,9 +352,9 @@ export function readText(pages: string[][], opts: { ownCvr?: string; suppliers?:
   }
 
   // Datoer
-  const labelled = (re: RegExp): string | undefined => {
+  const labelled = (re: RegExp, not?: RegExp): string | undefined => {
     for (const l of lines) {
-      if (!re.test(l)) continue;
+      if (!re.test(l) || not?.test(l)) continue;
       const d = datesIn(l.slice(l.search(re)));
       if (d.length) return d[0];
     }
@@ -262,7 +362,7 @@ export function readText(pages: string[][], opts: { ownCvr?: string; suppliers?:
   };
   const due = labelled(LABEL.due);
   if (due) values.due_date = due;
-  const date = labelled(LABEL.date);
+  const date = labelled(LABEL.date, LABEL.due);
   if (date) values.doc_date = date;
   else {
     const any = lines.flatMap(datesIn).filter((d) => d !== due);
@@ -275,19 +375,18 @@ export function readText(pages: string[][], opts: { ownCvr?: string; suppliers?:
   // Valuta
   const cur = /\b(DKK|EUR|SEK|NOK|USD|GBP)\b/.exec(text);
   if (cur) values.currency = cur[1]!;
-  else if (/\bkr\.?(\s|$)/i.test(text)) values.currency = 'DKK';
+  else if (/\dkr\b|\bkr\.?(\s|$)/i.test(text)) values.currency = 'DKK';
   else {
     values.currency = 'DKK';
     uncertain.add('currency');
   }
 
   // Beløb
+  // Beløbet på linjen, ellers et beløb alene på linjen under eller over (fx "145.35kr" over "VAT - Denmark")
   const lastMoney = (l: string, i: number): number | null => {
     const m = moneyIn(l);
     if (m.length) return m[m.length - 1]!;
-    const next = lines[i + 1];
-    const n = next ? moneyIn(next) : [];
-    return n.length === 1 ? n[0]! : null;
+    return onlyMoney(lines[i + 1]) ?? onlyMoney(lines[i - 1]);
   };
   let total: number | null = null;
   let totalWeak = false;
@@ -342,7 +441,8 @@ export function readText(pages: string[][], opts: { ownCvr?: string; suppliers?:
     uncertain.add('net');
     notes.push('Beløb ekskl. moms står ikke på bilaget; det er beregnet som total minus moms.');
   }
-  if (totalWeak) uncertain.add('total');
+  // "Total" uden "inkl." er sikker nok, når den passer med beløb ekskl. moms plus moms
+  if (totalWeak && !(net !== null && vat !== null && Math.abs((net as number) + (vat as number) + ((rounding as number | null) ?? 0) - (total as unknown as number)) <= 1)) uncertain.add('total');
   if (vat === null) notes.push('Momsen blev ikke fundet. Angiv den (også 0 kr.), før bilaget godkendes.');
 
   // Betalingsoplysninger

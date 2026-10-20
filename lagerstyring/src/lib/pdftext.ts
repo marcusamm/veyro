@@ -149,7 +149,8 @@ function decodeStr(raw: string, font: Font | undefined): { text: string; width: 
   for (let i = 0; i + step <= raw.length; i += step) {
     const code = step === 2 ? (raw.charCodeAt(i) << 8) | raw.charCodeAt(i + 1) : raw.charCodeAt(i);
     const mapped = f.map?.get(code);
-    if (mapped !== undefined) text += mapped;
+    // Nogle PDF'er (fx Stripe-fakturaer) mapper bindestreg, minus og parenteser til U+0000; læses som bindestreg
+    if (mapped !== undefined) text += mapped === '\u0000' ? '-' : mapped;
     else if (step === 1) text += code >= 0x80 && code <= 0x9f ? CP1252[code - 0x80] : String.fromCharCode(code);
     width += f.widths.get(code) ?? (f.widths.size ? f.dw : step === 2 ? 1000 : 500);
   }

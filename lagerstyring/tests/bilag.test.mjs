@@ -77,6 +77,34 @@ describe('Bilag: upload, aflæsning, fordeling, godkendelse og eksport', () => {
     expect(stack.sql('SELECT SUM(stock) AS n FROM products')[0].n).toBe(before);
   });
 
+  it('et bilag kan slettes før godkendelse, ikke efter; varer slettes eller gøres inaktive', async () => {
+    const pdf = await sample.samplePdf({ kind: 'kvittering', supplier: 'Slettebutikken ApS', address: 'Vej 2', cvr: '87654321', number: 'K-1', date: '2026-10-02', buyer: 'Demo', lines: [{ name: 'Tape', qty: K, unit: 'stk.', price: 4000 }] });
+    const res = await upload(owner, '/lager/bilag', pdf, 'slet.pdf', { doc_type: 'kvittering', payment: 'virksomhed' });
+    const del = Number(res.headers.get('location').match(/bilag\/(\d+)/)[1]);
+    const fileId = bilag(del).file_id;
+    let r = await owner.submit(`/lager/bilag/${del}`, `/lager/bilag/${del}`, { do: 'slet' });
+    expect(r.status).toBe(303);
+    expect(bilag(del)).toBeUndefined();
+    expect(stack.sql(`SELECT COUNT(*) AS n FROM files WHERE id = ${fileId}`)[0].n).toBe(0);
+    // Det godkendte bilag bliver
+    r = await owner.submit(`/lager/bilag/${id}`, `/lager/bilag/${id}`, { do: 'slet' });
+    expect(r.status).toBe(400);
+    expect(bilag(id).status).toBe('godkendt');
+
+    // En vare uden historik slettes; en vare med beholdning gøres inaktiv
+    const now = Math.floor(Date.now() / 1000);
+    stack.sql(`INSERT INTO products (sku, name, created_at, updated_at) VALUES ('SLET-1', 'Slettes', ${now}, ${now})`);
+    const fresh = stack.sql("SELECT id FROM products WHERE sku = 'SLET-1'")[0].id;
+    r = await owner.submit(`/lager/varer/${fresh}`, `/lager/varer/${fresh}/slet`, {});
+    expect(r.status).toBe(303);
+    expect(stack.sql("SELECT COUNT(*) AS n FROM products WHERE sku = 'SLET-1'")[0].n).toBe(0);
+    const used = stack.sql('SELECT id FROM products WHERE stock > 0 LIMIT 1')[0].id;
+    r = await owner.submit(`/lager/varer/${used}`, `/lager/varer/${used}/slet`, {});
+    expect(r.headers.get('location')).toContain('vare_skjult');
+    expect(stack.sql(`SELECT active FROM products WHERE id = ${used}`)[0].active).toBe(0);
+    stack.sql(`UPDATE products SET active = 1 WHERE id = ${used}`);
+  });
+
   it('medarbejderen ser kun egne bilag og kan ikke godkende', async () => {
     const pdf = await sample.samplePdf({ kind: 'kvittering', supplier: 'Byggemarked', address: 'Gade 2', cvr: '87654321', number: 'K-1', date: '2026-10-02', buyer: 'Demo', lines: [{ name: 'Skruer', qty: K, unit: 'pk', price: 4000 }] });
     const res = await upload(staff, '/job/bilag', pdf, 'kvit.pdf', { doc_type: 'kvittering', payment: 'medarbejder' });
