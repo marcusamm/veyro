@@ -1,0 +1,96 @@
+# Flytter veyro.dk og www.veyro.dk fra Shopify til den nye hjemmeside (eller tilbage igen).
+# Køres manuelt fra fanen Actions: "Skift domæne" -> "Run workflow".
+#   vis     : viser kun de nuværende DNS-poster (ændrer intet)
+#   skift   : sletter de A/AAAA/CNAME-poster for veyro.dk og www, der peger på Shopify,
+#             og udruller, så Workeren overtager begge adresser
+#   tilbage : fjerner Workerens veyro.dk/www og genskaber Shopifys standardposter
+# MX-, TXT- (SPF/DKIM/DMARC) og alle andre poster røres aldrig.
+name: Skift domæne
+
+on:
+  workflow_dispatch:
+    inputs:
+      handling:
+        description: 'vis, skift eller tilbage'
+        required: true
+        default: 'vis'
+        type: choice
+        options: [vis, skift, tilbage]
+
+concurrency:
+  group: deploy-kundepanel
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  ZONE_NAME: veyro.dk
+  # Shopifys standardposter (bruges kun ved "tilbage")
+  SHOPIFY_A: 23.227.38.65
+  SHOPIFY_CNAME: shops.myshopify.com
+
+jobs:
+  domaene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Find zonen og vis posterne
+        run: |
+          api() { curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "$@"; }
+          zone=$(api "https://api.cloudflare.com/client/v4/zones?name=$ZONE_NAME" | jq -r '.result[0].id // empty')
+          if [ -z "$zone" ]; then echo "::error::Fandt ikke zonen $ZONE_NAME. Nøglen mangler sandsynligvis adgangen Zone:Read."; exit 1; fi
+          echo "ZONE_ID=$zone" >> "$GITHUB_ENV"
+          api "https://api.cloudflare.com/client/v4/zones/$zone/dns_records?per_page=500" > alle.json
+          if [ "$(jq -r .success alle.json)" != "true" ]; then jq .errors alle.json; echo "::error::Kunne ikke læse DNS. Nøglen mangler sandsynligvis adgangen DNS:Read."; exit 1; fi
+          echo "Alle DNS-poster i $ZONE_NAME (gemmes også som fil til en eventuel tilbagerulning):"
+          jq -r '.result[] | [.type, .name, .content, (if .proxied then "proxied" else "dns-only" end)] | @tsv' alle.json | sort | column -t
+      - name: Gem posterne
+        uses: actions/upload-artifact@v4
+        with:
+          name: dns-foer-${{ inputs.handling }}-${{ github.run_id }}
+          path: alle.json
+      - name: Skift til den nye hjemmeside
+        if: inputs.handling == 'skift'
+        run: |
+          api() { curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "$@"; }
+          ids=$(jq -r --arg a "$ZONE_NAME" --arg w "www.$ZONE_NAME" '.result[] | select((.name == $a or .name == $w) and (.type == "A" or .type == "AAAA" or .type == "CNAME")) | .id' alle.json)
+          for id in $ids; do
+            jq -r --arg id "$id" '.result[] | select(.id == $id) | "Sletter \(.type) \(.name) -> \(.content)"' alle.json
+            r=$(api -X DELETE "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$id")
+            if [ "$(echo "$r" | jq -r .success)" != "true" ]; then echo "$r" | jq .errors; echo "::error::Kunne ikke slette posten. Nøglen mangler sandsynligvis adgangen DNS:Edit. Intet er udrullet."; exit 1; fi
+          done
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci
+          npx wrangler deploy
+      - name: Tjek veyro.dk
+        if: inputs.handling == 'skift'
+        run: |
+          for i in $(seq 1 30); do
+            robots=$(curl -s https://veyro.dk/robots.txt || true)
+            www=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' https://www.veyro.dk/ || true)
+            if echo "$robots" | grep -q 'Sitemap: https://veyro.dk/sitemap.xml' && [ "$www" = "301 https://veyro.dk/" ]; then
+              echo "OK: veyro.dk svarer fra den nye hjemmeside, og www sendes videre"
+              for p in / /pages/kontakt /cart /pages/privatlivspolitik; do echo "$(curl -s -o /dev/null -w '%{http_code}' "https://veyro.dk$p") $p"; done
+              exit 0
+            fi
+            echo "Venter på certifikat og DNS ($i/30, www: $www)"; sleep 10
+          done
+          echo "::error::veyro.dk svarer endnu ikke fra den nye hjemmeside. Kør igen om lidt, eller vælg 'tilbage'."; exit 1
+      - name: Tilbage til Shopify
+        if: inputs.handling == 'tilbage'
+        run: |
+          api() { curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "$@"; }
+          for host in "$ZONE_NAME" "www.$ZONE_NAME"; do
+            for id in $(api "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=$host" | jq -r '.result[]?.id'); do
+              echo "Fjerner Workerens $host"; api -X DELETE "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains/$id" > /dev/null
+            done
+          done
+          sleep 5
+          api -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" --data "{\"type\":\"A\",\"name\":\"$ZONE_NAME\",\"content\":\"$SHOPIFY_A\",\"proxied\":false,\"ttl\":1}" | jq -c '{success, errors}'
+          api -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" --data "{\"type\":\"CNAME\",\"name\":\"www.$ZONE_NAME\",\"content\":\"$SHOPIFY_CNAME\",\"proxied\":false,\"ttl\":1}" | jq -c '{success, errors}'
+          echo "Husk også at fjerne veyro.dk og www.veyro.dk fra routes i wrangler.toml, ellers flyttes de igen ved næste udrulning."
