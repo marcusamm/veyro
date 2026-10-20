@@ -76,7 +76,7 @@
         "show_breadcrumbs": true,
         "eyebrow": "Ydelser",
         "heading": "Vores ydelser",
-        "text": "<p>Vores hovedløsninger er hjemmesider med kundebestilling og lagerstyring samt interne systemer til ordrer og varekontrol. Vi laver også almindelige hjemmesider og hjælper med optimering, fejlfinding og integrationer på Shopify, WordPress, WooCommerce og specialudviklede sider.</p>",
+        "text": "<p>Vores hovedløsninger er hjemmesider med kundebestilling og lagerstyring samt interne systemer til ordrer og varekontrol. Vi laver også almindelige hjemmesider som abonnement med fast månedspris og hjælper med optimering, fejlfinding og integrationer på Shopify, WordPress, WooCommerce og specialudviklede sider.</p>",
         "primary_label": "Book en demo",
         "primary_link": "/pages/kontakt?ydelse=book-en-demo#formular",
         "nav_label": "Gå til ydelse"
@@ -193,10 +193,10 @@
       "settings": {
         "scheme": "light",
         "eyebrow": "Usikker på, hvor du skal starte?",
-        "heading": "Lad os se på din hjemmeside sammen",
-        "text": "<p>Send os et link, og fortæl kort, hvad der fylder. Så foreslår vi, hvilken indsats der giver mest mening.</p>",
-        "label": "Få en gratis vurdering",
-        "link": "/pages/kontakt",
+        "heading": "Skal din løsning tilpasses?",
+        "text": "<p>Fortæl kort, hvad du har brug for, og send gerne et link til din nuværende hjemmeside. Så giver vi dig et konkret tilbud.</p>",
+        "label": "Hent tilbud",
+        "link": "/pages/kontakt?ydelse=andet-ved-ikke-endnu#formular",
         "show_email": true,
         "email_prefix": "Eller skriv direkte til"
       }
@@ -236,7 +236,8 @@
             "note": "",
             "button_label": "Vælg Starter",
             "form_key": "abonnement-starter",
-            "link": "https://kunde.veyro.dk/bestil?plan=starter"
+            "link": "https://kunde.veyro.dk/bestil?plan=starter",
+            "product": "starter"
           }
         },
         "business": {
@@ -252,7 +253,8 @@
             "note": "",
             "button_label": "Vælg Business",
             "form_key": "abonnement-business",
-            "link": "https://kunde.veyro.dk/bestil?plan=business"
+            "link": "https://kunde.veyro.dk/bestil?plan=business",
+            "product": "business"
           }
         },
         "premium": {
@@ -268,7 +270,8 @@
             "note": "",
             "button_label": "Vælg Premium",
             "form_key": "abonnement-premium",
-            "link": "https://kunde.veyro.dk/bestil?plan=premium"
+            "link": "https://kunde.veyro.dk/bestil?plan=premium",
+            "product": "premium"
           }
         }
       },
@@ -282,8 +285,9 @@
         "anchor": "abonnement",
         "eyebrow": "Abonnement",
         "heading": "Hjemmeside som abonnement",
-        "text": "<p>Vi bygger, hoster og vedligeholder din hjemmeside for en fast pris om måneden.</p>",
-        "footnote": "<p>Alle priser er inkl. moms. Har du allerede en hjemmeside og hosting, kan vi også nøjes med at vedligeholde den, hvor den ligger. Skriv til os for en pris. Abonnementet kan opsiges til udgangen af den betalte periode, og du styrer det selv i kundepanelet.</p>"
+        "text": "<p>Vi bygger, hoster og vedligeholder din hjemmeside for en fast pris om måneden. Vælg et abonnement, eller hent et tilbud, hvis din løsning skal tilpasses.</p>",
+        "footnote": "<p>Alle priser er inkl. moms. Har du allerede en hjemmeside og hosting, kan vi også nøjes med at vedligeholde den, hvor den ligger. Skriv til os for en pris. Abonnementet kan opsiges til udgangen af den betalte periode, og du styrer det selv i kundepanelet.</p>",
+        "terms": "Løbende abonnement, der betales hver måned"
       }
     },
     "solutions": {
@@ -343,11 +347,11 @@
         "anchor": "webloesninger",
         "icon": "design",
         "heading": "Hjemmesider og øvrige webløsninger",
-        "text": "<p>Har du blot brug for en hjemmeside, eller skal din nuværende side forbedres? Her er de ydelser, vi også tilbyder, uden ordre- og lagerstyring.</p>",
-        "primary_label": "Se abonnementer",
+        "text": "<p>Har du blot brug for en hjemmeside, eller skal din nuværende side forbedres? Her er de ydelser, vi også tilbyder, uden ordre- og lagerstyring. Hjemmesider laver vi som abonnement med fast månedspris fra 299 kr./md.</p>",
+        "primary_label": "Se abonnementerne",
         "primary_link": "#abonnement",
-        "secondary_label": "",
-        "secondary_link": ""
+        "secondary_label": "Hent tilbud",
+        "secondary_link": "/pages/kontakt?ydelse=almindelig-hjemmeside-eller-landingsside#formular"
       }
     }
   },

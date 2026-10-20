@@ -20,6 +20,14 @@ for (const g of readJson('config/settings_schema.json')) for (const d of g.setti
 const page = (handle, title) => ({ handle, title, url: `/pages/${handle}`, content: `<p>Indhold for ${title}.</p>` });
 const pages = Object.fromEntries(['ydelser','website-optimering','custom-losninger','om-os','kontakt','cookiepolitik','privatlivspolitik'].map(h => [h, page(h, h)]));
 for (const k of ['privacy_page', 'cookie_page']) if (typeof settings[k] === 'string' && settings[k]) settings[k] = pages[settings[k]];
+const WITH_PLANS = process.env.WITH_PLANS === '1';
+const mkProduct = (handle, title, price) => {
+  const variant = { id: 1000 + price, price: price * 100, available: true, title: 'Default Title' };
+  const plan = { id: 5000 + price, name: 'Månedligt abonnement' };
+  return { handle, title, type: 'Abonnement', url: `/products/${handle}`, price: price * 100, description: '<ul><li>Indhold</li></ul>', has_only_default_variant: true, variants: [variant], selected_or_first_available_variant: variant, requires_selling_plan: WITH_PLANS, selling_plan_groups: WITH_PLANS ? [{ name: 'Abonnement', selling_plans: [plan] }] : [] };
+};
+const products = { starter: mkProduct('starter', 'Starter abonnement', 299), business: mkProduct('business', 'Business abonnement', 599), premium: mkProduct('premium', 'Premium abonnement', 1099) };
+const cart = WITH_PLANS ? { item_count: 1, total_price: 59900, currency: { iso_code: 'DKK' }, taxes_included: true, items: [{ key: 'k1', url: '/products/business', quantity: 1, final_line_price: 59900, product: products.business, variant: products.business.variants[0], url_to_remove: '/cart/change?line=1&quantity=0', selling_plan_allocation: { selling_plan: { name: 'Månedligt abonnement' } } }] } : { item_count: 0, items: [], total_price: 0, currency: { iso_code: 'DKK' }, taxes_included: true };
 const menus = JSON.parse(fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), 'menus.json'), 'utf8'));
 const linklists = Object.fromEntries(Object.entries(menus).map(([h, links]) => [h, { handle: h, links: links.map(l => ({ ...l })) }]));
 
@@ -34,6 +42,7 @@ engine.registerFilter('image_url', (i) => (i && i.src) || '');
 engine.registerFilter('image_tag', (u) => `<img src="${u}" alt="">`);
 engine.registerFilter('handle', (s) => String(s ?? '').toLowerCase().replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''));
 engine.registerFilter('money', (v) => `${(v/100).toFixed(2).replace('.',',')} kr`);
+engine.registerFilter('money_without_trailing_zeros', (v) => `${(v/100).toLocaleString('da-DK')} kr`);
 engine.registerFilter('money_with_currency', (v) => `${(v/100).toFixed(2).replace('.',',')} DKK`);
 engine.registerFilter('font_face', () => '');
 engine.registerFilter('payment_button', () => '');
@@ -42,7 +51,7 @@ engine.registerFilter('newline_to_br', (s) => String(s ?? '').replace(/\r?\n/g, 
 
 engine.registerTag('schema', { parse(tok, rem) { this.tpls = []; const s = this.liquid.parser.parseStream(rem); s.on('tag:endschema', () => s.stop()).on('template', () => {}).on('end', () => { throw new Error('schema'); }); s.start(); }, render() { return ''; } });
 engine.registerTag('stylesheet', { parse(tok, rem) { this.tpls = []; const s = this.liquid.parser.parseStream(rem); s.on('tag:endstylesheet', () => s.stop()).on('template', (tp) => this.tpls.push(tp)).on('end', () => { throw new Error('stylesheet'); }); s.start(); }, *render(ctx, emitter) { emitter.write('<style>'); yield this.liquid.renderer.renderTemplates(this.tpls, ctx, emitter); emitter.write('</style>'); } });
-engine.registerTag('form', { parse(tok, rem) { this.args = tok.args; this.tpls = []; const s = this.liquid.parser.parseStream(rem); s.on('tag:endform', () => s.stop()).on('template', (tp) => this.tpls.push(tp)).on('end', () => { throw new Error('form'); }); s.start(); this.hash = new Hash(this.args.replace(/^'[^']*'\s*,?\s*(\w+\s*,)?/, '')); }, *render(ctx, emitter) { const h = yield this.hash.render(ctx); ctx.push({ form: { errors: null, 'posted_successfully?': false } }); emitter.write(`<form method="post" action="/contact#${h.id||''}" id="${h.id||''}" class="${h.class||''}" ${h.novalidate?'novalidate':''}><input type="hidden" name="form_type" value="contact">`); yield this.liquid.renderer.renderTemplates(this.tpls, ctx, emitter); emitter.write('</form>'); ctx.pop(); } });
+engine.registerTag('form', { parse(tok, rem) { this.args = tok.args; this.tpls = []; const s = this.liquid.parser.parseStream(rem); s.on('tag:endform', () => s.stop()).on('template', (tp) => this.tpls.push(tp)).on('end', () => { throw new Error('form'); }); s.start(); this.hash = new Hash(this.args.replace(/^'[^']*'\s*,?\s*(\w+\s*,)?/, '')); }, *render(ctx, emitter) { const h = yield this.hash.render(ctx); ctx.push({ form: { errors: null, 'posted_successfully?': false } }); const kind = this.args.match(/^'([^']*)'/)[1]; emitter.write(`<form method="post" action="${kind === 'product' ? '/cart/add' : '/contact#' + (h.id||'')}" id="${h.id||''}" class="${h.class||''}" ${h.novalidate?'novalidate':''}><input type="hidden" name="form_type" value="${kind}">`); yield this.liquid.renderer.renderTemplates(this.tpls, ctx, emitter); emitter.write('</form>'); ctx.pop(); } });
 engine.registerTag('paginate', { parse(tok, rem) { this.tpls = []; const s = this.liquid.parser.parseStream(rem); s.on('tag:endpaginate', () => s.stop()).on('template', (tp) => this.tpls.push(tp)).on('end', () => { throw new Error('paginate'); }); s.start(); }, *render(ctx, emitter) { ctx.push({ paginate: { pages: 1, parts: [] } }); yield this.liquid.renderer.renderTemplates(this.tpls, ctx, emitter); ctx.pop(); } });
 
 engine.registerTag('sections', { parse(tok) { this.name = tok.args.replace(/['"]/g, '').trim(); }, *render(ctx, emitter) { const html = yield renderGroup(this.name, ctx.getAll()); emitter.write(html); } });
@@ -52,6 +61,7 @@ function resolveSettings(defs, vals) {
   for (const d of defs || []) if (d.id) out[d.id] = d.default ?? (d.type === 'checkbox' ? false : '');
   Object.assign(out, vals || {});
   for (const d of defs || []) if (d.type === 'link_list' && typeof out[d.id] === 'string') out[d.id] = linklists[out[d.id]] || { links: [] };
+  for (const d of defs || []) if (d.type === 'product' && typeof out[d.id] === 'string') out[d.id] = products[out[d.id]] || null;
   for (const d of defs || []) if (d.type === 'page' && typeof out[d.id] === 'string' && out[d.id]) out[d.id] = pages[out[d.id]];
   return out;
 }
@@ -84,15 +94,17 @@ const routes = [
   ['kontakt', '/pages/kontakt', 'page.kontakt.json', 'Kontakt'],
   ['cookiepolitik', '/pages/cookiepolitik', 'page.json', 'Cookiepolitik'],
   ['404', '/404', '404.json', 'Siden blev ikke fundet'],
+  ['product-business', '/products/business', 'product.json', 'Business abonnement'],
+  ['cart', '/cart', 'cart.json', 'Din kurv'],
 ];
 const layout = fs.readFileSync(path.join(THEME, 'layout/theme.liquid'), 'utf8');
 fs.mkdirSync(OUT, { recursive: true });
 for (const [name, url, tpl, title] of routes) {
   for (const l of Object.values(linklists).flatMap((m) => m.links)) l.current = l.url === url;
-  const pageType = name === 'index' ? 'index' : name === '404' ? '404' : 'page';
+  const pageType = name === 'index' ? 'index' : name === '404' ? '404' : name === 'cart' ? 'cart' : name.startsWith('product') ? 'product' : 'page';
   const pageObj = pages[url.split('/').pop()] || { title, content: '' };
   if (name === 'cookiepolitik') pageObj.content = '<h2>Cookies</h2><p>Lokal testtekst.</p>';
-  const globals = { settings, pages, linklists, shop: { name: 'Veyro', url: 'https://veyro.dk', email: 'salg@veyro.dk' }, routes: { root_url: '/', cart_url: '/cart', search_url: '/search' }, request: { locale: { iso_code: 'da' }, page_type: pageType }, page: pageObj, page_title: title, canonical_url: 'https://veyro.dk' + url, template: { name: pageType, suffix: tpl.startsWith('page.') && tpl !== 'page.json' ? tpl.slice(5, -5) : null }, current_page: 1, content_for_header: '' };
+  const globals = { product: products.business, cart, settings, pages, linklists, shop: { name: 'Veyro', url: 'https://veyro.dk', email: 'salg@veyro.dk' }, routes: { root_url: '/', cart_url: '/cart', search_url: '/search' }, request: { locale: { iso_code: 'da' }, page_type: pageType }, page: pageObj, page_title: title, canonical_url: 'https://veyro.dk' + url, template: { name: pageType, suffix: tpl.startsWith('page.') && tpl !== 'page.json' ? tpl.slice(5, -5) : null }, current_page: 1, content_for_header: '' };
   for (const k of Object.keys(G)) delete G[k]; Object.assign(G, globals);
   const tj = readJson('templates/' + tpl);
   let main = '';

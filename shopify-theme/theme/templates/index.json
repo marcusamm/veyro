@@ -275,12 +275,12 @@
         "scheme": "light",
         "anchor": "hjemmesider",
         "icon": "design",
-        "heading": "Har du blot brug for en hjemmeside? Det laver vi også.",
-        "text": "<p>Vi laver stadig almindelige virksomhedshjemmesider, landingssider og andre webløsninger uden ordre- og lagerstyring. Vi hjælper også med optimering, fejlfinding og vedligeholdelse af din nuværende hjemmeside.</p>",
-        "primary_label": "Se hjemmesider og abonnementer",
+        "heading": "Har du blot brug for en hjemmeside? Det laver vi også, som abonnement.",
+        "text": "<p>Vi laver almindelige virksomhedshjemmesider og landingssider som et løbende abonnement med fast månedspris fra 299 kr./md. inkl. hosting og vedligeholdelse. Vi hjælper også med optimering, fejlfinding og vedligeholdelse af din nuværende hjemmeside.</p>",
+        "primary_label": "Se abonnementerne",
         "primary_link": "/pages/ydelser#abonnement",
-        "secondary_label": "Alle ydelser",
-        "secondary_link": "/pages/ydelser"
+        "secondary_label": "Hent tilbud",
+        "secondary_link": "/?ydelse=almindelig-hjemmeside-eller-landingsside#kontakt"
       }
     },
     "faq": {
@@ -339,7 +339,7 @@
           "type": "question",
           "settings": {
             "question": "Laver I stadig almindelige hjemmesider?",
-            "answer": "<p>Ja. Vi laver virksomhedshjemmesider, landingssider og andre webløsninger uden ordre- og lagerstyring, og vi hjælper med optimering og vedligeholdelse. <a href=\"/pages/ydelser\">Se alle ydelser</a>.</p>"
+            "answer": "<p>Ja. Vi laver virksomhedshjemmesider og landingssider som abonnement med fast månedspris fra 299 kr./md., og vi hjælper med optimering og vedligeholdelse. <a href=\"/pages/ydelser#abonnement\">Se abonnementerne</a>, eller skriv til os for et tilbud.</p>"
           }
         }
       },

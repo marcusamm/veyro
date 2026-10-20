@@ -117,7 +117,8 @@
     "update": "Opdater kurv",
     "item": "Ydelse",
     "total": "I alt",
-    "note": "Bemærkning til ordren"
+    "note": "Bemærkning til ordren",
+    "count": "{{ count }} i kurven"
   },
   "search": {
     "title": "Søg",
@@ -156,5 +157,15 @@
     "consent_note": "Anmeldelserne hentes fra Trustpilot, som sætter cookies. De vises, når du accepterer {{ category }}.",
     "editor_missing_url": "Indsæt linket til jeres Trustpilot-profil under Temaindstillinger › Trustpilot. Sektionen er skjult for besøgende, indtil linket er sat.",
     "editor_missing_id": "Tilføj business unit id under Temaindstillinger › Trustpilot for at vise stjerner og score. Indtil da vises kun knappen."
+  },
+  "subscriptions": {
+    "get_quote": "Hent tilbud",
+    "per_month": "/md.",
+    "terms": "Løbende abonnement, der betales hver måned.",
+    "choose_plan": "Vælg abonnement",
+    "quote_text": "Skal løsningen tilpasses, eller har du allerede en hjemmeside? Så giver vi dig et tilbud.",
+    "cart_note": "Abonnementer i kurven er løbende og betales hver måned, til du opsiger dem.",
+    "cart_quote": "Har du brug for noget andet end et fast abonnement?",
+    "see_plans": "Se abonnementerne"
   }
 }

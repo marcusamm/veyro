@@ -1,7 +1,8 @@
 {%- comment -%}
   Abonnementer: løbende vedligeholdelse med eller uden hosting.
-  Knappen går til kontaktformularen med abonnementet forvalgt, eller til et
-  Shopify-produkt, hvis der er valgt et (salg via Shopify-checkout).
+  Har blokken et Shopify-produkt med en abonnementsplan, kan abonnementet lægges i kurven.
+  Ellers går knappen til knaplinket eller kontaktformularen. „Hent tilbud“ går altid
+  til kontaktformularen med abonnementet forvalgt.
 {%- endcomment -%}
 {%- assign kontakt = pages['kontakt'].url | default: '/pages/kontakt' -%}
 <section class="section section--{{ section.settings.scheme }} plans" id="{{ section.settings.anchor | default: section.id | handle }}">
@@ -11,12 +12,9 @@
     <ul class="plans__grid" role="list">
       {%- for block in section.blocks -%}
         {%- liquid
-          assign plan_url = block.settings.link
-          if block.settings.product != blank
-            assign plan_url = block.settings.product.url
-          elsif plan_url == blank
-            assign plan_url = kontakt | append: '?ydelse=' | append: block.settings.form_key | append: '#formular'
-          endif
+          assign quote_url = kontakt | append: '?ydelse=' | append: block.settings.form_key | append: '#formular'
+          assign plan_url = block.settings.link | default: quote_url
+          assign form_id = 'PlanForm-' | append: block.id
           assign features = block.settings.features | newline_to_br | split: '<br />'
         -%}
         <li class="plan card{% if block.settings.highlight %} plan--highlight{% endif %}" data-reveal style="--delay: {{ forloop.index0 | times: 90 }}ms" {{ block.shopify_attributes }}>
@@ -28,12 +26,15 @@
           {%- if block.settings.price != blank -%}
             <p class="plan__price">
               {%- if block.settings.product != blank -%}
-                {{ block.settings.product.price | money }}
+                {{ block.settings.product.price | money_without_trailing_zeros }}
               {%- else -%}
                 {{ block.settings.price | escape }}
               {%- endif -%}
               {%- if block.settings.price_note != blank -%}<span>{{ block.settings.price_note | escape }}</span>{%- endif -%}
             </p>
+          {%- endif -%}
+          {%- if section.settings.terms != blank -%}
+            <p class="sub-terms">{% render 'icon', name: 'automation', size: 16 %}<span>{{ section.settings.terms | escape }}</span></p>
           {%- endif -%}
           <ul class="checklist" role="list">
             {%- for f in features -%}
@@ -43,11 +44,7 @@
           </ul>
           {%- if block.settings.note != blank -%}<p class="plan__note">{{ block.settings.note | escape }}</p>{%- endif -%}
           <div class="plan__cta">
-            {%- if block.settings.highlight -%}
-              {% render 'button', label: block.settings.button_label, url: plan_url, style: 'primary', arrow: settings.button_arrow, class: 'btn--block' %}
-            {%- else -%}
-              {% render 'button', label: block.settings.button_label, url: plan_url, style: 'secondary', class: 'btn--block' %}
-            {%- endif -%}
+            {% render 'subscription-buy', product: block.settings.product, quote_url: quote_url, fallback_url: plan_url, fallback_label: block.settings.button_label, primary: block.settings.highlight, id: form_id %}
           </div>
         </li>
       {%- endfor -%}
@@ -71,6 +68,7 @@
     { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Abonnement" },
     { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Løbende vedligeholdelse – med eller uden hosting" },
     { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "terms", "label": "Abonnementsvilkår under prisen", "default": "Løbende abonnement, der betales hver måned" },
     { "type": "richtext", "id": "footnote", "label": "Fodnote" }
   ],
   "blocks": [
@@ -90,7 +88,7 @@
         { "type": "text", "id": "button_label", "label": "Knaptekst", "default": "Hør mere" },
         { "type": "url", "id": "link", "label": "Knaplink", "info": "Tomt felt linker til kontaktformularen med abonnementet forvalgt." },
         { "type": "text", "id": "form_key", "label": "Forvalg i kontaktformular", "default": "abonnement-vedligeholdelse" },
-        { "type": "product", "id": "product", "label": "Sælg via Shopify-checkout (valgfrit)", "info": "Vælg et produkt, så går knappen til produktsiden, og prisen hentes fra produktet." }
+        { "type": "product", "id": "product", "label": "Abonnementsprodukt i Shopify (valgfrit)", "info": "Har produktet en abonnementsplan (Shopify Subscriptions), vises „Læg i kurv“, og prisen hentes fra produktet. Uden plan bruges knaplinket." }
       ]
     }
   ],

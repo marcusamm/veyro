@@ -14,6 +14,10 @@
                 <td>
                   <a href="{{ item.url }}" class="cart__title">{{ item.product.title | escape }}</a>
                   {%- unless item.product.has_only_default_variant -%}<p class="small muted">{{ item.variant.title | escape }}</p>{%- endunless -%}
+                  {%- if item.selling_plan_allocation -%}
+                    {%- assign has_subscription = true -%}
+                    <p class="sub-terms sub-terms--sm">{% render 'icon', name: 'automation', size: 14 %}<span>{{ item.selling_plan_allocation.selling_plan.name | escape }}</span></p>
+                  {%- endif -%}
                   <a class="small" href="{{ item.url_to_remove }}">{{ 'cart.remove' | t }}<span class="visually-hidden">: {{ item.product.title | escape }}</span></a>
                 </td>
                 <td>
@@ -29,20 +33,28 @@
           <label for="CartNote">{{ 'cart.note' | t }} <span class="field__opt">({{ 'forms.optional' | t }})</span></label>
           <textarea id="CartNote" name="note" rows="3">{{ cart.note }}</textarea>
         </div>
+        {%- assign kontakt = pages['kontakt'].url | default: '/pages/kontakt' -%}
         <div class="cart__summary">
           <p class="cart__subtotal"><span>{{ 'cart.subtotal' | t }}</span> <strong>{{ cart.total_price | money_with_currency }}</strong></p>
+          {%- if has_subscription -%}<p class="sub-terms">{% render 'icon', name: 'automation', size: 16 %}<span>{{ 'subscriptions.cart_note' | t }}</span></p>{%- endif -%}
           <p class="small muted">{{ 'cart.taxes_note' | t }}</p>
           <div class="cart__actions">
             <button type="submit" name="update" class="btn btn--secondary">{{ 'cart.update' | t }}</button>
             <button type="submit" name="checkout" class="btn btn--primary">{{ 'cart.checkout' | t }}</button>
           </div>
+          <p class="small muted cart__quote">{{ 'subscriptions.cart_quote' | t }} <a href="{{ kontakt }}?ydelse=andet-ved-ikke-endnu#formular">{{ 'subscriptions.get_quote' | t }}</a>.</p>
         </div>
       </form>
     {%- else -%}
       <p class="lead">{{ 'cart.empty' | t }}</p>
       {%- assign services_url = pages['ydelser'].url | default: routes.root_url -%}
       {%- assign continue_label = 'cart.continue' | t -%}
-      {% render 'button', label: continue_label, url: services_url, style: 'primary' %}
+      {%- assign plans_url = services_url | append: '#abonnement' -%}
+      {%- assign plans_label = 'subscriptions.see_plans' | t -%}
+      <div class="cart__empty-actions">
+        {% render 'button', label: plans_label, url: plans_url, style: 'primary', arrow: settings.button_arrow %}
+        {% render 'button', label: continue_label, url: services_url, style: 'secondary' %}
+      </div>
     {%- endif -%}
   </div>
 </section>
