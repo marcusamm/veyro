@@ -408,7 +408,7 @@ export async function readBilag(env: Env, s: Settings, id: number, actor: Actor,
     const text = bytes ? await pdfText(bytes) : { pages: [], hasText: false };
     if (text.hasText) {
       const { results: sups } = await db.prepare('SELECT id, name FROM suppliers').all<{ id: number; name: string }>();
-      const r = readText(text.pages, { ownCvr: s.company_cvr, suppliers: sups });
+      const r = readText(text.pages, { ownCvr: s.company_cvr, ownName: s.company_name, suppliers: sups });
       const v = r.values;
       const sup = sups.find((x) => x.name.toLowerCase() === String(v.supplier_name ?? '').toLowerCase());
       stmts.push(
@@ -927,6 +927,35 @@ export async function jobBilagCost(db: D1Database, jobId: number): Promise<numbe
     .bind(jobId)
     .first<{ n: number }>();
   return row?.n ?? 0;
+}
+
+/** Hvorfor bilaget ikke kan slettes (null = det kan). Godkendte, eksporterede og bilag med registreringer på lageret skal blive. */
+export async function deleteBlocker(db: D1Database, b: BilagRow): Promise<string | null> {
+  if (b.status === 'godkendt' || b.status === 'arkiveret' || b.approved_at) return 'Godkendte bilag kan ikke slettes, da de er en del af regnskabet.';
+  if (b.exported_version !== null || b.export_id !== null) return 'Bilaget er eksporteret til bogholderen og kan ikke slettes.';
+  const done = await db.prepare('SELECT COUNT(*) AS n FROM bilag_allocations WHERE bilag_id = ? AND done_at IS NOT NULL').bind(b.id).first<{ n: number }>();
+  if (done && done.n > 0) return 'Bilaget har registreringer på lageret eller et job og kan ikke slettes.';
+  const exp = await db.prepare("SELECT COUNT(*) AS n FROM export_items WHERE kind = 'bilag' AND ref_id = ?").bind(b.id).first<{ n: number }>();
+  if (exp && exp.n > 0) return 'Bilaget er eksporteret til bogholderen og kan ikke slettes.';
+  return null;
+}
+
+/** Sletter et bilag (med linjer, fordelinger og historik) og filen, hvis intet andet bruger den. */
+export async function deleteBilag(db: D1Database, b: BilagRow): Promise<string | null> {
+  const err = await deleteBlocker(db, b);
+  if (err) return err;
+  await db.prepare('DELETE FROM bilag WHERE id = ?').bind(b.id).run();
+  for (const fid of new Set([b.file_id, b.preview_file_id].filter((x): x is number => x !== null))) {
+    await db
+      .prepare(
+        `DELETE FROM files WHERE id = ?1
+           AND NOT EXISTS (SELECT 1 FROM bilag WHERE file_id = ?1 OR preview_file_id = ?1)
+           AND NOT EXISTS (SELECT 1 FROM exports WHERE file_id = ?1)`,
+      )
+      .bind(fid)
+      .run();
+  }
+  return null;
 }
 
 /** Må brugeren se bilaget? Ejer og indkøber ser alle; medarbejdere egne uploads og egne udlæg. */

@@ -335,7 +335,7 @@ export function productPage(d: {
       : `Mangler opsætning: ${plan.missing.join(', ')}`;
   const kinds: AdjustKind[] = ['modtagelse', 'returvare', 'optaelling', 'svind', 'leverandorretur'];
   return html`<div class="stack-lg">
-  ${pageHead('Varer og lager', html`${p.name} <span class="sku" style="font-size:16px">${p.sku}</span>`, html`<a class="btn btn-ghost" href="/lager/varer">← Alle varer</a>`)}
+  ${pageHead('Varer og lager', html`${p.name} <span class="sku" style="font-size:16px">${p.sku}</span>`, html`<a class="btn btn-ghost" href="/lager/varer">← Alle varer</a><form method="post" action="/lager/varer/${p.id}/slet" class="inline" data-confirm="Slet varen? Har den historik eller beholdning, bliver den i stedet gjort inaktiv.">${csrfField(d.csrf)}<button class="btn btn-danger" type="submit">Slet vare</button></form>`)}
   ${flash(d.flashCode)}
   ${p.catalog_product_id ? html`<p class="hint" style="margin:0">Knyttet til produktkataloget: <a href="/katalog/${p.catalog_product_id}">${veyroId(p.catalog_product_id)}</a>. Kataloget ændrer aldrig beholdningen.</p>` : ''}
   <div class="layout-side">

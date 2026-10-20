@@ -20,6 +20,8 @@ import {
   performAllocation,
   purchaseSuggestions,
   readBilag,
+  deleteBilag,
+  deleteBlocker,
   removeAllocation,
   saveBilag,
   setStatus,
@@ -307,6 +309,7 @@ export function bilagRoutes(portal: Portal) {
         events,
         checks: checkBilag(b, lines, allocs, s),
         canEdit: canEditData(b, user(c)),
+        canDelete: (canEditData(b, user(c)) || manager(c)) && !(await deleteBlocker(db, b)),
         manager: manager(c),
         jobs,
         products,
@@ -457,6 +460,12 @@ export function bilagRoutes(portal: Portal) {
       if (errs.length) return showDetail(c, b, errs);
       await saveBilag(db, b, { ...data, payment: pay, paid_by: paidBy, note: str(one('note'), 1000, { multiline: true }) }, lines, actor, t);
       return go('gemt');
+    }
+
+    if (action === 'slet') {
+      if (!canEditData(b, user(c)) && !isMgr) return showDetail(c, b, ['Du kan ikke slette dette bilag.']);
+      const err = await deleteBilag(db, b);
+      return err ? showDetail(c, b, [err]) : c.redirect(`${base}?besked=slettet`, 303);
     }
 
     if (action === 'laes') {

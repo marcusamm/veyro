@@ -323,6 +323,30 @@ lager.post('/varer/:id{[0-9]+}', async (c) => {
 });
 
 // Produktsider hos byggemarkederne (til automatisk pris eller manuel pris med link)
+// Sletter en vare. En vare med historik (bevægelser, job, indkøb, fakturaer, returer) eller beholdning
+// slettes ikke, da historikken skal kunne følges; den skjules i stedet (inaktiv).
+lager.post('/varer/:id{[0-9]+}/slet', async (c) => {
+  const id = Number(c.req.param('id'));
+  const db = c.env.DB;
+  const p = await db.prepare('SELECT stock, reserved FROM products WHERE id = ?').bind(id).first<{ stock: number; reserved: number }>();
+  if (!p) return c.notFound();
+  const used = await db
+    .prepare(
+      `SELECT (SELECT COUNT(*) FROM movements WHERE product_id = ?1) + (SELECT COUNT(*) FROM job_materials WHERE product_id = ?1)
+            + (SELECT COUNT(*) FROM purchase_lines WHERE product_id = ?1) + (SELECT COUNT(*) FROM invoice_lines WHERE product_id = ?1)
+            + (SELECT COUNT(*) FROM job_items WHERE product_id = ?1) + (SELECT COUNT(*) FROM returns WHERE product_id = ?1)
+            + (SELECT COUNT(*) FROM bilag_allocations WHERE product_id = ?1 AND done_at IS NOT NULL) AS n`,
+    )
+    .bind(id)
+    .first<{ n: number }>();
+  if (p.stock > 0 || p.reserved > 0 || (used?.n ?? 0) > 0) {
+    await db.prepare('UPDATE products SET active = 0, updated_at = ? WHERE id = ?').bind(Math.floor(Date.now() / 1000), id).run();
+    return c.redirect(`/lager/varer/${id}?besked=vare_skjult`, 303);
+  }
+  await db.batch([db.prepare('DELETE FROM notices WHERE product_id = ?').bind(id), db.prepare('DELETE FROM products WHERE id = ?').bind(id)]);
+  return c.redirect('/lager/varer?besked=vare_slettet', 303);
+});
+
 lager.post('/varer/:id{[0-9]+}/produktside', async (c) => {
   const id = Number(c.req.param('id'));
   const db = c.env.DB;

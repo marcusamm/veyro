@@ -59,6 +59,8 @@ const FLASH: Record<string, [kind: 'ok' | 'info' | 'warn' | 'err', text: string]
   job_genaabnet: ['ok', 'Jobbet er genåbnet.'],
   godkendt: ['ok', 'Fakturagrundlaget er godkendt. Mængder og priser er nu låst.'],
   slettet: ['ok', 'Slettet.'],
+  vare_slettet: ['ok', 'Varen er slettet.'],
+  vare_skjult: ['info', 'Varen har historik eller beholdning og kan derfor ikke slettes. Den er gjort inaktiv, så den ikke kan vælges på job og indkøb. Historikken er bevaret.'],
   nulstillet: ['ok', 'Demodata er nulstillet.'],
   ingen_adgang: ['warn', 'Den side er kun for ejer og indkøber.'],
   logget_ud: ['info', 'Du er logget ud.'],
