@@ -142,9 +142,9 @@ Login sker med et engangslink på e-mail. Adresser i `ADMIN_EMAILS` bliver autom
 
 ## Demo
 
-`wrangler.demo.toml` kører med `DEMO_MODE=1`: login med ét klik som ejer eller medarbejder, fiktive varer og job (Nordlys Byg ApS) i alle statusser med materialer, timer, prisoverslag, en udstedt faktura, en kreditnota og en fakturakladde (alt markeret Demodata), et **Demoforløb** (`/lager/demo`), der kører eksemplerne fra kravene igennem lagermotoren og viser tallene, og nulstilling under Indstillinger. E-mails er simulerede.
+En installation med `"demo": true` i `kunder/<slug>.json` kører med `DEMO_MODE=1`: login med ét klik som ejer eller medarbejder, fiktive varer og job (Nordlys Byg ApS) i alle statusser med materialer, timer, prisoverslag, en udstedt faktura, en kreditnota og en fakturakladde (alt markeret Demodata), et **Demoforløb** (`/lager/demo`), der kører eksemplerne fra kravene igennem lagermotoren og viser tallene, og nulstilling under Indstillinger. E-mails er simulerede.
 
-Workers Builds: rodmappe `/lagerstyring`, deploy-kommando `npx wrangler deploy --config wrangler.demo.toml`.
+Veyros demo er EK Enterprise (`kunder/ek-enterprise.json`, ek-enterprise.veyro.dk), som opdateres med "Deploy kunder" ligesom de andre installationer.
 
 ## Udvikling og tests
 

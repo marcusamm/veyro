@@ -221,7 +221,7 @@ Demodata (en fiktiv byggevarehandel med 120 dages salg, som på veyro.dk) til en
 
 ```bash
 node scripts/demo-data.mjs demo.sql
-npx wrangler d1 execute varebestilling-demo --remote --file demo.sql --config wrangler.demo.toml
+npx wrangler d1 execute <database> --remote --file demo.sql
 ```
 
 Kode:
