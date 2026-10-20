@@ -394,6 +394,24 @@ tr.est-chosen td{background:rgba(var(--accent-rgb),.06)}
 .est-total .big{font-size:22px}
 .ok-text{color:var(--ok)}.err-text{color:var(--err)}
 .est td small .tag{margin-top:4px}
+.kv>div{display:contents}
+.bilag-split{display:grid;gap:24px;grid-template-columns:minmax(0,1fr)}
+@media(min-width:1100px){.bilag-split{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}}
+.orig-frame{width:100%;height:70vh;min-height:420px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.orig-img{display:block;max-width:100%;height:auto;border:1px solid var(--line);border-radius:8px}
+.doc-view{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px;display:grid;gap:16px}
+.doc-view-head,.doc-view-top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.doc-view-meta{display:grid;gap:4px;text-align:right}
+.doc-totals{display:grid;gap:4px;margin:0;justify-content:end}
+.doc-totals>div{display:flex;justify-content:space-between;gap:32px}
+.doc-totals dd{margin:0;font-variant-numeric:tabular-nums}
+.doc-totals .sum{font-weight:700;border-top:1px solid var(--line);padding-top:6px}
+.uncertain{background:#FFF4D6}
+.field.uncertain{background:none}.field.uncertain input{border-color:#C98A00;background:#FFF9E8}
+.check-list{margin:0;padding-left:20px;display:grid;gap:4px}
+.check-list.err li{color:#A3261B}.check-list.warn li{color:#7A5A00}
+.bilag-lines input,.bilag-lines select{min-width:0;width:100%}
+.bilag-lines td{vertical-align:top}
 `;
 
 export const JS = `

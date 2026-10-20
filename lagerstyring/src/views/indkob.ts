@@ -39,7 +39,7 @@ export function purchasingPage(d: {
 }): H {
   const groups = bySupplier(d.toOrder);
   return html`<div class="stack-lg">
-  ${pageHead('Lagerportal', 'Indkøb', html`<a class="btn btn-secondary" href="/lager/modtagelse">Varemodtagelse</a>`, 'Systemet bestiller aldrig selv hos leverandøren. Registrér her, hvad der er bestilt.')}
+  ${pageHead('Lagerportal', 'Indkøb', html`<a class="btn btn-secondary" href="/lager/bilag/ny?fra=indkob">Upload bilag</a><a class="btn btn-secondary" href="/lager/modtagelse">Varemodtagelse</a>`, 'Systemet bestiller aldrig selv hos leverandøren. Registrér her, hvad der er bestilt.')}
   ${flash(d.flashCode)}${d.error ? alert('err', d.error) : ''}
   <section class="stack">
     <h2>Til bestilling</h2>
@@ -265,7 +265,7 @@ export function listPage(d: {
 export function receivingPage(d: { lines: LineView[]; csrf: string; ops: string[]; flashCode?: string; error?: string }): H {
   const groups = bySupplier(d.lines);
   return html`<div class="stack-lg">
-  ${pageHead('Lagerportal', 'Varemodtagelse', '', 'Bestilte varer lægges først på lageret, når de er modtaget. Delvise leveringer registreres med den mængde, der er kommet.')}
+  ${pageHead('Lagerportal', 'Varemodtagelse', html`<a class="btn btn-secondary" href="/lager/retur">Returer</a><a class="btn btn-secondary" href="/lager/bilag/ny?fra=modtagelse">Upload bilag</a>`, 'Bestilte varer lægges først på lageret, når de er modtaget. Delvise leveringer registreres med den mængde, der er kommet.')}
   ${flash(d.flashCode)}${d.error ? alert('err', d.error) : ''}
   ${groups.length
     ? groups.map(

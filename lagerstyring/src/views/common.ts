@@ -94,6 +94,8 @@ const FLASH: Record<string, [kind: 'ok' | 'info' | 'warn' | 'err', text: string]
   import_godkendt: ['ok', 'Importen er godkendt, og produktkataloget er opdateret. Lagerbeholdninger, indkøb og modtagelser er ikke ændret.'],
   import_annulleret: ['ok', 'Importen er annulleret. Kataloget er uændret.'],
   belastning: ['ok', 'Belastningstestens syntetiske DEMO-varer er oprettet i kataloget.'],
+  betaling_registreret: ['ok', 'Betalingen er registreret. Den er ikke afstemt med banken.'],
+  betaling_annulleret: ['ok', 'Registreringen er annulleret og bevaret i historikken.'],
   belastning_fjernet: ['ok', 'Belastningstestens syntetiske DEMO-varer er fjernet.'],
 };
 
