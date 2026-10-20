@@ -62,6 +62,7 @@ const FLASH: Record<string, [kind: 'ok' | 'info' | 'warn' | 'err', text: string]
   nulstillet: ['ok', 'Demodata er nulstillet.'],
   ingen_adgang: ['warn', 'Den side er kun for ejer og indkøber.'],
   logget_ud: ['info', 'Du er logget ud.'],
+  login_udlobet: ['info', 'Siden var udløbet. Tryk på knappen igen for at få et login-link.'],
   tom: ['warn', 'Angiv mindst én mængde.'],
   planlagt: ['ok', 'Materialerne er reserveret til jobbet.'],
   planlagt_mangler: ['warn', 'Det disponible er reserveret. Resten mangler og står nu på jobbets indkøbsliste, og jobbet afventer materialer.'],

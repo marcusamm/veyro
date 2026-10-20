@@ -117,6 +117,12 @@ export const csrfMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
   const token = typeof raw === 'string' ? raw : '';
   const expected = c.get('csrf');
   if (!token || !expected || !timingSafeEqual(token, expected)) {
+    // En login-side, der har stået åben for længe: vis siden igen med et nyt token i stedet for en fejl.
+    // Intet sendes; brugeren trykker blot igen.
+    if (!c.get('session') && new URL(c.req.url).pathname === '/login') {
+      const email = typeof body['email'] === 'string' ? body['email'].trim().slice(0, 254) : '';
+      return c.redirect(`/login?besked=login_udlobet${email ? `&email=${encodeURIComponent(email)}` : ''}`, 303);
+    }
     return c.text('Ugyldig anmodning (CSRF). Genindlæs siden og prøv igen.', 403);
   }
   await next();

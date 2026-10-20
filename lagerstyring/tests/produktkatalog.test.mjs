@@ -330,4 +330,15 @@ describe('Produktkatalog', () => {
     await owner.post('/lager/katalog/demo/belastning/fjern', { _csrf: csrfFrom(del.html) });
     expect(one("SELECT COUNT(*) n FROM catalog_products WHERE mpn LIKE 'DEMO-LT-%'").n).toBe(0);
   }, 120_000);
+
+  it('en demo med data fra før kataloget får demokataloget ved næste login', async () => {
+    stack.sql(
+      "UPDATE products SET catalog_product_id = NULL; UPDATE job_items SET catalog_product_id = NULL; DELETE FROM catalog_prices; DELETE FROM catalog_import_words; DELETE FROM catalog_import_rows; DELETE FROM catalog_products; DELETE FROM catalog_imports; DELETE FROM catalog_sources; DELETE FROM catalog_words;",
+    );
+    const stock = JSON.stringify(stack.sql('SELECT id, stock, reserved FROM products ORDER BY id'));
+    await demoLogin(stack, 'ejer');
+    expect(one('SELECT COUNT(*) n FROM catalog_products').n).toBe(25);
+    expect(one("SELECT COUNT(*) n FROM catalog_sources WHERE name = 'KEMPER'").n).toBe(1);
+    expect(JSON.stringify(stack.sql('SELECT id, stock, reserved FROM products ORDER BY id'))).toBe(stock);
+  });
 });

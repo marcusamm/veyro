@@ -58,7 +58,17 @@ async function ensureUsers(db: D1Database): Promise<void> {
 export async function ensureDemo(env: Env): Promise<void> {
   await ensureUsers(env.DB);
   const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM products').first<{ n: number }>();
-  if (row?.n) return;
+  if (row?.n) {
+    // En demo med data fra før produktkataloget fandtes får demokataloget lagt ind
+    if (!(await env.DB.prepare('SELECT 1 FROM catalog_sources LIMIT 1').first())) {
+      try {
+        await seedDemoCatalog(env.DB, OWNER.email, nowSec());
+      } catch (err) {
+        if (!String((err as Error).message).includes('UNIQUE')) throw err;
+      }
+    }
+    return;
+  }
   try {
     await seed(env);
   } catch (err) {
