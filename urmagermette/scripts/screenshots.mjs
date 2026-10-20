@@ -23,7 +23,7 @@ async function side(viewport, navn) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: viewport.width < 500 ? 2 : 1, locale: 'da-DK', timezoneId: 'Europe/Copenhagen' });
   const p = await ctx.newPage();
   p.on('console', (m) => {
-    if (m.type() === 'error' && !/Failed to load resource.*(401|409)/.test(m.text()) && !(process.env.UDEN_BILLEDER && /404/.test(m.text()))) problemer.push(`[${navn}] konsolfejl: ${m.text().slice(0, 300)}`);
+    if (m.type() === 'error' && !/Failed to load resource.*(401|409)/.test(m.text()) && !(p.url().includes('findes-ikke') && /404/.test(m.text()))) problemer.push(`[${navn}] konsolfejl: ${m.text().slice(0, 300)}`);
   });
   p.on('pageerror', (e) => problemer.push(`[${navn}] sidefejl: ${e.message.slice(0, 300)}`));
   return { ctx, p };
@@ -33,10 +33,10 @@ async function rulOgFoto(p, fil, fuld = true) {
   // Rul ned gennem siden, så alle animationer udløses, før der fotograferes
   await p.evaluate(async () => {
     for (let y = 0; y < document.body.scrollHeight; y += 500) {
-      window.scrollTo(0, y);
+      window.scrollTo({ top: y, behavior: 'instant' });
       await new Promise((r) => setTimeout(r, 60));
     }
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'instant' });
   });
   await p.waitForTimeout(1100);
   await p.screenshot({ path: join(UD, fil), fullPage: fuld });

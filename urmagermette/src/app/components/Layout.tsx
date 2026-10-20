@@ -201,28 +201,42 @@ function MobilBestil() {
   );
 }
 
-/** Blide animationer: kun elementer under folden skjules og glider frem. */
+/** Blide animationer: kun elementer under folden skjules og glider frem, når man ruller ned til dem. */
 function useFrem(noegle: string) {
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
-    const obs = new IntersectionObserver(
-      (poster) => {
-        for (const p of poster) {
-          if (p.isIntersecting) {
-            p.target.classList.remove('skjult');
-            obs.unobserve(p.target);
-          }
-        }
-      },
-      { rootMargin: '0px 0px -8% 0px' },
-    );
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let ventende: Element[] = [];
     document.querySelectorAll('.frem').forEach((el) => {
       if (el.getBoundingClientRect().top > window.innerHeight * 0.92) {
         el.classList.add('skjult');
-        obs.observe(el);
+        ventende.push(el);
       }
     });
-    return () => obs.disconnect();
+    let ramme = 0;
+    const tjek = () => {
+      ramme = 0;
+      const graense = window.innerHeight * 0.92;
+      ventende = ventende.filter((el) => {
+        // Alt, der er kommet til syne eller rullet forbi, vises
+        if (el.getBoundingClientRect().top < graense) {
+          el.classList.remove('skjult');
+          return false;
+        }
+        return true;
+      });
+      if (!ventende.length) window.removeEventListener('scroll', planlaeg);
+    };
+    const planlaeg = () => {
+      if (!ramme) ramme = requestAnimationFrame(tjek);
+    };
+    window.addEventListener('scroll', planlaeg, { passive: true });
+    window.addEventListener('resize', planlaeg, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', planlaeg);
+      window.removeEventListener('resize', planlaeg);
+      if (ramme) cancelAnimationFrame(ramme);
+      ventende.forEach((el) => el.classList.remove('skjult'));
+    };
   }, [noegle]);
 }
 
@@ -230,7 +244,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const loc = useLocation();
   useFrem(loc.pathname);
   useEffect(() => {
-    if (!loc.hash) window.scrollTo(0, 0);
+    if (!loc.hash) window.scrollTo({ top: 0, behavior: 'instant' });
   }, [loc.pathname, loc.hash]);
   return (
     <>

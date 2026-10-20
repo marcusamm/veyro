@@ -556,7 +556,7 @@ export class Vaerksted extends DurableObject<Env> {
       if (!ok || !r) throw new Fejl(401, 'Forkert e-mail eller adgangskode.');
       const token = tilfaeldigToken(32);
       this.sql.exec(`INSERT INTO sessioner VALUES (?, ?, ?)`, await sha256(token), r.id, Math.floor(Date.now() / 1000) + SESSION_TIMER * 3600);
-      this.sql.exec(`DELETE FROM begraensning WHERE noegle = ?`, `login:${email}`);
+      this.sql.exec(`DELETE FROM begraensning WHERE noegle IN (?, ?)`, `login:${email}`, `login:${ip(c)}`);
       setCookie(c, SESSION_COOKIE, token, { httpOnly: true, secure: true, sameSite: 'Strict', path: '/', maxAge: SESSION_TIMER * 3600 });
       return c.json({ ok: true });
     });
