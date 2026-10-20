@@ -1,8 +1,11 @@
 {
   "navn": "EK Enterprise",
+  "demo": true,
   "systemer": {
     "lagerstyring": {
-      "admins": ["marcus.ammitzboell@gmail.com"]
+      "admins": [
+        "marcus.ammitzboell@gmail.com"
+      ]
     }
   }
 }

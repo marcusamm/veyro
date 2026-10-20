@@ -90,7 +90,10 @@ export function laesKunder(dir = KUNDER_DIR, kundeDomaene = process.env.KUNDE_DO
       return { system, navn, domaene: domaene || standardDomaene, admins, afsender };
     });
     const udseende = laesUdseende(fil, dir, data.udseende);
-    return { slug, navn: data.navn.trim(), systemer, udseende };
+    if (data.demo !== undefined && typeof data.demo !== 'boolean') fejl(fil, '"demo" skal være true eller false');
+    // "demo": true gør installationen til en demomodel med fiktive eksempeldata og login med ét klik
+    if (data.demo) for (const s of systemer) s.demo = true;
+    return { slug, navn: data.navn.trim(), systemer, udseende, demo: !!data.demo };
   });
 }
 
@@ -173,7 +176,7 @@ export function bygKonfiguration(skabelon, inst, databaseId, { standardAfsender 
   t = erstat(t, /^ADMIN_EMAILS = .*$/m, `ADMIN_EMAILS = "${inst.admins.join(',')}"`);
   t = erstat(t, /^EMAIL_FROM = .*$/m, `EMAIL_FROM = "${afsender}"`);
   t = erstat(t, /^DEV_MODE = .*$/m, 'DEV_MODE = "0"');
-  if (/^DEMO_MODE = /m.test(t)) t = t.replace(/^DEMO_MODE = .*$/m, 'DEMO_MODE = "0"');
+  if (/^DEMO_MODE = /m.test(t)) t = t.replace(/^DEMO_MODE = .*$/m, `DEMO_MODE = "${inst.demo ? '1' : '0'}"`);
   if (inst.system === 'lagerstyring') {
     if (!/^[0-9a-f]{32}$/.test(KUNDEKATALOG_ID)) throw new Error('KUNDEKATALOG_ID er ugyldigt');
     t = erstat(t, /^DEV_MODE = .*$/m, `DEV_MODE = "0"\nKATALOG_ID = "${inst.navn}"`);
