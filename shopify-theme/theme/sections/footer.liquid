@@ -1,0 +1,134 @@
+{%- liquid
+  assign company = settings.company_name | default: shop.name
+  assign footer_nav_label = 'general.footer_navigation' | t
+  assign footer_contact_label = 'footer.contact' | t
+  assign current_year = 'now' | date: '%Y'
+-%}
+{%- unless settings.cookie_banner_enabled -%}
+  {{ 'shopify-cookie-banner.css' | asset_url | stylesheet_tag }}
+{%- endunless -%}
+<footer class="site-footer section--dark">
+  <div class="container">
+    <div class="site-footer__top">
+      <div class="site-footer__brand">
+        <a class="logo logo--footer" href="{{ routes.root_url }}">
+          <span class="logo__text">{{ company | escape }}</span><span class="logo__dot" aria-hidden="true">.</span>
+        </a>
+        {%- if settings.company_tagline != blank -%}
+          <p class="site-footer__tagline">{{ settings.company_tagline | escape }}</p>
+        {%- endif -%}
+        {%- if section.settings.cta_label != blank -%}
+          {% render 'button', label: section.settings.cta_label, url: section.settings.cta_link, fallback: pages['kontakt'].url, style: 'primary', arrow: settings.button_arrow %}
+        {%- endif -%}
+      </div>
+
+      <div class="site-footer__cols">
+        {%- for block in section.blocks -%}
+          {%- case block.type -%}
+            {%- when 'menu' -%}
+              {%- if block.settings.menu.links.size > 0 -%}
+                <nav class="site-footer__col" aria-label="{{ block.settings.heading | default: footer_nav_label | escape }}" {{ block.shopify_attributes }}>
+                  {%- if block.settings.heading != blank -%}<h2 class="site-footer__heading">{{ block.settings.heading | escape }}</h2>{%- endif -%}
+                  <ul role="list">
+                    {%- for link in block.settings.menu.links -%}
+                      <li><a href="{{ link.url }}"{% if link.current %} aria-current="page"{% endif %}>{{ link.title | escape }}</a></li>
+                    {%- endfor -%}
+                  </ul>
+                </nav>
+              {%- endif -%}
+            {%- when 'contact' -%}
+              <div class="site-footer__col" {{ block.shopify_attributes }}>
+                <h2 class="site-footer__heading">{{ block.settings.heading | default: footer_contact_label | escape }}</h2>
+                <ul role="list" class="site-footer__contact">
+                  {%- if settings.company_email != blank -%}
+                    <li>{% render 'icon', name: 'mail', size: 18 %}<a href="mailto:{{ settings.company_email | escape }}">{{ settings.company_email | escape }}</a></li>
+                  {%- endif -%}
+                  {%- if settings.company_phone != blank -%}
+                    <li>{% render 'icon', name: 'phone', size: 18 %}<a href="tel:{{ settings.company_phone | remove: ' ' | escape }}">{{ settings.company_phone | escape }}</a></li>
+                  {%- endif -%}
+                  {%- if settings.company_hours != blank -%}
+                    <li>{% render 'icon', name: 'clock', size: 18 %}<span>{{ settings.company_hours | escape }}</span></li>
+                  {%- endif -%}
+                </ul>
+              </div>
+            {%- when 'company' -%}
+              <div class="site-footer__col" {{ block.shopify_attributes }}>
+                <h2 class="site-footer__heading">{{ block.settings.heading | escape }}</h2>
+                <address class="site-footer__address">
+                  {{ company | escape }}<br>
+                  {%- if settings.company_address != blank -%}{{ settings.company_address | escape }}<br>{%- endif -%}
+                  {%- if settings.company_cvr != blank -%}{{ 'footer.cvr' | t }}: {{ settings.company_cvr | escape }}{%- endif -%}
+                </address>
+              </div>
+          {%- endcase -%}
+        {%- endfor -%}
+      </div>
+    </div>
+
+    <div class="site-footer__bottom">
+      <p>{{ 'footer.copyright' | t: year: current_year, name: company }}</p>
+      <ul class="site-footer__legal" role="list">
+        {%- for link in section.settings.legal_menu.links -%}
+          <li><a href="{{ link.url }}">{{ link.title | escape }}</a></li>
+        {%- endfor -%}
+        {%- if settings.cookie_banner_enabled -%}
+          <li><button type="button" class="link-button" data-cookie-open>{{ 'footer.cookie_settings' | t }}</button></li>
+        {%- else -%}
+          <li><button type="button" class="link-button" onclick="window.privacyBanner &amp;&amp; window.privacyBanner.showPreferences()">{{ 'footer.cookie_settings' | t }}</button></li>
+        {%- endif -%}
+      </ul>
+      {%- liquid
+        assign socials = 'linkedin,instagram,facebook,github' | split: ','
+      -%}
+      <ul class="site-footer__social" role="list">
+        {%- for s in socials -%}
+          {%- assign key = 'social_' | append: s -%}
+          {%- if settings[key] != blank -%}
+            <li><a href="{{ settings[key] | escape }}" target="_blank" rel="noopener"><span class="visually-hidden">{{ s | capitalize }} ({{ 'general.new_window' | t }})</span>{% render 'icon', name: s, size: 20 %}</a></li>
+          {%- endif -%}
+        {%- endfor -%}
+      </ul>
+    </div>
+  </div>
+</footer>
+
+{% schema %}
+{
+  "name": "Footer",
+  "class": "section-footer",
+  "enabled_on": { "groups": ["footer"] },
+  "settings": [
+    { "type": "text", "id": "cta_label", "label": "Knaptekst", "default": "Få en gratis vurdering" },
+    { "type": "url", "id": "cta_link", "label": "Knaplink", "info": "Tomt felt linker til siden „kontakt“." },
+    { "type": "link_list", "id": "legal_menu", "label": "Juridiske links", "info": "F.eks. Privatlivspolitik, Cookiepolitik og Handelsbetingelser." }
+  ],
+  "blocks": [
+    {
+      "type": "menu",
+      "name": "Menu",
+      "settings": [
+        { "type": "text", "id": "heading", "label": "Overskrift", "default": "Navigation" },
+        { "type": "link_list", "id": "menu", "label": "Menu", "default": "footer" }
+      ]
+    },
+    {
+      "type": "contact",
+      "name": "Kontaktoplysninger",
+      "limit": 1,
+      "settings": [
+        { "type": "text", "id": "heading", "label": "Overskrift", "default": "Kontakt" },
+        { "type": "paragraph", "content": "Oplysningerne redigeres under Temaindstillinger > Virksomhed." }
+      ]
+    },
+    {
+      "type": "company",
+      "name": "Virksomhedsoplysninger",
+      "limit": 1,
+      "settings": [
+        { "type": "text", "id": "heading", "label": "Overskrift", "default": "Virksomhed" },
+        { "type": "paragraph", "content": "Navn, adresse og CVR redigeres under Temaindstillinger > Virksomhed." }
+      ]
+    }
+  ]
+}
+{% endschema %}

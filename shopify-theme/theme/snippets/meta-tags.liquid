@@ -1,0 +1,88 @@
+{%- comment -%}
+  Open Graph, Twitter og strukturerede data (JSON-LD).
+  Felter, der stadig indeholder [PLADSHOLDER], udelades fra JSON-LD.
+{%- endcomment -%}
+{%- liquid
+  assign company = settings.company_name | default: shop.name
+  assign og_type = 'website'
+  if request.page_type == 'article'
+    assign og_type = 'article'
+  elsif request.page_type == 'product'
+    assign og_type = 'product'
+  endif
+  assign og_image = page_image | default: settings.share_image
+-%}
+<meta property="og:site_name" content="{{ company | escape }}">
+<meta property="og:url" content="{{ canonical_url }}">
+<meta property="og:title" content="{{ page_title | escape }}">
+<meta property="og:type" content="{{ og_type }}">
+<meta property="og:locale" content="da_DK">
+<meta property="og:description" content="{{ page_description | default: settings.company_tagline | escape }}">
+{%- if og_image -%}
+  <meta property="og:image" content="https:{{ og_image | image_url: width: 1200 }}">
+  <meta property="og:image:secure_url" content="https:{{ og_image | image_url: width: 1200 }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="{{ 1200 | divided_by: og_image.aspect_ratio | round }}">
+{%- else -%}
+  {%- comment -%} Temaets eget delingsbillede, indtil der vælges et under Temaindstillinger › SEO og deling {%- endcomment -%}
+  <meta property="og:image" content="https:{{ 'share-image.png' | asset_url }}">
+  <meta property="og:image:secure_url" content="https:{{ 'share-image.png' | asset_url }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+{%- endif -%}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ page_title | escape }}">
+<meta name="twitter:description" content="{{ page_description | default: settings.company_tagline | escape }}">
+
+{%- if settings.schema_organization and request.page_type == 'index' -%}
+  {%- liquid
+    assign has_email = false
+    unless settings.company_email contains '['
+      if settings.company_email != blank
+        assign has_email = true
+      endif
+    endunless
+    assign has_phone = false
+    unless settings.company_phone contains '['
+      if settings.company_phone != blank
+        assign has_phone = true
+      endif
+    endunless
+    assign has_address = false
+    unless settings.company_address contains '['
+      if settings.company_address != blank
+        assign has_address = true
+      endif
+    endunless
+    assign has_cvr = false
+    unless settings.company_cvr contains '['
+      if settings.company_cvr != blank
+        assign has_cvr = true
+      endif
+    endunless
+  -%}
+  {%- unless company contains '[' -%}
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ProfessionalService",
+      "name": {{ company | json }},
+      "url": {{ shop.url | append: routes.root_url | json }},
+      "description": {{ settings.company_tagline | json }},
+      "areaServed": "DK",
+      "knowsLanguage": "da"
+      {%- if settings.logo -%},"logo": {{ settings.logo | image_url: width: 600 | prepend: 'https:' | json }}{%- endif -%}
+      {%- if has_email -%},"email": {{ settings.company_email | json }}{%- endif -%}
+      {%- if has_phone -%},"telephone": {{ settings.company_phone | json }}{%- endif -%}
+      {%- if has_address -%},"address": { "@type": "PostalAddress", "streetAddress": {{ settings.company_address | json }}, "addressCountry": "DK" }{%- endif -%}
+      {%- if has_cvr -%},"vatID": {{ 'DK' | append: settings.company_cvr | json }}{%- endif -%}
+      {%- assign same_as = '' -%}
+      {%- assign social_keys = 'social_linkedin,social_instagram,social_facebook,social_github' | split: ',' -%}
+      {%- for key in social_keys -%}
+        {%- if settings[key] != blank -%}{%- assign same_as = same_as | append: settings[key] | append: '|' -%}{%- endif -%}
+      {%- endfor -%}
+      {%- if same_as != blank -%},"sameAs": {{ same_as | split: '|' | json }}{%- endif -%}
+    }
+  </script>
+  {%- endunless -%}
+{%- endif -%}

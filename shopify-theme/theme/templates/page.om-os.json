@@ -1,0 +1,131 @@
+{
+  "sections": {
+    "hero": {
+      "type": "page-hero",
+      "settings": {
+        "scheme": "light",
+        "style": "technical",
+        "show_breadcrumbs": true,
+        "eyebrow": "Om os",
+        "heading": "Et teknisk webbureau",
+        "text": "<p>Veyro bygger hjemmesider med kundebestilling og interne systemer til ordrestyring og varekontrol. Vi laver også almindelige hjemmesider og hjælper danske virksomheder med optimering, udvikling, support og valgfri hosting. Uanset platform.</p>",
+        "primary_label": "Book en demo",
+        "primary_link": "/pages/kontakt?ydelse=book-en-demo#formular",
+        "nav_label": "Gå til"
+      }
+    },
+    "story": {
+      "type": "image-text",
+      "settings": {
+        "scheme": "light",
+        "image_position": "right",
+        "anchor": "historie",
+        "eyebrow": "Vores tilgang",
+        "heading": "Specialiseret i performance og e-handel",
+        "text": "<p>Vi har valgt at fokusere på den tekniske side af hjemmesider og webshops: hastighed, brugeroplevelse, kode, integrationer og drift. Vi arbejder på tværs af platforme som Shopify, WordPress og WooCommerce samt specialudviklede sider, og på Shopify bygger vi også skræddersyede løsninger. Derfor kan vi rådgive ærligt om, hvad der kan betale sig på netop din platform.</p>",
+        "statement": "Vi forklarer, hvad vi gør, og hvorfor vi gør det."
+      }
+    },
+    "values": {
+      "type": "features",
+      "blocks": {
+        "v1": {
+          "type": "feature",
+          "settings": {
+            "icon": "compass",
+            "title": "Tilgang",
+            "text": "<p>Vi starter altid med at forstå forretningen, kunderne og målene, før vi foreslår løsninger.</p>"
+          }
+        },
+        "v2": {
+          "type": "feature",
+          "settings": {
+            "icon": "code",
+            "title": "Teknisk ekspertise",
+            "text": "<p>Vi arbejder i koden (HTML, CSS, JavaScript, PHP, Liquid og API'er) og ved, hvornår et plugin eller en app er den bedste løsning, og hvornår den ikke er.</p>"
+          }
+        },
+        "v3": {
+          "type": "feature",
+          "settings": {
+            "icon": "shield",
+            "title": "Kvalitet",
+            "text": "<p>Vi tester på rigtige enheder, skriver kode, der er til at vedligeholde, og udgiver først, når du har godkendt.</p>"
+          }
+        },
+        "v4": {
+          "type": "feature",
+          "settings": {
+            "icon": "eye",
+            "title": "Gennemsigtighed",
+            "text": "<p>Klare tilbud, ærlige vurderinger og ingen løfter om resultater, vi ikke kan stå inde for.</p>"
+          }
+        },
+        "v5": {
+          "type": "feature",
+          "settings": {
+            "icon": "chat",
+            "title": "Samarbejde",
+            "text": "<p>Du har en fast kontaktperson, og vi holder dig opdateret undervejs, på dansk og uden fagjargon.</p>"
+          }
+        },
+        "v6": {
+          "type": "feature",
+          "settings": {
+            "icon": "grow",
+            "title": "Fleksibelt",
+            "text": "<p>Din hjemmeside kan blive, hvor den er. Vi arbejder med din platform og din hosting, eller hoster den for dig, hvis du ønsker det.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "v1",
+        "v2",
+        "v3",
+        "v4",
+        "v5",
+        "v6"
+      ],
+      "settings": {
+        "scheme": "dark",
+        "layout": "split",
+        "anchor": "vaerdier",
+        "eyebrow": "Det står vi for",
+        "heading": "Sådan arbejder vi sammen med dig"
+      }
+    },
+    "facts": {
+      "type": "rich-text",
+      "settings": {
+        "scheme": "light",
+        "align": "left",
+        "anchor": "virksomhed",
+        "eyebrow": "Virksomhedsoplysninger",
+        "heading": "Praktisk",
+        "text": "<p><strong>Veyro</strong><br>Jasminvej 45, 4200 Slagelse<br>Telefon: +45 61 66 39 31<br>E-mail: kontakt@veyro.dk</p>",
+        "link_label": "Kontakt os",
+        "link": "/pages/kontakt"
+      }
+    },
+    "cta": {
+      "type": "cta-banner",
+      "settings": {
+        "scheme": "light",
+        "eyebrow": "Næste skridt",
+        "heading": "Skal vi vise, hvordan det kan fungere hos jer?",
+        "text": "<p>Book en demo af vores løsninger til ordrer og lager, eller fortæl os, hvad din hjemmeside skal kunne.</p>",
+        "label": "Book en demo",
+        "link": "/pages/kontakt?ydelse=book-en-demo#formular",
+        "show_email": true,
+        "email_prefix": "Eller skriv direkte til"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "story",
+    "values",
+    "facts",
+    "cta"
+  ]
+}

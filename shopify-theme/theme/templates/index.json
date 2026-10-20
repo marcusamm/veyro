@@ -1,0 +1,486 @@
+{
+  "sections": {
+    "hero": {
+      "type": "hero",
+      "blocks": {
+        "p1": {
+          "type": "point",
+          "settings": {
+            "text": "Bestillinger samlet ét sted"
+          }
+        },
+        "p2": {
+          "type": "point",
+          "settings": {
+            "text": "Lageret opdateres automatisk"
+          }
+        },
+        "p3": {
+          "type": "point",
+          "settings": {
+            "text": "Virker på computer, tablet og mobil"
+          }
+        }
+      },
+      "block_order": [
+        "p1",
+        "p2",
+        "p3"
+      ],
+      "settings": {
+        "scheme": "light",
+        "eyebrow": "Ordrestyring og varekontrol",
+        "heading": "Få styr på dine ordrer og dit lager – i én samlet løsning.",
+        "text": "<p>Veyro bygger hjemmesider med kundebestilling og interne websystemer til ordrestyring og varekontrol. Fra første bestilling til opdateret lager får din virksomhed et samlet overblik.</p>",
+        "primary_label": "Se løsninger",
+        "primary_link": "#losninger",
+        "secondary_label": "Book en demo",
+        "secondary_link": "/?ydelse=book-en-demo#kontakt",
+        "visual": "orders"
+      }
+    },
+    "solutions": {
+      "type": "solutions",
+      "blocks": {
+        "s1": {
+          "type": "solution",
+          "settings": {
+            "icon": "cart",
+            "label": "Løsning 1",
+            "anchor": "bestilling-og-lager",
+            "title": "Hjemmeside med bestilling og lagerstyring",
+            "text": "<p>En hjemmeside, hvor dine kunder kan se jeres produkter og afgive bestillinger. Ordren lander straks i dit administrationspanel, du får en notifikation, og varerne trækkes fra den disponible beholdning, når ordren bekræftes.</p>",
+            "points": "Kunderne ser produkter og bestiller selv\nNye ordrer vises straks i administrationspanelet\nNotifikation ved hver ny bestilling\nLageret opdateres automatisk ved ordrebekræftelse\nKundernes bestillinger hænger sammen med jeres interne ordre- og lagerstyring",
+            "fit": "virksomheder, hvor kunderne skal kunne bestille selv.",
+            "button_label": "Book en demo",
+            "button_link": "/?ydelse=hjemmeside-med-bestilling-og-lagerstyring#kontakt",
+            "link_label": "Se arbejdsgangen",
+            "link": "#arbejdsgang"
+          }
+        },
+        "s2": {
+          "type": "solution",
+          "settings": {
+            "icon": "list",
+            "label": "Løsning 2",
+            "anchor": "internt-system",
+            "title": "Internt system til ordrer og varekontrol",
+            "text": "<p>Et selvstændigt system med login, kun for jer og jeres medarbejdere. Det kræver hverken en offentlig webshop, et produktkatalog til kunder eller onlinebetaling.</p>",
+            "points": "Opret ordrer fra telefon, e-mail eller direkte salg\nFølg hver ordre gennem hele behandlingen\nOverblik over varebeholdningen\nLageret opdateres automatisk, når ordrer bekræftes\nKun adgang for medarbejdere med login",
+            "fit": "virksomheder, der tager imod ordrer på telefon, e-mail eller ved direkte salg.",
+            "button_label": "Book en demo",
+            "button_link": "/?ydelse=internt-system-til-ordrer-og-varekontrol#kontakt",
+            "link_label": "Se arbejdsgangen",
+            "link": "#arbejdsgang"
+          }
+        }
+      },
+      "block_order": [
+        "s1",
+        "s2"
+      ],
+      "settings": {
+        "scheme": "surface",
+        "anchor": "losninger",
+        "eyebrow": "Løsninger",
+        "heading": "To måder at få styr på ordrer og lager",
+        "text": "<p>Vælg den løsning, der passer til den måde, jeres kunder bestiller på. Begge bygger på de samme funktioner til ordrer og lager.</p>",
+        "fit_label": "Passer til",
+        "note": "<p>Begge løsninger tilpasses jeres varer og arbejdsgange. <a href=\"#funktioner\">Se de fælles funktioner</a>.</p>"
+      }
+    },
+    "workflows": {
+      "type": "workflows",
+      "blocks": {
+        "w1": {
+          "type": "flow",
+          "settings": {
+            "icon": "cart",
+            "label": "Løsning 1",
+            "title": "Kunden bestiller på hjemmesiden",
+            "steps": "Kunden bestiller | Kunden finder varerne på jeres hjemmeside og sender en bestilling.\nOrdren lander hos jer | Ordren vises straks i administrationspanelet, og I får en notifikation.\nI bekræfter ordren | Varerne trækkes fra den disponible beholdning, så de ikke kan sælges to gange.\nOrdren behandles og afsluttes | I følger ordren, til varerne er sendt eller udleveret."
+          }
+        },
+        "w2": {
+          "type": "flow",
+          "settings": {
+            "icon": "phone",
+            "label": "Løsning 2",
+            "title": "Medarbejderen opretter ordren",
+            "steps": "Ordren kommer ind | En kunde ringer, skriver en e-mail eller handler direkte hos jer.\nMedarbejderen opretter ordren | Varer, antal og kundeoplysninger tastes ind i systemet.\nOrdren bekræftes | Varerne reserveres og trækkes fra den disponible beholdning.\nOrdren følges, til den er færdig | Alle kan se, hvor ordren er, og lagertallene passer hele vejen.",
+            "note": "Ingen webshop, intet produktkatalog til kunder og ingen onlinebetaling nødvendig."
+          }
+        }
+      },
+      "block_order": [
+        "w1",
+        "w2"
+      ],
+      "settings": {
+        "scheme": "light",
+        "anchor": "arbejdsgang",
+        "eyebrow": "Sådan fungerer det",
+        "heading": "Fra første bestilling til opdateret lager",
+        "text": "<p>Uanset om kunden bestiller online, eller en medarbejder opretter ordren, ender det samme sted: én ordreoversigt og et lager, der passer.</p>"
+      }
+    },
+    "demo": {
+      "type": "system-demo",
+      "settings": {
+        "scheme": "dark",
+        "anchor": "demo",
+        "eyebrow": "Eksempel",
+        "heading": "Ordrer, lagerstatus og advarsler på én skærm",
+        "text": "<p>Sådan kan administrationspanelet se ud i et system, Veyro bygger til din virksomhed. Navne, varer og tal i eksemplet er fiktive.</p>",
+        "badge": "Eksempel med fiktive data",
+        "caption": "Eksemplet viser et muligt administrationspanel. Indhold og opbygning tilpasses din virksomhed.",
+        "rules_heading": "Sådan holder systemet styr på lageret",
+        "rules": "Fysisk, reserveret og disponibel | Systemet skelner mellem varer på lageret, varer på bekræftede ordrer og det, der reelt kan sælges.\nLageret trækkes kun én gang | Hver ordre reducerer lageret én gang, også hvis den gemmes eller bekræftes igen.\nIngen oversalg | Kommer to bestillinger på samme tid, kan den samme vare ikke sælges to gange.\nAnnullering frigiver varer | Annulleres en ordre, bliver de reserverede varer disponible igen."
+      }
+    },
+    "functions": {
+      "type": "features",
+      "blocks": {
+        "f1": {
+          "type": "feature",
+          "settings": {
+            "icon": "list",
+            "title": "Ordreoversigt",
+            "text": "<p>Nye, igangværende, afsluttede og annullerede ordrer samlet ét sted.</p>"
+          }
+        },
+        "f2": {
+          "type": "feature",
+          "settings": {
+            "icon": "eye",
+            "title": "Ordredetaljer",
+            "text": "<p>Varer, antal, kundeoplysninger og leveringsoplysninger på hver ordre.</p>"
+          }
+        },
+        "f3": {
+          "type": "feature",
+          "settings": {
+            "icon": "box",
+            "title": "Varer og lagerantal",
+            "text": "<p>Opret og redigér varer, varenumre og lagerantal.</p>"
+          }
+        },
+        "f4": {
+          "type": "feature",
+          "settings": {
+            "icon": "automation",
+            "title": "Automatisk lageropdatering",
+            "text": "<p>Den disponible beholdning opdateres, når en ordre bekræftes.</p>"
+          }
+        },
+        "f5": {
+          "type": "feature",
+          "settings": {
+            "icon": "edit",
+            "title": "Manuel lagerregulering",
+            "text": "<p>Ved varemodtagelse, optælling, svind og godkendte returneringer.</p>"
+          }
+        },
+        "f6": {
+          "type": "feature",
+          "settings": {
+            "icon": "alert",
+            "title": "Advarsler",
+            "text": "<p>Besked ved lav beholdning og tydelig markering af udsolgte varer.</p>"
+          }
+        },
+        "f7": {
+          "type": "feature",
+          "settings": {
+            "icon": "history",
+            "title": "Historik",
+            "text": "<p>Alle ændringer på ordrer og lager kan ses bagefter.</p>"
+          }
+        },
+        "f8": {
+          "type": "feature",
+          "settings": {
+            "icon": "mobile",
+            "title": "Computer, tablet og mobil",
+            "text": "<p>Administrationspanelet er overskueligt på alle skærme.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "f1",
+        "f2",
+        "f3",
+        "f4",
+        "f5",
+        "f6",
+        "f7",
+        "f8"
+      ],
+      "settings": {
+        "scheme": "light",
+        "layout": "stacked",
+        "anchor": "funktioner",
+        "eyebrow": "Kernefunktioner",
+        "heading": "Det får du i begge løsninger",
+        "text": "<p>Funktionerne til ordrer og lager er de samme, uanset om ordren kommer fra hjemmesiden eller bliver oprettet af en medarbejder.</p>"
+      }
+    },
+    "benefits": {
+      "type": "features",
+      "blocks": {
+        "b1": {
+          "type": "feature",
+          "settings": {
+            "icon": "automation",
+            "title": "Mindre manuelt arbejde",
+            "text": "<p>Ordrer og lager hænger sammen, så du ikke skal opdatere lister og regneark i hånden.</p>"
+          }
+        },
+        "b2": {
+          "type": "feature",
+          "settings": {
+            "icon": "eye",
+            "title": "Bedre overblik",
+            "text": "<p>Du kan altid se, hvilke ordrer der venter, og hvad der reelt kan sælges.</p>"
+          }
+        },
+        "b3": {
+          "type": "feature",
+          "settings": {
+            "icon": "shield",
+            "title": "Færre fejl",
+            "text": "<p>Systemet forhindrer oversalg og holder styr på reservationer, så tallene passer.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3"
+      ],
+      "settings": {
+        "scheme": "surface",
+        "layout": "stacked",
+        "anchor": "fordele",
+        "eyebrow": "Fordele",
+        "heading": "Mindre manuelt arbejde, bedre overblik og færre fejl",
+        "text": "<p>Når ordrer og lager hænger sammen, bruger I mindre tid på at holde styr på tallene og mere tid på kunderne.</p>",
+        "link_label": "Book en demo",
+        "link": "/?ydelse=book-en-demo#kontakt"
+      }
+    },
+    "websites": {
+      "type": "note-banner",
+      "settings": {
+        "scheme": "light",
+        "anchor": "hjemmesider",
+        "icon": "design",
+        "heading": "Har du blot brug for en hjemmeside? Det laver vi også.",
+        "text": "<p>Vi laver stadig almindelige virksomhedshjemmesider, landingssider og andre webløsninger uden ordre- og lagerstyring. Vi hjælper også med optimering, fejlfinding og vedligeholdelse af din nuværende hjemmeside.</p>",
+        "primary_label": "Se hjemmesider og abonnementer",
+        "primary_link": "/pages/ydelser#abonnement",
+        "secondary_label": "Alle ydelser",
+        "secondary_link": "/pages/ydelser"
+      }
+    },
+    "faq": {
+      "type": "faq",
+      "blocks": {
+        "q1": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad er forskellen på de to løsninger?",
+            "answer": "<p>Hjemmesiden med bestilling er til virksomheder, hvor kunderne selv skal kunne se produkter og bestille. Det interne system er kun for jer og jeres medarbejdere og bruges til ordrer, der kommer ind på telefon, e-mail eller ved direkte salg. Begge løsninger har de samme funktioner til ordrer og lager.</p>"
+          }
+        },
+        "q2": {
+          "type": "question",
+          "settings": {
+            "question": "Skal vi have en webshop med onlinebetaling?",
+            "answer": "<p>Nej. Det interne system kræver hverken en offentlig webshop, et produktkatalog til kunder eller onlinebetaling. Vælger I hjemmesiden med bestilling, afklarer vi sammen, hvordan bestilling og betaling skal fungere hos jer.</p>"
+          }
+        },
+        "q3": {
+          "type": "question",
+          "settings": {
+            "question": "Hvordan undgår systemet, at vi sælger varer, vi ikke har?",
+            "answer": "<p>Systemet skelner mellem fysisk beholdning, reserverede varer og disponibel beholdning. Når en ordre bekræftes, reserveres varerne, så de ikke kan sælges igen. Lageret trækkes kun én gang pr. ordre, og to samtidige bestillinger kan ikke købe den samme vare.</p>"
+          }
+        },
+        "q4": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad sker der med lageret, hvis en ordre annulleres?",
+            "answer": "<p>De reserverede varer frigives og bliver disponible igen. Ændringen kan ses i historikken.</p>"
+          }
+        },
+        "q5": {
+          "type": "question",
+          "settings": {
+            "question": "Kan vi bruge systemet på telefon og tablet?",
+            "answer": "<p>Ja. Administrationspanelet er bygget til at fungere på computer, tablet og mobil.</p>"
+          }
+        },
+        "q6": {
+          "type": "question",
+          "settings": {
+            "question": "Kan det kobles sammen med de systemer, vi allerede bruger?",
+            "answer": "<p>Det afhænger af systemerne. Fortæl os, hvad I bruger i dag, så undersøger vi mulighederne, før I får et tilbud.</p>"
+          }
+        },
+        "q7": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad koster det?",
+            "answer": "<p>Prisen afhænger af, hvad løsningen skal kunne. Efter en demo og en snak om jeres behov får I et konkret tilbud, så I kender prisen, før vi går i gang.</p>"
+          }
+        },
+        "q8": {
+          "type": "question",
+          "settings": {
+            "question": "Laver I stadig almindelige hjemmesider?",
+            "answer": "<p>Ja. Vi laver virksomhedshjemmesider, landingssider og andre webløsninger uden ordre- og lagerstyring, og vi hjælper med optimering og vedligeholdelse. <a href=\"/pages/ydelser\">Se alle ydelser</a>.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "q1",
+        "q2",
+        "q3",
+        "q4",
+        "q5",
+        "q6",
+        "q7",
+        "q8"
+      ],
+      "settings": {
+        "scheme": "light",
+        "anchor": "faq",
+        "eyebrow": "Spørgsmål og svar",
+        "heading": "Godt at vide, før du skriver",
+        "schema": true
+      }
+    },
+    "contact": {
+      "type": "contact-form",
+      "blocks": {
+        "c1": {
+          "type": "step",
+          "settings": {
+            "title": "Vi læser din henvendelse",
+            "text": "og ser på, hvad jeres virksomhed har brug for."
+          }
+        },
+        "c2": {
+          "type": "step",
+          "settings": {
+            "title": "Vi aftaler en demo eller et møde",
+            "text": "hvor vi viser, hvordan løsningen kan fungere hos jer."
+          }
+        },
+        "c3": {
+          "type": "step",
+          "settings": {
+            "title": "Du får et konkret tilbud",
+            "text": "med indhold, tidsplan og pris, uden forpligtelser."
+          }
+        }
+      },
+      "block_order": [
+        "c1",
+        "c2",
+        "c3"
+      ],
+      "settings": {
+        "scheme": "surface",
+        "anchor": "kontakt",
+        "heading_tag": "h2",
+        "eyebrow": "Kontakt",
+        "heading": "Hvilken løsning er du interesseret i?",
+        "text": "<p>Vælg den type løsning, du er interesseret i, og fortæl kort om jeres virksomhed. Vi vender tilbage og aftaler en demo eller en uforpligtende snak.</p>",
+        "form_name": "Forside – løsninger",
+        "services": "Hjemmeside med bestilling og lagerstyring\nInternt system til ordrer og varekontrol\nBook en demo\nAlmindelig hjemmeside eller landingsside\nOptimering, fejlfinding eller vedligeholdelse\nAndet / ved ikke endnu",
+        "submit_label": "Send henvendelse",
+        "success_heading": "Tak, vi har modtaget din henvendelse",
+        "success_text": "<p>Vi kigger på din besked og vender tilbage på e-mail for at aftale næste skridt.</p>",
+        "steps_heading": "Det sker der, når du skriver",
+        "direct_heading": "Foretrækker du at ringe eller skrive direkte?"
+      }
+    },
+    "trustpilot": {
+      "type": "trustpilot",
+      "settings": {
+        "scheme": "surface",
+        "anchor": "anmeldelser",
+        "heading": "Se hvad vores kunder siger",
+        "text": "<p>Vi beder alle kunder om en ærlig anmeldelse på Trustpilot, når et projekt er afsluttet.</p>",
+        "link_label": "Læs anmeldelserne",
+        "widget": "micro_combo"
+      }
+    },
+    "proces": {
+      "type": "process",
+      "blocks": {
+        "p1": {
+          "type": "step",
+          "settings": {
+            "title": "Demo og behov",
+            "lead": "Vi viser løsningen og lytter.",
+            "text": "<p>Vi gennemgår, hvordan I tager imod ordrer i dag, hvilke varer I har, og hvem der skal bruge systemet.</p>"
+          }
+        },
+        "p2": {
+          "type": "step",
+          "settings": {
+            "title": "Konkret tilbud",
+            "lead": "Du kender prisen, før vi går i gang.",
+            "text": "<p>Du får et tilbud med indhold, tidsplan og pris, uden forpligtelser.</p>"
+          }
+        },
+        "p3": {
+          "type": "step",
+          "settings": {
+            "title": "Opsætning og test",
+            "lead": "Vi tilpasser og tester i en kopi.",
+            "text": "<p>Løsningen tilpasses jeres varer og arbejdsgange, og I kan teste den undervejs.</p>"
+          }
+        },
+        "p4": {
+          "type": "step",
+          "settings": {
+            "title": "I gang og videre",
+            "lead": "Live, gennemgået og fulgt op.",
+            "text": "<p>Vi sætter løsningen i drift, gennemgår den med jer og står klar til justeringer.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ],
+      "settings": {
+        "scheme": "dark",
+        "anchor": "proces",
+        "eyebrow": "Sådan arbejder vi",
+        "heading": "Fra første snak til et system, I bruger hver dag",
+        "link_label": "Book en demo",
+        "link": "/?ydelse=book-en-demo#kontakt"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "solutions",
+    "workflows",
+    "demo",
+    "functions",
+    "benefits",
+    "proces",
+    "websites",
+    "trustpilot",
+    "faq",
+    "contact"
+  ]
+}

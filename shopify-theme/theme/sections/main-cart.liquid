@@ -1,0 +1,52 @@
+{%- comment -%} Kurv til pakker og betalte ydelser. Betaling foregår i Shopifys checkout. {%- endcomment -%}
+<section class="section section--light cart">
+  <div class="container container--narrow">
+    <h1 class="h1">{{ 'cart.title' | t }}</h1>
+    {%- if cart.item_count > 0 -%}
+      <form action="{{ routes.cart_url }}" method="post" novalidate class="cart__form">
+        <table class="cart__table">
+          <thead>
+            <tr><th scope="col">{{ 'cart.item' | t }}</th><th scope="col">{{ 'products.quantity' | t }}</th><th scope="col" class="cart__right">{{ 'cart.total' | t }}</th></tr>
+          </thead>
+          <tbody>
+            {%- for item in cart.items -%}
+              <tr>
+                <td>
+                  <a href="{{ item.url }}" class="cart__title">{{ item.product.title | escape }}</a>
+                  {%- unless item.product.has_only_default_variant -%}<p class="small muted">{{ item.variant.title | escape }}</p>{%- endunless -%}
+                  <a class="small" href="{{ item.url_to_remove }}">{{ 'cart.remove' | t }}<span class="visually-hidden">: {{ item.product.title | escape }}</span></a>
+                </td>
+                <td>
+                  <label class="visually-hidden" for="Qty-{{ item.key }}">{{ 'products.quantity' | t }}: {{ item.product.title | escape }}</label>
+                  <input class="cart__qty" type="number" id="Qty-{{ item.key }}" name="updates[]" value="{{ item.quantity }}" min="0" inputmode="numeric">
+                </td>
+                <td class="cart__right">{{ item.final_line_price | money }}</td>
+              </tr>
+            {%- endfor -%}
+          </tbody>
+        </table>
+        <div class="field">
+          <label for="CartNote">{{ 'cart.note' | t }} <span class="field__opt">({{ 'forms.optional' | t }})</span></label>
+          <textarea id="CartNote" name="note" rows="3">{{ cart.note }}</textarea>
+        </div>
+        <div class="cart__summary">
+          <p class="cart__subtotal"><span>{{ 'cart.subtotal' | t }}</span> <strong>{{ cart.total_price | money_with_currency }}</strong></p>
+          <p class="small muted">{{ 'cart.taxes_note' | t }}</p>
+          <div class="cart__actions">
+            <button type="submit" name="update" class="btn btn--secondary">{{ 'cart.update' | t }}</button>
+            <button type="submit" name="checkout" class="btn btn--primary">{{ 'cart.checkout' | t }}</button>
+          </div>
+        </div>
+      </form>
+    {%- else -%}
+      <p class="lead">{{ 'cart.empty' | t }}</p>
+      {%- assign services_url = pages['ydelser'].url | default: routes.root_url -%}
+      {%- assign continue_label = 'cart.continue' | t -%}
+      {% render 'button', label: continue_label, url: services_url, style: 'primary' %}
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Kurv", "tag": "div", "settings": [] }
+{% endschema %}
