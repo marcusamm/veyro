@@ -24,6 +24,7 @@ import { billRate, internalRate, jobEntries, labourTypes, summarizeEntries, user
 import { Conflict } from '../lib/ledger';
 import { defaultJobList, getJob, getMaterial, getProduct, jobMaterials, setPlanned } from '../lib/materials';
 import { invoicePdf, quotePdf } from '../lib/pdf';
+import { jobBilagCost } from '../lib/bilag';
 import { agreedQuote, companyInfo, computeQuote, customerInfo, getQuote, jobQuotes, saveQuote } from '../lib/quotes';
 import { requireUser } from '../lib/session';
 import { actorOf, isDemo, newOp, render, runTx } from '../render';
@@ -87,13 +88,16 @@ export async function jobOverview(c: Context<AppEnv>, id: number, extra: { error
     const { sources } = await jobSources(db, j, items, s, now);
     const matSources = sources.filter((x) => x.type === 'materiale');
     const matCost = matSources.reduce((a, x) => a + lineAmount(x.unit_cost, x.qty), 0);
+    // Udgifter fra godkendte bilag uden lagerpåvirkning (køb og varemodtagelser tæller via forbruget)
+    const bilagCost = await jobBilagCost(db, id);
     const q = quotes[0];
     summary = {
       quote: q ? { version: q.version, subtotal: q.subtotal, total: q.total, incomplete: q.incomplete, shared_at: q.shared_at, accepted_at: q.accepted_at } : null,
       estimate: { subtotal: calc.subtotal, incomplete: calc.incomplete },
       actualMaterials: matSources.some((x) => x.unit_price === null) && !matSources.some((x) => x.unit_price !== null) ? null : matSources.reduce((a, x) => a + lineAmount(x.unit_price, x.qty), 0),
       actualLabour: lab.billableLabour + lab.actualOther,
-      internalCost: matCost + lab.internalCost,
+      internalCost: matCost + lab.internalCost + bilagCost,
+      bilagCost,
       internalMissing: lab.internalMissing,
       hours: lab.actualHours,
       hoursExpected: lab.expectedHours,

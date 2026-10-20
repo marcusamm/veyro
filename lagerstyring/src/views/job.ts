@@ -85,7 +85,7 @@ export function jobsPage(d: { jobs: JobListRow[]; filter: string; q: string; fla
 
 // --- Jobbets faneblade -------------------------------------------------------------------------
 
-export type JobTab = 'overblik' | 'materialer' | 'timer' | 'overslag' | 'indkob' | 'faktura' | 'historik';
+export type JobTab = 'overblik' | 'materialer' | 'timer' | 'overslag' | 'indkob' | 'faktura' | 'bilag' | 'historik';
 
 export type JobHead = JobRow & { responsible_name: string | null };
 
@@ -97,6 +97,7 @@ export function jobHeader(j: JobHead, tab: JobTab, manager: boolean): H {
     ['overslag', 'Prisoverslag', `/job/${j.id}/overslag`, manager],
     ['indkob', 'Indkøbslister', `/job/${j.id}/indkob`, true],
     ['faktura', 'Faktura', `/job/${j.id}/faktura`, manager],
+    ['bilag', 'Bilag', `/job/bilag?job=${j.id}`, true],
     ['historik', 'Historik', `/job/${j.id}/historik`, true],
   ];
   return html`${pageHead(
@@ -116,6 +117,8 @@ export interface JobSummary {
   actualMaterials: number | null;
   actualLabour: number;
   internalCost: number;
+  /** Godkendte udgifter fra bilag uden lagerpåvirkning (indgår i internCost) */
+  bilagCost: number;
   internalMissing: number;
   hours: number;
   hoursExpected: number;
@@ -147,6 +150,7 @@ export function overviewPage(d: {
     ? html`<div class="big-actions">
         <a class="big-action primary" href="/job/${j.id}/registrer?type=forbrug"><strong>Registrér forbrug</strong><span>Materialer brugt eller udleveret nu. Trækkes straks fra lageret.</span></a>
         <a class="big-action" href="/job/${j.id}/timer#registrer"><strong>Registrér timer</strong><span>Arbejdstimer på jobbet. Godkendes af ejer eller indkøber før fakturering.</span></a>
+        <a class="big-action" href="/job/bilag/ny?job=${j.id}&fra=job"><strong>Upload bilag</strong><span>Kvittering eller faktura til jobbet. Ændrer ikke lageret.</span></a>
         <a class="big-action" href="/job/${j.id}/materialer"><strong>Materialer og indkøb</strong><span>Forventede materialer, priser, reservation og indkøbsliste.</span></a>
       </div>`
     : alert('info', `Jobbet er ${STAGE_LABEL[j.stage].toLowerCase()}. Genåbn det for at registrere mere.`)}
@@ -155,7 +159,7 @@ export function overviewPage(d: {
         <div class="stat"><span class="l">Prisoverslag ekskl. moms</span><span class="n">${s.quote ? formatKr(s.quote.subtotal) : formatKr(s.estimate.subtotal)}</span><span class="l">${s.quote ? `Version ${s.quote.version}${s.quote.accepted_at ? ', accepteret' : s.quote.shared_at ? ', sendt' : ', ikke sendt'}` : 'Aktuel beregning, ikke gemt'}${(s.quote ? s.quote.incomplete : s.estimate.incomplete) ? ' · ufuldstændigt' : ''}</span></div>
         <div class="stat"><span class="l">Faktisk til fakturering</span><span class="n">${formatKr((s.actualMaterials ?? 0) + s.actualLabour)}</span><span class="l">Materialer ${s.actualMaterials === null ? 'mangler pris' : formatKr(s.actualMaterials)} · arbejdsløn ${formatKr(s.actualLabour)}</span></div>
         <div class="stat"><span class="l">Timer</span><span class="n">${formatQty(s.hours)} t.</span><span class="l">${formatQty(s.hoursExpected)} t. forventet${s.pendingHours ? ` · ${formatQty(s.pendingHours)} t. venter på godkendelse` : ''}</span></div>
-        <div class="stat"><span class="l">Intern omkostning</span><span class="n">${formatKr(s.internalCost)}</span><span class="l">${s.internalMissing ? `${s.internalMissing} registreringer mangler intern sats` : 'Materialer (kostpris) og timer'}</span></div>
+        <div class="stat"><span class="l">Intern omkostning</span><span class="n">${formatKr(s.internalCost)}</span><span class="l">${s.internalMissing ? `${s.internalMissing} registreringer mangler intern sats` : 'Materialer (kostpris) og timer'}${s.bilagCost ? ` · heraf ${formatKr(s.bilagCost)} fra godkendte bilag` : ''}</span></div>
       </div>
       <p class="row">Fakturastatus: ${billingTag(s.billing)} <a href="/job/${j.id}/faktura">Til faktura</a></p>`
     : ''}

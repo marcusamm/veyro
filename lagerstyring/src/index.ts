@@ -8,6 +8,7 @@ import { cleanup, csrfMiddleware, requireUser, sessionMiddleware } from './lib/s
 import { getLogo, getSettings } from './lib/settings';
 import { render } from './render';
 import auth from './routes/auth';
+import { bilagRoutes } from './routes/bilag';
 import job from './routes/job';
 import okonomi from './routes/jobokonomi';
 import lager from './routes/lager';
@@ -52,7 +53,7 @@ app.use('*', async (c, next) => {
     ].join('; '),
   );
   h.set('X-Content-Type-Options', 'nosniff');
-  h.set('X-Frame-Options', 'DENY');
+  if (!h.has('X-Frame-Options')) h.set('X-Frame-Options', 'DENY');
   if (!h.has('Referrer-Policy')) h.set('Referrer-Policy', 'same-origin');
   h.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
   h.set('Cross-Origin-Opener-Policy', 'same-origin');
@@ -112,6 +113,8 @@ app.get('/offline', (c) =>
 
 app.route('/', auth);
 app.use('/lager/*', requireUser);
+app.route('/lager/bilag', bilagRoutes('lager'));
+app.route('/job/bilag', bilagRoutes('job'));
 app.route('/lager', lager);
 app.route('/katalog', katalog);
 app.route('/job', jobKatalog);
