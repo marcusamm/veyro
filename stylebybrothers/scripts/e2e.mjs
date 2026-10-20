@@ -19,43 +19,42 @@ async function run(name, viewport, isMobile) {
   const shot = async (file, full = false) => { if (shots) { await page.waitForTimeout(700); await page.screenshot({ path: `${shots}/${file}-${name}.png`, fullPage: full }); } };
 
   await page.goto(url);
-  await page.waitForSelector('.hero h1');
-  await page.waitForTimeout(1200);
+  await page.waitForSelector('.intro h1');
+  await page.waitForTimeout(400);
   await shot('forside');
-  // rul igennem, så alle reveal-animationer er synlige på helsidebilledet
-  await page.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 400) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 60)); } window.scrollTo(0, 0); });
   await shot('forside-hel', true);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (overflow > 0) errors.push(`${name}: vandret scroll på forsiden (${overflow}px)`);
   ok(`${name}: forside`);
 
   // galleri + lightbox
-  await page.locator('#galleri').scrollIntoViewIfNeeded();
-  await page.click('.chip[data-cat="fades"]');
+  await page.locator('#klipninger').scrollIntoViewIfNeeded();
+  await page.click('.tabs button[data-cat="fades"]');
   const visible = await page.locator('.g-item:not(.hide)').count();
-  if (visible !== 2) errors.push(`${name}: forventede 2 fades, fik ${visible}`);
-  await page.click('.chip[data-cat="alle"]');
+  if (visible !== 3) errors.push(`${name}: forventede 3 fades, fik ${visible}`);
+  await page.click('.tabs button[data-cat="alle"]');
   await shot('galleri');
   await page.locator('.g-item').first().click();
-  await page.waitForSelector('.lightbox.open');
+  await page.waitForSelector('.lightbox:not([hidden])');
   await page.click('[data-lb="next"]');
   await shot('lightbox');
   await page.click('[data-lb="close"]');
   ok(`${name}: galleri og lightbox`);
 
   // booking fra behandlingskort (behandling forudvalgt)
-  await page.locator('#behandlinger').scrollIntoViewIfNeeded();
-  await shot('behandlinger');
+  await page.locator('#priser').scrollIntoViewIfNeeded();
+  await shot('priser');
   await page.click('a[href="#/booking?behandling=skin-fade"]');
   await page.waitForSelector('[data-act="pick-barber"]');
-  if (!(await page.locator('.steps li.current b').textContent()).includes('02')) errors.push(`${name}: behandling blev ikke forudvalgt`);
-  await shot('booking-barber');
+  if (!(await page.locator('.step.current h2').textContent()).includes('Frisør')) errors.push(`${name}: behandling blev ikke forudvalgt`);
+  await shot('booking-frisoer');
   await page.click('[data-act="pick-barber"][data-id="any"]');
   await page.waitForSelector('.cal');
+  await shot('booking-kalender');
   await page.waitForSelector('.time');
   await page.locator('.time').nth(2).click();
   await shot('booking-tid', true);
-  await page.locator('[data-act="step"][data-step="4"]:visible').click();
+  await page.click('#continue button');
   await page.waitForSelector('#customer-form');
   await page.click('#customer-form button[type="submit"]');
   await page.waitForSelector('.field.invalid');
@@ -66,12 +65,12 @@ async function run(name, viewport, isMobile) {
   await shot('booking-oplysninger', true);
   await page.click('#customer-form button[type="submit"]');
   await page.waitForSelector('.receipt');
-  const ref = (await page.locator('.ref b').textContent()).trim();
+  const ref = (await page.locator('.receipt .ref').textContent()).trim();
   await shot('booking-bekraeftet', true);
   ok(`${name}: booking ${ref}`);
 
   // samme tid må ikke kunne bookes igen af samme barber: tjek i admin senere. Flyt + aflys:
-  await page.click('a[href^="#/min-booking"]');
+  await page.click('main a[href^="#/min-booking"]');
   await page.waitForSelector('#find-form');
   await page.fill('#m-phone', '12345678');
   await page.click('#find-form button[type="submit"]');
@@ -83,7 +82,7 @@ async function run(name, viewport, isMobile) {
   await shot('min-booking', true);
   await page.click('[data-act="mb-cancel"]');
   await page.click('.ask [data-ok]');
-  await page.waitForSelector('.tag.off');
+  await page.waitForSelector('text=Din tid er aflyst.');
   ok(`${name}: flyt og aflys`);
 
   // admin
@@ -98,27 +97,26 @@ async function run(name, viewport, isMobile) {
   await price.fill('275');
   await price.dispatchEvent('change');
   await shot('admin-behandlinger');
-  await page.click('a[href="#/admin/barberer"]');
-  await shot('admin-barberer');
+  await page.click('a[href="#/admin/frisoerer"]');
+  await shot('admin-frisoerer');
   await page.click('a[href="#/admin/regler"]');
   await page.waitForSelector('#closed-date');
-  await page.click('a[href="#/admin/galleri"]');
-  await shot('admin-galleri');
+  await page.click('a[href="#/admin/billeder"]');
+  await shot('admin-billeder');
   await page.click('a[href="#/admin/beskeder"]');
   await page.waitForSelector('.outbox-item');
   const msgs = await page.locator('.outbox-item').count();
   if (msgs < 4) errors.push(`${name}: forventede mindst 4 simulerede udsendelser, fik ${msgs}`);
   await page.goto(`${url}#/`);
-  await page.waitForSelector('.service');
-  if (!(await page.locator('#behandlinger').textContent()).includes('275')) errors.push(`${name}: ny pris vises ikke på siden`);
+  await page.waitForSelector('.price-list');
+  if (!(await page.locator('#priser').textContent()).includes('275')) errors.push(`${name}: ny pris vises ikke på siden`);
   ok(`${name}: admin`);
 
   if (isMobile) {
     await page.click('.menu-btn');
-    await page.waitForSelector('.mobile-menu.open');
-    await page.waitForTimeout(600);
+    await page.waitForSelector('#menu:not([hidden])');
     await shot('menu');
-    await page.click('.mobile-menu [data-act="close-menu"].close-btn');
+    await page.click('.menu-btn');
     ok(`${name}: mobilmenu`);
   }
   await ctx.close();

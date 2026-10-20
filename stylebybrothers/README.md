@@ -8,10 +8,10 @@ Hjemmeside til **StyleByBrothers**, herrefrisør og barbershop, Sct. Mikkelsgade
 
 | Del | Hvor | Hvad |
 |---|---|---|
-| Forside | `#/` | Hero ("YOUR STYLE. OUR CRAFT."), intro, behandlinger og priser, galleri "Our Work" med filtre og lightbox, oplevelsen, holdet, bookingbånd, kontakt med åbningstider og kort-link |
-| Booking | `#/booking` | 5 trin: behandling → barber (bestemt eller første ledige) → dato og tid → kundeoplysninger → bekræftelse med bookingnummer og kalenderfil (.ics). `#/booking?behandling=skin-fade` forudvælger behandlingen, `?barber=b1` barberen |
+| Forside | `#/` | Kort introduktion med "åbent i dag", prisliste, klipninger med filtre og lightbox, salonen og holdet, find os med åbningstider |
+| Booking | `#/booking` | Én side med fire trin: behandling, frisør (bestemt eller første ledige), dato og tid, kundeoplysninger. Derefter bekræftelse med bookingnummer, Google Kalender og kalenderfil (.ics). `#/booking?behandling=skin-fade` forudvælger behandlingen, `?frisoer=b1` frisøren |
 | Min booking | `#/min-booking` | Kunden finder sin booking med bookingnummer + telefonnummer og kan flytte eller aflyse (inden for den frist, salonen sætter) |
-| Admin | `#/admin` | Bookinger pr. dag og barber (flyt/aflys), behandlinger (navn, beskrivelse, pris, varighed, rækkefølge, skjul), barberer (billede, behandlinger, arbejdstider, pauser, ferie), tider og regler (bookingvindue, varsel, interval, buffer, lukkedage, åbningstider, link til eksternt bookingsystem), galleri (udskift/tilføj billeder, kategorier) og udsendelser (de e-mails og SMS'er, der ville blive sendt) |
+| Admin | `#/admin` | Bookinger pr. dag og barber (flyt/aflys), behandlinger (navn, beskrivelse, pris, varighed, rækkefølge, skjul), frisører (billede, behandlinger, arbejdstider, pauser, ferie), tider og regler (bookingvindue, varsel, interval, buffer, lukkedage, link til eksternt bookingsystem), billeder (forside, salonen, facaden og klipninger) og udsendelser (de e-mails og SMS'er, der ville blive sendt) |
 
 ## Bookingmotoren
 
@@ -30,10 +30,10 @@ Gennemklik i browser: start `npm start` her i mappen og kør `node scripts/e2e.m
 ## Skal bekræftes af ejeren før lancering
 
 - Prisliste, varigheder og behandlinger (alt er markeret som foreløbigt).
-- Medarbejdere: navne, billeder, arbejdstider og hvem der laver hvad (demoen bruger "Barber 1–3").
-- Åbningstider (demoen bruger Instagram-profilens: man–fre 11:30–17:30, lør 11:30–14:30, søn lukket).
-- Logo og farver. Accentfarven (bronze `#B08D57`) er et forslag og skal tilpasses salonens branding.
-- Billeder: alle billeder i `site/img/` er midlertidige eksempelbilleder og er tydeligt markeret som sådan. De viser ikke StyleByBrothers' arbejde og skal erstattes af salonens egne.
+- Medarbejdere: navne, billeder, arbejdstider og hvem der laver hvad (demoen bruger "Frisør 1–3").
+- Åbningstider. De regnes ud fra frisørernes arbejdstider; demoen bruger Instagram-profilens tider (man–fre 11:30–17:30, lør 11:30–14:30, søn lukket).
+- Logo og farver. Accentfarven (`#7A5A34`) bruges kun til fokusmarkering og skal tilpasses salonens logo.
+- Billeder: siden har ingen stock- eller AI-billeder. Alle billedpladser er tomme og markeret "Billede kommer" med en note om, hvad der skal ind. Salonens egne billeder uploades under *Admin → Billeder*.
 - Om salonen allerede bruger et bookingsystem. Ved research (okt. 2026) fandt vi intet offentligt bookinglink på nettet; Facebook og Instagram kunne ikke læses direkte. Bruger salonen fx Planway, Booksy eller Fresha, sættes linket under *Admin → Tider & regler → Eksisterende bookingsystem*, så alle "Book tid"-knapper går dertil i stedet for at oprette et konkurrerende system.
 
 ## Fra demo til drift
@@ -48,6 +48,6 @@ Demoen er statiske filer. Før rigtige bookinger kan tages imod, skal der laves:
 
 ## Tekniske noter
 
-- Ingen build-trin og ingen eksterne afhængigheder i siden. Skrifttyper (Anton og Inter, SIL Open Font License) ligger i `site/assets/fonts/`.
+- Ingen build-trin og ingen eksterne afhængigheder i siden. Én skrifttype, Schibsted Grotesk (SIL Open Font License), ligger i `site/assets/fonts/`.
+- Ingen animationer ud over et kort fade på beskeder.
 - Siden har `noindex`, så demoen ikke dukker op i Google.
-- Respekterer `prefers-reduced-motion`.
