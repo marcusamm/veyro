@@ -138,15 +138,28 @@ try {
     const page = await ctx.newPage();
     const jsFejl = [];
     page.on('pageerror', (e) => jsFejl.push(e.message));
-    page.on('console', (m) => m.type() === 'error' && jsFejl.push(m.text()));
+    // Cloudflares Web Analytics-script indsættes af domænet og blokeres med vilje af systemets CSP
+    page.on('console', (m) => m.type() === 'error' && !m.text().includes('cloudflareinsights.com') && jsFejl.push(m.text()));
     for (const [navn, url] of sider) {
       const r = await page.goto(BASE + url, { waitUntil: 'networkidle' });
       const status = r?.status();
       const tekst = await page.locator('body').innerText();
       const bredde = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       tjek(status === 200 && new URL(page.url()).pathname === url.split('?')[0], `${label} ${url}: ${status}${new URL(page.url()).pathname !== url.split('?')[0] ? ` (sendt til ${page.url()})` : ''}`);
-      tjek(!/\bdemo(data|en)?\b|lorem ipsum|nordlysbyg|UDFYLD/i.test(tekst), `${label} ${url}: ingen demo- eller pladsholdertekst`);
-      if (label === 'mobil') tjek(bredde <= 1, `${label} ${url}: ingen vandret scroll (${bredde}px)`);
+      const demo = tekst.match(/.{0,60}(\bdemo(data|en)?\b|lorem ipsum|nordlysbyg|UDFYLD).{0,60}/i);
+      tjek(!demo, `${label} ${url}: ingen demo- eller pladsholdertekst${demo ? ` ("${demo[0].replace(/\s+/g, ' ')}")` : ''}`);
+      if (label === 'mobil') {
+        // Det element, der stikker længst ud til højre, så fejlen kan findes
+        const bred = bredde > 1 ? await page.evaluate(() => {
+          let v = null;
+          for (const el of document.querySelectorAll('body *')) {
+            const r = el.getBoundingClientRect();
+            if (r.right > window.innerWidth + 1 && (!v || r.right > v.r)) v = { r: r.right, t: `${el.tagName.toLowerCase()}.${[...el.classList].join('.')}` };
+          }
+          return v?.t;
+        }) : '';
+        tjek(bredde <= 1, `${label} ${url}: ingen vandret scroll (${bredde}px${bred ? `, ${bred}` : ''})`);
+      }
       await page.screenshot({ path: join(OUT, `${navn}-${label}.png`), fullPage: true });
     }
     tjek(!jsFejl.length, `${label}: ingen JavaScript-fejl${jsFejl.length ? ` (${jsFejl.slice(0, 3).join(' | ')})` : ''}`);
