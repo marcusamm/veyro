@@ -83,6 +83,10 @@ describe('Hjemmesiden vises uden Shopify', () => {
     const home = await site.get('/');
     expect(home.html).toContain('<title>Veyro');
     expect(home.html).toContain('Kundelogin');
+    // Sådan arbejder vi ligger under Information i bunden og peger på afsnittet på forsiden
+    expect(home.html).toContain('id="proces"');
+    expect(home.html).toMatch(/Information<\/h2>\s*<ul role="list">\s*<li><a href="\/#proces">Sådan arbejder vi<\/a>/);
+    expect(home.html).toContain('CVR: 46857569');
   });
 
   it('ukendte sider giver 404 med temaets fejlside; gamle Shopify-adresser omdirigeres', async () => {

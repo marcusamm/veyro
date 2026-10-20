@@ -30,11 +30,19 @@
           "settings": {
             "heading": "Virksomhed"
           }
+        },
+        "menu_info": {
+          "type": "menu",
+          "settings": {
+            "heading": "Information",
+            "menu": "information"
+          }
         }
       },
       "block_order": [
         "menu_main",
         "menu_services",
+        "menu_info",
         "contact",
         "company"
       ],
