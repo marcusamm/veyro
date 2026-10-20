@@ -97,7 +97,7 @@ tr.sec th{background:var(--bg);color:var(--muted);font-size:13px;font-weight:600
 .card-flush{padding:0;overflow:hidden}
 .grid{display:grid;gap:16px}
 @media(min-width:720px){.grid-2{grid-template-columns:1fr 1fr}.grid-3{grid-template-columns:repeat(3,1fr)}.grid-4{grid-template-columns:repeat(4,1fr)}}
-.layout-side{display:grid;gap:24px}
+.layout-side{display:grid;gap:24px;grid-template-columns:minmax(0,1fr)}
 @media(max-width:959px){.layout-side>.side-first{order:-1}}
 @media(min-width:960px){.layout-side{grid-template-columns:minmax(0,1fr) 360px;align-items:start}.layout-side>.side{position:sticky;top:88px}}
 .stat{display:block;text-decoration:none}

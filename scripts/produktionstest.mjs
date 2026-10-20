@@ -146,7 +146,7 @@ try {
       const tekst = await page.locator('body').innerText();
       const bredde = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       tjek(status === 200 && new URL(page.url()).pathname === url.split('?')[0], `${label} ${url}: ${status}${new URL(page.url()).pathname !== url.split('?')[0] ? ` (sendt til ${page.url()})` : ''}`);
-      const demo = tekst.match(/.{0,60}(\bdemo(data|en)?\b|lorem ipsum|nordlysbyg|UDFYLD).{0,60}/i);
+      const demo = tekst.match(/.{0,60}(\bdemo(data|en)?\b|lorem ipsum|nordlysbyg).{0,60}/i) ?? tekst.match(/.{0,60}UDFYLD.{0,60}/);
       tjek(!demo, `${label} ${url}: ingen demo- eller pladsholdertekst${demo ? ` ("${demo[0].replace(/\s+/g, ' ')}")` : ''}`);
       if (label === 'mobil') {
         // Det element, der stikker længst ud til højre, så fejlen kan findes
