@@ -5,7 +5,8 @@
     "cookie_page": "cookiepolitik",
     "trustpilot_url": "https://dk.trustpilot.com/review/veyro.dk",
     "trustpilot_business_unit_id": "6ad4cc2ec38fbbd275ee3c2a",
-    "cookie_banner_text": "<p>Nødvendige cookies sørger for, at siden og kurven virker. Med dit samtykke viser vi også anmeldelser fra Trustpilot, som sætter cookies fra trustpilot.com. Du kan altid ændre dit valg via linket i bunden af siden.</p>"
+    "cookie_banner_text": "<p>Nødvendige cookies sørger for, at siden og kurven virker. Med dit samtykke viser vi også anmeldelser fra Trustpilot, som sætter cookies fra trustpilot.com. Du kan altid ændre dit valg via linket i bunden af siden.</p>",
+    "company_cvr": "46857569"
   },
   "presets": {
     "Default": {}
