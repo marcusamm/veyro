@@ -193,9 +193,13 @@ try {
 
   const vare = (
     await sql(
-      `SELECT id, name, stock, reserved FROM products WHERE active = 1 AND stock - reserved >= ? AND stock - ? >= COALESCE(safety_qty, 0) * 2
+      // Kun en vare, der efter forbruget ligger langt over genbestillingspunktet (fast sikkerhedslager plus
+      // 60 dages forbrug, to gange), så testen aldrig udløser en lageradvarsel eller en e-mail til kunden
+      `SELECT id, name, stock, reserved, alert_level FROM products
+       WHERE active = 1 AND alert_level = 0 AND safety_method = 'antal' AND safety_qty IS NOT NULL AND avg_daily_usage IS NOT NULL
+         AND stock - reserved - ? >= 2 * (safety_qty + avg_daily_usage * 60)
        ORDER BY stock DESC LIMIT 1`,
-      [K, K],
+      [K],
     )
   )[0];
   if (vare) {
@@ -213,7 +217,7 @@ try {
     await p2.screenshot({ path: join(OUT, 'job-historik-desktop.png'), fullPage: true });
     await ny.close();
   } else {
-    tjek(true, 'ingen vare med beholdning; forbrug springes over (kun oprettelse testet)');
+    tjek(true, 'ingen vare med rigelig beholdning; forbrug springes over, så der ikke sendes lageradvarsler (kun oprettelse testet)');
   }
   await ctx.close();
 } catch (err) {
@@ -226,7 +230,8 @@ try {
     await sql(
       `UPDATE products SET
          stock = stock - (SELECT COALESCE(SUM(m.stock_delta), 0) FROM movements m WHERE m.job_id = ?1 AND m.product_id = products.id),
-         reserved = reserved - (SELECT COALESCE(SUM(m.reserved_delta), 0) FROM movements m WHERE m.job_id = ?1 AND m.product_id = products.id)
+         reserved = reserved - (SELECT COALESCE(SUM(m.reserved_delta), 0) FROM movements m WHERE m.job_id = ?1 AND m.product_id = products.id),
+         alert_level = 0 -- testen vælger kun varer på niveau 0
        WHERE id IN (SELECT product_id FROM movements WHERE job_id = ?1)`,
       j,
     );
@@ -236,6 +241,11 @@ try {
     await sql('DELETE FROM jobs WHERE id = ?', j);
   }
   await sql('DELETE FROM ops WHERE actor = ? AND created_at >= ?', [EMAIL, start]);
+  // Sikkerhedsnet: advarsler og mails, som testen trods alt måtte have udløst, fjernes og rapporteres
+  const mails = await sql('SELECT recipient, subject FROM mails WHERE created_at >= ?', [start]);
+  tjek(!mails.length, `testen sendte ingen e-mails${mails.length ? ` (sendt: ${mails.map((m) => `${m.recipient}: ${m.subject}`).join('; ')})` : ''}`);
+  await sql('DELETE FROM mails WHERE created_at >= ?', [start]);
+  await sql("DELETE FROM notices WHERE kind = 'lager' AND created_at >= ?", [start]);
   await sql('DELETE FROM sessions WHERE id_hash = ?', [idHash]);
   const efter = (await sql(FINGERPRINT))[0];
   tjek(JSON.stringify(efter) === JSON.stringify(foer), `databasen er som før testen${JSON.stringify(efter) === JSON.stringify(foer) ? '' : `: før ${JSON.stringify(foer)}, efter ${JSON.stringify(efter)}`}`);
