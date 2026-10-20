@@ -55,7 +55,7 @@ async function run(name, viewport, isMobile) {
   await page.waitForSelector('.time');
   await page.locator('.time').nth(2).click();
   await shot('booking-tid', true);
-  await page.click('main [data-act="step"][data-step="4"]');
+  await page.locator('[data-act="step"][data-step="4"]:visible').click();
   await page.waitForSelector('#customer-form');
   await page.click('#customer-form button[type="submit"]');
   await page.waitForSelector('.field.invalid');
@@ -81,8 +81,8 @@ async function run(name, viewport, isMobile) {
   await page.click('[data-act="mb-save"]');
   await page.waitForSelector('.notice.ok');
   await shot('min-booking', true);
-  page.once('dialog', (d) => d.accept());
   await page.click('[data-act="mb-cancel"]');
+  await page.click('.ask [data-ok]');
   await page.waitForSelector('.tag.off');
   ok(`${name}: flyt og aflys`);
 

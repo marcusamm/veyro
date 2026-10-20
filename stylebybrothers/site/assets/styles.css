@@ -603,3 +603,7 @@ button { cursor: pointer; }
 .desk-only { display: none; }
 @media (min-width: 1000px) { .desk-only { display: inline-flex; } }
 @media (max-width: 559px) { .hide-sm { display: none; } }
+
+.ask { position: fixed; inset: 0; z-index: 130; background: rgba(17, 17, 17, .6); display: grid; place-items: center; padding: 16px; }
+.ask-card { background: var(--cream); color: var(--black); border-radius: 6px; padding: 24px; max-width: 420px; width: 100%; display: grid; gap: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, .35); }
+.ask-card p { margin: 0; font-size: 17px; font-weight: 600; }

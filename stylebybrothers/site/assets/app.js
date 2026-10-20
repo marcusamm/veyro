@@ -58,6 +58,22 @@ document.addEventListener('error', (e) => {
   if (t.tagName === 'IMG' && t.closest('.media')) { t.parentElement.querySelector('.example-tag')?.remove(); t.remove(); }
 }, true);
 
+// Egen bekræftelsesdialog (window.confirm virker ikke i alle indlejrede visninger).
+function ask(message, okLabel = 'Ja, fortsæt') {
+  return new Promise((resolve) => {
+    const d = document.createElement('div');
+    d.className = 'ask';
+    d.setAttribute('role', 'alertdialog');
+    d.setAttribute('aria-modal', 'true');
+    d.innerHTML = `<div class="ask-card"><p>${esc(message)}</p><div class="row"><button class="btn btn-sm" data-ok>${esc(okLabel)}</button><button class="btn btn-outline btn-sm" data-no>Annuller</button></div></div>`;
+    const done = (v) => { d.remove(); resolve(v); };
+    d.addEventListener('click', (e) => { if (e.target.closest('[data-ok]')) done(true); else if (e.target.closest('[data-no]') || e.target === d) done(false); });
+    d.addEventListener('keydown', (e) => { if (e.key === 'Escape') done(false); });
+    document.body.append(d);
+    d.querySelector('[data-ok]').focus();
+  });
+}
+
 let toastTimer;
 function toast(msg) {
   let el = document.querySelector('.toast');
@@ -602,6 +618,14 @@ function queueMessages(b, kind) {
   state.outbox = state.outbox.slice(0, 60);
 }
 
+function gcalLink(b) {
+  const dt = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const start = new Date(b.startUtc);
+  const end = new Date(start.getTime() + (b.end - b.start) * 60000);
+  const q = new URLSearchParams({ action: 'TEMPLATE', text: `${b.serviceName} – StyleByBrothers`, dates: `${dt(start)}/${dt(end)}`, location: `${SALON.street}, ${SALON.city}`, details: `Bookingnummer ${b.ref}` });
+  return `https://calendar.google.com/calendar/render?${q}`;
+}
+
 function icsFor(b) {
   const dt = (iso) => iso.replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const start = new Date(b.startUtc);
@@ -632,7 +656,8 @@ function renderConfirmation(b) {
         <div><dt>Adresse</dt><dd><a href="${SALON.maps}" target="_blank" rel="noopener">${SALON.street}, ${SALON.city}</a></dd></div>
       </dl>
       <div class="confirm-actions">
-        <button class="btn" data-act="ics" data-ref="${b.ref}">Tilføj til kalender</button>
+        <a class="btn" href="${gcalLink(b)}" target="_blank" rel="noopener">Tilføj til Google Kalender</a>
+        <button class="btn btn-outline" data-act="ics" data-ref="${b.ref}">Hent kalenderfil (.ics)</button>
         <a class="btn btn-outline" href="#/min-booking?ref=${b.ref}">Flyt eller aflys</a>
         <a class="btn btn-outline" href="#/">Til forsiden</a>
       </div>
@@ -939,8 +964,8 @@ const actions = {
     else { mb.msg = r.error === 'too_late' ? 'Tiden er for tæt på til at ændre online.' : 'Tiden er ikke længere ledig. Vælg en anden.'; mb.msgKind = 'danger'; mb.start = null; }
     renderManage();
   },
-  'mb-cancel': () => {
-    if (!confirm('Vil du aflyse din tid?')) return;
+  'mb-cancel': async () => {
+    if (!(await ask('Vil du aflyse din tid?'))) return;
     const r = E.cancelBooking(state, mb.booking, now());
     if (r.ok) { queueMessages(mb.booking, 'aflyst'); save(); mb.msg = 'Din tid er aflyst. (Demo: der er ikke sendt nogen e-mail.)'; mb.msgKind = 'ok'; }
     else { mb.msg = 'Tiden er for tæt på til at aflyse online. Ring til salonen.'; mb.msgKind = 'danger'; }
@@ -961,16 +986,16 @@ const actions = {
     if (r.ok) { queueMessages(b, 'flyttet'); save(); adminMove = null; adminDate = b.date; toast('Bookingen er flyttet'); } else toast('Tiden er ikke ledig');
     route();
   },
-  'admin-cancel': (el) => {
+  'admin-cancel': async (el) => {
     const b = state.bookings.find((x) => x.id === el.dataset.id);
-    if (!confirm(`Aflys ${b.name} kl. ${E.fmtTime(b.start)}?`)) return;
+    if (!(await ask(`Aflys ${b.name} kl. ${E.fmtTime(b.start)}?`))) return;
     E.cancelBooking(state, b, now(), 'salon'); queueMessages(b, 'aflyst'); save(); toast('Bookingen er aflyst'); route();
   },
   'service-add': () => { state.services.push({ id: uid('s'), name: 'Ny behandling', desc: '', duration: 30, price: 0, active: false }); save(); route(); },
-  'service-del': (el) => { if (!confirm('Slet behandlingen? Eksisterende bookinger bevares.')) return; state.services = state.services.filter((s) => s.id !== el.dataset.id); state.barbers.forEach((b) => { b.serviceIds = b.serviceIds.filter((id) => id !== el.dataset.id); }); save(); route(); },
+  'service-del': async (el) => { if (!(await ask('Slet behandlingen? Eksisterende bookinger bevares.'))) return; state.services = state.services.filter((s) => s.id !== el.dataset.id); state.barbers.forEach((b) => { b.serviceIds = b.serviceIds.filter((id) => id !== el.dataset.id); }); save(); route(); },
   'service-move': (el) => { const i = state.services.findIndex((s) => s.id === el.dataset.id); const j = i + +el.dataset.dir; [state.services[i], state.services[j]] = [state.services[j], state.services[i]]; save(); route(); },
   'barber-add': () => { const base = defaultState().barbers[0]; state.barbers.push({ ...structuredClone(base), id: uid('b'), name: `Barber ${state.barbers.length + 1}`, role: '', active: false }); save(); route(); },
-  'barber-del': (el) => { if (!confirm('Slet barberen? Eksisterende bookinger bevares.')) return; state.barbers = state.barbers.filter((b) => b.id !== el.dataset.id); save(); route(); },
+  'barber-del': async (el) => { if (!(await ask('Slet barberen? Eksisterende bookinger bevares.'))) return; state.barbers = state.barbers.filter((b) => b.id !== el.dataset.id); save(); route(); },
   'barber-photo-del': (el) => { barber(el.dataset.id).photo = ''; save(); route(); },
   'absence-add': (el) => {
     const id = el.dataset.id;
@@ -988,8 +1013,8 @@ const actions = {
     save(); toast('Lukkedag tilføjet'); route();
   },
   'closed-del': (el) => { state.settings.closedDates = state.settings.closedDates.filter((c) => c.date !== el.dataset.date); save(); route(); },
-  'gallery-del': (el) => { if (!confirm('Slet billedet fra galleriet?')) return; state.gallery = state.gallery.filter((g) => g.id !== el.dataset.id); save(); route(); },
-  reset: () => { if (!confirm('Nulstil al demodata i denne browser?')) return; state = defaultState(); save(); toast('Demoen er nulstillet'); route(); },
+  'gallery-del': async (el) => { if (!(await ask('Slet billedet fra galleriet?'))) return; state.gallery = state.gallery.filter((g) => g.id !== el.dataset.id); save(); route(); },
+  reset: async () => { if (!(await ask('Nulstil al demodata i denne browser?'))) return; state = defaultState(); save(); toast('Demoen er nulstillet'); route(); },
 };
 
 app.addEventListener('click', (e) => {
