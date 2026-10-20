@@ -230,7 +230,7 @@ try {
        WHERE id IN (SELECT product_id FROM movements WHERE job_id = ?1)`,
       j,
     );
-    for (const t of ['notices', 'movements', 'purchase_lines', 'purchase_lists', 'job_items', 'job_materials', 'job_staff', 'job_log', 'job_entries']) {
+    for (const t of ['invoice_bases', 'invoices', 'job_quotes', 'notices', 'movements', 'purchase_lines', 'purchase_lists', 'job_items', 'job_materials', 'job_staff', 'job_log', 'job_entries']) {
       await sql(`DELETE FROM ${t} WHERE job_id = ?`, j);
     }
     await sql('DELETE FROM jobs WHERE id = ?', j);
