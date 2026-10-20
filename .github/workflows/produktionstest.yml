@@ -1,0 +1,49 @@
+# Kontrollerer en kundes publicerede lagerstyring fra start til slut (scripts/produktionstest.mjs).
+# Kør den fra fanen Actions efter en aflevering eller en større opdatering.
+name: Produktionstest
+
+on:
+  workflow_dispatch:
+    inputs:
+      kunde:
+        description: 'Kunden (filnavnet i kunder/ uden .json)'
+        required: true
+        default: 'einar-kornerup'
+  push:
+    branches: ['claude/project-thread-m8ox59']
+    paths:
+      - 'scripts/produktionstest.mjs'
+      - '.github/workflows/produktionstest.yml'
+
+concurrency:
+  group: produktionstest
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Installér Playwright
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Kontrollér den publicerede version
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          KUNDE_DOMAENE: ${{ vars.KUNDE_DOMAENE || 'veyro.dk' }}
+          PRODUKTIONSTEST_EMAIL: ${{ vars.PRODUKTIONSTEST_EMAIL }}
+          KUNDE: ${{ inputs.kunde || 'einar-kornerup' }}
+        run: node scripts/produktionstest.mjs "$KUNDE"
+      - name: Gem skærmbilleder
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: produktionstest
+          path: produktionstest/
+          retention-days: 14
