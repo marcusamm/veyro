@@ -38,9 +38,12 @@ function isCanonicalHost(c: Context<SiteEnv>): boolean {
 
 site.use('*', async (c, next) => {
   const url = new URL(c.req.url);
-  // www.veyro.dk → veyro.dk
-  if (url.hostname.startsWith('www.') && siteHosts(c.env).includes(url.hostname.slice(4))) {
-    url.hostname = url.hostname.slice(4);
+  // www.veyro.dk → veyro.dk, og http → https på de rigtige adresser (ikke ved lokal udvikling)
+  const www = url.hostname.startsWith('www.') && siteHosts(c.env).includes(url.hostname.slice(4));
+  const insecure = url.protocol === 'http:' && url.hostname !== 'localhost' && canonicalOrigin(c.env).startsWith('https:');
+  if (www || insecure) {
+    if (www) url.hostname = url.hostname.slice(4);
+    url.protocol = 'https:';
     return c.redirect(url.toString(), 301);
   }
   const bytes = new Uint8Array(16);
