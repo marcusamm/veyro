@@ -1,0 +1,131 @@
+{%- comment -%}
+  Kurv som tilbudsforespørgsel. Der betales ikke på hjemmesiden: kurvens indhold sendes
+  som en forespørgsel til admin (kunde.veyro.dk/admin/forespoergsler), og Veyro sender et
+  tilbud med et personligt betalingslink (Stripe). Kurven tømmes af serveren, når
+  forespørgslen er sendt.
+{%- endcomment -%}
+{%- liquid
+  assign fid = 'CartRequest'
+  assign kontakt = pages['kontakt'].url | default: '/pages/kontakt'
+-%}
+<section class="section section--light cart">
+  <div class="container container--narrow">
+    <h1 class="h1">{{ 'cart.title' | t }}</h1>
+    {%- if cart.item_count > 0 -%}
+      <form action="{{ routes.cart_url }}" method="post" novalidate class="cart__form">
+        <table class="cart__table">
+          <thead>
+            <tr><th scope="col">{{ 'cart.item' | t }}</th><th scope="col">{{ 'products.quantity' | t }}</th><th scope="col" class="cart__right">{{ 'cart.total' | t }}</th></tr>
+          </thead>
+          <tbody>
+            {%- for item in cart.items -%}
+              <tr>
+                <td>
+                  <a href="{{ item.url }}" class="cart__title">{{ item.product.title | escape }}</a>
+                  {%- unless item.product.has_only_default_variant -%}<p class="small muted">{{ item.variant.title | escape }}</p>{%- endunless -%}
+                  {%- if item.product.type == section.settings.subscription_type -%}
+                    <p class="sub-terms sub-terms--sm">{% render 'icon', name: 'automation', size: 14 %}<span>{{ 'subscriptions.line' | t }}</span></p>
+                  {%- endif -%}
+                  <a class="small" href="{{ item.url_to_remove }}">{{ 'cart.remove' | t }}<span class="visually-hidden">: {{ item.product.title | escape }}</span></a>
+                </td>
+                <td>
+                  <label class="visually-hidden" for="Qty-{{ item.key }}">{{ 'products.quantity' | t }}: {{ item.product.title | escape }}</label>
+                  <input class="cart__qty" type="number" id="Qty-{{ item.key }}" name="updates[]" value="{{ item.quantity }}" min="0" inputmode="numeric">
+                </td>
+                <td class="cart__right">
+                  {{ item.final_line_price | money_without_trailing_zeros }}
+                  {%- if item.product.type == section.settings.subscription_type -%}<span class="small muted">{{ 'subscriptions.per_month' | t }}</span>{%- endif -%}
+                </td>
+              </tr>
+            {%- endfor -%}
+          </tbody>
+        </table>
+        <div class="cart__summary">
+          <p class="cart__subtotal"><span>{{ 'cart.subtotal' | t }}</span> <strong>{{ cart.total_price | money_without_trailing_zeros }}</strong></p>
+          <button type="submit" name="update" class="btn btn--secondary btn--sm">{{ 'cart.update' | t }}</button>
+        </div>
+      </form>
+
+      <div class="cart__request card" id="forespoergsel">
+        {%- form 'contact', id: fid, class: 'form js-validate', novalidate: 'novalidate' -%}
+          {% render 'form-status', form: form, success_heading: section.settings.success_heading, success_text: section.settings.success_text %}
+          {%- unless form.posted_successfully? -%}
+            <h2 class="h3">{{ section.settings.heading | escape }}</h2>
+            <div class="rte muted cart__request-text">{{ section.settings.text }}</div>
+            <div class="form__error-summary" role="alert" tabindex="-1" hidden data-error-summary></div>
+            <input type="hidden" name="contact[Formular]" value="{{ section.settings.form_name | escape }}">
+            {%- capture cart_lines -%}
+              {%- for item in cart.items -%}{{ item.quantity }} × {{ item.product.title }}{% unless item.product.has_only_default_variant %} ({{ item.variant.title }}){% endunless %} – {{ item.final_line_price | money_without_trailing_zeros }}{% if item.product.type == section.settings.subscription_type %} pr. md.{% endif %}{% unless forloop.last %}; {% endunless %}{%- endfor -%}
+            {%- endcapture -%}
+            <input type="hidden" name="contact[Kurv]" value="{{ cart_lines | strip | escape }}">
+            <p class="form__legend small muted">{{ 'forms.required_legend' | t }}</p>
+            <div class="form__grid">
+              <div class="field">
+                <label for="{{ fid }}-name">{{ 'forms.fields.name' | t }} <span class="req" aria-hidden="true">*</span></label>
+                <input type="text" id="{{ fid }}-name" name="contact[name]" autocomplete="name" required maxlength="120" value="{{ form.name | escape }}" placeholder="{{ 'forms.placeholders.name' | t }}" data-label="{{ 'forms.fields.name' | t }}" aria-describedby="{{ fid }}-name-error">
+                <p class="field__error" id="{{ fid }}-name-error" hidden></p>
+              </div>
+              <div class="field">
+                <label for="{{ fid }}-company">{{ 'forms.fields.company' | t }} <span class="field__opt">({{ 'forms.optional' | t }})</span></label>
+                <input type="text" id="{{ fid }}-company" name="contact[Virksomhed]" autocomplete="organization" maxlength="120" placeholder="{{ 'forms.placeholders.company' | t }}">
+              </div>
+              <div class="field">
+                <label for="{{ fid }}-email">{{ 'forms.fields.email' | t }} <span class="req" aria-hidden="true">*</span></label>
+                <input type="email" id="{{ fid }}-email" name="contact[email]" autocomplete="email" inputmode="email" spellcheck="false" autocapitalize="off" required maxlength="160" value="{{ form.email | escape }}" placeholder="{{ 'forms.placeholders.email' | t }}" data-label="{{ 'forms.fields.email' | t }}" aria-describedby="{{ fid }}-email-error"{% if form.errors contains 'email' %} aria-invalid="true"{% endif %}>
+                <p class="field__error" id="{{ fid }}-email-error" hidden></p>
+              </div>
+              <div class="field">
+                <label for="{{ fid }}-phone">{{ 'subscriptions.phone' | t }} <span class="field__opt">({{ 'forms.optional' | t }})</span></label>
+                <input type="tel" id="{{ fid }}-phone" name="contact[Telefon]" autocomplete="tel" inputmode="tel" maxlength="40">
+              </div>
+              <div class="field field--full">
+                <label for="{{ fid }}-body">{{ 'subscriptions.request_message' | t }} <span class="field__opt">({{ 'forms.optional' | t }})</span></label>
+                <textarea id="{{ fid }}-body" name="contact[body]" rows="4" maxlength="5000" placeholder="{{ 'subscriptions.request_placeholder' | t }}">{{ form.body }}</textarea>
+              </div>
+            </div>
+            {% render 'form-consent', id: fid %}
+            <div class="form__footer">
+              <button class="btn btn--primary btn--lg" type="submit" data-submit>
+                <span>{{ section.settings.submit_label | escape }}</span>
+                {% render 'icon', name: 'arrow-right', size: 18 %}
+              </button>
+              <p class="small muted">{{ 'forms.spam_notice' | t }}</p>
+            </div>
+          {%- endunless -%}
+        {%- endform -%}
+      </div>
+      <p class="small muted cart__quote">{{ 'subscriptions.cart_quote' | t }} <a href="{{ kontakt }}?ydelse=andet-ved-ikke-endnu#formular">{{ 'subscriptions.get_quote' | t }}</a>.</p>
+    {%- else -%}
+      {%- assign services_url = pages['ydelser'].url | default: routes.root_url -%}
+      {%- assign continue_label = 'cart.continue' | t -%}
+      {%- assign plans_url = services_url | append: '#abonnement' -%}
+      {%- assign plans_label = 'subscriptions.see_plans' | t -%}
+      {%- form 'contact', id: fid -%}
+        {%- if form.posted_successfully? or form.errors -%}
+          {% render 'form-status', form: form, success_heading: section.settings.success_heading, success_text: section.settings.success_text %}
+        {%- endif -%}
+      {%- endform -%}
+      <p class="lead">{{ 'cart.empty' | t }}</p>
+      <div class="cart__empty-actions">
+        {% render 'button', label: plans_label, url: plans_url, style: 'primary', arrow: settings.button_arrow %}
+        {% render 'button', label: continue_label, url: services_url, style: 'secondary' %}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Kurv",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "subscription_type", "label": "Produkttype for abonnementer", "default": "Abonnement" },
+    { "type": "text", "id": "heading", "label": "Overskrift over forespørgsel", "default": "Send forespørgsel" },
+    { "type": "richtext", "id": "text", "label": "Tekst over forespørgsel", "default": "<p>Du betaler ikke noget nu. Vi sender dig et tilbud på det, du har valgt. Siger du ja, får du et personligt link, hvor du tilmelder dig sikkert hos Stripe. Derefter trækkes betalingen automatisk, og du får en faktura hver gang, indtil du opsiger abonnementet.</p>" },
+    { "type": "text", "id": "form_name", "label": "Formularens navn i e-mailen", "default": "Kurv – forespørgsel på abonnement" },
+    { "type": "text", "id": "submit_label", "label": "Knaptekst", "default": "Send forespørgsel" },
+    { "type": "text", "id": "success_heading", "label": "Succes – overskrift", "default": "Tak, vi har modtaget din forespørgsel" },
+    { "type": "richtext", "id": "success_text", "label": "Succes – tekst", "default": "<p>Vi sender dig et tilbud på e-mail med et personligt link, hvor du ser pris, moms og vilkår og tilmelder dig sikkert hos Stripe.</p>" }
+  ]
+}
+{% endschema %}

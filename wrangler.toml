@@ -6,8 +6,10 @@ workers_dev = true
 preview_urls = false
 
 # Eget domæne (veyro.dk ligger i samme Cloudflare-konto).
+# ny.veyro.dk viser den nye hjemmeside, før veyro.dk flyttes fra Shopify (se README, afsnit 15).
 routes = [
-  { pattern = "kunde.veyro.dk", custom_domain = true }
+  { pattern = "kunde.veyro.dk", custom_domain = true },
+  { pattern = "ny.veyro.dk", custom_domain = true }
 ]
 
 # Ingen persondata i logs ud over det nødvendige
@@ -45,6 +47,9 @@ ADMIN_EMAILS = "kontakt@veyro.dk,efe@veyro.dk,marcus@veyro.dk"
 NOTIFY_EMAIL = "kontakt@veyro.dk"
 EMAIL_FROM = "Veyro <kontakt@veyro.dk>"
 DEV_MODE = "0"
+# Salgshjemmesiden. veyro.dk og www.veyro.dk virker først, når domænet er flyttet fra Shopify (README, afsnit 15).
+SITE_HOSTS = "veyro.dk,www.veyro.dk,ny.veyro.dk"
+SITE_URL = "https://veyro.dk"
 # Valgfri momssats (inkluderet i prisen), se README:
 # STRIPE_TAX_RATE_ID = "txr_..."
 

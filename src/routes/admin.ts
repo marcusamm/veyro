@@ -62,6 +62,8 @@ import { render } from '../render';
 import { adminCustomersPage, adminInvoicesPage, adminLoginPage, adminOverviewPage, adminRequestsPage, adminSubscriptionsPage } from '../views/admin';
 import { errorPage } from '../views/pages';
 import { REQUEST_STATUSES } from '../views/status';
+import { getLead, updateLead, type LeadRow } from '../site/leads';
+import { offerFormFromLead } from './admin-site';
 
 const admin = new Hono<AppEnv>();
 
@@ -323,9 +325,10 @@ admin.post('/fakturaer/:id/:action', async (c) => {
 
 async function offersView(
   c: Context<AppEnv>,
-  extra: { form?: OfferForm | null; error?: string | null; errorField?: string | null; existing?: ExistingBilling | null; status?: 400 | 409 | 502; formKey?: string } = {},
+  extra: { form?: OfferForm | null; error?: string | null; errorField?: string | null; existing?: ExistingBilling | null; status?: 400 | 409 | 502; formKey?: string; lead?: LeadRow | null } = {},
 ) {
   const offers = await listOffers(c.env.DB);
+  const lead = extra.lead ?? null;
   return render(
     c,
     'Tilbud',
@@ -338,33 +341,46 @@ async function offersView(
       errorField: extra.errorField ?? null,
       existing: extra.existing ?? null,
       flash: extra.form || extra.error ? null : (c.req.query('besked') ?? null),
+      lead: lead ? { id: lead.id, label: `forespørgsel #${lead.id} fra ${lead.name || lead.email}` } : null,
     }),
     { nav: 'admin-tilbud', admin: true, status: extra.status },
   );
 }
 
-admin.get('/tilbud', (c) => offersView(c));
+admin.get('/tilbud', async (c) => {
+  // ?forespoergsel=<id>: udfyld tilbuddet ud fra en forespørgsel fra hjemmesiden
+  const leadId = Number(c.req.query('forespoergsel'));
+  const lead = Number.isSafeInteger(leadId) && leadId > 0 ? await getLead(c.env.DB, leadId) : null;
+  return offersView(c, lead ? { form: offerFormFromLead(lead), lead } : {});
+});
+
+async function leadFromBody(c: Context<AppEnv>, body: Record<string, unknown>): Promise<LeadRow | null> {
+  const id = Number(body['lead']);
+  return Number.isSafeInteger(id) && id > 0 ? getLead(c.env.DB, id) : null;
+}
 
 admin.post('/tilbud', async (c) => {
   const body = await c.req.parseBody();
   const form = readOfferForm(body);
   const key = typeof body['key'] === 'string' && /^[0-9a-f-]{36}$/.test(body['key']) ? body['key'] : crypto.randomUUID();
+  const lead = await leadFromBody(c, body);
   const v = validateOffer(form);
-  if ('error' in v) return offersView(c, { form, error: v.error, errorField: v.field, status: 400, formKey: key });
+  if ('error' in v) return offersView(c, { form, error: v.error, errorField: v.field, status: 400, formKey: key, lead });
   try {
     // Undgå dobbelt fakturering: vis kundens eksisterende abonnementer, fakturaer og tilbud, før der laves et nyt link.
     const found = await stripeRequest<{ data: Array<{ id: string }> }>(c.env, 'GET', '/v1/customers', { email: v.draft.email, limit: 1 });
     const existing = await existingBilling(c.env, v.draft.email, found.data?.[0]?.id ?? null);
     if (hasExisting(existing) && !form.confirm_existing) {
-      return offersView(c, { form, existing, error: 'Kunden har allerede et abonnement, en faktura eller et tilbud. Tjek listen, og bekræft nederst.', status: 409, formKey: key });
+      return offersView(c, { form, existing, error: 'Kunden har allerede et abonnement, en faktura eller et tilbud. Tjek listen, og bekræft nederst.', status: 409, formKey: key, lead });
     }
     const customerId = await ensureStripeCustomer(c.env, v.draft, `admin-offer-${key}`);
     const offer = await createOffer(c.env, v.draft, { key, createdBy: c.get('session')!.email, stripeCustomerId: customerId });
+    if (lead) await updateLead(c.env.DB, lead.id, { offer_id: offer.id, status: 'tilbud' });
     return c.redirect(`/admin/tilbud/${offer.id}?besked=oprettet`, 303);
   } catch (err) {
     await logError(c.env.DB, 'admin.offers.create', err);
     const detail = err instanceof StripeError ? ` Stripe svarede: ${err.message}` : '';
-    return offersView(c, { form, error: `Tilbuddet kunne ikke oprettes.${detail}`, status: 502, formKey: key });
+    return offersView(c, { form, error: `Tilbuddet kunne ikke oprettes.${detail}`, status: 502, formKey: key, lead });
   }
 });
 

@@ -31,6 +31,7 @@ Teknik: Cloudflare Workers + D1 (database), Hono, Stripe Billing (via Stripes RE
 12. [Cookies og GDPR](#12-cookies-og-gdpr)
 13. [Udvikling og tests (for udviklere)](#13-udvikling-og-tests-for-udviklere)
 14. [Tilbud med individuel pris og betalingslink](#14-tilbud-med-individuel-pris-og-betalingslink)
+15. [Hjemmesiden veyro.dk uden Shopify](#15-hjemmesiden-veyrodk-uden-shopify)
 
 ---
 
@@ -357,3 +358,38 @@ Kunden kan selv skifte kort, hente fakturaer og opsige i kundepanelet, og via St
 5. Afprøv hele forløbet i Stripes testtilstand med testkort `4242 4242 4242 4242` (godkendt) og `4000 0000 0000 0341` (afvises ved senere betalinger). Fornyelser kan afprøves uden at vente med Stripes *test clocks*.
 
 **Rul tilbage:** Udgiv den forrige version i Cloudflare (**Workers → veyro → Deployments → Rollback**). De nye tabeller og kolonner kan blive stående. Den gamle kode bruger dem ikke.
+
+## 15. Hjemmesiden veyro.dk uden Shopify
+
+Salgshjemmesiden kører nu i samme Worker som kundepanelet. Domænet afgør, hvad der vises: `kunde.veyro.dk` er kundepanelet, og domænerne i `SITE_HOSTS` (`veyro.dk`, `www.veyro.dk`, `ny.veyro.dk`) er hjemmesiden. `www` sendes videre til `veyro.dk`.
+
+**Indhold.** Temaet er det samme som i Shopify (flyttet til `site/theme`) og gengives med Liquid i Workeren. Standardindholdet (sider, menuer, abonnementer, juridiske tekster) ligger i `site/content.json`. Alt, der rettes i admin, gemmes i D1 (`site_content`), og den tidligere version lægges i `site_content_history`, så alt kan gendannes. Efter ændringer i `site/` køres `npm run build:site`, som pakker temaet ind i `src/site/theme.generated.ts` (testene fejler, hvis den er glemt).
+
+**Admin** (`kunde.veyro.dk/admin`):
+
+| Side | Hvad |
+| --- | --- |
+| Hjemmeside | Overblik med besøg (uden cookies), forespørgsler, sider og seneste ændringer |
+| Sektioner | Alle tekster og elementer på hver side, sidehoved, sidefod, kurv, abonnements- og fejlside. Skjul, flyt, slet og tilføj sektioner og elementer |
+| Sider | Ret titel, Google-beskrivelse, tekst og synlighed; opret nye tekst- eller sektionssider; slet |
+| Menuer | Hovedmenu, sidefod og juridiske links |
+| Abonnementer og priser | Det, der kan lægges i kurven (pris, interval, synlighed, beskrivelse) |
+| Temaindstillinger | Firmaoplysninger, farver, skrift, cookiebanner, Trustpilot, SEO |
+| Billeder | Upload PNG/JPG/WebP/GIF (højst 1,5 MB) til logo og sektioner |
+| Historik | Alle ændringer; „Gendan" ruller tilbage |
+| Forespørgsler | Alt fra kontaktformularen, gratis vurdering og kurven. Status, note, slet, og „Opret tilbud med betalingslink", der udfylder tilbuddet ud fra kurven |
+
+**Kurv og formularer.** Kurven gemmes i en nødvendig cookie (`veyro_cart`) og sendes som en forespørgsel; der betales aldrig på hjemmesiden. Formularer beskyttes af en Origin-kontrol, en skjult honningkrukke og en grænse på 8 pr. time pr. IP. Hver forespørgsel gemmes i `leads` og sendes som mail til `NOTIFY_EMAIL` med kundens adresse som svar-til. Forespørgsler, der ikke førte til tilbud eller kunde, slettes automatisk efter 12 måneder (privatlivspolitikken).
+
+**Sikkerhed og hastighed.** Hjemmesiden har sin egen CSP med nonce på alle scripts; Trustpilots widget indlæses kun efter samtykke. Færdige sider gemmes pr. indholdsversion (i hukommelsen og i `site_cache`), så de kun gengives igen efter en ændring.
+
+### Flytning fra Shopify (rækkefølge)
+
+1. Kør migrationerne mod produktionen, før koden udrulles: `npm run migrate` (0004 og 0005).
+2. Flet pull requesten. Workers Builds udruller, og `ny.veyro.dk` oprettes automatisk som prøveadresse (den er skjult for søgemaskiner). Shopify kører videre uændret på `veyro.dk`.
+3. Gennemgå siden på `https://ny.veyro.dk`, send en test-forespørgsel, og ret indhold i admin.
+4. **Domæneskiftet (kræver jeres godkendelse):** I Cloudflare › veyro.dk › DNS slettes de poster for `veyro.dk` og `www`, der peger på Shopify (Shopifys standard er A `23.227.38.65` og CNAME `shops.myshopify.com`; tjek de faktiske poster og notér dem til en eventuel tilbagerulning). **MX-, SPF-, DKIM- og andre mailposter må ikke røres**, ellers stopper e-mailen. Derefter tilføjes `veyro.dk` og `www.veyro.dk` som custom domains i `wrangler.toml` (som `kunde.veyro.dk`) og udrulles.
+5. Tjek `https://veyro.dk`, en formular og kurven. Indsend `https://veyro.dk/sitemap.xml` i Google Search Console.
+6. Først når alt virker: fjern domænet i Shopify og opsig Shopify-abonnementet. Gem gerne en eksport af temaet først (det ligger også i `shopify-theme/`).
+
+**Rul tilbage:** Indhold rulles tilbage under Admin › Hjemmeside › Historik. Selve domæneskiftet rulles tilbage ved at fjerne `veyro.dk`/`www.veyro.dk` fra routes og genskabe Shopifys to DNS-poster; så viser Shopify-temaet siden igen, så længe Shopify-abonnementet ikke er opsagt.

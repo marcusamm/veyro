@@ -10,6 +10,9 @@ import card from './routes/card';
 import offer from './routes/offer';
 import pub from './routes/public';
 import webhook from './routes/webhook';
+import adminSite from './routes/admin-site';
+import site, { isSiteRequest } from './site/app';
+import { purgeOldLeads } from './site/leads';
 import { CSS, FAVICON, JS } from './views/assets';
 import { ICON_PNG, INTER_TIGHT_WOFF2, LOGO_PNG } from './views/brand';
 import { errorPage } from './views/pages';
@@ -75,6 +78,7 @@ app.route('/', auth);
 app.route('/', card);
 app.route('/', offer);
 app.route('/konto', account);
+app.route('/admin', adminSite);
 app.route('/admin', admin);
 
 app.notFound((c) =>
@@ -90,8 +94,12 @@ app.onError((err, c) => {
 });
 
 export default {
-  fetch: app.fetch,
+  // Salgshjemmesiden (veyro.dk) og kundepanelet (kunde.veyro.dk) kører i samme Worker; domænet afgør hvilken.
+  fetch(req: Request, env: Env, ctx: ExecutionContext) {
+    return isSiteRequest(req, env) ? site.fetch(req, env, ctx) : app.fetch(req, env, ctx);
+  },
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(cleanup(env.DB));
+    ctx.waitUntil(purgeOldLeads(env.DB));
   },
 } satisfies ExportedHandler<Env>;

@@ -168,6 +168,8 @@ export function adminOffersPage(args: {
   errorField: string | null;
   existing: ExistingBilling | null;
   flash: string | null;
+  /** Forespørgsel fra hjemmesiden, som tilbuddet laves ud fra */
+  lead?: { id: number; label: string } | null;
 }): H {
   const f = args.form;
   const v = (k: keyof OfferForm) => (f ? String(f[k] ?? '') : k === 'valid_days' ? String(DEFAULT_VALID_DAYS) : '');
@@ -181,10 +183,12 @@ export function adminOffersPage(args: {
   ${args.flash && OFFER_FLASH[args.flash] ? alert('ok', OFFER_FLASH[args.flash]!) : ''}
   <section class="card stack" aria-labelledby="nyt-h">
     <h2 id="nyt-h">Nyt tilbud</h2>
+    ${args.lead ? alert('info', html`Udfyldt fra <a href="/admin/forespoergsler/${args.lead.id}">${args.lead.label}</a>. Tjek pris og ydelse, før du opretter tilbuddet.`) : ''}
     ${args.error ? alert('err', args.error) : ''}
     <form method="post" action="/admin/tilbud" class="stack" novalidate>
       ${csrfField(args.csrf)}
       <input type="hidden" name="key" value="${args.formKey}">
+      ${args.lead ? html`<input type="hidden" name="lead" value="${args.lead.id}">` : ''}
       <h3 class="h-small">Kunde</h3>
       <div class="grid grid-2">
         ${field('name', 'Kontaktperson', 'type="text" required maxlength="100" autocomplete="off"')}

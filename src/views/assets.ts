@@ -167,6 +167,44 @@ th:last-child,td:last-child{padding-right:0}
 details summary{cursor:pointer;color:var(--muted);font-size:14px;margin-top:6px}
 details[open] summary{margin-bottom:6px}
 .prewrap{white-space:pre-wrap;word-break:break-word}
+/* Admin: hjemmeside */
+.link-grid{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+@media(min-width:720px){.link-grid{grid-template-columns:1fr 1fr}}
+.link-grid a{display:flex;flex-direction:column;gap:2px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;text-decoration:none;color:var(--ink)}
+.link-grid a:hover{border-color:var(--ink)}
+.link-grid span{font-size:14px;color:var(--muted)}
+.bars{list-style:none;margin:0;padding:0;display:flex;align-items:flex-end;gap:3px;height:120px;border-bottom:1px solid var(--line)}
+.bars li{flex:1;height:100%;display:flex;align-items:flex-end}
+.bars li span:first-child{display:block;width:100%;background:var(--accent);border-radius:3px 3px 0 0;min-height:2px}
+.settings-grid{display:grid;gap:16px}
+@media(min-width:900px){.settings-grid{grid-template-columns:1fr 1fr}.settings-grid>.field:has(textarea),.settings-grid>.field-header,.settings-grid>.hint{grid-column:1/-1}}
+.settings-grid>.field+.field{margin-top:0}
+.field-header{margin:8px 0 0;padding-top:12px;border-top:1px solid var(--line)}
+.section-edit.is-off,.block-edit.is-off{opacity:.65}
+.section-edit__head{border-bottom:1px solid var(--line);padding-bottom:12px}
+.block-edit{border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.block-edit summary{color:var(--ink);margin:0}
+.block-edit[open] summary{margin-bottom:12px}
+.inline-num{display:inline-flex;align-items:center;gap:6px}
+.inline-num input{width:64px;padding:6px 8px}
+textarea.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;min-height:0}
+.sticky-save{position:sticky;bottom:0;background:var(--bg,#F4F2EC);padding:12px 0;z-index:5;border-top:1px solid var(--line)}
+.menu-rows{display:grid;gap:8px}
+.menu-row{display:grid;grid-template-columns:64px 1fr;gap:8px}
+.menu-row input:nth-child(3){grid-column:1/-1}
+@media(min-width:720px){.menu-row{grid-template-columns:64px 1fr 1.4fr}.menu-row input:nth-child(3){grid-column:auto}}
+.menu-row--head{display:none}
+@media(min-width:720px){.menu-row--head{display:grid}}
+.menu-row input[type=number]{padding:10px 8px}
+.file-grid{list-style:none;margin:0;padding:0;display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+.file-grid li{display:flex;flex-direction:column;gap:8px}
+.file-grid img{width:100%;aspect-ratio:4/3;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:10px}
+tr.row-new td{background:rgba(255,90,31,.06)}
+.tabs{gap:8px}
+input[type=color]{width:64px;height:40px;padding:2px;border:1px solid var(--line-strong);border-radius:8px;background:#fff}
+input[type=file]{font:inherit;font-size:15px}
+input[readonly]{background:var(--surface,#f4f2ec);color:var(--muted)}
+
 .empty{text-align:center;padding:24px 0;color:var(--muted)}
 
 /* Mobil-tabeller: fakturaer som kort */

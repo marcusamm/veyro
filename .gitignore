@@ -11,3 +11,4 @@ test-results/
 *.log
 .DS_Store
 produktionstest/
+.wrangler-test.toml

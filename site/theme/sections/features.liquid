@@ -1,0 +1,61 @@
+{%- comment -%}
+  Fordele / værdier. Bruges til „Hvorfor vælge os?“ på forsiden og værdier på Om os.
+{%- endcomment -%}
+<section class="section section--{{ section.settings.scheme }} features features--{{ section.settings.layout }}" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container features__inner">
+    <div class="features__intro">
+      {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
+      {% render 'button', label: section.settings.link_label, url: section.settings.link, style: 'secondary' %}
+    </div>
+    <ul class="features__grid" role="list">
+      {%- for block in section.blocks -%}
+        <li class="feature" data-reveal style="--delay: {{ forloop.index0 | modulo: 2 | times: 80 }}ms" {{ block.shopify_attributes }}>
+          <span class="feature__icon">{% render 'icon', name: block.settings.icon, size: 22 %}</span>
+          <h3 class="h4 feature__title">{{ block.settings.title | escape }}</h3>
+          <div class="rte feature__text">{{ block.settings.text }}</div>
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Fordele og værdier",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
+    ], "default": "dark" },
+    { "type": "select", "id": "layout", "label": "Layout", "options": [
+      { "value": "split", "label": "Overskrift til venstre" }, { "value": "stacked", "label": "Overskrift over" }
+    ], "default": "split" },
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "hvorfor-os" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Hvorfor vælge os?" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Teknisk solidt arbejde, forklaret i et sprog, du forstår" },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "link_label", "label": "Knaptekst" },
+    { "type": "url", "id": "link", "label": "Knaplink" }
+  ],
+  "blocks": [
+    {
+      "type": "feature",
+      "name": "Fordel",
+      "settings": [
+        { "type": "select", "id": "icon", "label": "Ikon", "options": [
+          { "value": "target", "label": "Mål" }, { "value": "speed", "label": "Hastighed" }, { "value": "eye", "label": "Overblik" },
+          { "value": "code", "label": "Kode" }, { "value": "chat", "label": "Dialog" }, { "value": "grow", "label": "Vækst" },
+          { "value": "shield", "label": "Sikkerhed" }, { "value": "compass", "label": "Retning" }, { "value": "layers", "label": "Lag" },
+          { "value": "user", "label": "Person" }, { "value": "puzzle", "label": "Puslespil" },
+          { "value": "list", "label": "Liste" }, { "value": "box", "label": "Vare" }, { "value": "bell", "label": "Klokke" },
+          { "value": "history", "label": "Historik" }, { "value": "edit", "label": "Redigér" }, { "value": "alert", "label": "Advarsel" },
+          { "value": "mobile", "label": "Mobil" }, { "value": "clock", "label": "Ur" }, { "value": "automation", "label": "Automatik" }
+        ], "default": "target" },
+        { "type": "text", "id": "title", "label": "Titel", "default": "Individuelle løsninger" },
+        { "type": "richtext", "id": "text", "label": "Tekst", "default": "<p>Vi tager udgangspunkt i din hjemmeside, dine kunder og dine mål – ikke i en standardpakke.</p>" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Fordele og værdier", "blocks": [{ "type": "feature" }, { "type": "feature" }, { "type": "feature" }, { "type": "feature" }] }]
+}
+{% endschema %}

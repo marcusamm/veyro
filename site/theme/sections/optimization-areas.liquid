@@ -1,0 +1,93 @@
+{%- comment -%}
+  Områder vi vurderer, med tydelig markering af, hvad vi kan implementere
+  direkte, og hvad der afhænger af tema, apps, hosting eller tredjepart.
+  Filterknapperne er en progressiv forbedring – uden JavaScript vises alt.
+{%- endcomment -%}
+<section class="section section--{{ section.settings.scheme }} areas" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container">
+    {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
+
+    <div class="areas__legend" data-reveal>
+      <p class="scope scope--direct"><span class="scope__dot" aria-hidden="true"></span><strong>{{ section.settings.direct_label | escape }}</strong> – {{ section.settings.direct_text | escape }}</p>
+      <p class="scope scope--depends"><span class="scope__dot" aria-hidden="true"></span><strong>{{ section.settings.depends_label | escape }}</strong> – {{ section.settings.depends_text | escape }}</p>
+    </div>
+
+    <div class="filter" role="group" aria-label="{{ section.settings.filter_label | escape }}" data-filter="Areas-{{ section.id }}" hidden>
+      <button type="button" class="filter__btn" aria-pressed="true" data-filter-value="all">{{ section.settings.filter_all | escape }}</button>
+      <button type="button" class="filter__btn" aria-pressed="false" data-filter-value="direct">{{ section.settings.direct_label | escape }}</button>
+      <button type="button" class="filter__btn" aria-pressed="false" data-filter-value="depends">{{ section.settings.depends_label | escape }}</button>
+    </div>
+    <p class="visually-hidden" aria-live="polite" data-filter-status></p>
+
+    <ul class="areas__grid" role="list" id="Areas-{{ section.id }}">
+      {%- for block in section.blocks -%}
+        {%- assign scope = block.settings.scope -%}
+        <li class="area card" data-scope="{% if scope == 'both' %}direct depends{% else %}{{ scope }}{% endif %}" data-reveal {{ block.shopify_attributes }}>
+          <div class="area__head">
+            <span class="feature__icon">{% render 'icon', name: block.settings.icon, size: 22 %}</span>
+            <ul class="area__scopes" role="list">
+              {%- if scope == 'direct' or scope == 'both' -%}<li class="scope scope--direct scope--chip"><span class="scope__dot" aria-hidden="true"></span>{{ section.settings.direct_label | escape }}</li>{%- endif -%}
+              {%- if scope == 'depends' or scope == 'both' -%}<li class="scope scope--depends scope--chip"><span class="scope__dot" aria-hidden="true"></span>{{ section.settings.depends_label | escape }}</li>{%- endif -%}
+            </ul>
+          </div>
+          <h3 class="h4">{{ block.settings.title | escape }}</h3>
+          <div class="rte">{{ block.settings.text }}</div>
+          {%- assign checks = block.settings.checks | newline_to_br | split: '<br />' -%}
+          {%- if block.settings.checks != blank -%}
+            <ul class="checklist checklist--sm" role="list">
+              {%- for c in checks -%}
+                {%- assign check = c | strip -%}
+                {%- if check != blank -%}<li>{% render 'icon', name: 'check', size: 14 %}<span>{{ check | escape }}</span></li>{%- endif -%}
+              {%- endfor -%}
+            </ul>
+          {%- endif -%}
+          {%- if block.settings.note != blank -%}
+            <p class="area__note"><strong>{{ section.settings.note_label | escape }}</strong> {{ block.settings.note | escape }}</p>
+          {%- endif -%}
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Optimeringsområder",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
+    ], "default": "surface" },
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "omraader" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Det kigger vi på" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Sådan vurderer vi din hjemmeside" },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "direct_label", "label": "Mærkat: direkte", "default": "Implementerer vi direkte" },
+    { "type": "text", "id": "direct_text", "label": "Forklaring: direkte", "default": "ændringer i tema, kode og indhold, som vi selv kan lave og teste." },
+    { "type": "text", "id": "depends_label", "label": "Mærkat: afhængig", "default": "Afhænger af rammerne" },
+    { "type": "text", "id": "depends_text", "label": "Forklaring: afhængig", "default": "kræver ændringer hos en app-udbyder, i temaets grundstruktur eller hos platformen eller hostingudbyderen, eller en beslutning fra dig." },
+    { "type": "text", "id": "note_label", "label": "Mærkat ved note", "default": "Bemærk:" },
+    { "type": "text", "id": "filter_label", "label": "Filter – skjult label", "default": "Filtrér områder" },
+    { "type": "text", "id": "filter_all", "label": "Filter – alle", "default": "Alle områder" }
+  ],
+  "blocks": [
+    { "type": "area", "name": "Område", "settings": [
+      { "type": "select", "id": "icon", "label": "Ikon", "options": [
+        { "value": "speed", "label": "Hastighed" }, { "value": "mobile", "label": "Mobil" }, { "value": "code", "label": "Kode" },
+        { "value": "design", "label": "Layout" }, { "value": "conversion", "label": "Konvertering" }, { "value": "search", "label": "Søgning" },
+        { "value": "puzzle", "label": "Apps" }, { "value": "layers", "label": "Lag" }, { "value": "chart", "label": "Måling" }, { "value": "cart", "label": "Kurv" }
+      ], "default": "speed" },
+      { "type": "text", "id": "title", "label": "Titel", "default": "Område" },
+      { "type": "richtext", "id": "text", "label": "Beskrivelse" },
+      { "type": "textarea", "id": "checks", "label": "Det tjekker vi (én pr. linje)" },
+      { "type": "select", "id": "scope", "label": "Hvem kan løse det?", "options": [
+        { "value": "direct", "label": "Vi implementerer direkte" },
+        { "value": "depends", "label": "Afhænger af tema, apps, hosting m.m." },
+        { "value": "both", "label": "Begge dele" }
+      ], "default": "both" },
+      { "type": "text", "id": "note", "label": "Note om afhængigheder" }
+    ] }
+  ],
+  "presets": [{ "name": "Optimeringsområder", "blocks": [{ "type": "area" }, { "type": "area" }] }]
+}
+{% endschema %}

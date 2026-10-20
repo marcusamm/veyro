@@ -1,0 +1,28 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "settings": {
+        "show_dynamic_checkout": true,
+        "note": "<p>I tvivl om pakken passer til din webshop? <a href=\"/pages/kontakt\">Skriv til os</a>, før du køber.</p>"
+      }
+    },
+    "cta": {
+      "type": "cta-banner",
+      "settings": {
+        "scheme": "light",
+        "eyebrow": "Spørgsmål?",
+        "heading": "Vil du hellere tale med os først?",
+        "text": "<p>Vi hjælper gerne med at finde ud af, hvilken løsning der passer til din webshop.</p>",
+        "label": "Kontakt os",
+        "link": "/pages/kontakt",
+        "show_email": true,
+        "email_prefix": "Eller skriv direkte til"
+      }
+    }
+  },
+  "order": [
+    "main",
+    "cta"
+  ]
+}

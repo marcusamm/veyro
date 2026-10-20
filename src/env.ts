@@ -15,6 +15,11 @@ export interface Env {
   /** Valgfri Stripe-kundeportal-konfiguration (bpc_...) til kortskift, fakturaer og opsigelse */
   STRIPE_PORTAL_CONFIGURATION?: string;
 
+  /** Domæner, hvor salgshjemmesiden vises (kommasepareret), fx "veyro.dk,www.veyro.dk,ny.veyro.dk" */
+  SITE_HOSTS?: string;
+  /** Hjemmesidens kanoniske adresse (til søgemaskiner og delingslinks) */
+  SITE_URL?: string;
+
   /** Fælles kundekatalog: hvilke kundesystemer en e-mail har adgang til (valgfri) */
   KATALOG?: KVNamespace;
 

@@ -1,0 +1,174 @@
+{
+  "general": {
+    "skip_to_content": "Gå til indhold",
+    "home": "Forside",
+    "menu": "Menu",
+    "open_menu": "Åbn menu",
+    "close_menu": "Luk menu",
+    "main_navigation": "Hovednavigation",
+    "footer_navigation": "Footer-navigation",
+    "breadcrumbs": "Brødkrummer",
+    "read_more": "Læs mere",
+    "back_to_top": "Til toppen",
+    "new_window": "Åbner i et nyt vindue",
+    "illustration": "Illustration",
+    "page_of": "Side {{ current }} af {{ total }}",
+    "previous": "Forrige",
+    "next": "Næste",
+    "pagination": "Sidenavigation"
+  },
+  "header": {
+    "cta": "Få en gratis vurdering"
+  },
+  "footer": {
+    "contact": "Kontakt",
+    "company": "Virksomhed",
+    "cvr": "CVR",
+    "cookie_settings": "Cookieindstillinger",
+    "copyright": "© {{ year }} {{ name }}. Alle rettigheder forbeholdes."
+  },
+  "forms": {
+    "required": "påkrævet",
+    "required_legend": "Felter markeret med * skal udfyldes.",
+    "optional": "valgfri",
+    "choose": "Vælg en mulighed",
+    "submit": "Send henvendelse",
+    "submit_assessment": "Få en gratis vurdering",
+    "sending": "Sender …",
+    "privacy_link": "Læs vores privatlivspolitik",
+    "success_heading": "Tak for din henvendelse",
+    "success_text": "Vi har modtaget din besked og vender tilbage hurtigst muligt. Du behøver ikke gøre mere lige nu.",
+    "error_heading": "Der er fejl i formularen",
+    "error_summary": "Ret venligst følgende, og prøv igen:",
+    "server_error": "Din besked kunne ikke sendes. Prøv igen, eller skriv direkte til {{ email }}.",
+    "spam_notice": "Formularen er beskyttet mod spam.",
+    "validation": {
+      "value_missing": "Udfyld venligst feltet „{{ field }}“.",
+      "select_missing": "Vælg venligst en mulighed under „{{ field }}“.",
+      "consent_missing": "Du skal acceptere behandlingen af dine oplysninger for at sende formularen.",
+      "type_email": "Skriv en gyldig e-mailadresse, f.eks. navn@firma.dk.",
+      "type_url": "Skriv en gyldig webadresse, f.eks. www.ditdomæne.dk.",
+      "too_short": "Skriv lidt mere i feltet „{{ field }}“ (mindst {{ min }} tegn).",
+      "too_long": "Feltet „{{ field }}“ må højst være {{ max }} tegn."
+    },
+    "shopify_errors": {
+      "email": "E-mailadressen er ugyldig.",
+      "generic": "Noget gik galt. Kontrollér felterne, og prøv igen."
+    },
+    "fields": {
+      "name": "Navn",
+      "company": "Virksomhed",
+      "email": "E-mail",
+      "phone": "Telefon",
+      "store_url": "Link til hjemmeside eller webshop",
+      "service": "Hvilken hjælp har du brug for?",
+      "message": "Beskrivelse af opgaven",
+      "challenge": "Hvad er din største udfordring lige nu?",
+      "consent": "Samtykke"
+    },
+    "placeholders": {
+      "name": "Fornavn og efternavn",
+      "company": "Virksomhedens navn",
+      "email": "navn@firma.dk",
+      "store_url": "www.ditdomæne.dk",
+      "message": "Fortæl kort, hvad du gerne vil have hjælp til, og hvad målet er."
+    }
+  },
+  "cookies": {
+    "accept_all": "Accepter alle",
+    "reject_all": "Kun nødvendige",
+    "customize": "Tilpas",
+    "save": "Gem mine valg",
+    "necessary": "Nødvendige",
+    "necessary_text": "Får siden, kurven og formularerne til at virke. Kan ikke slås fra.",
+    "preferences": "Præferencer",
+    "preferences_text": "Husker dine valg, f.eks. sprog og indstillinger.",
+    "analytics": "Statistik",
+    "analytics_text": "Hjælper os med at forstå, hvordan siden bruges, så vi kan forbedre den.",
+    "marketing": "Markedsføring",
+    "marketing_text": "Viser vores anmeldelser fra Trustpilot. Trustpilot sætter sine egne cookies fra trustpilot.com.",
+    "read_more": "Læs cookiepolitikken",
+    "dialog_label": "Cookiesamtykke",
+    "saved": "Dit valg er gemt."
+  },
+  "products": {
+    "add_to_cart": "Læg i kurv",
+    "buy_now": "Køb nu",
+    "sold_out": "Udsolgt",
+    "unavailable": "Ikke tilgængelig",
+    "from_price": "Fra {{ price }}",
+    "price": "Pris",
+    "regular_price": "Normalpris",
+    "sale_price": "Tilbudspris",
+    "tax_included": "Inkl. moms",
+    "options": "Vælg variant",
+    "packages_empty": "Der er endnu ingen pakker. Vælg en kollektion i temaeditoren.",
+    "view": "Se pakken",
+    "quantity": "Antal"
+  },
+  "cart": {
+    "title": "Din kurv",
+    "empty": "Din kurv er tom.",
+    "continue": "Se vores ydelser",
+    "subtotal": "Subtotal",
+    "taxes_note": "Moms og eventuelle rabatter beregnes ved betaling.",
+    "checkout": "Gå til betaling",
+    "remove": "Fjern",
+    "update": "Opdater kurv",
+    "item": "Ydelse",
+    "total": "I alt",
+    "note": "Bemærkning til ordren",
+    "count": "{{ count }} i kurven"
+  },
+  "search": {
+    "title": "Søg",
+    "label": "Søg på siden",
+    "placeholder": "Hvad leder du efter?",
+    "submit": "Søg",
+    "results_for": "Resultater for „{{ terms }}“",
+    "no_results": "Ingen resultater for „{{ terms }}“. Prøv et andet ord, eller kontakt os direkte."
+  },
+  "blog": {
+    "read_article": "Læs artiklen",
+    "published": "Udgivet {{ date }}",
+    "by": "Af {{ author }}",
+    "back": "Tilbage til {{ title }}",
+    "empty": "Der er endnu ingen artikler."
+  },
+  "not_found": {
+    "title": "Siden findes ikke",
+    "text": "Linket er måske forældet, eller siden er flyttet. Brug menuen, eller gå til forsiden.",
+    "cta": "Gå til forsiden"
+  },
+  "password": {
+    "heading": "Vi åbner snart",
+    "label": "Adgangskode",
+    "submit": "Gå ind",
+    "owner": "Er du butiksejer?",
+    "login": "Log ind her"
+  },
+  "gift_card": {
+    "title": "Dit gavekort",
+    "code": "Gavekortkode",
+    "balance": "Saldo",
+    "print": "Udskriv"
+  },
+  "trustpilot": {
+    "consent_note": "Anmeldelserne hentes fra Trustpilot, som sætter cookies. De vises, når du accepterer {{ category }}.",
+    "editor_missing_url": "Indsæt linket til jeres Trustpilot-profil under Temaindstillinger › Trustpilot. Sektionen er skjult for besøgende, indtil linket er sat.",
+    "editor_missing_id": "Tilføj business unit id under Temaindstillinger › Trustpilot for at vise stjerner og score. Indtil da vises kun knappen."
+  },
+  "subscriptions": {
+    "get_quote": "Hent tilbud",
+    "per_month": "/md.",
+    "terms": "Løbende abonnement med fast månedspris, til du opsiger det.",
+    "line": "Løbende abonnement",
+    "no_payment": "Du betaler ikke nu. Fra kurven sender du en forespørgsel, og vi sender dig et tilbud med et link til sikker tilmelding hos Stripe.",
+    "quote_text": "Skal løsningen tilpasses, eller har du allerede en hjemmeside? Så giver vi dig et tilbud.",
+    "cart_quote": "Har du brug for noget andet end et fast abonnement?",
+    "see_plans": "Se abonnementerne",
+    "phone": "Telefon",
+    "request_message": "Besked",
+    "request_placeholder": "Fx hvornår du gerne vil i gang, eller hvad din hjemmeside skal kunne."
+  }
+}
