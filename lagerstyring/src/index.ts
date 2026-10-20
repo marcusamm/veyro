@@ -130,9 +130,11 @@ app.route('/job', okonomi);
 app.notFound((c) => render(c, 'Siden findes ikke', pageHead('Fejl 404', 'Siden findes ikke', '', 'Vi kunne ikke finde den side, du leder efter.'), { portal: 'none' }, 404));
 
 app.onError((err, c) => {
-  console.error('Uventet fejl:', err.message);
+  console.error('Uventet fejl:', err.message, err.stack);
+  // I demoen vises fejlteksten, så fejl kan findes uden adgang til loggen (demoen har kun fiktive data)
+  const detail = c.env.DEMO_MODE === '1' ? `<p class="hint">${String(err.message).replace(/[<>&"]/g, (ch) => `&#${ch.charCodeAt(0)};`)}</p>` : '';
   return c.html(
-    `<!doctype html><html lang="da"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fejl</title><link rel="stylesheet" href="/static/app.css"><body><main><div class="wrap narrow stack-lg"><h1>Der opstod en fejl</h1><p class="muted">Prøv igen om lidt. Intet er registreret to gange: en registrering gemmes enten helt eller slet ikke.</p><a class="btn btn-primary" href="/">Til forsiden</a></div></main></body></html>`,
+    `<!doctype html><html lang="da"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fejl</title><link rel="stylesheet" href="/static/app.css"><body><main><div class="wrap narrow stack-lg"><h1>Der opstod en fejl</h1><p class="muted">Prøv igen om lidt. Intet er registreret to gange: en registrering gemmes enten helt eller slet ikke.</p>${detail}<a class="btn btn-primary" href="/">Til forsiden</a></div></main></body></html>`,
     500,
   );
 });
