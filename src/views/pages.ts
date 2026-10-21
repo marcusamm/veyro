@@ -12,7 +12,7 @@ export const FLASH: Record<string, { kind: 'ok' | 'info' | 'warn' | 'err'; text:
   'plan-skiftet': { kind: 'ok', text: 'Din plan er skiftet. Ændringen gælder fra nu.' },
   opsagt: { kind: 'ok', text: 'Dit abonnement er opsagt. Det kører til og med den nuværende betalingsperiode.' },
   genoptaget: { kind: 'ok', text: 'Din opsigelse er annulleret. Abonnementet fortsætter som normalt.' },
-  'henvendelse-oprettet': { kind: 'ok', text: 'Tak! Vi har modtaget din henvendelse og vender tilbage hurtigst muligt.' },
+  'henvendelse-oprettet': { kind: 'ok', text: 'Tak! Vi har modtaget din henvendelse og svarer inden for 24-48 timer.' },
   'kort-opdateret': { kind: 'ok', text: 'Tak. Ændringer af betalingskort kan tage et øjeblik om at blive vist.' },
   'har-abonnement': { kind: 'info', text: 'Du har allerede et abonnement. Her kan du skifte plan.' },
   'stripe-fejl': { kind: 'err', text: 'Der opstod en fejl hos vores betalingsudbyder. Prøv igen om lidt, eller kontakt os.' },
