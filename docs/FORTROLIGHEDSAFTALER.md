@@ -32,3 +32,9 @@ Mails har ærlig status: "Afleveret til mailudbyderen", "Fejlede" eller "Ikke se
 ## Test
 
 `npx vitest run tests/nda.test.mjs` kører hele forløbet med to testvirksomheder.
+
+## På veyro.dk
+
+Forsiden har et banner om fortrolighedsaftalen, der linker til `/pages/fortrolighedsaftale` (også i sidefoden under Information). Siden linker til `/fortrolighedsaftale-skabelon.pdf`, som laves fra den nyeste skabelonversion med [pladsholdere] i stedet for kundens oplysninger og er mærket "SKABELON – IKKE EN GYLDIG AFTALE" på hver side.
+
+Veyros godkendere i produktion (`NDA_SIGNERS`): efe@veyro.dk og marcus@veyro.dk.

@@ -468,6 +468,20 @@
         "link_label": "Book en demo",
         "link": "/?ydelse=book-en-demo#kontakt"
       }
+    },
+    "fortrolighed": {
+      "type": "note-banner",
+      "settings": {
+        "scheme": "surface",
+        "anchor": "fortrolighed",
+        "icon": "shield",
+        "heading": "Jeres oplysninger er fortrolige. Det skriver vi under på.",
+        "text": "<p>Vi tilbyder en gensidig fortrolighedsaftale (NDA), som I læser og godkender digitalt i kundeportalen. Den beskytter kundedata, priser, kode og adgangsoplysninger, også når samarbejdet er slut.</p>",
+        "primary_label": "Læs om fortrolighedsaftalen",
+        "primary_link": "/pages/fortrolighedsaftale",
+        "secondary_label": "Se skabelonen som PDF",
+        "secondary_link": "/fortrolighedsaftale-skabelon.pdf"
+      }
     }
   },
   "order": [
@@ -478,6 +492,7 @@
     "functions",
     "benefits",
     "proces",
+    "fortrolighed",
     "websites",
     "trustpilot",
     "faq",

@@ -7,21 +7,27 @@ import { escapeHtml, sendEmail, type EmailAttachment, type EmailMessage } from '
 import { logError } from './errlog';
 import {
   approvedVersion,
+  CONFIRMATIONS,
   CONTINUING_TEXT,
   eventStmt,
   getNda,
   label,
+  NOTICES,
   parseSnapshot,
   parseTemplate,
   REQUEST_KIND_LABEL,
   REQUEST_STATUS_LABEL,
   STATUS_LABEL,
+  SUMMARY,
   type NdaRow,
   type Party,
   type RequestRow,
   type Snapshot,
+  type TemplateRow,
   type VersionRow,
+  type VeyroInfo,
 } from './nda';
+import { NDA_SUBTITLE, NDA_TITLE } from './nda-template';
 import { ACCENT, M, MUTED, RED, Writer, fmtTime, winAnsi } from './pdfdoc';
 
 // ---------- PDF ----------
@@ -76,13 +82,19 @@ function approvalBlock(w: Writer, heading: string, v: VersionRow | null, party: 
  * Hele aftalen. `final` medtager begge parters godkendelser og bruges til det gemte dokument;
  * ellers er dokumentet tydeligt mærket som udkast på hver side.
  */
-export async function renderNdaPdf(snap: Snapshot, v: VersionRow | null, opts: { final: boolean; hash: string | null }): Promise<Uint8Array> {
-  const title = `Fortrolighedsaftale ${snap.number} version ${snap.version}`;
+export async function renderNdaPdf(
+  snap: Snapshot,
+  v: VersionRow | null,
+  opts: { final: boolean; hash: string | null; sample?: boolean },
+): Promise<Uint8Array> {
+  const title = opts.sample ? `Fortrolighedsaftale, skabelon ${snap.template_version}` : `Fortrolighedsaftale ${snap.number} version ${snap.version}`;
   const effective = v?.customer_approved_at && v?.veyro_approved_at ? Math.max(v.customer_approved_at, v.veyro_approved_at) : null;
-  const { doc, font, bold } = await newDoc(opts.final ? title : `UDKAST – ${title}`, opts.final ? effective : null);
+  const { doc, font, bold } = await newDoc(opts.final ? title : opts.sample ? `SKABELON – ${title}` : `UDKAST – ${title}`, opts.final ? effective : null);
   const footer = opts.final
     ? `${title} · Godkendt af begge parter · SHA-256 ${opts.hash ?? ''}`
-    : `UDKAST – IKKE GODKENDT · ${title}${snap.test ? ` · ${snap.test.toUpperCase()}` : ''}`;
+    : opts.sample
+      ? `SKABELON – IKKE EN GYLDIG AFTALE · ${title}`
+      : `UDKAST – IKKE GODKENDT · ${title}${snap.test ? ` · ${snap.test.toUpperCase()}` : ''}`;
   const w = new Writer(doc, font, bold, footer);
 
   logo(w);
@@ -90,10 +102,12 @@ export async function renderNdaPdf(snap: Snapshot, v: VersionRow | null, opts: {
   w.y -= 16;
   w.para(snap.subtitle, { size: 11 });
   w.y -= 2;
-  w.text(`${snap.number} · version ${snap.version} · skabelon ${snap.template_version}`, M, 9.5, { color: MUTED });
+  w.text(opts.sample ? `Skabelon version ${snap.template_version}` : `${snap.number} · version ${snap.version} · skabelon ${snap.template_version}`, M, 9.5, { color: MUTED });
   w.y -= 18;
   if (snap.test) w.stamp(`${snap.test.toUpperCase()}: TESTDOKUMENT – IKKE GYLDIGT`);
-  if (!opts.final) w.stamp('UDKAST – IKKE GODKENDT. Aftalen er først gældende, når begge parter har godkendt den samme version.');
+  if (opts.sample)
+    w.stamp('SKABELON – IKKE EN GYLDIG AFTALE. Felterne i [klammer] udfyldes i kundeportalen, og aftalen gælder først, når begge parter har godkendt den.');
+  else if (!opts.final) w.stamp('UDKAST – IKKE GODKENDT. Aftalen er først gældende, når begge parter har godkendt den samme version.');
 
   w.heading('Aftalens parter');
   w.para('Veyro', { bold: true, size: 10 });
@@ -141,8 +155,10 @@ export async function renderNdaPdf(snap: Snapshot, v: VersionRow | null, opts: {
   } else {
     w.kv('Ikrafttræden', 'Aftalen træder først i kraft, når begge parter har godkendt denne version.');
   }
-  w.kv('Aftalenummer', snap.number);
-  w.kv('Version', String(snap.version));
+  if (!opts.sample) {
+    w.kv('Aftalenummer', snap.number);
+    w.kv('Version', String(snap.version));
+  }
   w.kv('Skabelon', `Version ${snap.template_version}`);
   if (opts.hash) w.kv('Indholdets SHA-256', opts.hash);
   w.para(
@@ -154,6 +170,42 @@ export async function renderNdaPdf(snap: Snapshot, v: VersionRow | null, opts: {
     w.para(snap.footnote, { size: 8, color: MUTED });
   }
   return doc.save({ useObjectStreams: false });
+}
+
+/** Offentlig skabelon til veyro.dk: den aktuelle standardtekst med pladsholdere i stedet for kundens oplysninger. */
+export async function sampleNdaPdf(veyro: VeyroInfo, t: TemplateRow): Promise<Uint8Array> {
+  const snap: Snapshot = {
+    number: '[Aftalenummer]',
+    version: 1,
+    template_version: t.version,
+    title: NDA_TITLE,
+    subtitle: NDA_SUBTITLE,
+    body: t.body,
+    footnote: t.footnote,
+    test: null,
+    customer: {
+      company_name: '[Virksomhedens juridiske navn]',
+      cvr: '[CVR-nr.]',
+      address: '[Adresse]',
+      postal_code: '[Postnr.]',
+      city: '[By]',
+      contact_name: '[Kontaktperson]',
+      contact_email: '[E-mail]',
+    },
+    customer_approver: { name: '[Navn]', title: '[Titel]' },
+    veyro: {
+      legal_name: veyro.legal_name || '[Veyros juridiske navn]',
+      cvr: veyro.cvr || '[CVR-nr.]',
+      address: veyro.address || '[Adresse]',
+      contact_name: veyro.contact_name,
+      contact_email: veyro.contact_email,
+    },
+    project: '[Det konkrete projekt, den hjemmeside eller det system, aftalen gælder]',
+    summary: SUMMARY,
+    notices: NOTICES,
+    confirmations: [...CONFIRMATIONS],
+  };
+  return renderNdaPdf(snap, null, { final: false, hash: null, sample: true });
 }
 
 /** Kvittering for ophør. Dokumenterer registreringen af meddelelsen, ikke at den er kommet frem. */

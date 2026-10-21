@@ -468,3 +468,22 @@ describe('Mobil og adgang', () => {
     expect((await anon.get('/admin/nda')).status).toBe(303);
   });
 });
+
+describe('Fortrolighedsaftale: side og skabelon på veyro.dk', () => {
+  it('forsiden viser fortrolighedsaftalen, siden findes og skabelonen er mærket som skabelon', async () => {
+    const front = await (await fetch(`${stack.site}/`)).text();
+    expect(front).toContain('Jeres oplysninger er fortrolige');
+    expect(front).toContain('/pages/fortrolighedsaftale');
+    const page = await fetch(`${stack.site}/pages/fortrolighedsaftale`);
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    expect(html).toContain('/fortrolighedsaftale-skabelon.pdf');
+    expect(html).toContain('ikke en MitID-underskrift');
+    const pdf = await fetch(`${stack.site}/fortrolighedsaftale-skabelon.pdf`);
+    expect(pdf.status).toBe(200);
+    expect(pdf.headers.get('content-type')).toBe('application/pdf');
+    const bytes = Buffer.from(await pdf.arrayBuffer());
+    expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
+    if (process.env.NDA_SAMPLE_OUT) (await import('node:fs')).writeFileSync(process.env.NDA_SAMPLE_OUT, bytes);
+  });
+});
