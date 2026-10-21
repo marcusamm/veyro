@@ -69,6 +69,8 @@ ADMIN_EMAILS = "kontakt@veyro.dk,efe@veyro.dk,marcus@veyro.dk"
 NOTIFY_EMAIL = "kontakt@veyro.dk"
 EMAIL_FROM = "Veyro <kontakt@veyro.dk>"
 DEV_MODE = "0"
+# Mærker alle sider og dokumenter som test (fx fuldmagter: "Testmiljø – ikke gyldig")
+TEST_LABEL = "Testmiljø"
 
 # Testdatabase til previews. Nye migrationer køres mod den med:
 #   npx wrangler d1 migrations apply veyro-kundepanel-preview --remote --config wrangler.preview-migrations.toml

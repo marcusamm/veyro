@@ -26,6 +26,8 @@ import {
   type RequestFormValues,
 } from '../views/pages';
 import { REQUEST_TYPES, subscriptionState } from '../views/status';
+import poaRoutes from './poa';
+import aftaler from './aftaler';
 
 type Vars = AppEnv & { Variables: AppEnv['Variables'] & { customer: CustomerRow } };
 const account = new Hono<Vars>();
@@ -373,5 +375,8 @@ account.post('/henvendelser', async (c) => {
   );
   return c.redirect('/konto/henvendelser?besked=henvendelse-oprettet', 303);
 });
+
+account.route('/fuldmagter', poaRoutes);
+account.route('/aftaler', aftaler);
 
 export default account;
