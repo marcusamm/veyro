@@ -73,3 +73,14 @@ jobs:
           check https://ny.veyro.dk/ 200
           check https://ny.veyro.dk/pages/kontakt 200
           check https://ny.veyro.dk/cart 200
+          # Juridiske sider på veyro.dk med indholdet, kunderne accepterer i kundepanelet
+          side() {
+            check "$1" 200
+            if curl -s "$1" | grep -q "$2"; then echo "OK indhold: $2"; else echo "::error::$1 mangler '$2'"; return 1; fi
+          }
+          side https://veyro.dk/pages/handelsbetingelser 'ingen fortrydelsesret'
+          side https://veyro.dk/pages/databehandleraftale 'Bilag B: Underdatabehandlere'
+          side https://veyro.dk/pages/sla '99,5 %'
+          side https://veyro.dk/pages/privatlivspolitik 'Kundepanelet og jeres aftaler'
+          side https://veyro.dk/pages/cookiepolitik '__Host-vk_session'
+          side https://veyro.dk/ 'href="/pages/databehandleraftale"'
