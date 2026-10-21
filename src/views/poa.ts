@@ -132,7 +132,7 @@ export function poaListPage(args: {
         <tbody>${args.rows.map(
           (p) => html`<tr>
             <td data-label="Nummer"><a href="${BASE}/${p.id}"><strong>${label(p)}</strong></a></td>
-            <td data-label="Virksomhed og projekt">${p.company_name || html`<span class="muted">Ikke udfyldt</span>`}<br><span class="muted small">${p.project || ''}</span></td>
+            <td data-label="Virksomhed og projekt"><div>${p.company_name || html`<span class="muted">Ikke udfyldt</span>`}<br><span class="muted small">${p.project || ''}</span></div></td>
             <td data-label="Oprettet">${formatDayFromSec(p.created_at)}</td>
             <td data-label="Udløber">${p.expires_on ? formatDay(p.expires_on) : html`<span class="muted">Ingen</span>`}</td>
             <td data-label="Status"><div class="stack-xs">${statusBadge(p.status)}${deletionBadge(p)}</div></td>
@@ -612,7 +612,7 @@ export function adminPoaListPage(args: {
       <tbody>${args.rows.map(
         (p) => html`<tr>
           <td data-label="Nummer"><a href="${ADMIN}/${p.id}"><strong>${label(p)}</strong></a></td>
-          <td data-label="Virksomhed">${p.company_name ?? '–'}<br><span class="muted small">${p.project ?? ''}</span></td>
+          <td data-label="Virksomhed"><div>${p.company_name ?? '–'}<br><span class="muted small">${p.project ?? ''}</span></div></td>
           <td data-label="Kunde">${p.email}</td>
           <td data-label="Udløber">${p.expires_on ? formatDay(p.expires_on) : 'Ingen'}</td>
           <td data-label="Status"><div class="stack-xs">${statusBadge(p.status)}${deletionBadge(p)}</div></td>
