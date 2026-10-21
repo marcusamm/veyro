@@ -137,18 +137,19 @@ export async function renderPoaPdf(snap: Snapshot, row: PoaRow, kind: DocKind, h
   doc.setAuthor('Veyro');
   doc.setProducer('Veyro kundeportal');
   doc.setCreator('Veyro kundeportal');
-  const fixed = new Date((kind === 'activated' ? row.activated_at ?? row.approved_at! : row.approved_at!) * 1000);
+  const fixed = new Date(((kind === 'activated' ? row.activated_at ?? row.approved_at : row.approved_at) ?? row.created_at) * 1000);
   doc.setCreationDate(fixed);
   doc.setModificationDate(fixed);
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const w = new Writer(doc, font, bold, `${title} · Godkendt version · SHA-256 ${hash}`);
+  const w = new Writer(doc, font, bold, snap.sample ? 'Skabelon fra veyro.dk · Ikke en gyldig fuldmagt' : `${title} · Godkendt version · SHA-256 ${hash}`);
 
   w.text('Veyro', M, 16, { bold: true });
   w.page.drawCircle({ x: M + bold.widthOfTextAtSize('Veyro', 16) + 3, y: w.y + 1.5, size: 1.8, color: ACCENT });
   w.y -= 30;
   w.text('FULDMAGT', M, 20, { bold: true });
   w.y -= 18;
+  if (snap.sample) w.stamp('SKABELON: Eksempel på Veyros digitale fuldmagt. Felter i [klammer] udfyldes af kunden i kundeportalen. Dette er ikke en gyldig fuldmagt.');
   w.text(`${snap.number}${snap.version > 1 ? ` · version ${snap.version}` : ''} · Tekst: ${snap.text_version}`, M, 9.5, { color: MUTED });
   w.y -= 18;
   if (snap.test) w.stamp(`${snap.test.toUpperCase()}: TESTDOKUMENT – IKKE GYLDIGT`);
@@ -172,27 +173,27 @@ export async function renderPoaPdf(snap: Snapshot, row: PoaRow, kind: DocKind, h
   w.kv('Projekt / system', snap.scope.project);
   w.kv('Formål og opgaver', snap.scope.purpose);
   w.kv('Leverandører, systemer og konti', snap.scope.parties.length ? snap.scope.parties.join('\n') : 'Ingen navngivne');
-  w.kv('Udløbsdato', snap.scope.expires_on ? `${formatDay(snap.scope.expires_on)} (gyldig til og med denne dag)` : 'Ingen – gælder indtil den tilbagekaldes');
+  w.kv('Udløbsdato', snap.sample ? '[Valgfri dato] – uden dato gælder fuldmagten, til den tilbagekaldes' : snap.scope.expires_on ? `${formatDay(snap.scope.expires_on)} (gyldig til og med denne dag)` : 'Ingen – gælder indtil den tilbagekaldes');
 
   w.heading('Beføjelser');
   w.para('Kun afkrydsede beføjelser er givet. Beføjelser, der ikke er afkrydset, er ikke givet.', { size: 9, color: MUTED });
   w.y -= 4;
   for (const p of snap.powers) {
-    const head = `${p.granted ? '[X] GIVET' : '[  ] IKKE GIVET'} – ${p.label}`;
+    const head = snap.sample ? `[  ] ${p.label}` : `${p.granted ? '[X] GIVET' : '[  ] IKKE GIVET'} – ${p.label}`;
     w.need(30);
-    w.para(head, { bold: true, size: 9.5, color: p.granted ? INK : MUTED });
-    w.para(p.key === 'other' && snap.other_text ? snap.other_text : p.description, { size: 9, x: M + 18, color: p.granted ? INK : MUTED });
+    w.para(head, { bold: true, size: 9.5, color: p.granted || snap.sample ? INK : MUTED });
+    w.para(p.key === 'other' && snap.other_text ? snap.other_text : p.description, { size: 9, x: M + 18, color: p.granted || snap.sample ? INK : MUTED });
     w.y -= 4;
   }
 
   if (snap.orders) {
     const o = snap.orders;
-    w.heading('Betingelser for bestillinger');
-    w.kv('Maks. pr. bestilling', `${formatKr(o.max_per_order_oere)} inkl. moms`);
-    w.kv('Maks. pr. kalendermåned', `${formatKr(o.max_per_month_oere)} inkl. moms`);
+    w.heading(snap.sample ? 'Betingelser for bestillinger (kun hvis bestillinger er valgt)' : 'Betingelser for bestillinger');
+    w.kv('Maks. pr. bestilling', snap.sample ? '[Beløb] kr. inkl. moms' : `${formatKr(o.max_per_order_oere)} inkl. moms`);
+    w.kv('Maks. pr. kalendermåned', snap.sample ? '[Beløb] kr. inkl. moms' : `${formatKr(o.max_per_month_oere)} inkl. moms`);
     w.kv('Godkendte leverandører', o.suppliers.join('\n'));
     w.kv('Varer eller ydelser', o.types.join('\n'));
-    w.kv('Periode', `${formatDay(o.start)} til og med ${formatDay(o.end)}`);
+    w.kv('Periode', snap.sample ? '[Startdato] til og med [slutdato]' : `${formatDay(o.start)} til og med ${formatDay(o.end)}`);
     w.para(o.exclusions, { size: 9.5, bold: true });
   }
 
@@ -200,9 +201,14 @@ export async function renderPoaPdf(snap: Snapshot, row: PoaRow, kind: DocKind, h
   for (const t of snap.terms) w.bullet(t);
 
   w.heading('Kundens bekræftelser');
-  for (const c of snap.confirmations) w.bullet(c, '[X]');
+  for (const c of snap.confirmations) w.bullet(c, snap.sample ? '[  ]' : '[X]');
 
   w.heading('Godkendelse');
+  if (snap.sample) {
+    w.para('Kunden godkender i Veyros kundeportal efter login med engangslink og en ny engangskode sendt til den indloggede e-mail. Godkenderens navn og titel, tidspunktet, metoden, tekstversionen og en SHA-256 af hele indholdet gemmes. Metoden bekræfter adgang til e-mailadressen; den er ikke en MitID-signatur og dokumenterer ikke tegningsret.');
+    if (snap.requires_veyro_acceptance) w.para('Fuldmagten bliver først aktiv, når også Veyro har accepteret den.');
+    return doc.save({ useObjectStreams: false });
+  }
   w.kv('Godkendt af', `${row.approver_name ?? snap.approver.name}, ${row.approver_title ?? snap.approver.title}`);
   w.kv('Indlogget konto', row.approver_email ?? snap.approver.account_email);
   w.kv('Tidspunkt', fmtTime(row.approved_at));
@@ -221,6 +227,47 @@ export async function renderPoaPdf(snap: Snapshot, row: PoaRow, kind: DocKind, h
   }
 
   return doc.save({ useObjectStreams: false });
+}
+
+/** Offentlig skabelon (veyro.dk): fuldmagtens tekst med pladsholdere og alle beføjelser som valgmuligheder. */
+export async function samplePoaPdf(
+  s: { legal_name: string; cvr: string; address: string; contact_name: string; contact_email: string },
+  text: { version: string; draft: boolean; powers: Snapshot['powers']; terms: string[]; confirmations: string[]; exclusions: string; requiresAcceptance: boolean },
+): Promise<Uint8Array> {
+  const ph = (v: string, label: string) => v.trim() || `[${label}]`;
+  const snap: Snapshot = {
+    number: 'FM-ÅÅÅÅ-NNNN',
+    version: 1,
+    text_version: text.version,
+    text_draft: text.draft,
+    test: null,
+    sample: true,
+    customer: {
+      company_name: '[Virksomhedsnavn]',
+      cvr: '[CVR-nummer]',
+      address: '[Adresse]',
+      postal_city: '[Postnummer og by]',
+      contact_name: '[Kontaktperson]',
+      receipt_email: '[E-mail til kvittering]',
+    },
+    approver: { name: '[Navn]', title: '[Titel]', account_email: '[Indlogget e-mail]' },
+    veyro: {
+      legal_name: ph(s.legal_name, 'Veyros juridiske navn'),
+      cvr: ph(s.cvr, 'CVR-nummer'),
+      address: ph(s.address, 'Adresse'),
+      contact_name: ph(s.contact_name, 'Kontaktperson'),
+      contact_email: ph(s.contact_email, 'Kontaktmail'),
+    },
+    scope: { project: '[Projekt, hjemmeside eller system]', purpose: '[Konkret formål og ønskede opgaver]', parties: ['[Navngivne leverandører, systemer og konti]'], expires_on: null },
+    powers: text.powers.map((p) => ({ ...p, granted: false })),
+    other_text: null,
+    orders: { max_per_order_oere: 0, max_per_month_oere: 0, suppliers: ['[Godkendte leverandører]'], types: ['[Godkendte vare- eller ydelsestyper]'], start: '', end: '', exclusions: text.exclusions },
+    terms: text.terms,
+    confirmations: text.confirmations,
+    requires_veyro_acceptance: text.requiresAcceptance,
+  };
+  const row = { number: snap.number, version: 1, created_at: Math.floor(Date.now() / 1000), approved_at: null, activated_at: null } as unknown as PoaRow;
+  return renderPoaPdf(snap, row, 'approved', '');
 }
 
 /**

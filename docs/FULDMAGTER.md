@@ -59,3 +59,10 @@ Previews bruger deres egen testdatabase.
 ## Tabeller (migration 0006)
 
 `poa_settings`, `poas`, `poa_documents`, `poa_otps`, `poa_events`, `poa_deletion_requests`, `poa_mails`, `poa_actions`, `poa_tasks`.
+
+## Skabelon på veyro.dk
+
+Siden `veyro.dk/pages/fuldmagt` (i sidefoden under Information) beskriver funktionen og linker til
+`veyro.dk/fuldmagt-skabelon.pdf`. PDF'en laves fra den samme tekst i koden som de rigtige fuldmagter og bruger
+Veyros oplysninger fra indstillingerne, så den altid følger med. Sidens tekst kan redigeres i admin under Hjemmeside;
+ændres fuldmagtsteksten, skal siden opdateres tilsvarende.
