@@ -3,6 +3,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { AppEnv } from './env';
 import { getCustomerByEmail } from './lib/db';
 import { isAdmin } from './lib/session';
+import { agreementsAccess } from './routes/aftaler';
 import { layout, type H, type NavKey } from './views/layout';
 
 export async function render(
@@ -17,6 +18,7 @@ export async function render(
   if (session && isCustomer === undefined) {
     isCustomer = !!(await getCustomerByEmail(c.env.DB, session.email));
   }
+  const agreementsNav = !!session && !!isCustomer && !opts.admin && (await agreementsAccess(c.env, session.email));
   return c.html(
     layout(
       {
@@ -27,6 +29,7 @@ export async function render(
         isAdmin: admin,
         customerNav: !!session && !!isCustomer && !opts.admin,
         adminNav: !!opts.admin && admin,
+        agreementsNav,
       },
       body,
     ),

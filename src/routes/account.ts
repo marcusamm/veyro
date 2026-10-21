@@ -26,6 +26,9 @@ import {
   type RequestFormValues,
 } from '../views/pages';
 import { REQUEST_TYPES, subscriptionState } from '../views/status';
+import poaRoutes from './poa';
+import aftaler from './aftaler';
+import ndaRoutes from './nda';
 
 import { acceptancesFor, recordAcceptance } from '../lib/legal';
 import { agreementsCard } from '../views/legal';
@@ -85,10 +88,11 @@ account.get('/', async (c) => {
 // ---------- Accept af handelsbetingelser og databehandleraftale ----------
 account.post('/vilkaar', async (c) => {
   const body = await c.req.parseBody();
-  if (body['accept'] !== '1') return c.redirect('/konto?besked=vilkaar-mangler#aftaler', 303);
+  const back = body['next'] === 'aftaler' ? '/konto/aftaler' : '/konto';
+  if (body['accept'] !== '1') return c.redirect(`${back}?besked=vilkaar-mangler#aftaler`, 303);
   const customer = c.get('customer');
   await recordAcceptance(c.env.DB, { email: customer.email, customerId: customer.id, context: 'kundepanel', ip: c.req.header('CF-Connecting-IP') });
-  return c.redirect('/konto?besked=vilkaar-accepteret#aftaler', 303);
+  return c.redirect(`${back}?besked=vilkaar-accepteret#aftaler`, 303);
 });
 
 // ---------- Skift plan ----------
@@ -386,5 +390,9 @@ account.post('/henvendelser', async (c) => {
   );
   return c.redirect('/konto/henvendelser?besked=henvendelse-oprettet', 303);
 });
+
+account.route('/fuldmagter', poaRoutes);
+account.route('/aftaler', aftaler);
+account.route('/nda', ndaRoutes);
 
 export default account;

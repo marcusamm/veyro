@@ -47,6 +47,9 @@ PRICE_BUSINESS = "price_1URprgAjYluIQ8PhsiV8ne5Y"
 PRICE_PREMIUM = "price_1URpsIAjYluIQ8PhmsDKXI61"
 MIN_MONTHS = "0"
 ADMIN_EMAILS = "kontakt@veyro.dk,efe@veyro.dk,marcus@veyro.dk"
+# Hvem må godkende fortrolighedsaftaler (NDA) på Veyros vegne? Skal også stå i ADMIN_EMAILS.
+# Tom = ingen; aftaler kan så ikke blive aktive. Udfyldes af Veyro.
+NDA_SIGNERS = "efe@veyro.dk,marcus@veyro.dk"
 NOTIFY_EMAIL = "kontakt@veyro.dk"
 EMAIL_FROM = "Veyro <kontakt@veyro.dk>"
 DEV_MODE = "0"
@@ -69,6 +72,10 @@ ADMIN_EMAILS = "kontakt@veyro.dk,efe@veyro.dk,marcus@veyro.dk"
 NOTIFY_EMAIL = "kontakt@veyro.dk"
 EMAIL_FROM = "Veyro <kontakt@veyro.dk>"
 DEV_MODE = "0"
+# Mærker alle sider og dokumenter som test (fx fuldmagter: "Testmiljø – ikke gyldig")
+TEST_LABEL = "Testmiljø"
+# I testmiljøet kan alle admins godkende NDA'er på Veyros vegne (testaftaler er ikke gyldige)
+NDA_SIGNERS = "efe@veyro.dk,marcus@veyro.dk"
 
 # Testdatabase til previews. Nye migrationer køres mod den med:
 #   npx wrangler d1 migrations apply veyro-kundepanel-preview --remote --config wrangler.preview-migrations.toml

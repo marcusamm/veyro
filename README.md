@@ -399,3 +399,9 @@ Salgshjemmesiden kører nu i samme Worker som kundepanelet. Domænet afgør, hva
 6. Først når alt virker: fjern domænet i Shopify og opsig Shopify-abonnementet. Gem gerne en eksport af temaet først (det ligger også i `shopify-theme/`).
 
 **Rul tilbage:** Indhold rulles tilbage under Admin › Hjemmeside › Historik. Selve domæneskiftet rulles tilbage ved at fjerne `veyro.dk`/`www.veyro.dk` fra routes og genskabe Shopifys to DNS-poster; så viser Shopify-temaet siden igen, så længe Shopify-abonnementet ikke er opsagt.
+
+## 16. Digitale fuldmagter
+
+Kunder kan give Veyro fuldmagt under **Aftaler og dokumenter** i kundepanelet, og Veyro administrerer dem i admin under **Fuldmagter**.
+Opsætning, forløb, sikkerhed og opbevaringspolitik er beskrevet i [docs/FULDMAGTER.md](docs/FULDMAGTER.md).
+Funktionen er et udkast: den er kun åben for pilotkunder, indtil teksten, godkendelsesmetoden og politikken er godkendt i admin.

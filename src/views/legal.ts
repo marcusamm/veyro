@@ -17,10 +17,10 @@ export function acceptField(checked = false): H {
 }
 
 /** Kort i kundepanelets overblik: hvad kunden har accepteret, eller en knap til at acceptere den nye version. */
-export function agreementsCard(args: { csrf: string; accepted: Partial<Record<LegalDocKey, Acceptance>> }): H {
+export function agreementsCard(args: { csrf: string; accepted: Partial<Record<LegalDocKey, Acceptance>>; next?: 'aftaler' }): H {
   const current = isCurrent(args.accepted);
   return html`<section class="card stack" id="aftaler" aria-labelledby="aftaler-h">
-  <h2 id="aftaler-h">Aftaler</h2>
+  <h2 id="aftaler-h">Betingelser og databehandleraftale</h2>
   <ul class="list">
     ${LEGAL_DOCS.map((d) => {
       const a = args.accepted[d.key];
@@ -35,6 +35,7 @@ export function agreementsCard(args: { csrf: string; accepted: Partial<Record<Le
     ? ''
     : html`<form method="post" action="/konto/vilkaar" class="stack">
         ${csrfField(args.csrf)}
+        ${args.next ? html`<input type="hidden" name="next" value="${args.next}">` : ''}
         ${acceptField()}
         <button class="btn btn-primary" type="submit" data-loading="Gemmer …">Accepter</button>
       </form>`}

@@ -192,7 +192,8 @@ describe('Magic-link-login', () => {
   });
 
   it('viser aftalerne i overblikket og gemmer kundens accept', async () => {
-    const { client } = await login(stack, 'carl@example.dk');
+    await seedCustomer(stack, { email: 'dorte@example.dk', name: 'Dorte', cus: 'cus_D', sub: 'sub_D', price: 'price_starter_test', start: now() - 5 * DAY });
+    const { client } = await login(stack, 'dorte@example.dk');
     const dash = await client.get('/konto');
     expect(dash.html).toContain('Databehandleraftale');
     expect(dash.html).toContain('Afventer accept');
@@ -204,6 +205,9 @@ describe('Magic-link-login', () => {
     expect(after.html).toContain('Din accept af handelsbetingelserne og databehandleraftalen er gemt');
     expect(after.html.match(/badge b-ok">Accepteret/g)).toHaveLength(2);
     expect(after.html).not.toContain('action="/konto/vilkaar"');
+    const page = await client.get('/konto/aftaler');
+    expect(page.html).toContain('Betingelser og databehandleraftale');
+    expect(page.html).toContain('Fortrolighedsaftaler');
   });
 
   it('log ud sletter sessionen', async () => {

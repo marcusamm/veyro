@@ -20,6 +20,12 @@ export interface Env {
   /** Hjemmesidens kanoniske adresse (til søgemaskiner og delingslinks) */
   SITE_URL?: string;
 
+  /** Mærkning af test-/demomiljøer (fx "Testmiljø"). Tom i produktion. */
+  TEST_LABEL?: string;
+
+  /** Veyro-medarbejdere (kommasepareret e-mail), der må godkende fortrolighedsaftaler på Veyros vegne. Skal også stå i ADMIN_EMAILS. */
+  NDA_SIGNERS?: string;
+
   /** Fælles kundekatalog: hvilke kundesystemer en e-mail har adgang til (valgfri) */
   KATALOG?: KVNamespace;
 

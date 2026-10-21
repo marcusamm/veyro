@@ -6,6 +6,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MOCK_KEY, RESEND_KEY, startMock } from './mock-server.mjs';
+import { Agent, setGlobalDispatcher } from 'undici';
+
+// Ingen genbrug af forbindelser: wrangler dev lukker inaktive keep-alive-forbindelser, mens testene venter på
+// "wrangler d1 execute", og næste kald fejlede så med "other side closed".
+setGlobalDispatcher(new Agent({ pipelining: 0 }));
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const WEBHOOK_SECRET = 'whsec_test_secret_123';
@@ -40,7 +45,7 @@ function testConfig() {
   return file;
 }
 
-export async function startStack({ minMonths = 12, devMode = false, resend = true } = {}) {
+export async function startStack({ minMonths = 12, devMode = false, resend = true, extraVars = {} } = {}) {
   const mock = await startMock();
   const config = testConfig();
   const port = await freePort();
@@ -70,6 +75,7 @@ export async function startStack({ minMonths = 12, devMode = false, resend = tru
     // Salgshjemmesiden svarer på localhost; kundepanelet på 127.0.0.1
     SITE_HOSTS: 'localhost',
     SITE_URL: `http://localhost:${port}`,
+    ...extraVars,
   };
   const args = ['dev', '--config', config, '--local', '--ip', '127.0.0.1', '--port', String(port), '--persist-to', persist,
     '--show-interactive-dev-session=false', '--log-level', 'log'];
