@@ -41,6 +41,14 @@
       "description": ""
     },
     {
+      "handle": "fortrolighedsaftale",
+      "title": "Fortrolighedsaftale (NDA)",
+      "template": "",
+      "body": "<p>Når I deler kundedata, priser, kode eller adgangsoplysninger med os, skal I kunne stole på, at de bliver behandlet fortroligt. Derfor tilbyder vi en gensidig fortrolighedsaftale (NDA), som I læser og godkender digitalt i kundeportalen. Den beskytter både jeres og Veyros oplysninger.</p>\n<p><a href=\"/fortrolighedsaftale-skabelon.pdf\"><strong>Se skabelonen som PDF</strong></a> · <a href=\"https://kunde.veyro.dk/konto/aftaler\">Log ind i kundeportalen</a> · <a href=\"/pages/kontakt\">Bed om en fortrolighedsaftale</a></p>\n<h2>Sådan fungerer det</h2>\n<ol>\n<li><strong>Vi opretter aftalen.</strong> Veyro opretter en kladde til jeres virksomhed og det konkrete projekt.</li>\n<li><strong>I udfylder og tjekker.</strong> Juridisk navn, CVR-nr., adresse, kontaktperson, hvem der godkender, og projektet. I kan gemme og fortsætte senere og hente et udkast som PDF.</li>\n<li><strong>I læser og godkender.</strong> Hele aftaleteksten vises med en kort opsummering. I godkender med jeres login og en engangskode på mail.</li>\n<li><strong>Veyro godkender samme version.</strong> Aftalen træder i kraft, når begge parter har godkendt, og begge får den endelige aftale som PDF på mail. Den ligger også altid i kundeportalen.</li>\n</ol>\n<h2>Det er godt at vide</h2>\n<ul>\n<li><strong>Underleverandører:</strong> Nødvendige rådgivere og hosting- og andre underleverandører må kun få relevante oplysninger under tilsvarende fortrolighed.</li>\n<li><strong>AI-tjenester:</strong> Fortrolige oplysninger må ikke bruges til at træne generelle AI-modeller, og brug af eksterne AI-tjenester kræver jeres skriftlige godkendelse.</li>\n<li><strong>Tilbagelevering og sletning:</strong> Efter skriftlig anmodning eller når samarbejdet ophører, returneres eller slettes oplysningerne efter jeres valg. I kan anmode om det direkte i kundeportalen.</li>\n<li><strong>Varighed:</strong> Fortroligheden gælder under samarbejdet og i fem år efter det seneste af samarbejdets eller aftalens ophør. Forretningshemmeligheder er beskyttet, så længe de har den karakter.</li>\n<li><strong>Ændringer:</strong> Ændres aftalen, efter at en af parterne har godkendt den, skal begge godkende den nye version. En aktiv aftale kan ikke redigeres.</li>\n</ul>\n<h2>Godkendelsen</h2>\n<p>Godkendelsen sker med jeres verificerede login og en engangskode sendt til jeres e-mail. Det er ikke en MitID-underskrift, og den dokumenterer ikke tegningsret. Den, der godkender, bekræfter selv at være bemyndiget til at indgå aftalen på virksomhedens vegne.</p>\n",
+      "published": true,
+      "description": "Gensidig fortrolighedsaftale, som I læser og godkender digitalt i Veyros kundeportal. Beskytter både jeres og Veyros oplysninger."
+    },
+    {
       "handle": "fuldmagt",
       "title": "Digital fuldmagt",
       "template": "",
@@ -126,6 +134,10 @@
         {
           "title": "Sådan arbejder vi",
           "url": "/#proces"
+        },
+        {
+          "title": "Fortrolighedsaftale (NDA)",
+          "url": "/pages/fortrolighedsaftale"
         },
         {
           "title": "Digital fuldmagt",

@@ -14,6 +14,9 @@ import webhook from './routes/webhook';
 import adminSite from './routes/admin-site';
 import adminStats from './routes/admin-stats';
 import adminPoa from './routes/admin-poa';
+import adminNda from './routes/admin-nda';
+import { applyRetention as ndaRetention } from './lib/nda';
+import { deliverAll as ndaDeliverAll, queueMail as ndaQueueMail, retryMails as ndaRetryMails } from './lib/nda-docs';
 import { policyPage } from './routes/aftaler';
 import { applyRetention, expireDue } from './lib/poa';
 import { deliverAll, queueMail, retryMails } from './lib/poa-docs';
@@ -88,6 +91,7 @@ app.get('/fuldmagter/opbevaring', policyPage);
 app.route('/admin', adminSite);
 app.route('/admin', adminStats);
 app.route('/admin', adminPoa);
+app.route('/admin', adminNda);
 app.route('/admin', admin);
 
 app.notFound((c) =>
@@ -125,6 +129,18 @@ export default {
         }
         await retryMails(env);
       })().catch((err) => logError(env.DB, 'Fuldmagter cron', err)),
+    );
+    // Fortrolighedsaftaler: opbevaringsfrister, gamle kladder og genforsøg på mails
+    ctx.waitUntil(
+      (async () => {
+        for (const rid of await ndaRetention(env.DB)) {
+          const req = await env.DB.prepare('SELECT c.email FROM nda_requests r JOIN customers c ON c.id = r.customer_id WHERE r.id = ?')
+            .bind(rid)
+            .first<{ email: string }>();
+          if (req) await ndaDeliverAll(env, [await ndaQueueMail(env.DB, { requestId: rid, kind: 'request_result', to: req.email })]);
+        }
+        await ndaRetryMails(env);
+      })().catch((err) => logError(env.DB, 'Fortrolighedsaftaler cron', err)),
     );
   },
 } satisfies ExportedHandler<Env>;

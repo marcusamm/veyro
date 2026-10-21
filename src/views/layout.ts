@@ -2,7 +2,7 @@ import { html } from 'hono/html';
 
 export type H = ReturnType<typeof html>;
 
-export type NavKey = 'overblik' | 'aftaler' | 'fuldmagter' | 'admin-fuldmagter' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer' | 'admin-abonnementer' | 'admin-tilbud' | 'admin-hjemmeside' | 'admin-forespoergsler' | 'admin-statistik';
+export type NavKey = 'overblik' | 'aftaler' | 'fuldmagter' | 'admin-fuldmagter' | 'admin-nda' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer' | 'admin-abonnementer' | 'admin-tilbud' | 'admin-hjemmeside' | 'admin-forespoergsler' | 'admin-statistik';
 
 export interface LayoutOpts {
   title: string;
@@ -37,6 +37,7 @@ export function layout(opts: LayoutOpts, body: H): H {
       navLink('/admin/abonnementer', 'Abonnementer', opts.nav === 'admin-abonnementer'),
       navLink('/admin/fakturaer', 'Fakturaer', opts.nav === 'admin-fakturaer'),
       navLink('/admin/fuldmagter', 'Fuldmagter', opts.nav === 'admin-fuldmagter'),
+      navLink('/admin/nda', 'NDA', opts.nav === 'admin-nda'),
     ];
     if (opts.customerNav) navItems.push(navLink('/konto', 'Til kundepanel', false));
   } else if (opts.customerNav) {
@@ -64,7 +65,7 @@ export function layout(opts: LayoutOpts, body: H): H {
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/icon.png">
 <link rel="preload" href="/static/inter-tight.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/static/app.css?v=4">
+<link rel="stylesheet" href="/static/app.css?v=5">
 <script src="/static/app.js?v=2" defer></script>
 </head>
 <body>

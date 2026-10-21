@@ -69,6 +69,7 @@ export function startMock() {
         if (s.offerSessions) Object.assign((state.offerSessions ??= {}), s.offerSessions);
         if (s.rejectDuration !== undefined) state.rejectDuration = s.rejectDuration;
         if (s.failNext !== undefined) state.failNext = s.failNext;
+        if (s.failEmailTo !== undefined) state.failEmailTo = s.failEmailTo;
         if (s.rejectManagedPayments !== undefined) state.rejectManagedPayments = s.rejectManagedPayments;
         return json(200, { ok: true });
       }
@@ -83,6 +84,8 @@ export function startMock() {
       if (p === '/emails' && req.method === 'POST') {
         if (req.headers.authorization !== `Bearer ${RESEND_KEY}`) return json(401, { message: 'unauthorized' });
         const msg = JSON.parse(body);
+        // Simuleret leveringsfejl til bestemte modtagere (fx en ophørsmeddelelse)
+        if ((state.failEmailTo ?? []).includes(msg.to?.[0])) return json(500, { message: 'Simuleret leveringsfejl' });
         state.emails.push(msg);
         return json(200, { id: 'email_' + state.emails.length });
       }

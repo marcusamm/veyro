@@ -40,7 +40,7 @@ function testConfig() {
   return file;
 }
 
-export async function startStack({ minMonths = 12, devMode = false, resend = true } = {}) {
+export async function startStack({ minMonths = 12, devMode = false, resend = true, extraVars = {} } = {}) {
   const mock = await startMock();
   const config = testConfig();
   const port = await freePort();
@@ -70,6 +70,7 @@ export async function startStack({ minMonths = 12, devMode = false, resend = tru
     // Salgshjemmesiden svarer på localhost; kundepanelet på 127.0.0.1
     SITE_HOSTS: 'localhost',
     SITE_URL: `http://localhost:${port}`,
+    ...extraVars,
   };
   const args = ['dev', '--config', config, '--local', '--ip', '127.0.0.1', '--port', String(port), '--persist-to', persist,
     '--show-interactive-dev-session=false', '--log-level', 'log'];

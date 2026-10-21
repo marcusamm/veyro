@@ -10,6 +10,8 @@ import { formatKr } from '../lib/format';
 import { loadSite, type SiteData } from './content';
 import { CONFIRMATIONS, getSettings, ORDER_EXCLUSIONS, POA_TEXT_VERSION, POWER_KEYS, POWERS, TERMS } from '../lib/poa';
 import { samplePoaPdf } from '../lib/poa-pdf';
+import { latestTemplate, veyroInfo } from '../lib/nda';
+import { sampleNdaPdf } from '../lib/nda-docs';
 import { asset, THEME_VERSION, translate, warmUp, type FormState } from './engine';
 import { countView, createLead, LEAD_KIND_LABEL, markLeadNotified, type LeadCartLine, type LeadKind } from './leads';
 import { cartDrop, renderSitePage, type CartLine, type RenderRequest } from './render';
@@ -161,6 +163,16 @@ site.get('/fuldmagt-skabelon.pdf', async (c) => {
   return c.body(pdf as Uint8Array<ArrayBuffer>, 200, {
     'Content-Type': 'application/pdf',
     'Content-Disposition': 'inline; filename="Veyro-fuldmagt-skabelon.pdf"',
+    'Cache-Control': 'public, max-age=3600',
+  });
+});
+
+// Skabelon til fortrolighedsaftalen (vises på /pages/fortrolighedsaftale). Den aktuelle standardtekst med pladsholdere.
+site.get('/fortrolighedsaftale-skabelon.pdf', async (c) => {
+  const pdf = await sampleNdaPdf(veyroInfo(await getSettings(c.env.DB)), await latestTemplate(c.env.DB));
+  return c.body(pdf as Uint8Array<ArrayBuffer>, 200, {
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': 'inline; filename="Veyro-fortrolighedsaftale-skabelon.pdf"',
     'Cache-Control': 'public, max-age=3600',
   });
 });
