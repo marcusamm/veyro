@@ -68,7 +68,7 @@ afterAll(async () => {
 
 describe('Hjemmesiden vises uden Shopify', () => {
   it('alle sider findes, med tema, menu og egne sikkerhedsheaders', async () => {
-    for (const p of ['/', '/pages/ydelser', '/pages/website-optimering', '/pages/custom-losninger', '/pages/om-os', '/pages/kontakt', '/pages/privatlivspolitik', '/pages/cookiepolitik', '/products/starter', '/products/business', '/products/premium', '/cart']) {
+    for (const p of ['/', '/pages/ydelser', '/pages/website-optimering', '/pages/custom-losninger', '/pages/om-os', '/pages/kontakt', '/pages/privatlivspolitik', '/pages/cookiepolitik', '/pages/handelsbetingelser', '/pages/databehandleraftale', '/pages/sla', '/products/starter', '/products/business', '/products/premium', '/cart']) {
       const r = await site.get(p);
       expect(r.status, p).toBe(200);
       expect(r.html, p).toContain('<link rel="stylesheet" href="//localhost:');
@@ -123,6 +123,21 @@ describe('Hjemmesiden vises uden Shopify', () => {
     expect(p.html).not.toContain('Shopify, som hoster');
     const c = await site.get('/pages/cookiepolitik');
     expect(c.html).toContain('veyro_cart');
+    expect(c.html).toContain('__Host-vk_session');
+  });
+
+  it('juridiske sider: B2B-betingelser, databehandleraftale og SLA linkes fra sidefoden', async () => {
+    const home = await site.get('/');
+    for (const h of ['handelsbetingelser', 'databehandleraftale', 'sla']) expect(home.html).toContain(`href="/pages/${h}"`);
+    expect(home.html).toContain('46857569');
+    const t = await site.get('/pages/handelsbetingelser');
+    expect(t.html).toContain('ingen fortrydelsesret');
+    expect(t.html).toContain('Vi er ikke ansvarlige for indirekte tab');
+    const d = await site.get('/pages/databehandleraftale');
+    expect(d.html).toContain('Bilag B: Underdatabehandlere');
+    expect(d.html).toContain('senest 48 timer');
+    const sla = await site.get('/pages/sla');
+    expect(sla.html).toContain('99,5 %');
   });
 });
 

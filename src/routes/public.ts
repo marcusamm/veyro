@@ -3,6 +3,7 @@ import type { AppEnv } from '../env';
 import { getCurrentSubscription, getCustomerByEmail } from '../lib/db';
 import { isPlanKey, minMonths, priceIdFor } from '../lib/plans';
 import { logError } from '../lib/errlog';
+import { recordAcceptance } from '../lib/legal';
 import { stripeRequest, StripeError, type Params } from '../lib/stripe';
 import { render } from '../render';
 import { flash, plansPage, thanksPage } from '../views/pages';
@@ -42,6 +43,20 @@ pub.post('/bestil', async (c) => {
   }
   // Kunden opretter en konto før betaling, så abonnementet altid hører til en konto.
   if (!session) return c.redirect(`/opret?plan=${plan}`, 303);
+  if (body['accept'] !== '1') {
+    return render(
+      c,
+      'Abonnementer',
+      plansPage({
+        csrf: c.get('csrf'),
+        minMonths: minMonths(c.env),
+        loggedIn: true,
+        selected: plan,
+        error: 'Sæt kryds for at acceptere handelsbetingelserne og databehandleraftalen, før du går videre til betaling.',
+      }),
+      { status: 400 },
+    );
+  }
 
   const base = c.env.APP_URL.replace(/\/+$/, '');
   const params: Params = {
@@ -75,6 +90,17 @@ pub.post('/bestil', async (c) => {
     const sub = await getCurrentSubscription(c.env.DB, customer.id);
     const st = subscriptionState(sub);
     if (st && !st.ended) return c.redirect('/konto/plan?besked=har-abonnement', 303);
+  }
+  try {
+    await recordAcceptance(c.env.DB, { email: session.email, customerId: customer?.id, context: 'bestil', ip: c.req.header('CF-Connecting-IP') });
+  } catch (err) {
+    await logError(c.env.DB, 'Accept af betingelser', err);
+    return render(
+      c,
+      'Abonnementer',
+      plansPage({ csrf: c.get('csrf'), minMonths: minMonths(c.env), loggedIn: true, selected: plan, accepted: true, error: 'Din accept kunne ikke gemmes. Prøv igen om lidt.' }),
+      { status: 502 },
+    );
   }
   if (customer?.stripe_customer_id) {
     params.customer = customer.stripe_customer_id;

@@ -262,6 +262,8 @@ Kortoplysninger, adresser og CVR-numre håndteres af Stripe og gemmes ikke i kun
 
 Panelet bruger følgende tjenester til at behandle data: Cloudflare (hosting og database), Stripe (betaling) og Resend (e-mail). Overvej at nævne dem i privatlivspolitikken, og få evt. en jurist til at gennemgå den.
 
+**Handelsbetingelser, databehandleraftale og SLA.** Teksterne er sider på veyro.dk (`handelsbetingelser`, `databehandleraftale`, `sla` i `site/content.json`) og linkes fra sidefoden. Kunderne accepterer betingelserne og databehandleraftalen ved tilmelding på et tilbudslink, ved bestilling under `/bestil` og i overblikket i kundepanelet (eksisterende kunder). Hver accept gemmes i `agreement_acceptances` med e-mail, tidspunkt, version, sted og en hash af IP-adressen, og vises på kunden i admin. Ændres teksterne væsentligt, skal `LEGAL_VERSION` i `src/lib/legal.ts` ændres; så bliver kunderne bedt om at acceptere igen. Teksterne er udkast og bør gennemgås af en advokat.
+
 ---
 
 ## 13. Udvikling og tests (for udviklere)
