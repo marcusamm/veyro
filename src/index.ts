@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { AppEnv, Env } from './env';
 import { cleanup } from './lib/db';
+import { logError } from './lib/errlog';
 import { csrfMiddleware, sessionMiddleware } from './lib/session';
 import { render } from './render';
 import account from './routes/account';
@@ -89,6 +90,8 @@ app.notFound((c) =>
 
 app.onError((err, c) => {
   console.error('Uventet fejl:', err.message);
+  // Gemmes i error_log, så fejlen kan findes bagefter (kun metode og sti, ingen forespørgselsdata)
+  c.executionCtx.waitUntil(logError(c.env.DB, `Kundepanel ${c.req.method} ${new URL(c.req.url).pathname}`, err));
   return c.html(
     `<!doctype html><html lang="da"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fejl · Veyro</title><link rel="stylesheet" href="/static/app.css"><body><main><div class="wrap narrow stack-lg"><h1>Der opstod en fejl</h1><p class="lead">Prøv igen om lidt. Fortsætter problemet, så skriv til <a href="mailto:kontakt@veyro.dk">kontakt@veyro.dk</a>.</p><a class="btn btn-primary" href="/">Til forsiden</a></div></main></body></html>`,
     500,
