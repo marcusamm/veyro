@@ -294,6 +294,13 @@ tr.row-err td{background:rgba(220,38,38,.06)}
 .poa-mails{margin:0;padding-left:18px}
 .poa-events li{padding:10px 0}
 details.card summary{font-size:16px;color:var(--ink)}
+
+/* Fortrolighedsaftaler */
+.nda-doc h3{margin:12px 0 0}
+.nda-doc p{margin:0}
+.nda-toc{margin:0;padding-left:20px;columns:2;column-gap:24px}
+@media(max-width:559px){.nda-toc{columns:1}}
+.nda-project{border-left:3px solid var(--accent,#FF5A1F);padding:4px 0 4px 14px}
 `;
 
 export const JS = `

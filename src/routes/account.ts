@@ -28,6 +28,7 @@ import {
 import { REQUEST_TYPES, subscriptionState } from '../views/status';
 import poaRoutes from './poa';
 import aftaler from './aftaler';
+import ndaRoutes from './nda';
 
 type Vars = AppEnv & { Variables: AppEnv['Variables'] & { customer: CustomerRow } };
 const account = new Hono<Vars>();
@@ -378,5 +379,6 @@ account.post('/henvendelser', async (c) => {
 
 account.route('/fuldmagter', poaRoutes);
 account.route('/aftaler', aftaler);
+account.route('/nda', ndaRoutes);
 
 export default account;

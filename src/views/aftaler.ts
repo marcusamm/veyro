@@ -1,9 +1,11 @@
 import { html } from 'hono/html';
 import { STATUS_LABEL, label, type PoaRow } from '../lib/poa';
+import type { NdaListRow, RequestRow } from '../lib/nda';
 import type { H } from './layout';
+import { ndaTable, requestList } from './nda';
 import { statusBadge } from './poa';
 
-export function agreementsPage(args: { poas: PoaRow[]; canIssuePoa: boolean }): H {
+export function agreementsPage(args: { poas: PoaRow[]; canIssuePoa: boolean; ndas: NdaListRow[]; ndaRequests: RequestRow[] }): H {
   const live = args.poas.filter((p) => p.status === 'active' || p.status === 'pending');
   return html`<div class="stack-lg">
   <div><h1>Aftaler og dokumenter</h1>
@@ -24,5 +26,13 @@ export function agreementsPage(args: { poas: PoaRow[]; canIssuePoa: boolean }): 
       </div>
     </section>
   </div>
+  <section class="card stack" aria-labelledby="nda-h">
+    <div class="item-head"><h2 id="nda-h" style="margin:0">Fortrolighedsaftaler</h2><a class="small" href="/konto/nda">Alle fortrolighedsaftaler</a></div>
+    <p class="small" style="margin:0">Gensidige aftaler (NDA), der beskytter både jeres og Veyros fortrolige oplysninger.</p>
+    ${args.ndas.length ? ndaTable(args.ndas) : html`<p class="muted small">Ingen fortrolighedsaftaler endnu. Veyro opretter aftalen, når I aftaler det.</p>`}
+    ${args.ndaRequests.length
+      ? html`<h3 style="margin:8px 0 0">Anmodninger om sletning og tilbagelevering</h3>${requestList(args.ndaRequests, '/konto/nda')}`
+      : ''}
+  </section>
 </div>`;
 }
