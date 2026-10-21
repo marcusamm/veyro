@@ -101,12 +101,24 @@ export const sessionMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
  *  1) Origin (eller Sec-Fetch-Site) må ikke være fremmed.
  *  2) Skjult felt `_csrf` skal matche sessionens token (eller det anonyme cookie-token).
  */
+/**
+ * En hel HTML-side i stedet for kort tekst: Chrome erstatter korte fejlsvar med sin egen
+ * "Access denied"-side, og så kan man ikke se, at afvisningen kom herfra eller hvorfor.
+ */
+function forbidden(c: Context, reason: string): Response {
+  console.warn(`CSRF-afvisning: ${reason} (${c.req.method} ${new URL(c.req.url).pathname})`);
+  return c.html(
+    `<!doctype html><html lang="da"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Anmodningen blev afvist</title><link rel="stylesheet" href="/static/app.css"><body><main><div class="wrap narrow stack-lg"><h1>Anmodningen blev afvist</h1><p class="muted">Af sikkerhedshensyn blev formularen ikke sendt (${reason}). Det sker typisk, når siden har stået åben længe, eller når den er sendt fra en anden side. Gå til login-siden og prøv igen. Fortsætter det, så skriv til kontakt@veyro.dk med teksten i parentesen.</p><a class="btn btn-primary" href="/login">Til login-siden</a></div></main></body></html>`,
+    403,
+  );
+}
+
 export const csrfMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
   if (c.req.method !== 'POST') return next();
   const origin = c.req.header('Origin');
   const selfOrigin = new URL(c.req.url).origin;
-  if (origin && origin !== selfOrigin) return c.text('Ugyldig anmodning (CSRF).', 403);
-  if (!origin && c.req.header('Sec-Fetch-Site') === 'cross-site') return c.text('Ugyldig anmodning (CSRF).', 403);
+  if (origin && origin !== selfOrigin) return forbidden(c, `fremmed afsender: ${origin.replace(/[^a-z0-9:/.-]/gi, "").slice(0, 80)}`);
+  if (!origin && c.req.header('Sec-Fetch-Site') === 'cross-site') return forbidden(c, 'fremmed side');
 
   const ct = c.req.header('Content-Type') ?? '';
   if (!ct.startsWith('application/x-www-form-urlencoded') && !ct.startsWith('multipart/form-data')) {
@@ -123,7 +135,7 @@ export const csrfMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
       const email = typeof body['email'] === 'string' ? body['email'].trim().slice(0, 254) : '';
       return c.redirect(`/login?besked=login_udlobet${email ? `&email=${encodeURIComponent(email)}` : ''}`, 303);
     }
-    return c.text('Ugyldig anmodning (CSRF). Genindlæs siden og prøv igen.', 403);
+    return forbidden(c, token ? 'udløbet sikkerhedskode' : 'manglende sikkerhedskode');
   }
   await next();
 };

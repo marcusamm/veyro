@@ -10,7 +10,7 @@ CREATE TABLE poa_settings (
   updated_by  TEXT
 );
 INSERT INTO poa_settings (key, value, updated_at) VALUES
-  ('veyro_legal_name', '', 0),
+  ('veyro_legal_name', 'Veyro', 0),
   ('veyro_cvr', '46857569', 0),
   ('veyro_address', 'Albert Ibsensvej 28, 2. tv, 4200 Slagelse', 0),
   ('veyro_contact_name', '', 0),

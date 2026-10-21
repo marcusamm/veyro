@@ -112,14 +112,14 @@ describe('Fuldmagter: adgang og opsætning', () => {
     expect((await new Client(stack.base).get('/admin/fuldmagter')).status).toBe(303);
   });
 
-  it('Veyros oplysninger: kun de kendte er udfyldt, og godkendelse blokeres, til alle er udfyldt', async () => {
+  it('Veyros oplysninger: kun de kendte er udfyldt (juridisk navn: Veyro), og godkendelse blokeres, til alle er udfyldt', async () => {
     const page = await admin.get('/admin/fuldmagter/indstillinger');
     expect(page.html).toContain('value="46857569"');
     expect(page.html).toContain('Albert Ibsensvej 28, 2. tv, 4200 Slagelse');
     expect(page.html).toContain('value="kontakt@veyro.dk"');
-    expect(page.html).toMatch(/id="s-veyro_legal_name" name="veyro_legal_name" type="text" maxlength="200" value=""/);
+    expect(page.html).toMatch(/id="s-veyro_legal_name" name="veyro_legal_name" type="text" maxlength="200" value="Veyro"/);
     const listPage = await admin.get('/admin/fuldmagter');
-    expect(listPage.html).toContain('Mangler: Juridisk virksomhedsnavn, Kontaktperson');
+    expect(listPage.html).toContain('Mangler: Kontaktperson');
     // Kan ikke åbne for alle, før teksten er godkendt
     const bad = await admin.post('/admin/fuldmagter/indstillinger', {
       _csrf: csrfFrom(page.html), veyro_legal_name: '', veyro_cvr: '46857569', veyro_address: 'Albert Ibsensvej 28, 2. tv, 4200 Slagelse',

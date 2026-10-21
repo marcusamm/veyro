@@ -37,7 +37,7 @@
     "sending": "Sender …",
     "privacy_link": "Læs vores privatlivspolitik",
     "success_heading": "Tak for din henvendelse",
-    "success_text": "Vi har modtaget din besked og vender tilbage hurtigst muligt. Du behøver ikke gøre mere lige nu.",
+    "success_text": "Vi har modtaget din besked og svarer inden for 24-48 timer. Du behøver ikke gøre mere lige nu.",
     "error_heading": "Der er fejl i formularen",
     "error_summary": "Ret venligst følgende, og prøv igen:",
     "server_error": "Din besked kunne ikke sendes. Prøv igen, eller skriv direkte til {{ email }}.",
