@@ -19,7 +19,7 @@
       { "type": "text", "id": "company_email", "label": "E-mail", "default": "kontakt@veyro.dk" },
       { "type": "text", "id": "company_phone", "label": "Telefon", "info": "Lad feltet stå tomt for at skjule det.", "default": "+45 61 66 39 31" },
       { "type": "text", "id": "company_cvr", "label": "CVR-nummer", "info": "Skal vises på siden, når virksomheden har et CVR-nummer." },
-      { "type": "text", "id": "company_address", "label": "Adresse", "default": "Jasminvej 45, 4200 Slagelse" },
+      { "type": "text", "id": "company_address", "label": "Adresse", "default": "Albert Ibsensvej 28, 2. tv, 4200 Slagelse" },
       { "type": "text", "id": "company_hours", "label": "Svartid / åbningstid", "info": "Skriv kun noget, I kan overholde." }
     ]
   },
