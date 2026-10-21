@@ -490,3 +490,21 @@ describe('Fuldmagter: udløb', () => {
     expect((await bo.get(`/konto/fuldmagter/${id}`)).html).toContain('kan ikke genaktiveres');
   });
 });
+
+describe('Fuldmagter: skabelon på veyro.dk', () => {
+  it('siden findes, står i menuen og linker til skabelonen som PDF', async () => {
+    const page = await fetch(`${stack.site}/pages/fuldmagt`);
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    for (const label of ['Digital administration', 'Teknisk kontakt', 'Data og registreringer', 'Indhente tilbud og oplysninger', 'Bestille varer eller ydelser', 'Andre beføjelser']) {
+      expect(html).toContain(label);
+    }
+    expect(html).toContain('/fuldmagt-skabelon.pdf');
+    expect(html).toContain('Fuldmagten giver ikke adgang til bankkonti, betalingskort, lån eller kundens penge.');
+    expect(await (await fetch(`${stack.site}/`)).text()).toContain('/pages/fuldmagt');
+    const pdf = await fetch(`${stack.site}/fuldmagt-skabelon.pdf`);
+    expect(pdf.status).toBe(200);
+    expect(pdf.headers.get('content-type')).toBe('application/pdf');
+    expect(Buffer.from(await pdf.arrayBuffer()).subarray(0, 5).toString()).toBe('%PDF-');
+  });
+});

@@ -394,6 +394,8 @@ export interface Snapshot {
   terms: string[];
   confirmations: string[];
   requires_veyro_acceptance: boolean;
+  /** Offentlig skabelon på veyro.dk (pladsholdere i stedet for kundens oplysninger) */
+  sample?: boolean;
 }
 
 export function parseSnapshot(row: Pick<PoaRow, 'snapshot_json'>): Snapshot | null {

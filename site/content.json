@@ -41,6 +41,14 @@
       "description": ""
     },
     {
+      "handle": "fuldmagt",
+      "title": "Digital fuldmagt",
+      "template": "",
+      "body": "<p>Skal vi tale med jeres hostingudbyder, rette i jeres systemer eller indhente tilbud på jeres vegne, kan I give os en digital fuldmagt i kundeportalen. I bestemmer selv, hvad vi må, og I kan tilbagekalde den når som helst.</p>\n<p><a href=\"/fuldmagt-skabelon.pdf\"><strong>Se skabelonen som PDF</strong></a> · <a href=\"https://kunde.veyro.dk/konto/fuldmagter\">Log ind i kundeportalen</a></p>\n<h2>Sådan fungerer det</h2>\n<ol>\n<li><strong>Udfyld.</strong> Virksomhed, projekt, formål og de leverandører, systemer og konti, fuldmagten gælder. Vælg evt. en udløbsdato.</li>\n<li><strong>Vælg beføjelser.</strong> Ingen er valgt på forhånd. Det, I ikke krydser af, er ikke givet.</li>\n<li><strong>Læs og godkend.</strong> I ser hele teksten med jeres valg og godkender med jeres login og en engangskode på mail.</li>\n<li><strong>Kvittering.</strong> I får en kvittering med hele fuldmagten som PDF, og den ligger altid i kundeportalen.</li>\n<li><strong>Tilbagekald når som helst.</strong> Med ét klik i kundeportalen. Det gælder med det samme.</li>\n</ol>\n<h2>Beføjelser, I kan vælge</h2>\n<ul>\n<li><strong>Digital administration:</strong> Veyro må oprette, redigere og vedligeholde kundens hjemmeside, domæne, hosting og de systemer, der er omfattet af fuldmagten.</li>\n<li><strong>Teknisk kontakt:</strong> Veyro må kontakte de angivne hosting-, software- og systemleverandører om support, fejl, drift og tekniske ændringer.</li>\n<li><strong>Data og registreringer:</strong> Veyro må efter kundens instrukser oprette og rette produkt-, lager-, ordre- og joboplysninger i de angivne systemer.</li>\n<li><strong>Indhente tilbud og oplysninger:</strong> Veyro må indhente priser, leveringstider og produktinformation fra de angivne leverandører. Dette giver ikke tilladelse til at bestille.</li>\n<li><strong>Bestille varer eller ydelser:</strong> Veyro må bestille hos udvalgte leverandører inden for særskilt angivne beløbsgrænser og efter kundens konkrete instruktion.</li>\n<li><strong>Andre beføjelser:</strong> Du beskriver selv præcist, hvad Veyro må.</li>\n</ul>\n<p>Vælger I bestillinger, angiver I et maksimalt beløb pr. bestilling og pr. måned inklusive moms, godkendte leverandører, vare- eller ydelsestyper og en periode. Bestillingsbeføjelsen omfatter ikke abonnementer, tilbagevendende køb, finansiering eller ændring af betalingsvilkår. I betaler selv leverandøren, medmindre andet er aftalt skriftligt.</p>\n<h2>Det giver fuldmagten ikke</h2>\n<ul>\n<li>Veyro må kun handle inden for de valgte beføjelser og kundens skriftlige instrukser.</li>\n<li>Fuldmagten giver ikke adgang til bankkonti, betalingskort, lån eller kundens penge.</li>\n<li>Fuldmagten giver ikke ret til andre aftaleændringer eller underskrifter end dem, der udtrykkeligt er omfattet.</li>\n<li>Fuldmagten giver ikke ret til repræsentation over for myndigheder, banker eller domstole.</li>\n<li>Veyro må ikke videregive fuldmagten uden kundens forudgående skriftlige accept.</li>\n<li>Fuldmagten erstatter ikke en eventuel databehandleraftale.</li>\n<li>Kunden bør give Veyro særskilt brugeradgang frem for at dele personlige adgangskoder.</li>\n</ul>\n<h2>Jeres data</h2>\n<p>Fuldmagter kan kun ses af jeres egen virksomhed og af Veyro. I kan anmode om sletning i kundeportalen. Læs <a href=\"https://kunde.veyro.dk/fuldmagter/opbevaring\">hvordan vi opbevarer og sletter fuldmagter</a>.</p>\n<p><em>Skabelonen er under endelig gennemgang, så enkelte formuleringer kan blive justeret.</em></p>\n",
+      "published": true,
+      "description": "Giv Veyro en digital fuldmagt til konkrete opgaver. I vælger selv beføjelserne og kan tilbagekalde den når som helst."
+    },
+    {
       "handle": "privatlivspolitik",
       "title": "Privatlivspolitik",
       "template": "",
@@ -118,6 +126,10 @@
         {
           "title": "Sådan arbejder vi",
           "url": "/#proces"
+        },
+        {
+          "title": "Digital fuldmagt",
+          "url": "/pages/fuldmagt"
         }
       ]
     },
