@@ -63,6 +63,13 @@ jobs:
             echo "::error::$1 svarede ikke $2"; return 1
           }
           check https://kunde.veyro.dk/login 200
+          # Login fra start til slut: send e-mail-formularen med en adresse uden konto (ingen mail sendes)
+          jar=$(mktemp)
+          csrf=$(curl -s -c "$jar" https://kunde.veyro.dk/login | sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' | head -1)
+          svar=$(curl -s -b "$jar" -o /tmp/login.html -w '%{http_code}' -H 'Origin: https://kunde.veyro.dk' \
+            --data-urlencode "_csrf=$csrf" --data-urlencode "email=produktionstest+$(date +%s)@veyro.dk" https://kunde.veyro.dk/login)
+          if [ "$svar" = "200" ] && grep -q 'Tjek din indbakke' /tmp/login.html; then echo "OK login-formularen"
+          else echo "::error::Login-formularen på kunde.veyro.dk svarede $svar"; sed -n '1,40p' /tmp/login.html; exit 1; fi
           check https://ny.veyro.dk/ 200
           check https://ny.veyro.dk/pages/kontakt 200
           check https://ny.veyro.dk/cart 200
