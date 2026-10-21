@@ -9,7 +9,7 @@ Veyro administrerer dem i admin under **Fuldmagter** (`/admin/fuldmagter`).
 
 ## Før ibrugtagning (admin → Fuldmagter → Veyros oplysninger og indstillinger)
 
-1. Udfyld Veyros **juridiske navn** og **kontaktperson**. CVR, adresse og kontaktmail er udfyldt fra veyro.dk. Kunder kan ikke godkende, før alle fem felter er udfyldt.
+1. Udfyld Veyros **kontaktperson**. Juridisk navn (Veyro), CVR, adresse og kontaktmail er udfyldt på forhånd. Kunder kan ikke godkende, før alle fem felter er udfyldt.
 2. Vælg om **Veyros accept** indgår (standard: ja). Så er status "Afventer godkendelse", indtil en medarbejder accepterer.
 3. Tilføj evt. **pilotkunder** (e-mails), der kan prøve funktionen.
 4. Når teksten, metoden og politikken er godkendt: sæt flueben i "gennemgået og godkendt" og derefter "Åbn for alle kunder".
