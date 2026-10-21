@@ -16,6 +16,8 @@ import {
 } from '../lib/offers';
 import { alert, csrfField, type H } from './layout';
 import { badgeClass, subscriptionState } from './status';
+import { legalLinks } from './legal';
+import { LEGAL_DOCS, LEGAL_VERSION, type Acceptance, type LegalDocKey } from '../lib/legal';
 
 const kr = (n: number) => formatKr(n, { decimals: n % 100 !== 0 });
 const iv = (i: string | null | undefined) => INTERVAL_LABEL[(i === 'year' ? 'year' : 'month') as Interval];
@@ -112,11 +114,11 @@ export function publicOfferPage(args: { csrf: string; offer: OfferRow; error?: s
   <section class="card stack" aria-labelledby="vilkaar-h">
     <h2 id="vilkaar-h">Vilkår og opsigelse</h2>
     <p>${termsText(o)}</p>
-    <p class="small muted">Du får en kvittering og faktura fra Stripe ved hver betaling. Tilbuddet gælder til og med ${formatDate(o.valid_until)}.</p>
+    <p class="small muted">Du får en kvittering og faktura fra Stripe ved hver betaling. Tilbuddet gælder til og med ${formatDate(o.valid_until)}. Abonnementet sælges kun til virksomheder, og der er ingen fortrydelsesret.</p>
     <form method="post" action="/tilbud/${o.token}" class="stack">
       ${csrfField(args.csrf)}
       <label class="check"><input type="checkbox" name="accept" value="1" required${args.checked ? html` checked` : ''}>
-        Jeg godkender tilbuddet og tilmelder mig et løbende abonnement på ${kr(offerTotals(o).recurringTotal)} ${iv(o.interval).per}${o.vat ? ' inkl. moms' : ''} på vilkårene ovenfor.</label>
+        Jeg godkender tilbuddet og tilmelder mig et løbende abonnement på ${kr(offerTotals(o).recurringTotal)} ${iv(o.interval).per}${o.vat ? ' inkl. moms' : ''} på vilkårene ovenfor, og jeg accepterer på virksomhedens vegne ${legalLinks()}.</label>
       <button class="btn btn-accent btn-block" type="submit" data-loading="Åbner Stripe …">Godkend og gå til betaling</button>
       <p class="small muted">Betalingen sker sikkert hos Stripe. Kortoplysninger gemmes aldrig hos Veyro.</p>
     </form>
@@ -326,6 +328,7 @@ export function adminCustomerPage(args: {
   priceChanges: PriceChangeRow[];
   flash: string | null;
   error: string | null;
+  accepted?: Partial<Record<LegalDocKey, Acceptance>>;
 }): H {
   const c = args.customer;
   return html`<div class="stack-lg">
@@ -342,6 +345,10 @@ export function adminCustomerPage(args: {
       <div><dt>Telefon</dt><dd>${c.phone ?? '–'}</dd></div>
       <div><dt>Faktureringsadresse</dt><dd>${c.address ? html`${c.address}, ${c.postal_code ?? ''} ${c.city ?? ''}` : '–'}</dd></div>
       <div><dt>Stripe</dt><dd>${c.stripe_customer_id ? html`<a href="https://dashboard.stripe.com/customers/${c.stripe_customer_id}" target="_blank" rel="noopener">${c.stripe_customer_id}</a>` : '–'}</dd></div>
+      ${LEGAL_DOCS.map((d) => {
+        const a = args.accepted?.[d.key];
+        return html`<div><dt>${d.title}</dt><dd>${a ? `Version ${a.version}, accepteret ${formatDate(a.accepted_at)}${a.version === LEGAL_VERSION ? '' : ' (ikke nyeste)'}` : 'Ikke accepteret'}</dd></div>`;
+      })}
     </dl>
   </section>
   <section class="card stack">
@@ -371,7 +378,7 @@ export function adminCustomerPage(args: {
                 <div class="field"><label for="eff-${sub.id}">Gælder fra betalingen den</label>
                   <select id="eff-${sub.id}" name="effective">${renewals.map((d, n) => html`<option value="${n === 0 ? 'next' : d}">${formatDate(d)}${n === 0 ? ' (næste periode)' : ''}</option>`)}</select></div>
               </div>
-              <p class="hint">Ingen forholdsmæssig afregning: den nuværende pris gælder til den valgte dato. Kunden får en mail om ændringen. Andre kunder påvirkes ikke.</p>
+              <p class="hint">Ingen forholdsmæssig afregning: den nuværende pris gælder til den valgte dato. Kunden får en mail om ændringen. Andre kunder påvirkes ikke. En prisstigning skal ifølge handelsbetingelserne varsles mindst 1 måned før, så vælg en dato mindst en måned frem.</p>
               <div class="row"><button class="btn btn-small btn-primary" type="submit" data-confirm-btn="Ændre prisen og give kunden besked på mail?">Gem ny pris</button></div>
             </form></details>`
           : ''}

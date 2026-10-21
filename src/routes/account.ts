@@ -30,6 +30,9 @@ import poaRoutes from './poa';
 import aftaler from './aftaler';
 import ndaRoutes from './nda';
 
+import { acceptancesFor, recordAcceptance } from '../lib/legal';
+import { agreementsCard } from '../views/legal';
+
 type Vars = AppEnv & { Variables: AppEnv['Variables'] & { customer: CustomerRow } };
 const account = new Hono<Vars>();
 
@@ -76,9 +79,20 @@ account.get('/', async (c) => {
       cancellableFrom: cancellableFrom(c.env, sub?.started_at ?? null),
       openRequests: open?.n ?? 0,
       flashKey: c.req.query('besked'),
+      agreements: agreementsCard({ csrf: c.get('csrf'), accepted: await acceptancesFor(c.env.DB, customer.email) }),
     }),
     { nav: 'overblik', isCustomer: true },
   );
+});
+
+// ---------- Accept af handelsbetingelser og databehandleraftale ----------
+account.post('/vilkaar', async (c) => {
+  const body = await c.req.parseBody();
+  const back = body['next'] === 'aftaler' ? '/konto/aftaler' : '/konto';
+  if (body['accept'] !== '1') return c.redirect(`${back}?besked=vilkaar-mangler#aftaler`, 303);
+  const customer = c.get('customer');
+  await recordAcceptance(c.env.DB, { email: customer.email, customerId: customer.id, context: 'kundepanel', ip: c.req.header('CF-Connecting-IP') });
+  return c.redirect(`${back}?besked=vilkaar-accepteret#aftaler`, 303);
 });
 
 // ---------- Skift plan ----------

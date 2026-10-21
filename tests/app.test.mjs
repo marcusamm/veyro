@@ -191,6 +191,25 @@ describe('Magic-link-login', () => {
     expect(r.headers.get('location')).toBe('/login');
   });
 
+  it('viser aftalerne i overblikket og gemmer kundens accept', async () => {
+    await seedCustomer(stack, { email: 'dorte@example.dk', name: 'Dorte', cus: 'cus_D', sub: 'sub_D', price: 'price_starter_test', start: now() - 5 * DAY });
+    const { client } = await login(stack, 'dorte@example.dk');
+    const dash = await client.get('/konto');
+    expect(dash.html).toContain('Databehandleraftale');
+    expect(dash.html).toContain('Afventer accept');
+    const missing = await client.post('/konto/vilkaar', { _csrf: csrfFrom(dash.html) });
+    expect(missing.headers.get('location')).toBe('/konto?besked=vilkaar-mangler#aftaler');
+    const ok = await client.post('/konto/vilkaar', { _csrf: csrfFrom(dash.html), accept: '1' });
+    expect(ok.headers.get('location')).toBe('/konto?besked=vilkaar-accepteret#aftaler');
+    const after = await client.get('/konto?besked=vilkaar-accepteret');
+    expect(after.html).toContain('Din accept af handelsbetingelserne og databehandleraftalen er gemt');
+    expect(after.html.match(/badge b-ok">Accepteret/g)).toHaveLength(2);
+    expect(after.html).not.toContain('action="/konto/vilkaar"');
+    const page = await client.get('/konto/aftaler');
+    expect(page.html).toContain('Betingelser og databehandleraftale');
+    expect(page.html).toContain('Fortrolighedsaftaler');
+  });
+
   it('log ud sletter sessionen', async () => {
     const { client } = await login(stack, 'carl@example.dk');
     const dash = await client.get('/konto');
@@ -401,7 +420,12 @@ describe('Bestilling (Stripe Checkout)', () => {
     expect(plans.html).toContain('Din konto er oprettet');
     expect(plans.html).toContain('Gå til betaling');
 
-    const res = await c.post('/bestil', { _csrf: csrfFrom(plans.html), plan: 'business' });
+    expect(plans.html).toContain('href="https://veyro.dk/pages/databehandleraftale"');
+    const noAccept = await c.post('/bestil', { _csrf: csrfFrom(plans.html), plan: 'business' });
+    expect(noAccept.status).toBe(400);
+    expect(noAccept.html).toContain('Sæt kryds for at acceptere handelsbetingelserne');
+    expect(noAccept.html).toContain('Gå til betaling');
+    const res = await c.post('/bestil', { _csrf: csrfFrom(plans.html), plan: 'business', accept: '1' });
     expect(res.status).toBe(303);
     expect(res.headers.get('location')).toMatch(/^https:\/\/checkout\.stripe\.com\//);
     const call = (await calls()).filter((x) => x.path === '/v1/checkout/sessions').pop();
@@ -460,7 +484,7 @@ describe('Bestilling (Stripe Checkout)', () => {
   it('sender eksisterende kunder til planskift i stedet for ny Checkout', async () => {
     const { client } = await as('anna@example.dk');
     const page = await client.get('/bestil');
-    const res = await client.post('/bestil', { _csrf: csrfFrom(page.html), plan: 'starter' });
+    const res = await client.post('/bestil', { _csrf: csrfFrom(page.html), plan: 'starter', accept: '1' });
     expect(res.headers.get('location')).toBe('/konto/plan?besked=har-abonnement');
   });
 });

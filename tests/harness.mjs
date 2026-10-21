@@ -6,6 +6,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MOCK_KEY, RESEND_KEY, startMock } from './mock-server.mjs';
+import { Agent, setGlobalDispatcher } from 'undici';
+
+// Ingen genbrug af forbindelser: wrangler dev lukker inaktive keep-alive-forbindelser, mens testene venter på
+// "wrangler d1 execute", og næste kald fejlede så med "other side closed".
+setGlobalDispatcher(new Agent({ pipelining: 0 }));
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const WEBHOOK_SECRET = 'whsec_test_secret_123';

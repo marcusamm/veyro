@@ -104,7 +104,8 @@ describe('Fuldmagter: adgang og opsætning', () => {
     expect(list.status).toBe(200);
     expect(list.html).toContain('ikke åbnet for din konto');
     expect((await anna.get('/konto/fuldmagter/ny')).status).toBe(303);
-    expect((await anna.get('/konto')).html).not.toContain('Aftaler og dokumenter');
+    // Menupunktet vises for alle kunder (handelsbetingelser og databehandleraftale), men uden "Ny fuldmagt".
+    expect((await anna.get('/konto/aftaler')).html).not.toContain('href="/konto/fuldmagter/ny"');
   });
 
   it('kunder kan ikke åbne Veyros administration', async () => {

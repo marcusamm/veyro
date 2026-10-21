@@ -3,7 +3,8 @@ import type { AppEnv } from '../env';
 import { sha256Hex } from '../lib/crypto';
 import { rateLimit } from '../lib/db';
 import { logError } from '../lib/errlog';
-import { checkoutForOffer, getOfferByToken } from '../lib/offers';
+import { recordAcceptance } from '../lib/legal';
+import { checkoutForOffer, getOfferByToken, offerState } from '../lib/offers';
 import { render } from '../render';
 import { publicOfferPage, publicOfferThanksPage } from '../views/offers';
 import { errorPage } from '../views/pages';
@@ -32,6 +33,7 @@ offer.post('/tilbud/:token', async (c) => {
     render(c, `Tilbud: ${o.service}`, publicOfferPage({ csrf: c.get('csrf'), offer: o, error, checked: body['accept'] === '1' }), { status });
   if (body['accept'] !== '1') return page('Sæt kryds for at godkende tilbuddet og vilkårene, før du går videre til betaling.', 400);
   try {
+    if (offerState(o) === 'open') await recordAcceptance(c.env.DB, { email: o.email, offerId: o.id, context: 'tilbud', ip });
     const res = await checkoutForOffer(c.env, o.id);
     if ('url' in res) return c.redirect(res.url, 303);
     if (res.state === 'first-charge-passed') return page('Datoen for første opkrævning er for tæt på. Skriv til kontakt@veyro.dk, så sender vi et opdateret link.', 409);

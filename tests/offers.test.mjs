@@ -185,6 +185,15 @@ describe('Tilbud med individuel pris og betalingslink', () => {
     expect(sql("SELECT COUNT(*) AS n FROM customers WHERE email = 'mette@byg.dk'")[0].n).toBe(0);
   });
 
+  it('gemmer accept af handelsbetingelser og databehandleraftale på tilbuddet', async () => {
+    const rows = sql(`SELECT DISTINCT document, version, context, email FROM agreement_acceptances WHERE offer_id = ${S.offerId} ORDER BY document`);
+    expect(rows.map((r) => r.document)).toEqual(['databehandleraftale', 'handelsbetingelser']);
+    for (const r of rows) expect(r).toMatchObject({ context: 'tilbud', email: 'mette@byg.dk' });
+    const page = await new Client(stack.base).get(`/tilbud/${S.token}`);
+    expect(page.html).toContain('href="https://veyro.dk/pages/handelsbetingelser"');
+    expect(page.html).toContain('ingen fortrydelsesret');
+  });
+
   it('webhook uden gyldig signatur aktiverer intet', async () => {
     const done = await simPost('/__mock/checkout/complete', { session: S.session });
     S.sub = done.subscription.id;

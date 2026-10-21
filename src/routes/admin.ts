@@ -1,4 +1,5 @@
 import { Hono, type Context } from 'hono';
+import { acceptancesFor } from '../lib/legal';
 import type { AppEnv } from '../env';
 import { sha256Hex } from '../lib/crypto';
 import { listAllRequests, listCustomers, normalizeEmail, rateLimit, updateRequestStatus } from '../lib/db';
@@ -463,14 +464,15 @@ async function customerView(c: Context<AppEnv>, customerId: number, extra: { err
       renewals: sub.current_period_end ? renewalDates(sub.current_period_end, interval, 6) : [],
     };
   });
-  const [payments, priceChanges] = await Promise.all([
+  const [payments, priceChanges, accepted] = await Promise.all([
     customer.stripe_customer_id ? listPayments(c.env.DB, customer.stripe_customer_id) : Promise.resolve([]),
     listPriceChanges(c.env.DB, subs.map((s) => s.id)),
+    acceptancesFor(c.env.DB, customer.email),
   ]);
   return render(
     c,
     customer.company ?? customer.name ?? customer.email,
-    adminCustomerPage({ csrf: c.get('csrf'), customer, subs: views, offers, payments, priceChanges, flash: extra.error ? null : (c.req.query('besked') ?? null), error: extra.error ?? null }),
+    adminCustomerPage({ csrf: c.get('csrf'), customer, subs: views, offers, payments, priceChanges, accepted, flash: extra.error ? null : (c.req.query('besked') ?? null), error: extra.error ?? null }),
     { nav: 'admin-kunder', admin: true, status: extra.status },
   );
 }

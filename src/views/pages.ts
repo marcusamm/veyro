@@ -5,6 +5,7 @@ import { formatDate, formatDateShort, formatKr } from '../lib/format';
 import { PLANS, getPlan, type Plan } from '../lib/plans';
 import type { StripeInvoice } from '../lib/stripe';
 import { alert, csrfField, type H } from './layout';
+import { acceptField } from './legal';
 import { REQUEST_STATUSES, REQUEST_TYPES, badgeClass, subscriptionState } from './status';
 
 // Faste beskeder efter handlinger (?besked=...). Kun kendte nøgler vises – ingen vilkårlig tekst fra URL'en.
@@ -18,6 +19,8 @@ export const FLASH: Record<string, { kind: 'ok' | 'info' | 'warn' | 'err'; text:
   'stripe-fejl': { kind: 'err', text: 'Der opstod en fejl hos vores betalingsudbyder. Prøv igen om lidt, eller kontakt os.' },
   logget_ud: { kind: 'info', text: 'Du er logget ud.' },
   'konto-oprettet': { kind: 'ok', text: 'Din konto er oprettet. Vælg din plan for at gå videre til betaling.' },
+  'vilkaar-accepteret': { kind: 'ok', text: 'Tak. Din accept af handelsbetingelserne og databehandleraftalen er gemt.' },
+  'vilkaar-mangler': { kind: 'err', text: 'Sæt kryds for at acceptere handelsbetingelserne og databehandleraftalen.' },
 };
 
 export function flash(key: string | undefined): H | '' {
@@ -188,6 +191,7 @@ export function plansPage(args: {
   loggedIn: boolean;
   error?: string;
   selected?: string;
+  accepted?: boolean;
   info?: H | '';
 }): H {
   return html`<div class="stack-lg">
@@ -202,18 +206,19 @@ export function plansPage(args: {
     ${PLANS.map((p) =>
       planCard(
         p,
-        args.loggedIn
-          ? html`<form method="post" action="/bestil">
+        args.loggedIn && args.selected === p.key
+          ? html`<form method="post" action="/bestil" class="stack">
           ${csrfField(args.csrf)}
           <input type="hidden" name="plan" value="${p.key}">
-          <button class="btn ${p.badge || args.selected === p.key ? 'btn-accent' : 'btn-primary'} btn-block" type="submit" data-loading="Åbner betaling …"${args.selected === p.key ? ' autofocus' : ''}>${args.selected === p.key ? `Gå til betaling` : `Vælg ${p.name}`}</button>
+          ${acceptField(args.accepted)}
+          <button class="btn btn-accent btn-block" type="submit" data-loading="Åbner betaling …" autofocus>Gå til betaling</button>
         </form>`
-          : html`<a class="btn ${p.badge || args.selected === p.key ? 'btn-accent' : 'btn-primary'} btn-block" href="/opret?plan=${p.key}">Vælg ${p.name}</a>`,
+          : html`<a class="btn ${p.badge || args.selected === p.key ? 'btn-accent' : 'btn-primary'} btn-block" href="${args.loggedIn ? `/bestil?plan=${p.key}#${p.key}` : `/opret?plan=${p.key}`}">Vælg ${p.name}</a>`,
         args.selected === p.key,
       ),
     )}
   </div>
-  <p class="muted small medium">Alle priser er i danske kroner inkl. 25 % moms og betales månedligt forud.
+  <p class="muted small medium">Abonnementerne sælges kun til virksomheder, og der er ingen fortrydelsesret. Alle priser er i danske kroner inkl. 25 % moms og betales månedligt forud.
     ${args.minMonths > 0
       ? `Abonnementet har en bindingsperiode på ${args.minMonths} måneder fra start; derefter kan det opsiges til udgangen af en betalingsperiode.`
       : 'Abonnementet kan opsiges til udgangen af den betalte periode.'}
@@ -244,6 +249,8 @@ export function dashboardPage(args: {
   cancellableFrom: number | null;
   openRequests: number;
   flashKey?: string;
+  /** Kortet med handelsbetingelser og databehandleraftale */
+  agreements?: H;
 }): H {
   const state = subscriptionState(args.sub);
   const plan = getPlan(args.sub?.plan);
@@ -263,6 +270,7 @@ export function dashboardPage(args: {
         <div class="row"><a class="btn btn-primary" href="/bestil">Se abonnementer</a>
         <a class="btn btn-secondary" href="/konto/fakturaer">Se tidligere fakturaer</a></div>
       </section>
+      ${args.agreements ?? ''}
     </div>`;
   }
 
@@ -316,6 +324,7 @@ export function dashboardPage(args: {
           : ''}
     </section>
   </div>
+  ${args.agreements ?? ''}
 </div>`;
 }
 

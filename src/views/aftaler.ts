@@ -3,14 +3,17 @@ import { STATUS_LABEL, label, type PoaRow } from '../lib/poa';
 import type { NdaListRow, RequestRow } from '../lib/nda';
 import type { H } from './layout';
 import { ndaTable, requestList } from './nda';
+import { flash } from './pages';
 import { statusBadge } from './poa';
 
-export function agreementsPage(args: { poas: PoaRow[]; canIssuePoa: boolean; ndas: NdaListRow[]; ndaRequests: RequestRow[] }): H {
+export function agreementsPage(args: { poas: PoaRow[]; canIssuePoa: boolean; ndas: NdaListRow[]; ndaRequests: RequestRow[]; terms: H; flashKey?: string }): H {
   const live = args.poas.filter((p) => p.status === 'active' || p.status === 'pending');
   return html`<div class="stack-lg">
   <div><h1>Aftaler og dokumenter</h1>
     <p class="lead">Her finder du de aftaler og dokumenter, din virksomhed har med Veyro.</p></div>
+  ${flash(args.flashKey)}
   <div class="grid grid-2" style="align-items:start">
+    ${args.terms}
     <section class="card stack" aria-labelledby="fm-h">
       <h2 id="fm-h">Fuldmagter</h2>
       <p class="small">Giv Veyro fuldmagt til konkrete opgaver, og tilbagekald den når som helst.</p>
