@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "hono": "^4.13.13",
-    "liquidjs": "^10.30.0"
+    "liquidjs": "^10.30.0",
+    "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261018.1",

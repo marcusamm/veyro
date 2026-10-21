@@ -8,6 +8,8 @@ import { adminNoticeEmail, sendEmail } from '../lib/email';
 import { logError } from '../lib/errlog';
 import { formatKr } from '../lib/format';
 import { loadSite, type SiteData } from './content';
+import { CONFIRMATIONS, getSettings, ORDER_EXCLUSIONS, POA_TEXT_VERSION, POWER_KEYS, POWERS, TERMS } from '../lib/poa';
+import { samplePoaPdf } from '../lib/poa-pdf';
 import { asset, THEME_VERSION, translate, warmUp, type FormState } from './engine';
 import { countView, createLead, LEAD_KIND_LABEL, markLeadNotified, type LeadCartLine, type LeadKind } from './leads';
 import { cartDrop, renderSitePage, type CartLine, type RenderRequest } from './render';
@@ -140,6 +142,28 @@ site.get('/account/*', (c) => c.redirect('https://kunde.veyro.dk/login', 302));
 site.get('/admin', (c) => c.redirect('https://kunde.veyro.dk/admin', 302));
 site.get('/admin/*', (c) => c.redirect('https://kunde.veyro.dk/admin', 302));
 site.get('/healthz', (c) => c.text('ok'));
+
+// Skabelon til digital fuldmagt (vises på /pages/fuldmagt). Laves fra samme tekst som de rigtige fuldmagter.
+site.get('/fuldmagt-skabelon.pdf', async (c) => {
+  const s = await getSettings(c.env.DB);
+  const pdf = await samplePoaPdf(
+    { legal_name: s.veyro_legal_name, cvr: s.veyro_cvr, address: s.veyro_address, contact_name: s.veyro_contact_name, contact_email: s.veyro_contact_email },
+    {
+      version: POA_TEXT_VERSION,
+      draft: !s.text_approved,
+      powers: POWER_KEYS.map((k) => ({ key: k, label: POWERS[k].label, description: POWERS[k].description, granted: false })),
+      terms: TERMS,
+      confirmations: [...CONFIRMATIONS],
+      exclusions: ORDER_EXCLUSIONS,
+      requiresAcceptance: s.require_veyro_acceptance,
+    },
+  );
+  return c.body(pdf as Uint8Array<ArrayBuffer>, 200, {
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': 'inline; filename="Veyro-fuldmagt-skabelon.pdf"',
+    'Cache-Control': 'public, max-age=3600',
+  });
+});
 
 // ---------- Kurv (gemmes i en cookie; sendes som forespørgsel, der betales ikke her) ----------
 

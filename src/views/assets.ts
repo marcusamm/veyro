@@ -269,6 +269,31 @@ input[readonly]{background:var(--surface,#f4f2ec);color:var(--muted)}
 .offer-table td{padding:12px 0 12px 12px}
 .offer-table tr.total th,.offer-table tr.total td{border-top:2px solid var(--line)}
 tr.row-err td{background:rgba(220,38,38,.06)}
+
+/* Fuldmagter */
+.stack-xs{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.medium-wide{max-width:820px}
+.form-grid .field+.field{margin-top:0}
+.poa-actions{gap:6px}
+.powers{display:grid;gap:10px}
+.power{border:1px solid var(--line-strong);border-radius:12px;padding:14px 16px;background:#fff}
+.power:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.power-label{align-items:flex-start;font-weight:400;margin:0;cursor:pointer}
+.power-label input{margin-top:4px;width:20px;height:20px;flex:none}
+.power-extra{margin-top:14px}
+@supports selector(:has(*)){.power:not(:has(input[name=powers]:checked)) .power-extra{display:none}}
+.confirm-check{align-items:flex-start;font-weight:500}
+.confirm-check input{margin-top:3px;width:20px;height:20px;flex:none}
+.poa-terms{margin:0;padding-left:20px}
+.poa-terms li+li{margin-top:6px}
+.poa-powers li.not-granted{opacity:.7}
+.poa-facts dd{font-weight:500;font-size:16px;overflow-wrap:anywhere}
+.poa-choice{border-top:1px solid var(--line);padding-top:16px}
+.poa-choice:first-of-type{border-top:0;padding-top:0}
+.poa-choice h3{margin-bottom:4px}
+.poa-mails{margin:0;padding-left:18px}
+.poa-events li{padding:10px 0}
+details.card summary{font-size:16px;color:var(--ink)}
 `;
 
 export const JS = `

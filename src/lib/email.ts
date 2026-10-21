@@ -6,6 +6,13 @@ export interface EmailMessage {
   text: string;
   html: string;
   replyTo?: string;
+  attachments?: EmailAttachment[];
+}
+
+/** Vedhæftet fil til Resend (indhold som base64) */
+export interface EmailAttachment {
+  filename: string;
+  content: string;
 }
 
 /**
@@ -28,6 +35,7 @@ export async function sendEmail(env: Env, msg: EmailMessage): Promise<boolean> {
       text: msg.text,
       html: msg.html,
       ...(msg.replyTo ? { reply_to: msg.replyTo } : {}),
+      ...(msg.attachments?.length ? { attachments: msg.attachments } : {}),
     }),
   });
   if (!res.ok) {
