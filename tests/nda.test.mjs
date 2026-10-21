@@ -166,6 +166,7 @@ describe('Oprettelse og udfyldning', () => {
   });
 
   it('kan ikke sendes til godkendelse, før Veyros juridiske navn er udfyldt centralt', async () => {
+    sql("UPDATE poa_settings SET value = '' WHERE key = 'veyro_legal_name'");
     const page = await anna.get(`/konto/nda/${annaNda}`);
     const res = await anna.post(`/konto/nda/${annaNda}`, { _csrf: csrfFrom(page.html), ...ANNA_FORM, next: 'send' });
     expect(res.status).toBe(400);
