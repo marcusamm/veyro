@@ -397,12 +397,12 @@
         "heading_tag": "h2",
         "eyebrow": "Kontakt",
         "heading": "Hvilken løsning er du interesseret i?",
-        "text": "<p>Vælg den type løsning, du er interesseret i, og fortæl kort om jeres virksomhed. Vi vender tilbage og aftaler en demo eller en uforpligtende snak.</p>",
+        "text": "<p>Vælg den type løsning, du er interesseret i, og fortæl kort om jeres virksomhed. Vi svarer inden for 24-48 timer og aftaler en demo eller en uforpligtende snak.</p>",
         "form_name": "Forside – løsninger",
         "services": "Hjemmeside med bestilling og lagerstyring\nInternt system til ordrer og varekontrol\nBook en demo\nAlmindelig hjemmeside eller landingsside\nOptimering, fejlfinding eller vedligeholdelse\nAndet / ved ikke endnu",
         "submit_label": "Send henvendelse",
         "success_heading": "Tak, vi har modtaget din henvendelse",
-        "success_text": "<p>Vi kigger på din besked og vender tilbage på e-mail for at aftale næste skridt.</p>",
+        "success_text": "<p>Vi kigger på din besked og svarer på e-mail inden for 24-48 timer for at aftale næste skridt.</p>",
         "steps_heading": "Det sker der, når du skriver",
         "direct_heading": "Foretrækker du at ringe eller skrive direkte?"
       }
