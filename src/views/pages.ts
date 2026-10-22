@@ -5,7 +5,6 @@ import { formatDate, formatDateShort, formatKr } from '../lib/format';
 import { PLANS, getPlan, type Plan } from '../lib/plans';
 import type { StripeInvoice } from '../lib/stripe';
 import { alert, csrfField, type H } from './layout';
-import { acceptField } from './legal';
 import { REQUEST_STATUSES, REQUEST_TYPES, badgeClass, subscriptionState } from './status';
 
 // Faste beskeder efter handlinger (?besked=...). Kun kendte nøgler vises – ingen vilkårlig tekst fra URL'en.
@@ -18,7 +17,7 @@ export const FLASH: Record<string, { kind: 'ok' | 'info' | 'warn' | 'err'; text:
   'har-abonnement': { kind: 'info', text: 'Du har allerede et abonnement. Her kan du skifte plan.' },
   'stripe-fejl': { kind: 'err', text: 'Der opstod en fejl hos vores betalingsudbyder. Prøv igen om lidt, eller kontakt os.' },
   logget_ud: { kind: 'info', text: 'Du er logget ud.' },
-  'konto-oprettet': { kind: 'ok', text: 'Din konto er oprettet. Vælg din plan for at gå videre til betaling.' },
+  'konto-oprettet': { kind: 'ok', text: 'Din konto er oprettet. Kontakt os om den plan, I er interesserede i, så sender vi et tilbud.' },
   'vilkaar-accepteret': { kind: 'ok', text: 'Tak. Din accept af handelsbetingelserne og databehandleraftalen er gemt.' },
   'vilkaar-mangler': { kind: 'err', text: 'Sæt kryds for at acceptere handelsbetingelserne og databehandleraftalen.' },
 };
@@ -185,20 +184,22 @@ function planCard(p: Plan, footer: H, selected = false): H {
 </article>`;
 }
 
+// Planerne købes ikke direkte her: knappen sender kunden til kontaktformularen på veyro.dk med
+// planen forvalgt (?ydelse=abonnement-<plan>). Veyro svarer med et tilbud og et personligt betalingslink.
+export const contactUrlFor = (p: Plan) => `https://veyro.dk/pages/kontakt?ydelse=abonnement-${p.key}#formular`;
+
 export function plansPage(args: {
-  csrf: string;
   minMonths: number;
   loggedIn: boolean;
   error?: string;
   selected?: string;
-  accepted?: boolean;
   info?: H | '';
 }): H {
   return html`<div class="stack-lg">
   <div>
     <p class="eyebrow">Abonnementer</p>
     <h1>Vælg den plan, der passer til jer</h1>
-    <p class="lead">Fast månedlig pris. Betaling med kort via Stripe. Du kan skifte plan fra kundepanelet, når som helst.</p>
+    <p class="lead">Fast månedlig pris. Kontakt os om den plan, I er interesserede i, så svarer vi inden for 24-48 timer med et tilbud og et personligt link til betaling.</p>
   </div>
   ${args.info ?? ''}
   ${args.error ? alert('err', args.error) : ''}
@@ -206,14 +207,7 @@ export function plansPage(args: {
     ${PLANS.map((p) =>
       planCard(
         p,
-        args.loggedIn && args.selected === p.key
-          ? html`<form method="post" action="/bestil" class="stack">
-          ${csrfField(args.csrf)}
-          <input type="hidden" name="plan" value="${p.key}">
-          ${acceptField(args.accepted)}
-          <button class="btn btn-accent btn-block" type="submit" data-loading="Åbner betaling …" autofocus>Gå til betaling</button>
-        </form>`
-          : html`<a class="btn ${p.badge || args.selected === p.key ? 'btn-accent' : 'btn-primary'} btn-block" href="${args.loggedIn ? `/bestil?plan=${p.key}#${p.key}` : `/opret?plan=${p.key}`}">Vælg ${p.name}</a>`,
+        html`<a class="btn ${p.badge || args.selected === p.key ? 'btn-accent' : 'btn-primary'} btn-block" href="${contactUrlFor(p)}">Kontakt os om ${p.name}</a>`,
         args.selected === p.key,
       ),
     )}

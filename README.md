@@ -179,7 +179,9 @@ Webhooken holder databasen opdateret, når der sker noget i Stripe (nyt køb, be
    - `invoice.voided`
 4. Gem, og kopiér **Signing secret** (`whsec_...`). Sæt den som `STRIPE_WEBHOOK_SECRET` (trin 6).
 
-Kunden oprettes i kundepanelet, når betalingen er gennemført. Derefter kan kunden logge ind med den e-mail, der blev brugt i Stripe Checkout.
+Kunden oprettes i kundepanelet, når betalingen er gennemført. Derefter kan kunden logge ind med den e-mail, der blev brugt ved betalingen.
+
+**Ingen selvbetjent bestilling:** `/bestil` viser planerne, men knapperne sender kunden til kontaktformularen på veyro.dk med planen forvalgt (`/pages/kontakt?ydelse=abonnement-<plan>#formular`). Veyro svarer med et tilbud og et personligt betalingslink (se [afsnit 14](#14-tilbud-med-individuel-pris-og-betalingslink)).
 
 **Eksisterende Stripe-kunder:** Har I allerede kunder med abonnement i Stripe, kan de komme ind i kundepanelet, når der sker en hændelse på deres abonnement. Vil du have dem ind med det samme, kan du i Stripe åbne webhooken og "gensende" (Resend) en tidligere `customer.subscription.*`-hændelse for kunden – eller lave en lille ændring på abonnementet (fx tilføje metadata), så der sendes en `customer.subscription.updated`. Bemærk, at abonnementets pris skal være én af de tre pris-ID'er, ellers vises planen som "Abonnement".
 
@@ -205,7 +207,7 @@ Afsender er `Veyro <kontakt@veyro.dk>` (kan ændres med `EMAIL_FROM`). Nye henve
 
 I Stripes testtilstand (med `sk_test_...`, test-pris-ID'er og en test-webhook):
 
-1. Åbn `https://kunde.veyro.dk/bestil`, vælg en plan, og betal med testkortet `4242 4242 4242 4242` (vilkårlig fremtidig udløbsdato og CVC).
+1. Opret et tilbud i admin, åbn tilbudslinket, og betal med testkortet `4242 4242 4242 4242` (vilkårlig fremtidig udløbsdato og CVC).
 2. Gå til `https://kunde.veyro.dk/login`, skriv samme e-mail, og log ind via linket i mailen.
 3. Prøv: skift plan, opsig/fortsæt, se fakturaer, skift betalingskort, opret en henvendelse.
 4. Log ind med en admin-e-mail, og gå til `/admin`.
@@ -262,7 +264,7 @@ Kortoplysninger, adresser og CVR-numre håndteres af Stripe og gemmes ikke i kun
 
 Panelet bruger følgende tjenester til at behandle data: Cloudflare (hosting og database), Stripe (betaling) og Resend (e-mail). Overvej at nævne dem i privatlivspolitikken, og få evt. en jurist til at gennemgå den.
 
-**Handelsbetingelser, databehandleraftale og SLA.** Teksterne er sider på veyro.dk (`handelsbetingelser`, `databehandleraftale`, `sla` i `site/content.json`) og linkes fra sidefoden. Kunderne accepterer betingelserne og databehandleraftalen ved tilmelding på et tilbudslink, ved bestilling under `/bestil` og i overblikket i kundepanelet (eksisterende kunder). Hver accept gemmes i `agreement_acceptances` med e-mail, tidspunkt, version, sted og en hash af IP-adressen, og vises på kunden i admin. Ændres teksterne væsentligt, skal `LEGAL_VERSION` i `src/lib/legal.ts` ændres; så bliver kunderne bedt om at acceptere igen. Teksterne er udkast og bør gennemgås af en advokat.
+**Handelsbetingelser, databehandleraftale og SLA.** Teksterne er sider på veyro.dk (`handelsbetingelser`, `databehandleraftale`, `sla` i `site/content.json`) og linkes fra sidefoden. Kunderne accepterer betingelserne og databehandleraftalen ved tilmelding på et tilbudslink og i overblikket i kundepanelet (eksisterende kunder). Hver accept gemmes i `agreement_acceptances` med e-mail, tidspunkt, version, sted og en hash af IP-adressen, og vises på kunden i admin. Ændres teksterne væsentligt, skal `LEGAL_VERSION` i `src/lib/legal.ts` ændres; så bliver kunderne bedt om at acceptere igen. Teksterne er udkast og bør gennemgås af en advokat.
 
 ---
 

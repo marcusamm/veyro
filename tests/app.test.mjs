@@ -386,21 +386,30 @@ describe('Fakturaer og betalingskort', () => {
   });
 });
 
-describe('Bestilling (Stripe Checkout)', () => {
-  it('kræver konto før betaling: anonyme sendes til opret', async () => {
+describe('Bestilling (via kontaktformularen)', () => {
+  it('planknapperne sender til kontaktformularen på veyro.dk med planen forvalgt', async () => {
     const c = new Client(stack.base);
     const page = await c.get('/bestil');
     expect(page.html).toContain('Mest populær');
     expect(page.html).toContain('299 kr.');
     expect(page.html).toContain('1.099 kr.');
-    expect(page.html).toContain('href="/opret?plan=business"');
+    expect(page.html).toContain('href="https://veyro.dk/pages/kontakt?ydelse=abonnement-business#formular"');
+    expect(page.html).toContain('Kontakt os om Business');
+    expect(page.html).not.toContain('Gå til betaling');
+    expect(page.html).not.toContain('via Stripe');
     const login = await c.get('/login');
     const res = await c.post('/bestil', { _csrf: csrfFrom(login.html), plan: 'business' });
     expect(res.status).toBe(303);
-    expect(res.headers.get('location')).toBe('/opret?plan=business');
+    expect(res.headers.get('location')).toBe('https://veyro.dk/pages/kontakt?ydelse=abonnement-business#formular');
+    const before = (await calls()).filter((x) => x.path === '/v1/checkout/sessions').length;
+    const { client } = await as('anna@example.dk');
+    const page2 = await client.get('/bestil');
+    const res2 = await client.post('/bestil', { _csrf: csrfFrom(page2.html), plan: 'starter', accept: '1' });
+    expect(res2.headers.get('location')).toBe('https://veyro.dk/pages/kontakt?ydelse=abonnement-starter#formular');
+    expect((await calls()).filter((x) => x.path === '/v1/checkout/sessions').length).toBe(before);
   });
 
-  it('opret konto → bekræft e-mail → betaling med Veyros udseende', async () => {
+  it('opret konto → bekræft e-mail → planen vises med kontaktknap', async () => {
     const c = new Client(stack.base);
     const form = await c.get('/opret?plan=business');
     expect(form.html).toContain('Opret din konto');
@@ -418,29 +427,8 @@ describe('Bestilling (Stripe Checkout)', () => {
     expect(done.headers.get('location')).toBe('/bestil?plan=business&besked=konto-oprettet');
     const plans = await c.get('/bestil?plan=business&besked=konto-oprettet');
     expect(plans.html).toContain('Din konto er oprettet');
-    expect(plans.html).toContain('Gå til betaling');
-
-    expect(plans.html).toContain('href="https://veyro.dk/pages/databehandleraftale"');
-    const noAccept = await c.post('/bestil', { _csrf: csrfFrom(plans.html), plan: 'business' });
-    expect(noAccept.status).toBe(400);
-    expect(noAccept.html).toContain('Sæt kryds for at acceptere handelsbetingelserne');
-    expect(noAccept.html).toContain('Gå til betaling');
-    const res = await c.post('/bestil', { _csrf: csrfFrom(plans.html), plan: 'business', accept: '1' });
-    expect(res.status).toBe(303);
-    expect(res.headers.get('location')).toMatch(/^https:\/\/checkout\.stripe\.com\//);
-    const call = (await calls()).filter((x) => x.path === '/v1/checkout/sessions').pop();
-    expect(call.params).toMatchObject({
-      mode: 'subscription',
-      locale: 'da',
-      customer_email: 'nina@example.dk',
-      'line_items[0][price]': 'price_business_test',
-      billing_address_collection: 'required',
-      'tax_id_collection[enabled]': 'true',
-      'managed_payments[enabled]': 'false',
-      'branding_settings[button_color]': '#FF5A1F',
-      'branding_settings[font_family]': 'inter',
-    });
-    expect(call.params['branding_settings[logo][url]']).toMatch(/\/static\/logo\.png$/);
+    expect(plans.html).toContain('class="plan featured selected" id="business"');
+    expect(plans.html).toContain('Kontakt os om Business');
   });
 
   it('opret med eksisterende e-mail sender login-link og opretter ingen dublet', async () => {
@@ -481,12 +469,6 @@ describe('Bestilling (Stripe Checkout)', () => {
     expect(bad.html).not.toContain(' selected"');
   });
 
-  it('sender eksisterende kunder til planskift i stedet for ny Checkout', async () => {
-    const { client } = await as('anna@example.dk');
-    const page = await client.get('/bestil');
-    const res = await client.post('/bestil', { _csrf: csrfFrom(page.html), plan: 'starter', accept: '1' });
-    expect(res.headers.get('location')).toBe('/konto/plan?besked=har-abonnement');
-  });
 });
 
 describe('Henvendelser', () => {
