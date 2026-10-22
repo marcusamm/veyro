@@ -17,6 +17,7 @@ import { stripeRequest, StripeError, type StripeInvoice, type StripeSubscription
 import { render } from '../render';
 import {
   cancelPage,
+  CONTACT_URL,
   choosePlanPage,
   confirmPlanPage,
   dashboardPage,
@@ -46,7 +47,7 @@ account.use('*', async (c, next) => {
     return render(
       c as unknown as Context<AppEnv>,
       'Ingen konto',
-      errorPage('Ingen kundekonto', 'Der er ikke knyttet et abonnement til denne e-mail.', { href: '/bestil', label: 'Se abonnementer' }),
+      errorPage('Ingen kundekonto', 'Der er ikke knyttet et abonnement til denne e-mail.', { href: CONTACT_URL, label: 'Få et tilbud' }),
       { status: 404, isCustomer: false },
     );
   }

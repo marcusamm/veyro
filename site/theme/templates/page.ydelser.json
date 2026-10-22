@@ -49,7 +49,7 @@
           "type": "anchor",
           "settings": {
             "label": "Vedligeholdelse og hosting",
-            "target": "abonnement"
+            "target": "vedligeholdelse"
           }
         },
         "a0": {
@@ -211,80 +211,11 @@
         "title": "Vedligeholdelse og hosting",
         "intro": "<p>Løbende pasning af din hjemmeside som abonnement, hos din nuværende hostingudbyder eller hos os.</p>",
         "problem": "<p>Opdateringer bliver udskudt, fejl opdages først, når en kunde klager, og ingen har ansvaret for, at siden bliver ved med at være hurtig og sikker.</p>",
-        "includes": "Hjemmeside, hosting, SSL og domæne samlet i ét abonnement\nOpdateringer og sikkerhedskopier\nIndholdsændringer hver måned\nVedligeholdelse af eksisterende sider, hvor de ligger i dag",
+        "includes": "Hjemmeside, hosting, SSL og domæne samlet i én aftale\nOpdateringer og sikkerhedskopier\nIndholdsændringer hver måned\nVedligeholdelse af eksisterende sider, hvor de ligger i dag",
         "audience": "<p>vil have en fast teknisk partner til sin hjemmeside eller webshop, uanset om den kører på Shopify, WordPress, WooCommerce eller noget andet, og uanset hvor den er hostet.</p>",
-        "deliverables": "Fast månedligt abonnement\nOvervågning og opdateringer\nSupport ved fejl\nStatusrapport",
-        "cta_label": "Hør om abonnementet",
-        "form_key": "vedligeholdelse-af-eksisterende-hjemmeside",
-        "secondary_label": "Se abonnementerne",
-        "secondary_link": "#abonnement"
-      }
-    },
-    "plans": {
-      "type": "plans",
-      "blocks": {
-        "starter": {
-          "type": "plan",
-          "settings": {
-            "title": "Starter",
-            "badge": "",
-            "highlight": false,
-            "text": "",
-            "price": "299 kr.",
-            "price_note": "/md. inkl. moms",
-            "features": "Enkel, professionel hjemmeside\nWebhosting og SSL-certifikat\nTilkobling af domæne\nGrundlæggende vedligeholdelse",
-            "note": "",
-            "button_label": "Vælg Starter",
-            "form_key": "abonnement-starter",
-            "product": "starter"
-          }
-        },
-        "business": {
-          "type": "plan",
-          "settings": {
-            "title": "Business",
-            "badge": "Mest populær",
-            "highlight": true,
-            "text": "",
-            "price": "599 kr.",
-            "price_note": "/md. inkl. moms",
-            "features": "Skræddersyet virksomhedshjemmeside\nWebhosting, SSL og sikkerhedskopier\nLøbende opdateringer\nMindre indholdsændringer hver måned",
-            "note": "",
-            "button_label": "Vælg Business",
-            "form_key": "abonnement-business",
-            "product": "business"
-          }
-        },
-        "premium": {
-          "type": "plan",
-          "settings": {
-            "title": "Premium",
-            "badge": "",
-            "highlight": false,
-            "text": "",
-            "price": "1.099 kr.",
-            "price_note": "/md. inkl. moms",
-            "features": "Avanceret hjemmeside\nWebhosting og udvidet vedligeholdelse\nFlere indholdsændringer\nPrioriteret kundesupport",
-            "note": "",
-            "button_label": "Vælg Premium",
-            "form_key": "abonnement-premium",
-            "product": "premium"
-          }
-        }
-      },
-      "block_order": [
-        "starter",
-        "business",
-        "premium"
-      ],
-      "settings": {
-        "scheme": "surface",
-        "anchor": "abonnement",
-        "eyebrow": "Abonnement",
-        "heading": "Hjemmeside som abonnement",
-        "text": "<p>Vi bygger, hoster og vedligeholder din hjemmeside for en fast pris om måneden. Læg et abonnement i kurven og send en forespørgsel, eller hent et tilbud, hvis din løsning skal tilpasses. Du betaler ikke på hjemmesiden: vi sender dig et tilbud med et personligt link, hvor du tilmelder dig sikkert hos Stripe, og du får en faktura ved hver betaling.</p>",
-        "footnote": "<p>Alle priser er inkl. moms. Har du allerede en hjemmeside og hosting, kan vi også nøjes med at vedligeholde den, hvor den ligger. Skriv til os for en pris. Abonnementet kan opsiges til udgangen af den betalte periode, og du styrer det selv i kundepanelet.</p>",
-        "terms": "Løbende abonnement med fast månedspris, til du opsiger det"
+        "deliverables": "Fast månedlig pris efter tilbud\nOvervågning og opdateringer\nSupport ved fejl\nStatusrapport",
+        "cta_label": "Få et tilbud",
+        "form_key": "vedligeholdelse-af-eksisterende-hjemmeside"
       }
     },
     "solutions": {
@@ -344,11 +275,9 @@
         "anchor": "webloesninger",
         "icon": "design",
         "heading": "Hjemmesider og øvrige webløsninger",
-        "text": "<p>Har du blot brug for en hjemmeside, eller skal din nuværende side forbedres? Her er de ydelser, vi også tilbyder, uden ordre- og lagerstyring. Hjemmesider laver vi som abonnement med fast månedspris fra 299 kr./md.</p>",
-        "primary_label": "Se abonnementerne",
-        "primary_link": "#abonnement",
-        "secondary_label": "Hent tilbud",
-        "secondary_link": "/pages/kontakt?ydelse=almindelig-hjemmeside-eller-landingsside#formular"
+        "text": "<p>Har du blot brug for en hjemmeside, eller skal din nuværende side forbedres? Her er de ydelser, vi også tilbyder, uden ordre- og lagerstyring. Prisen er skræddersyet efter jeres behov.</p>",
+        "primary_label": "Få et tilbud",
+        "primary_link": "/pages/kontakt?ydelse=almindelig-hjemmeside-eller-landingsside#formular"
       }
     }
   },
@@ -363,7 +292,6 @@
     "s5",
     "s6",
     "s7",
-    "plans",
     "cta"
   ]
 }

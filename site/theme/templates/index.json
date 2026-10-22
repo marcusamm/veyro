@@ -275,12 +275,12 @@
         "scheme": "light",
         "anchor": "hjemmesider",
         "icon": "design",
-        "heading": "Har du blot brug for en hjemmeside? Det laver vi også, som abonnement.",
-        "text": "<p>Vi laver almindelige virksomhedshjemmesider og landingssider som et løbende abonnement med fast månedspris fra 299 kr./md. inkl. hosting og vedligeholdelse. Vi hjælper også med optimering, fejlfinding og vedligeholdelse af din nuværende hjemmeside.</p>",
-        "primary_label": "Se abonnementerne",
-        "primary_link": "/pages/ydelser#abonnement",
-        "secondary_label": "Hent tilbud",
-        "secondary_link": "/?ydelse=almindelig-hjemmeside-eller-landingsside#kontakt"
+        "heading": "Har du blot brug for en hjemmeside? Det laver vi også.",
+        "text": "<p>Vi laver almindelige virksomhedshjemmesider og landingssider til en skræddersyet pris, der passer til jeres behov, gerne inkl. hosting og vedligeholdelse. Vi hjælper også med optimering, fejlfinding og vedligeholdelse af din nuværende hjemmeside.</p>",
+        "primary_label": "Få et tilbud",
+        "primary_link": "/?ydelse=almindelig-hjemmeside-eller-landingsside#kontakt",
+        "secondary_label": "Se ydelserne",
+        "secondary_link": "/pages/ydelser#webloesninger"
       }
     },
     "faq": {
@@ -339,7 +339,7 @@
           "type": "question",
           "settings": {
             "question": "Laver I stadig almindelige hjemmesider?",
-            "answer": "<p>Ja. Vi laver virksomhedshjemmesider og landingssider som abonnement med fast månedspris fra 299 kr./md., og vi hjælper med optimering og vedligeholdelse. <a href=\"/pages/ydelser#abonnement\">Se abonnementerne</a>, eller skriv til os for et tilbud.</p>"
+            "answer": "<p>Ja. Vi laver virksomhedshjemmesider og landingssider til en skræddersyet pris, og vi hjælper med optimering og vedligeholdelse. <a href=\"/pages/kontakt?ydelse=almindelig-hjemmeside-eller-landingsside#formular\">Skriv til os</a>, så får du et tilbud.</p>"
           }
         }
       },

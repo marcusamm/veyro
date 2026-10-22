@@ -386,35 +386,29 @@ describe('Fakturaer og betalingskort', () => {
   });
 });
 
-describe('Bestilling (via kontaktformularen)', () => {
-  it('planknapperne sender til kontaktformularen på veyro.dk med planen forvalgt', async () => {
+describe('Bestilling (skræddersyet pris via kontaktformularen)', () => {
+  it('ingen faste planer: /bestil sender videre til kontaktformularen på veyro.dk', async () => {
     const c = new Client(stack.base);
-    const page = await c.get('/bestil');
-    expect(page.html).toContain('Mest populær');
-    expect(page.html).toContain('299 kr.');
-    expect(page.html).toContain('1.099 kr.');
-    expect(page.html).toContain('href="https://veyro.dk/pages/kontakt?ydelse=abonnement-business#formular"');
-    expect(page.html).toContain('Kontakt os om Business');
-    expect(page.html).not.toContain('Gå til betaling');
-    expect(page.html).not.toContain('via Stripe');
-    const login = await c.get('/login');
-    const res = await c.post('/bestil', { _csrf: csrfFrom(login.html), plan: 'business' });
-    expect(res.status).toBe(303);
-    expect(res.headers.get('location')).toBe('https://veyro.dk/pages/kontakt?ydelse=abonnement-business#formular');
+    const page = await c.get('/bestil?plan=business');
+    expect(page.status).toBe(302);
+    expect(page.headers.get('location')).toBe('https://veyro.dk/pages/kontakt#formular');
     const before = (await calls()).filter((x) => x.path === '/v1/checkout/sessions').length;
     const { client } = await as('anna@example.dk');
-    const page2 = await client.get('/bestil');
-    const res2 = await client.post('/bestil', { _csrf: csrfFrom(page2.html), plan: 'starter', accept: '1' });
-    expect(res2.headers.get('location')).toBe('https://veyro.dk/pages/kontakt?ydelse=abonnement-starter#formular');
+    const login = await c.get('/login');
+    expect(login.html).toContain('href="https://veyro.dk/pages/kontakt#formular"');
+    const konto = await client.get('/konto');
+    const res = await client.post('/bestil', { _csrf: csrfFrom(konto.html), plan: 'starter', accept: '1' });
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe('https://veyro.dk/pages/kontakt#formular');
     expect((await calls()).filter((x) => x.path === '/v1/checkout/sessions').length).toBe(before);
   });
 
-  it('opret konto → bekræft e-mail → planen vises med kontaktknap', async () => {
+  it('opret konto → bekræft e-mail → kundepanelet uden planvalg', async () => {
     const c = new Client(stack.base);
     const form = await c.get('/opret?plan=business');
     expect(form.html).toContain('Opret din konto');
-    expect(form.html).toContain('Business');
-    const sent = await c.post('/opret?plan=business', { _csrf: csrfFrom(form.html), name: 'Nina Nielsen', email: 'Nina@Example.dk' });
+    expect(form.html).not.toContain('Valgt plan');
+    const sent = await c.post('/opret', { _csrf: csrfFrom(form.html), name: 'Nina Nielsen', email: 'Nina@Example.dk' });
     expect(sent.status).toBe(200);
     expect(sent.html).toContain('Tjek din indbakke');
     const mail = await waitFor(async () => (await emails()).filter((e) => e.to[0] === 'nina@example.dk').pop());
@@ -424,11 +418,7 @@ describe('Bestilling (via kontaktformularen)', () => {
     const confirm = await c.get('/login/bekraeft?token=' + token);
     const done = await c.post('/login/bekraeft', { _csrf: csrfFrom(confirm.html), token });
     expect(done.status).toBe(303);
-    expect(done.headers.get('location')).toBe('/bestil?plan=business&besked=konto-oprettet');
-    const plans = await c.get('/bestil?plan=business&besked=konto-oprettet');
-    expect(plans.html).toContain('Din konto er oprettet');
-    expect(plans.html).toContain('class="plan featured selected" id="business"');
-    expect(plans.html).toContain('Kontakt os om Business');
+    expect(done.headers.get('location')).toBe('/konto?besked=konto-oprettet');
   });
 
   it('opret med eksisterende e-mail sender login-link og opretter ingen dublet', async () => {
@@ -457,16 +447,6 @@ describe('Bestilling (via kontaktformularen)', () => {
       expect(r.headers.get('content-type')).toBe(type);
       expect((await r.arrayBuffer()).byteLength).toBeGreaterThan(1000);
     }
-  });
-
-  it('fremhæver planen fra ?plan= (links fra veyro.dk) og ignorerer ukendte', async () => {
-    const c = new Client(stack.base);
-    const page = await c.get('/bestil?plan=premium');
-    expect(page.html).toContain('class="plan selected" id="premium"');
-    expect(page.html.match(/ selected"/g)).toHaveLength(1);
-    const bad = await c.get('/bestil?plan=gratis');
-    expect(bad.status).toBe(200);
-    expect(bad.html).not.toContain(' selected"');
   });
 
 });
@@ -562,7 +542,7 @@ describe('Admin: login via mail-link', () => {
 
   it('login-siden er ikke linket fra kundesiderne', async () => {
     const { client } = await as('anna@example.dk');
-    for (const p of ['/login', '/bestil', '/opret']) {
+    for (const p of ['/login', '/opret']) {
       expect((await new Client(stack.base).get(p)).html).not.toContain('/admin/login');
     }
     expect((await client.get('/konto')).html).not.toContain('/admin');

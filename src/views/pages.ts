@@ -7,6 +7,9 @@ import type { StripeInvoice } from '../lib/stripe';
 import { alert, csrfField, type H } from './layout';
 import { REQUEST_STATUSES, REQUEST_TYPES, badgeClass, subscriptionState } from './status';
 
+// Veyro sælger ikke faste planer: prisen er skræddersyet. Nye kunder sendes til kontaktformularen på veyro.dk.
+export const CONTACT_URL = 'https://veyro.dk/pages/kontakt#formular';
+
 // Faste beskeder efter handlinger (?besked=...). Kun kendte nøgler vises – ingen vilkårlig tekst fra URL'en.
 export const FLASH: Record<string, { kind: 'ok' | 'info' | 'warn' | 'err'; text: string }> = {
   'plan-skiftet': { kind: 'ok', text: 'Din plan er skiftet. Ændringen gælder fra nu.' },
@@ -17,7 +20,7 @@ export const FLASH: Record<string, { kind: 'ok' | 'info' | 'warn' | 'err'; text:
   'har-abonnement': { kind: 'info', text: 'Du har allerede et abonnement. Her kan du skifte plan.' },
   'stripe-fejl': { kind: 'err', text: 'Der opstod en fejl hos vores betalingsudbyder. Prøv igen om lidt, eller kontakt os.' },
   logget_ud: { kind: 'info', text: 'Du er logget ud.' },
-  'konto-oprettet': { kind: 'ok', text: 'Din konto er oprettet. Kontakt os om den plan, I er interesserede i, så sender vi et tilbud.' },
+  'konto-oprettet': { kind: 'ok', text: 'Din konto er oprettet. Kontakt os, så sender vi et skræddersyet tilbud.' },
   'vilkaar-accepteret': { kind: 'ok', text: 'Tak. Din accept af handelsbetingelserne og databehandleraftalen er gemt.' },
   'vilkaar-mangler': { kind: 'err', text: 'Sæt kryds for at acceptere handelsbetingelserne og databehandleraftalen.' },
 };
@@ -48,7 +51,7 @@ export function loginPage(args: { csrf: string; error?: string; email?: string; 
     </div>
     <button class="btn btn-primary btn-block" type="submit" data-loading="Sender …">Send login-link</button>
   </form>
-  <p class="muted small">Er du ikke kunde endnu? <a href="/opret">Opret en konto</a> eller <a href="/bestil">se vores abonnementer</a>.</p>
+  <p class="muted small">Er du ikke kunde endnu? <a href="/opret">Opret en konto</a> eller <a href="${CONTACT_URL}">få et tilbud</a>.</p>
 </div>`;
 }
 
@@ -78,24 +81,18 @@ export function chooseSystemPage(args: { csrf: string; email: string; systemer: 
 
 export function signupPage(args: {
   csrf: string;
-  plan?: Plan;
   name?: string;
   email?: string;
   error?: string;
   errorField?: 'name' | 'email';
 }): H {
-  const action = args.plan ? `/opret?plan=${args.plan.key}` : '/opret';
   return html`<div class="narrow stack-lg">
   <div>
-    <p class="eyebrow">Trin 1 af 2</p>
     <h1>Opret din konto</h1>
-    <p class="lead">Først opretter du en konto, så dit abonnement altid er samlet ét sted. Derefter går du videre til betaling.</p>
+    <p class="lead">Med en konto har du dit abonnement, dine fakturaer og dine henvendelser samlet ét sted. Prisen aftaler vi med dig, og du får et tilbud med et link til betaling.</p>
   </div>
-  ${args.plan
-    ? html`<div class="card item-head"><div><p class="muted small">Valgt plan</p><strong>${args.plan.name}</strong> · ${formatKr(args.plan.amount)} /md.</div><a class="small" href="/bestil">Skift</a></div>`
-    : ''}
   ${args.error ? alert('err', args.error) : ''}
-  <form method="post" action="${action}" class="card stack" novalidate>
+  <form method="post" action="/opret" class="card stack" novalidate>
     ${csrfField(args.csrf)}
     <div class="field">
       <label for="name">Navn</label>
@@ -184,42 +181,6 @@ function planCard(p: Plan, footer: H, selected = false): H {
 </article>`;
 }
 
-// Planerne købes ikke direkte her: knappen sender kunden til kontaktformularen på veyro.dk med
-// planen forvalgt (?ydelse=abonnement-<plan>). Veyro svarer med et tilbud og et personligt betalingslink.
-export const contactUrlFor = (p: Plan) => `https://veyro.dk/pages/kontakt?ydelse=abonnement-${p.key}#formular`;
-
-export function plansPage(args: {
-  minMonths: number;
-  loggedIn: boolean;
-  error?: string;
-  selected?: string;
-  info?: H | '';
-}): H {
-  return html`<div class="stack-lg">
-  <div>
-    <p class="eyebrow">Abonnementer</p>
-    <h1>Vælg den plan, der passer til jer</h1>
-    <p class="lead">Fast månedlig pris. Kontakt os om den plan, I er interesserede i, så svarer vi inden for 24-48 timer med et tilbud og et personligt link til betaling.</p>
-  </div>
-  ${args.info ?? ''}
-  ${args.error ? alert('err', args.error) : ''}
-  <div class="plans">
-    ${PLANS.map((p) =>
-      planCard(
-        p,
-        html`<a class="btn ${p.badge || args.selected === p.key ? 'btn-accent' : 'btn-primary'} btn-block" href="${contactUrlFor(p)}">Kontakt os om ${p.name}</a>`,
-        args.selected === p.key,
-      ),
-    )}
-  </div>
-  <p class="muted small medium">Abonnementerne sælges kun til virksomheder, og der er ingen fortrydelsesret. Alle priser er i danske kroner inkl. 25 % moms og betales månedligt forud.
-    ${args.minMonths > 0
-      ? `Abonnementet har en bindingsperiode på ${args.minMonths} måneder fra start; derefter kan det opsiges til udgangen af en betalingsperiode.`
-      : 'Abonnementet kan opsiges til udgangen af den betalte periode.'}
-    ${args.loggedIn ? '' : html`Har du allerede en konto? <a href="/login">Log ind</a>.`}</p>
-</div>`;
-}
-
 export function thanksPage(): H {
   return html`<div class="narrow stack-lg">
   <div>
@@ -260,8 +221,8 @@ export function dashboardPage(args: {
         <p class="muted">${sub && state?.ended
           ? `Dit abonnement blev afsluttet ${formatDate(sub.canceled_at ?? sub.current_period_end)}.`
           : 'Vi kan ikke finde et aktivt abonnement på din konto.'}
-          Vælg en plan for at komme i gang.</p>
-        <div class="row"><a class="btn btn-primary" href="/bestil">Se abonnementer</a>
+          Kontakt os, så sender vi et skræddersyet tilbud.</p>
+        <div class="row"><a class="btn btn-primary" href="${CONTACT_URL}">Få et tilbud</a>
         <a class="btn btn-secondary" href="/konto/fakturaer">Se tidligere fakturaer</a></div>
       </section>
       ${args.agreements ?? ''}
