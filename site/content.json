@@ -202,7 +202,7 @@
       "type": "Abonnement",
       "price": 29900,
       "interval": "month",
-      "status": "active",
+      "status": "draft",
       "description": "<ul>\n<li>Enkel, professionel hjemmeside</li>\n<li>Webhosting og SSL-certifikat</li>\n<li>Tilkobling af domæne</li>\n<li>Grundlæggende vedligeholdelse</li>\n</ul>"
     },
     {
@@ -211,7 +211,7 @@
       "type": "Abonnement",
       "price": 59900,
       "interval": "month",
-      "status": "active",
+      "status": "draft",
       "description": "<ul>\n<li>Skræddersyet virksomhedshjemmeside</li>\n<li>Webhosting, SSL og sikkerhedskopier</li>\n<li>Løbende opdateringer</li>\n<li>Mindre indholdsændringer hver måned</li>\n</ul>"
     },
     {
@@ -220,7 +220,7 @@
       "type": "Abonnement",
       "price": 109900,
       "interval": "month",
-      "status": "active",
+      "status": "draft",
       "description": "<ul>\n<li>Avanceret hjemmeside</li>\n<li>Webhosting og udvidet vedligeholdelse</li>\n<li>Flere indholdsændringer</li>\n<li>Prioriteret kundesupport</li>\n</ul>"
     }
   ],

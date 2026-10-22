@@ -80,7 +80,7 @@ export function layout(opts: LayoutOpts, body: H): H {
             <input type="hidden" name="_csrf" value="${opts.csrf ?? ''}">
             <button class="btn btn-secondary btn-small" type="submit">Log ud</button>
           </form>`
-        : html`<a class="btn btn-secondary btn-small" href="/bestil">Se abonnementer</a>`}
+        : html`<a class="btn btn-secondary btn-small" href="https://veyro.dk/pages/kontakt#formular">Få et tilbud</a>`}
     </div>
   </div>
   ${navItems.length

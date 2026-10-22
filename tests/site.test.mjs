@@ -1,6 +1,7 @@
 // Salgshjemmesiden (veyro.dk): gengivelse, kurv, formularer, forespørgsler og admin.
 // Hjemmesiden svarer på localhost, kundepanelet på 127.0.0.1 (se harness.mjs).
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ADMIN_EMAIL, Client, ROOT, csrfFrom, login, startStack, waitFor } from './harness.mjs';
@@ -68,7 +69,7 @@ afterAll(async () => {
 
 describe('Hjemmesiden vises uden Shopify', () => {
   it('alle sider findes, med tema, menu og egne sikkerhedsheaders', async () => {
-    for (const p of ['/', '/pages/ydelser', '/pages/website-optimering', '/pages/custom-losninger', '/pages/om-os', '/pages/kontakt', '/pages/privatlivspolitik', '/pages/cookiepolitik', '/pages/handelsbetingelser', '/pages/databehandleraftale', '/pages/sla', '/products/starter', '/products/business', '/products/premium', '/cart']) {
+    for (const p of ['/', '/pages/ydelser', '/pages/website-optimering', '/pages/custom-losninger', '/pages/om-os', '/pages/kontakt', '/pages/privatlivspolitik', '/pages/cookiepolitik', '/pages/handelsbetingelser', '/pages/databehandleraftale', '/pages/sla', '/cart']) {
       const r = await site.get(p);
       expect(r.status, p).toBe(200);
       expect(r.html, p).toContain('<link rel="stylesheet" href="//localhost:');
@@ -93,7 +94,7 @@ describe('Hjemmesiden vises uden Shopify', () => {
     const r = await site.get('/pages/findes-ikke');
     expect(r.status).toBe(404);
     expect(r.html).toContain('Siden findes ikke');
-    expect((await site.get('/collections/all')).headers.get('location')).toBe('/pages/ydelser#abonnement');
+    expect((await site.get('/collections/all')).headers.get('location')).toBe('/pages/kontakt#formular');
     expect((await site.get('/account')).headers.get('location')).toBe('https://kunde.veyro.dk/login');
   });
 
@@ -102,7 +103,7 @@ describe('Hjemmesiden vises uden Shopify', () => {
     expect(robots.html).toContain('Sitemap: http://localhost:');
     const sm = await site.get('/sitemap.xml');
     expect(sm.html).toContain('/pages/ydelser</loc>');
-    expect(sm.html).toContain('/products/business</loc>');
+    expect(sm.html).not.toContain('/products/business</loc>');
     const home = await site.get('/');
     const css = home.html.match(/href="\/\/localhost:\d+(\/assets\/base\.css\?v=[0-9a-f]+)"/)[1];
     const r = await site.get(css);
@@ -141,12 +142,32 @@ describe('Hjemmesiden vises uden Shopify', () => {
   });
 });
 
+describe('Ingen faste planer', () => {
+  it('standardindholdet viser ingen planer eller faste priser, kun skræddersyet tilbud', async () => {
+    for (const h of ['starter', 'business', 'premium']) expect((await site.get('/products/' + h)).status).toBe(404);
+    for (const p of ['/', '/pages/ydelser', '/pages/kontakt']) {
+      const r = await site.get(p);
+      expect(r.html, p).not.toMatch(/299 kr|599 kr|1\.099 kr|Vælg (Starter|Business|Premium)|Abonnement: (Starter|Business|Premium)/);
+      expect(r.html, p).not.toContain('action="/cart/add"');
+    }
+  });
+});
+
 describe('Kurv og forespørgsel', () => {
+  // Kurven virker stadig for abonnementer, som admin selv gør aktive (Admin › Abonnementer og priser).
+  beforeAll(() => {
+    const products = JSON.parse(readFileSync(path.join(ROOT, 'site/content.json'), 'utf8')).products;
+    for (const p of products) {
+      const value = JSON.stringify({ ...p, status: 'active' }).replace(/'/g, "''");
+      sql(`INSERT OR REPLACE INTO site_content (key, value, updated_at, updated_by) VALUES ('product:${p.handle}', '${value}', strftime('%s','now') * 1000, 'test')`);
+    }
+  });
+
   it('lægger et abonnement i kurven, opdaterer antal og fjerner det igen', async () => {
     const shopper = new Client(stack.site);
-    const ydelser = await shopper.get('/pages/ydelser');
-    expect(ydelser.html).toContain('action="/cart/add"');
-    expect(ydelser.html).toContain('599 kr');
+    const product = await shopper.get('/products/business');
+    expect(product.html).toContain('action="/cart/add"');
+    expect(product.html).toContain('599 kr');
 
     let r = await shopper.post('/cart/add', { form_type: 'product', id: 'business' });
     expect(r.status).toBe(303);
@@ -354,8 +375,8 @@ describe('Admin: hjemmesiden', () => {
     const page = await admin.get('/admin/hjemmeside/produkter');
     const fields = formFields(page.html, 'p|');
     const res = await admin.post('/admin/hjemmeside/produkter', { _csrf: csrfFrom(page.html), ...fields, 'p|business|price': '649' });
-    const ydelser = await site.get('/pages/ydelser');
-    expect(ydelser.html).toContain('649 kr');
+    expect(res.status).toBe(303);
+    expect((await site.get('/products/business')).html).toContain('649 kr');
     const shopper = new Client(stack.site);
     await shopper.post('/cart/add', { id: 'business' });
     expect((await shopper.get('/cart')).html).toContain('649 kr');

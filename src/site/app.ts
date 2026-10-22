@@ -134,8 +134,8 @@ site.get('/sitemap.xml', async (c) => {
 });
 
 // Gamle Shopify-adresser
-site.get('/collections/*', (c) => c.redirect('/pages/ydelser#abonnement', 301));
-site.get('/collections', (c) => c.redirect('/pages/ydelser#abonnement', 301));
+site.get('/collections/*', (c) => c.redirect('/pages/kontakt#formular', 301));
+site.get('/collections', (c) => c.redirect('/pages/kontakt#formular', 301));
 site.get('/policies/privacy-policy', (c) => c.redirect('/pages/privatlivspolitik', 301));
 site.get('/policies/*', (c) => c.redirect('/pages/privatlivspolitik', 301));
 site.get('/search', (c) => c.redirect('/', 302));
@@ -412,7 +412,7 @@ site.post('/contact', async (c) => {
       const p = data.products.find((x) => x.handle === i.product.handle)!;
       return { handle: p.handle, title: p.title, quantity: i.quantity, price: p.price, interval: p.interval };
     });
-    if (!cart.length) errors.form = 'Kurven er tom. Læg et abonnement i kurven, eller brug kontaktformularen.';
+    if (!cart.length) errors.form = 'Kurven er tom. Brug kontaktformularen, så sender vi et tilbud.';
   }
   if (Object.keys(errors).length) return respond(c, returnPath, state(errors), 422);
 

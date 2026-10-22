@@ -98,7 +98,7 @@
     {%- else -%}
       {%- assign services_url = pages['ydelser'].url | default: routes.root_url -%}
       {%- assign continue_label = 'cart.continue' | t -%}
-      {%- assign plans_url = services_url | append: '#abonnement' -%}
+      {%- assign plans_url = kontakt | append: '#formular' -%}
       {%- assign plans_label = 'subscriptions.see_plans' | t -%}
       {%- form 'contact', id: fid -%}
         {%- if form.posted_successfully? or form.errors -%}

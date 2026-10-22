@@ -181,7 +181,7 @@ Webhooken holder databasen opdateret, når der sker noget i Stripe (nyt køb, be
 
 Kunden oprettes i kundepanelet, når betalingen er gennemført. Derefter kan kunden logge ind med den e-mail, der blev brugt ved betalingen.
 
-**Ingen selvbetjent bestilling:** `/bestil` viser planerne, men knapperne sender kunden til kontaktformularen på veyro.dk med planen forvalgt (`/pages/kontakt?ydelse=abonnement-<plan>#formular`). Veyro svarer med et tilbud og et personligt betalingslink (se [afsnit 14](#14-tilbud-med-individuel-pris-og-betalingslink)).
+**Ingen faste planer:** Prisen er altid skræddersyet. `/bestil` sender videre til kontaktformularen på veyro.dk, og de tre standardabonnementer (Starter, Business, Premium) er skjult på hjemmesiden (kan slås til igen under Admin › Abonnementer og priser). Eksisterende kunder på en plan kan stadig skifte plan i kundepanelet. Veyro svarer på henvendelser med et tilbud og et personligt betalingslink (se [afsnit 14](#14-tilbud-med-individuel-pris-og-betalingslink)).
 
 **Eksisterende Stripe-kunder:** Har I allerede kunder med abonnement i Stripe, kan de komme ind i kundepanelet, når der sker en hændelse på deres abonnement. Vil du have dem ind med det samme, kan du i Stripe åbne webhooken og "gensende" (Resend) en tidligere `customer.subscription.*`-hændelse for kunden – eller lave en lille ændring på abonnementet (fx tilføje metadata), så der sendes en `customer.subscription.updated`. Bemærk, at abonnementets pris skal være én af de tre pris-ID'er, ellers vises planen som "Abonnement".
 

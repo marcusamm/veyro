@@ -5,7 +5,6 @@ import { getCustomerByEmail, normalizeEmail, rateLimit, upsertCustomer } from '.
 import { findKundeSystemer, kanRedirecte, systemLoginUrl } from '../lib/katalog';
 import { magicLinkEmail, sendEmail, signupEmail } from '../lib/email';
 import { consumeLoginToken, createLoginToken, createSession, destroySession, isAdmin } from '../lib/session';
-import { getPlan, isPlanKey } from '../lib/plans';
 import { render } from '../render';
 import { chooseSystemPage, flash, linkInvalidPage, loginPage, loginSentPage, signupPage, signupSentPage, verifyPage } from '../views/pages';
 
@@ -104,21 +103,17 @@ auth.post('/login/bekraeft', async (c) => {
 // ---------------- Opret konto (før betaling) ----------------
 
 auth.get('/opret', (c) => {
-  const planKey = c.req.query('plan');
-  const plan = isPlanKey(planKey) ? getPlan(planKey) : undefined;
-  if (c.get('session')) return c.redirect(plan ? `/bestil?plan=${plan.key}` : '/bestil', 303);
-  return render(c, 'Opret konto', signupPage({ csrf: c.get('csrf'), plan }));
+  if (c.get('session')) return c.redirect('/konto', 303);
+  return render(c, 'Opret konto', signupPage({ csrf: c.get('csrf') }));
 });
 
 auth.post('/opret', async (c) => {
-  const planKey = c.req.query('plan');
-  const plan = isPlanKey(planKey) ? getPlan(planKey) : undefined;
   const body = await c.req.parseBody();
   const name = typeof body['name'] === 'string' ? body['name'].trim().replace(/\s+/g, ' ').slice(0, 100) : '';
   const rawEmail = typeof body['email'] === 'string' ? body['email'].slice(0, 254) : '';
   const email = normalizeEmail(body['email']);
   const again = (error: string, errorField: 'name' | 'email', status: 400 | 429 = 400) =>
-    render(c, 'Opret konto', signupPage({ csrf: c.get('csrf'), plan, name, email: rawEmail, error, errorField }), { status });
+    render(c, 'Opret konto', signupPage({ csrf: c.get('csrf'), name, email: rawEmail, error, errorField }), { status });
   if (!name) return again('Skriv dit navn.', 'name');
   if (!email) return again('Indtast en gyldig e-mailadresse.', 'email');
 
@@ -130,7 +125,7 @@ auth.post('/opret', async (c) => {
   // Findes kontoen allerede, sendes et almindeligt login-link. Svaret er det samme, så det
   // ikke afslører, om e-mailen er kunde.
   const exists = isAdmin(c.env, email) || !!(await getCustomerByEmail(c.env.DB, email));
-  const next = plan ? `/bestil?plan=${plan.key}` : '/bestil';
+  const next = '/konto';
   const token = await createLoginToken(c.env, email, { signup: !exists, name, next });
   const link = `${c.env.APP_URL.replace(/\/+$/, '')}/login/bekraeft?token=${encodeURIComponent(token)}`;
   if (c.env.RESEND_API_KEY) {
