@@ -29,6 +29,7 @@ import { REQUEST_TYPES, subscriptionState } from '../views/status';
 import poaRoutes from './poa';
 import aftaler from './aftaler';
 import ndaRoutes from './nda';
+import hjemmeside from './kunde-hjemmeside';
 
 import { acceptancesFor, recordAcceptance } from '../lib/legal';
 import { agreementsCard } from '../views/legal';
@@ -394,5 +395,6 @@ account.post('/henvendelser', async (c) => {
 account.route('/fuldmagter', poaRoutes);
 account.route('/aftaler', aftaler);
 account.route('/nda', ndaRoutes);
+account.route('/hjemmeside', hjemmeside);
 
 export default account;

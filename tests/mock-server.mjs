@@ -46,8 +46,91 @@ export function makeSubscription({ id, customer, price = 'price_business_test', 
   };
 }
 
+export const CF_TOKEN = 'cf_test_token_mock';
+export const GITHUB_TOKEN = 'gh_test_token_mock';
+export const CF_ACCOUNT = 'acc0000000000000000000000000test';
+/** Zoner i den simulerede Cloudflare-konto */
+const CF_ZONES = [{ id: 'zone_veyro', name: 'veyro.dk', account: { id: CF_ACCOUNT } }];
+
+function forwardWithHost(stackUrl, path, host, res) {
+  const u = new URL(stackUrl);
+  const r = http.request({ host: u.hostname, port: u.port, path, method: 'GET', headers: { Host: host } }, (up) => {
+    let b = '';
+    up.on('data', (d) => (b += d));
+    up.on('end', () => {
+      res.writeHead(up.statusCode, { 'Content-Type': up.headers['content-type'] ?? 'application/json' });
+      res.end(b);
+    });
+  });
+  r.on('error', (e) => {
+    res.writeHead(502, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message }));
+  });
+  r.end();
+}
+
 export function startMock() {
   const state = { customers: {}, subscriptions: {}, invoices: [], calls: [], emails: [], failNext: null };
+
+  // Simuleret Cloudflare API: Workers Custom Domains og Cloudflare for SaaS (custom hostnames)
+  function cloudflare(req, res, p, url, body) {
+    const send = (status, result, errors = []) => {
+      res.writeHead(status, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: status < 300, errors, messages: [], result }));
+    };
+    (state.cfCalls ??= []).push({ method: req.method, path: p + url.search, body: body ? JSON.parse(body) : null, auth: req.headers.authorization });
+    if (req.headers.authorization !== `Bearer ${CF_TOKEN}`) return send(403, null, [{ code: 10000, message: 'Authentication error' }]);
+    if (state.cfFail && p.includes(state.cfFail)) return send(500, null, [{ code: 1001, message: 'Simuleret fejl hos Cloudflare' }]);
+    const path = p.slice('/cf'.length);
+    let m;
+    const domains = (state.cfDomains ??= {});
+    const hostnames = (state.cfHostnames ??= {});
+    if (path === '/zones' && req.method === 'GET') return send(200, CF_ZONES.filter((z) => z.name === url.searchParams.get('name')));
+    if ((m = path.match(/^\/accounts\/([^/]+)\/workers\/domains$/))) {
+      if (m[1] !== CF_ACCOUNT) return send(404, null, [{ code: 7003, message: 'Could not route' }]);
+      if (req.method === 'PUT') {
+        const b = JSON.parse(body);
+        const zone = CF_ZONES.find((z) => z.id === b.zone_id);
+        if (!zone || !(b.hostname === zone.name || b.hostname.endsWith('.' + zone.name))) return send(400, null, [{ code: 100117, message: 'Hostname does not belong to zone' }]);
+        // PUT: samme værtsnavn giver samme binding (ingen dubletter)
+        const d = (domains[b.hostname] ??= { id: 'wd_' + (Object.keys(domains).length + 1), hostname: b.hostname, zone_id: b.zone_id, zone_name: zone.name });
+        Object.assign(d, { service: b.service, environment: b.environment });
+        return send(200, d);
+      }
+      if (req.method === 'GET') return send(200, Object.values(domains).filter((d) => !url.searchParams.get('hostname') || d.hostname === url.searchParams.get('hostname')));
+    }
+    if ((m = path.match(/^\/accounts\/([^/]+)\/workers\/domains\/([^/]+)$/)) && req.method === 'DELETE') {
+      const d = Object.values(domains).find((x) => x.id === m[2]);
+      if (!d) return send(404, null, [{ code: 100114, message: 'Domain not found' }]);
+      delete domains[d.hostname];
+      return send(200, null);
+    }
+    const chState = (ch) => {
+      const active = !!state.cfActive?.[ch.hostname];
+      return { ...ch, status: active ? 'active' : 'pending', ssl: { ...ch.ssl, status: active ? 'active' : 'pending_validation' } };
+    };
+    if ((m = path.match(/^\/zones\/([^/]+)\/custom_hostnames$/))) {
+      if (req.method === 'GET') return send(200, Object.values(hostnames).filter((h) => h.zone === m[1] && h.hostname === url.searchParams.get('hostname')).map(chState));
+      if (req.method === 'POST') {
+        const b = JSON.parse(body);
+        if (Object.values(hostnames).some((h) => h.hostname === b.hostname)) return send(409, null, [{ code: 1406, message: 'Duplicate custom hostname found.' }]);
+        const id = 'ch_' + (Object.keys(hostnames).length + 1);
+        hostnames[id] = { id, zone: m[1], hostname: b.hostname, ownership_verification: { type: 'txt', name: `_cf-custom-hostname.${b.hostname}`, value: `verif-${id}` },
+          ssl: { method: 'txt', type: 'dv', validation_records: [{ txt_name: `_acme-challenge.${b.hostname}`, txt_value: `acme-${id}` }] } };
+        return send(200, chState(hostnames[id]));
+      }
+    }
+    if ((m = path.match(/^\/zones\/([^/]+)\/custom_hostnames\/([^/]+)$/))) {
+      const ch = hostnames[m[2]];
+      if (!ch) return send(404, null, [{ code: 1436, message: 'Custom hostname not found' }]);
+      if (req.method === 'GET') return send(200, chState(ch));
+      if (req.method === 'DELETE') {
+        delete hostnames[m[2]];
+        return send(200, { id: m[2] });
+      }
+    }
+    return send(404, null, [{ code: 7003, message: `Unhandled ${req.method} ${path}` }]);
+  }
 
   const server = http.createServer((req, res) => {
     let body = '';
@@ -71,6 +154,8 @@ export function startMock() {
         if (s.failNext !== undefined) state.failNext = s.failNext;
         if (s.failEmailTo !== undefined) state.failEmailTo = s.failEmailTo;
         if (s.rejectManagedPayments !== undefined) state.rejectManagedPayments = s.rejectManagedPayments;
+        for (const k of ['dns', 'https', 'cfActive']) if (s[k]) Object.assign((state[k] ??= {}), s[k]);
+        for (const k of ['externalHtml', 'externalDown', 'githubFail', 'cfFail']) if (s[k] !== undefined) state[k] = s[k];
         return json(200, { ok: true });
       }
       if (p === '/__mock/calls') return json(200, state.calls);
@@ -78,6 +163,7 @@ export function startMock() {
       if (p === '/__mock/sim') return json(200, { prices: state.prices ?? {}, offerSessions: state.offerSessions ?? {}, schedules: state.schedules ?? {}, subscriptions: state.subscriptions });
       if (p === '/__mock/coupons') return json(200, state.coupons ?? {});
       if (p === '/__mock/emails') return json(200, state.emails);
+      if (p === '/__mock/kunder') return json(200, { cfCalls: state.cfCalls ?? [], cfDomains: state.cfDomains ?? {}, cfHostnames: state.cfHostnames ?? {}, dispatches: state.dispatches ?? [] });
       if (p.startsWith('/__mock/subscriptions/')) return json(200, state.subscriptions[p.split('/').pop()] ?? null);
 
       // --- Resend ---
@@ -88,6 +174,39 @@ export function startMock() {
         if ((state.failEmailTo ?? []).includes(msg.to?.[0])) return json(500, { message: 'Simuleret leveringsfejl' });
         state.emails.push(msg);
         return json(200, { id: 'email_' + state.emails.length });
+      }
+
+      // --- Cloudflare API (domæner til kundehjemmesider) ---
+      if (p.startsWith('/cf/')) return cloudflare(req, res, p, url, body);
+      // --- DNS over HTTPS ---
+      if (p === '/dns-query') {
+        const name = url.searchParams.get('name');
+        const type = url.searchParams.get('type');
+        const hit = (state.dns ??= {})[name];
+        return json(200, { Status: 0, Answer: hit && (hit === type || type === 'CNAME') ? [{ name, type: 5, data: 'kunde.veyro.dk.' }] : undefined });
+      }
+      // --- HTTPS-kontrol af et domæne: videresendes til stakken med domænets Host-header ---
+      if (p === '/domaenetjek/_veyro/status') {
+        const host = url.searchParams.get('host');
+        if (!(state.https ??= {})[host]) return json(525, { error: 'SSL handshake failed' });
+        return forwardWithHost(state.stackUrl, '/_veyro/status', host, res);
+      }
+      // --- GitHub: start "Deploy kunder" ---
+      if (p.startsWith('/gh/')) {
+        if (req.headers.authorization !== `Bearer ${GITHUB_TOKEN}`) return json(401, { message: 'Bad credentials' });
+        if (req.method === 'POST' && /^\/gh\/repos\/[^/]+\/[^/]+\/actions\/workflows\/deploy-kunder\.yml\/dispatches$/.test(p)) {
+          if (state.githubFail) return json(state.githubFail, { message: 'Simuleret fejl' });
+          (state.dispatches ??= []).push({ path: p, body: JSON.parse(body || '{}') });
+          res.writeHead(204);
+          return res.end();
+        }
+        return json(404, { message: 'Not Found' });
+      }
+      // --- En specialbygget kundehjemmeside, som tilsluttes ---
+      if (p === '/ekstern' || p === '/ekstern/') {
+        if (state.externalDown) return json(503, { error: 'nede' });
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        return res.end(state.externalHtml ?? '<!doctype html><html><body><h1>Specialbygget side</h1></body></html>');
       }
 
       // --- Stripe ---

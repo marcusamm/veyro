@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
 import type { AppEnv } from '../env';
 import { MAX_LINES, MAX_QTY, readCart, writeCart } from '../lib/cart';
-import { sha256Hex } from '../lib/crypto';
+import { randomToken, sha256Hex } from '../lib/crypto';
 import { newOrderNotifyEmail, orderReceivedEmail, sendLater } from '../lib/email';
 import { normalizeEmail, parseIntStrict, str } from '../lib/format';
 import { notifyLowStock } from '../lib/notify';
-import { createOrder, getOrderByToken, getOrderEvents, getOrderLines, priceCart, type CheckoutInput } from '../lib/orders';
+import { createOrder, getOrderByClientKey, getOrderByToken, getOrderEvents, getOrderLines, priceCart, type CheckoutInput } from '../lib/orders';
 import { available, getProduct, getProductsByIds, listCategories, listProducts } from '../lib/products';
 import { safeUrl } from '../lib/settings';
 import { rateLimit } from '../lib/session';
@@ -132,15 +132,22 @@ shop.get('/kassen', async (c) => {
   const priced = await priceCart(c.env.DB, readCart(c));
   if (!priced.lines.length) return c.redirect('/kurv', 303);
   const s = c.get('settings');
-  return renderShop(c, 'Kassen', checkoutPage({ settings: s, priced, csrf: c.get('csrf'), values: emptyValues(s) }), { noindex: true });
+  return renderShop(c, 'Kassen', checkoutPage({ settings: s, priced, csrf: c.get('csrf'), values: emptyValues(s), orderKey: randomToken(18) }), { noindex: true });
 });
 
 shop.post('/kassen', async (c) => {
   const s = c.get('settings');
+  const body = await c.req.parseBody();
+  // Samme bestilling sendt igen (dobbeltklik, genforsøg, tilbage-knappen): vis den ordre, der allerede er oprettet
+  const orderKey = /^[A-Za-z0-9_-]{16,64}$/.test(String(body['bestilling'] ?? '')) ? String(body['bestilling']) : randomToken(18);
+  const existing = await getOrderByClientKey(c.env.DB, orderKey);
+  if (existing) {
+    writeCart(c, []);
+    return c.redirect(`/ordre/${existing.token}?ny=1`, 303);
+  }
   const cart = readCart(c);
   const priced = await priceCart(c.env.DB, cart);
   if (!priced.lines.length) return c.redirect('/kurv', 303);
-  const body = await c.req.parseBody();
   const v: CheckoutValues = {
     customer_name: str(body['customer_name'], 100),
     customer_email: str(body['customer_email'], 254),
@@ -168,7 +175,7 @@ shop.post('/kassen', async (c) => {
   }
   if (safeUrl(s.terms_url) && !v.accept) errors.accept = 'Du skal acceptere handelsbetingelserne.';
   const again = (status: 400 | 409 | 429 = 400) =>
-    renderShop(c, 'Kassen', checkoutPage({ settings: s, priced, csrf: c.get('csrf'), values: v, errors }), { status, noindex: true });
+    renderShop(c, 'Kassen', checkoutPage({ settings: s, priced, csrf: c.get('csrf'), values: v, errors, orderKey }), { status, noindex: true });
   if (Object.keys(errors).length) {
     errors.form = 'Ret de markerede felter.';
     return again();
@@ -191,13 +198,19 @@ shop.post('/kassen', async (c) => {
     postcode: v.postcode.replace(/\s/g, ''),
     city: v.city,
     note: v.note,
+    client_key: orderKey,
   };
   const result = await createOrder(c.env.DB, s, input, cart);
+  if (!result.ok && result.reason === 'duplicate') {
+    const first = await getOrderByClientKey(c.env.DB, orderKey);
+    writeCart(c, []);
+    return first ? c.redirect(`/ordre/${first.token}?ny=1`, 303) : c.redirect('/kurv', 303);
+  }
   if (!result.ok) {
     if (result.reason === 'stock') {
       const fresh = await priceCart(c.env.DB, cart);
       errors.form = 'Nogle varer er blevet udsolgt, mens du handlede. Ret antallet i kurven.';
-      return renderShop(c, 'Kassen', checkoutPage({ settings: s, priced: fresh, csrf: c.get('csrf'), values: v, errors }), { status: 409, noindex: true });
+      return renderShop(c, 'Kassen', checkoutPage({ settings: s, priced: fresh, csrf: c.get('csrf'), values: v, errors, orderKey }), { status: 409, noindex: true });
     }
     if (result.reason === 'min_order') errors.form = 'Bestillingen er under mindstebeløbet.';
     else if (result.reason === 'delivery') errors.form = 'Den valgte leveringsform er ikke mulig.';

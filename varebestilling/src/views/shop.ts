@@ -242,6 +242,8 @@ export function checkoutPage(args: {
   csrf: string;
   values: CheckoutValues;
   errors?: Partial<Record<keyof CheckoutValues | 'form', string>>;
+  /** Engangsnøgle for denne bestilling (samme nøgle = samme ordre) */
+  orderKey: string;
 }): H {
   const { settings: s, values: v, priced } = args;
   const e = args.errors ?? {};
@@ -260,6 +262,7 @@ export function checkoutPage(args: {
     <div class="layout-side">
       <form class="card stack-lg" method="post" action="/kassen" novalidate>
         ${csrfField(args.csrf)}
+        <input type="hidden" name="bestilling" value="${args.orderKey}">
         <fieldset>
           <legend>Dine oplysninger</legend>
           <div class="fields fields-2">

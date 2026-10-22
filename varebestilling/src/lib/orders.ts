@@ -57,6 +57,8 @@ export interface CheckoutInput {
   postcode: string;
   city: string;
   note: string;
+  /** Engangsnøgle fra kassen; samme nøgle giver aldrig to ordrer */
+  client_key?: string | null;
 }
 
 export interface PricedLine {
@@ -152,7 +154,11 @@ function stockStatements(db: D1Database, ref: OrderRef, dir: -1 | 1, actor: stri
 
 export type CreateResult =
   | { ok: true; order: OrderRow }
-  | { ok: false; reason: 'empty' | 'stock' | 'min_order' | 'delivery'; short?: PricedLine[] };
+  | { ok: false; reason: 'empty' | 'stock' | 'min_order' | 'delivery' | 'duplicate'; short?: PricedLine[] };
+
+export async function getOrderByClientKey(db: D1Database, key: string): Promise<OrderRow | null> {
+  return db.prepare('SELECT * FROM orders WHERE client_key = ?').bind(key).first<OrderRow>();
+}
 
 /**
  * Opretter en ordre fra kurven. Prisen beregnes på serveren, og der må ikke bestilles mere,
@@ -195,12 +201,12 @@ export async function createOrder(
     db
       .prepare(
         `INSERT INTO orders (number, token, status, customer_name, customer_email, customer_phone, company, delivery, source,
-           address, postcode, city, note, subtotal, delivery_fee, total, created_at, updated_at)
-         VALUES ((SELECT COALESCE(MAX(number), 1000) + 1 FROM orders), ?, 'ny', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           address, postcode, city, note, subtotal, delivery_fee, total, created_at, updated_at, client_key)
+         VALUES ((SELECT COALESCE(MAX(number), 1000) + 1 FROM orders), ?, 'ny', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(token, input.customer_name, input.customer_email, input.customer_phone, input.company, input.delivery, source,
         input.delivery === 'levering' ? input.address : '', input.delivery === 'levering' ? input.postcode : '',
-        input.delivery === 'levering' ? input.city : '', input.note, priced.subtotal, fee, priced.subtotal + fee, now, now),
+        input.delivery === 'levering' ? input.city : '', input.note, priced.subtotal, fee, priced.subtotal + fee, now, now, input.client_key ?? null),
     ...priced.lines.map((l) =>
       db
         .prepare(
@@ -225,6 +231,8 @@ export async function createOrder(
     await db.batch(stmts);
   } catch (err) {
     if (isConstraintError(err)) {
+      // Samme bestilling er lige oprettet af en samtidig anmodning (engangsnøglen er unik)
+      if (input.client_key && (await getOrderByClientKey(db, input.client_key))) return { ok: false, reason: 'duplicate' };
       // Udsolgt i mellemtiden (lageret må ikke blive negativt)
       const again = await priceCart(db, cart);
       return { ok: false, reason: 'stock', short: again.short.length ? again.short : again.lines };

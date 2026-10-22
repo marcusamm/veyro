@@ -1,5 +1,6 @@
 # Deployer alle kundeinstallationer i kunder/*.json til Cloudflare.
 # Kører, når main ændres (ny kunde eller ny kode i systemerne), eller manuelt fra fanen Actions.
+# Admin på kunde.veyro.dk starter den også for én kunde, når der klikkes "Udrul tjenester" (GITHUB_DISPATCH_TOKEN).
 name: Deploy kunder
 
 on:
@@ -49,6 +50,9 @@ jobs:
           WORKERS_SUBDOMAIN: ${{ vars.WORKERS_SUBDOMAIN || 'marcus-ammitzboell' }}
           KUNDE_DOMAENE: ${{ vars.KUNDE_DOMAENE || 'veyro.dk' }}
           KUNDEKATALOG_ID: ${{ vars.KUNDEKATALOG_ID }}
+          # Kunder oprettet i admin (kunde.veyro.dk › Kunder). Uden de to værdier bruges kun kunder/*.json.
+          VEYRO_PROVISIONERING_URL: ${{ vars.VEYRO_PROVISIONERING_URL }}
+          VEYRO_PROVISIONERING_TOKEN: ${{ secrets.VEYRO_PROVISIONERING_TOKEN }}
           KUNDE: ${{ inputs.kunde }}
         run: node scripts/deploy-kunder.mjs $KUNDE
       - name: Tjek kundeadresser i DNS

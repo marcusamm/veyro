@@ -2,7 +2,7 @@ import { html } from 'hono/html';
 
 export type H = ReturnType<typeof html>;
 
-export type NavKey = 'overblik' | 'aftaler' | 'fuldmagter' | 'admin-fuldmagter' | 'admin-nda' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer' | 'admin-abonnementer' | 'admin-tilbud' | 'admin-hjemmeside' | 'admin-forespoergsler' | 'admin-statistik';
+export type NavKey = 'overblik' | 'aftaler' | 'fuldmagter' | 'admin-fuldmagter' | 'admin-nda' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer' | 'admin-abonnementer' | 'admin-tilbud' | 'admin-hjemmeside' | 'admin-forespoergsler' | 'admin-statistik' | 'admin-virksomheder' | 'hjemmeside';
 
 export interface LayoutOpts {
   title: string;
@@ -15,6 +15,8 @@ export interface LayoutOpts {
   adminNav?: boolean;
   /** Vis "Aftaler og dokumenter" (kunden har adgang til fuldmagter eller har dokumenter) */
   agreementsNav?: boolean;
+  /** Vis "Hjemmeside" (brugeren er knyttet til en virksomhed med hjemmeside eller systemer) */
+  websiteNav?: boolean;
 }
 
 function navLink(href: string, label: string, active: boolean, short?: string): H {
@@ -29,9 +31,10 @@ export function layout(opts: LayoutOpts, body: H): H {
     navItems = [
       navLink('/admin', 'Oversigt', opts.nav === 'admin'),
       navLink('/admin/statistik', 'Statistik', opts.nav === 'admin-statistik'),
-      navLink('/admin/hjemmeside', 'Hjemmeside', opts.nav === 'admin-hjemmeside'),
+      navLink('/admin/virksomheder', 'Kunder', opts.nav === 'admin-virksomheder'),
+      navLink('/admin/hjemmeside', 'Veyro.dk', opts.nav === 'admin-hjemmeside'),
       navLink('/admin/forespoergsler', 'Forespørgsler', opts.nav === 'admin-forespoergsler'),
-      navLink('/admin/kunder', 'Kunder', opts.nav === 'admin-kunder'),
+      navLink('/admin/kunder', 'Kundekonti', opts.nav === 'admin-kunder'),
       navLink('/admin/henvendelser', 'Henvendelser', opts.nav === 'admin-henvendelser'),
       navLink('/admin/tilbud', 'Tilbud', opts.nav === 'admin-tilbud'),
       navLink('/admin/abonnementer', 'Abonnementer', opts.nav === 'admin-abonnementer'),
@@ -47,6 +50,7 @@ export function layout(opts: LayoutOpts, body: H): H {
       navLink('/konto/fakturaer', 'Fakturaer og betaling', opts.nav === 'fakturaer', 'Fakturaer'),
       navLink('/konto/henvendelser', 'Ændringsønsker og support', opts.nav === 'henvendelser', 'Support'),
     ];
+    if (opts.websiteNav) navItems.push(navLink('/konto/hjemmeside', 'Hjemmeside', opts.nav === 'hjemmeside'));
     if (opts.agreementsNav) navItems.push(navLink('/konto/aftaler', 'Aftaler og dokumenter', opts.nav === 'aftaler' || opts.nav === 'fuldmagter', 'Aftaler'));
     if (opts.isAdmin) navItems.push(navLink('/admin', 'Admin', false));
   } else if (loggedIn && opts.isAdmin) {

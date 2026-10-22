@@ -29,9 +29,30 @@ export interface Env {
   /** Fælles kundekatalog: hvilke kundesystemer en e-mail har adgang til (valgfri) */
   KATALOG?: KVNamespace;
 
+  // Kundeopsætning (se docs/KUNDEOPSAETNING.md)
+  /** Domænet, kundehjemmesider får en adresse på: <adresse>.veyro.dk */
+  KUNDESIDE_DOMAENE?: string;
+  /** Workerens navn i Cloudflare (domæner knyttes hertil) */
+  CF_WORKER_NAME?: string;
+  /** Cloudflare for SaaS: værtsnavnet, kunders egne domæner skal pege på med CNAME (engangsopsætning). Tom = ikke sat op */
+  KUNDESIDE_SAAS_CNAME?: string;
+  /** GitHub-repository med "Deploy kunder"-workflowet, fx "marcusamm/veyro" */
+  GITHUB_REPO?: string;
+
   // Kun til test/udvikling: peg API-kald mod en lokal mock
   STRIPE_API_BASE?: string;
   RESEND_API_BASE?: string;
+  CF_API_BASE?: string;
+  GITHUB_API_BASE?: string;
+  DOH_URL?: string;
+  DOMAIN_CHECK_ORIGIN?: string;
+
+  /** Cloudflare API-nøgle til domæner (Workers Custom Domains, Zone:Read, evt. SSL for SaaS) */
+  CF_API_TOKEN?: string;
+  /** GitHub-nøgle, der må starte "Deploy kunder" (Actions: write på repositoryet) */
+  GITHUB_DISPATCH_TOKEN?: string;
+  /** Delt nøgle mellem "Deploy kunder" og kunde.veyro.dk/api/provisionering */
+  PROVISIONERING_TOKEN?: string;
 
   // Hemmeligheder (wrangler secret put)
   STRIPE_SECRET_KEY: string;

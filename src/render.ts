@@ -19,6 +19,8 @@ export async function render(
     isCustomer = !!(await getCustomerByEmail(c.env.DB, session.email));
   }
   const agreementsNav = !!session && !!isCustomer && !opts.admin && (await agreementsAccess(c.env, session.email));
+  const websiteNav =
+    !!session && !!isCustomer && !opts.admin && !!(await c.env.DB.prepare('SELECT 1 FROM company_members WHERE email = ? LIMIT 1').bind(session.email).first().catch(() => null));
   return c.html(
     layout(
       {
@@ -30,6 +32,7 @@ export async function render(
         customerNav: !!session && !!isCustomer && !opts.admin,
         adminNav: !!opts.admin && admin,
         agreementsNav,
+        websiteNav,
       },
       body,
     ),

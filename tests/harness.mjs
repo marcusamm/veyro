@@ -75,7 +75,8 @@ export async function startStack({ minMonths = 12, devMode = false, resend = tru
     // Salgshjemmesiden svarer på localhost; kundepanelet på 127.0.0.1
     SITE_HOSTS: 'localhost',
     SITE_URL: `http://localhost:${port}`,
-    ...extraVars,
+    // extraVars kan være en funktion, når en værdi skal pege på mock-serveren
+    ...(typeof extraVars === 'function' ? extraVars(mock) : extraVars),
   };
   const args = ['dev', '--config', config, '--local', '--ip', '127.0.0.1', '--port', String(port), '--persist-to', persist,
     '--show-interactive-dev-session=false', '--log-level', 'log'];
@@ -87,6 +88,7 @@ export async function startStack({ minMonths = 12, devMode = false, resend = tru
   proc.stderr.on('data', (d) => (logs += d));
 
   const base = `http://127.0.0.1:${port}`;
+  mock.state.stackUrl = base;
   const deadline = Date.now() + 60_000;
   for (;;) {
     if (proc.exitCode !== null) throw new Error('wrangler dev stoppede:\n' + logs);

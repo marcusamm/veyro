@@ -21,6 +21,9 @@ import { policyPage } from './routes/aftaler';
 import { applyRetention, expireDue } from './lib/poa';
 import { deliverAll, queueMail, retryMails } from './lib/poa-docs';
 import site, { isSiteRequest } from './site/app';
+import adminKunder from './routes/admin-kunder';
+import { isCustomerHost, kundeDomaeneApp, kundesider } from './kunder/app';
+import { provisionering } from './kunder/provisionering';
 import { purgeOldLeads } from './site/leads';
 import { CSS, FAVICON, JS } from './views/assets';
 import { ICON_PNG, INTER_TIGHT_WOFF2, LOGO_PNG } from './views/brand';
@@ -77,6 +80,9 @@ app.get('/healthz', (c) => c.text('ok'));
 
 // Stripe-webhook: før session/CSRF (verificeres med signatur i stedet)
 app.route('/', webhook);
+// Kundehjemmesider (/s/, /vis/), deres formularer og udrulningens API: før session/CSRF (egne kontroller)
+app.route('/', kundesider);
+app.route('/', provisionering);
 
 // Session + CSRF for resten
 app.use('*', sessionMiddleware);
@@ -88,6 +94,7 @@ app.route('/', card);
 app.route('/', offer);
 app.route('/konto', account);
 app.get('/fuldmagter/opbevaring', policyPage);
+app.route('/admin', adminKunder);
 app.route('/admin', adminSite);
 app.route('/admin', adminStats);
 app.route('/admin', adminPoa);
@@ -110,8 +117,11 @@ app.onError((err, c) => {
 
 export default {
   // Salgshjemmesiden (veyro.dk) og kundepanelet (kunde.veyro.dk) kører i samme Worker; domænet afgør hvilken.
-  fetch(req: Request, env: Env, ctx: ExecutionContext) {
-    return isSiteRequest(req, env) ? site.fetch(req, env, ctx) : app.fetch(req, env, ctx);
+  async fetch(req: Request, env: Env, ctx: ExecutionContext) {
+    if (isSiteRequest(req, env)) return site.fetch(req, env, ctx);
+    // Kundernes egne domæner (og <adresse>.veyro.dk), når de er knyttet til et projekt i admin
+    if (await isCustomerHost(req, env)) return kundeDomaeneApp.fetch(req, env, ctx);
+    return app.fetch(req, env, ctx);
   },
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(cleanup(env.DB));

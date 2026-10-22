@@ -32,6 +32,8 @@ Teknik: Cloudflare Workers + D1 (database), Hono, Stripe Billing (via Stripes RE
 13. [Udvikling og tests (for udviklere)](#13-udvikling-og-tests-for-udviklere)
 14. [Tilbud med individuel pris og betalingslink](#14-tilbud-med-individuel-pris-og-betalingslink)
 15. [Hjemmesiden veyro.dk uden Shopify](#15-hjemmesiden-veyrodk-uden-shopify)
+16. [Digitale fuldmagter](#16-digitale-fuldmagter)
+17. [Kunder: opsætning og publicering af hjemmesider](#17-kunder-opsætning-og-publicering-af-hjemmesider)
 
 ---
 
@@ -405,3 +407,10 @@ Salgshjemmesiden kører nu i samme Worker som kundepanelet. Domænet afgør, hva
 Kunder kan give Veyro fuldmagt under **Aftaler og dokumenter** i kundepanelet, og Veyro administrerer dem i admin under **Fuldmagter**.
 Opsætning, forløb, sikkerhed og opbevaringspolitik er beskrevet i [docs/FULDMAGTER.md](docs/FULDMAGTER.md).
 Funktionen er et udkast: den er kun åben for pilotkunder, indtil teksten, godkendelsesmetoden og politikken er godkendt i admin.
+
+## 17. Kunder: opsætning og publicering af hjemmesider
+
+Nye kunder oprettes i admin under **Kunder**: virksomhed, projekttype, udseende og indhold, tjenester, opsætning og
+gennemgang, derefter forhåndsvisning, godkendelse og publicering. Arkitektur, vejledningen "Sådan tilføjer jeg næste
+kunde", engangsopsætning (Cloudflare-nøgle, udrulning fra admin) og tests står i
+[docs/KUNDEOPSAETNING.md](docs/KUNDEOPSAETNING.md).
