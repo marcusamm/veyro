@@ -371,7 +371,8 @@ site.post('/contact', async (c) => {
   const body = await c.req.parseBody();
   const formId = String(body['form_id'] ?? '').slice(0, 80);
   let returnTo = String(body['return_to'] ?? '/');
-  if (!returnTo.startsWith('/') || returnTo.startsWith('//')) returnTo = '/';
+  // Kun egne stier. "\" og "/./" kan ellers normaliseres til "//andet-domæne" i URL-parseren.
+  if (!/^\/(?![\/\\])/.test(returnTo) || returnTo.includes('\\') || new URL(returnTo, 'http://x').pathname.startsWith('//')) returnTo = '/';
   const returnPath = returnTo.split(/[?#]/)[0] || '/';
 
   const fields: Record<string, string> = {};

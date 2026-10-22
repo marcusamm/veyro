@@ -3,8 +3,7 @@
     "main": {
       "type": "main-product",
       "settings": {
-        "show_dynamic_checkout": true,
-        "note": "<p>I tvivl om pakken passer til din webshop? <a href=\"/pages/kontakt\">Skriv til os</a>, før du køber.</p>"
+        "note": "<p>I tvivl om abonnementet passer til jer? <a href=\"/pages/kontakt\">Skriv til os</a>, før I sender forespørgslen. Der betales ikke her.</p>"
       }
     },
     "cta": {

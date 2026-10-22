@@ -6,8 +6,8 @@ workers_dev = true
 preview_urls = false
 
 # Eget domæne (veyro.dk ligger i samme Cloudflare-konto).
-# veyro.dk og www.veyro.dk er flyttet fra Shopify med workflowet "Skift domæne" (se README, afsnit 15).
-# ny.veyro.dk er den skjulte prøveadresse.
+# veyro.dk og www.veyro.dk er salgshjemmesiden; www sendes videre til veyro.dk.
+# ny.veyro.dk er den skjulte prøveadresse (noindex).
 routes = [
   { pattern = "kunde.veyro.dk", custom_domain = true },
   { pattern = "ny.veyro.dk", custom_domain = true },
@@ -53,7 +53,7 @@ NDA_SIGNERS = "efe@veyro.dk,marcus@veyro.dk"
 NOTIFY_EMAIL = "kontakt@veyro.dk"
 EMAIL_FROM = "Veyro <kontakt@veyro.dk>"
 DEV_MODE = "0"
-# Salgshjemmesiden. veyro.dk og www.veyro.dk virker først, når domænet er flyttet fra Shopify (README, afsnit 15).
+# Salgshjemmesiden (README, afsnit 15).
 SITE_HOSTS = "veyro.dk,www.veyro.dk,ny.veyro.dk"
 SITE_URL = "https://veyro.dk"
 # Valgfri momssats (inkluderet i prisen), se README:

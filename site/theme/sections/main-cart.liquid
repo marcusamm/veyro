@@ -80,7 +80,7 @@
               </div>
               <div class="field field--full">
                 <label for="{{ fid }}-body">{{ 'subscriptions.request_message' | t }} <span class="field__opt">({{ 'forms.optional' | t }})</span></label>
-                <textarea id="{{ fid }}-body" name="contact[body]" rows="4" maxlength="5000" placeholder="{{ 'subscriptions.request_placeholder' | t }}">{{ form.body }}</textarea>
+                <textarea id="{{ fid }}-body" name="contact[body]" rows="4" maxlength="5000" placeholder="{{ 'subscriptions.request_placeholder' | t }}">{{ form.body | escape }}</textarea>
               </div>
             </div>
             {% render 'form-consent', id: fid %}

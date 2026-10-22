@@ -1,9 +1,0 @@
-{%- comment -%} Samtykkefelt (GDPR). Parametre: id {%- endcomment -%}
-<div class="field field--check">
-  <input type="checkbox" id="{{ id }}-consent" name="contact[Samtykke]" value="Ja" required data-label="{{ 'forms.fields.consent' | t }}" aria-describedby="{{ id }}-consent-error">
-  <label for="{{ id }}-consent">
-    {{ settings.form_consent_text | escape }} <span class="req" aria-hidden="true">*</span>
-    {%- if settings.privacy_page != blank %} <a href="{{ settings.privacy_page.url }}">{{ 'forms.privacy_link' | t }}</a>.{% endif -%}
-  </label>
-  <p class="field__error" id="{{ id }}-consent-error" hidden></p>
-</div>

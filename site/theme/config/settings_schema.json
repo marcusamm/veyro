@@ -4,8 +4,7 @@
     "theme_name": "Veyro",
     "theme_version": "1.0.0",
     "theme_author": "Veyro",
-    "theme_documentation_url": "https://help.shopify.com/manual/online-store/themes",
-    "theme_support_url": "https://help.shopify.com/manual/online-store/themes"
+    "theme_support_url": "mailto:kontakt@veyro.dk"
   },
   {
     "name": "Virksomhed",
@@ -54,9 +53,6 @@
   {
     "name": "Typografi",
     "settings": [
-      { "type": "checkbox", "id": "use_theme_fonts", "label": "Brug temaets egne skrifttyper (Inter Tight og JetBrains Mono)", "info": "Skrifterne ligger i temaet, så der hentes intet fra tredjepart. Slå fra for at vælge fra Shopifys skriftbibliotek.", "default": true },
-      { "type": "font_picker", "id": "font_heading", "label": "Overskrifter (Shopify-bibliotek)", "default": "assistant_n4" },
-      { "type": "font_picker", "id": "font_body", "label": "Brødtekst (Shopify-bibliotek)", "default": "assistant_n4" },
       { "type": "range", "id": "heading_scale", "label": "Overskriftsstørrelse", "min": 80, "max": 130, "step": 5, "unit": "%", "default": 100 },
       { "type": "range", "id": "body_scale", "label": "Brødtekststørrelse", "min": 90, "max": 120, "step": 5, "unit": "%", "default": 100 },
       { "type": "select", "id": "heading_weight", "label": "Overskriftsvægt", "options": [
@@ -85,7 +81,7 @@
   {
     "name": "Kontaktformularer",
     "settings": [
-      { "type": "paragraph", "content": "Formularerne bruger Shopifys indbyggede kontaktformular. Henvendelser sendes til butikkens kontakt-e-mail (Indstillinger > Butiksoplysninger)." },
+      { "type": "paragraph", "content": "Henvendelser fra formularerne gemmes under Admin › Forespørgsler og sendes som e-mail til Veyros kontaktadresse (NOTIFY_EMAIL)." },
       { "type": "page", "id": "privacy_page", "label": "Side med privatlivspolitik", "info": "Linkes fra samtykketeksten i formularer og cookiebanneret." },
       { "type": "text", "id": "form_consent_text", "label": "Samtykketekst ved formularer", "default": "Jeg accepterer, at Veyro behandler mine oplysninger for at besvare min henvendelse." }
     ]
@@ -93,7 +89,7 @@
   {
     "name": "Cookies og privatliv",
     "settings": [
-      { "type": "paragraph", "content": "Brug enten dette banner ELLER Shopifys eget cookiebanner (Indstillinger > Kundernes privatliv). Begge gemmer valget via Shopifys Customer Privacy API, så Shopify-pixels og apps respekterer samtykket. Brug aldrig begge på samme tid." },
+      { "type": "paragraph", "content": "Valget gemmes i den besøgendes browser. Trustpilots widget indlæses først efter samtykke til markedsføring; alt andet på siden bruger kun nødvendige cookies." },
       { "type": "checkbox", "id": "cookie_banner_enabled", "label": "Vis temaets cookiebanner", "default": true },
       { "type": "text", "id": "cookie_banner_heading", "label": "Overskrift", "default": "Vi bruger cookies" },
       { "type": "richtext", "id": "cookie_banner_text", "label": "Tekst", "default": "<p>Nødvendige cookies sørger for, at siden virker. Med dit samtykke bruger vi også cookies til statistik og markedsføring. Du kan altid ændre dit valg via linket i bunden af siden.</p>" },

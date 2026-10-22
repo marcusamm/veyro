@@ -219,7 +219,7 @@ export function adminOffersPage(args: {
       <details${f && (f.setup_settled || f.first_charge || f.settled_note) ? html` open` : ''}>
         <summary>Allerede faktureret eller betalt?</summary>
         <div class="stack" style="margin-top:12px">
-          <p class="small muted" style="margin:0">Har kunden allerede fået en faktura (i Stripe, Shopify eller andetsteds) for engangsbeløbet eller første periode, så markér det her. Så opkræves det ikke igen via linket.</p>
+          <p class="small muted" style="margin:0">Har kunden allerede fået en faktura (i Stripe eller andetsteds) for engangsbeløbet eller første periode, så markér det her. Så opkræves det ikke igen via linket.</p>
           <label class="check"><input type="checkbox" name="setup_settled" value="1"${f?.setup_settled ? html` checked` : ''}${err('setup_settled')}> Engangsbeløbet er allerede faktureret og skal ikke med i betalingen</label>
           <div class="grid grid-2">
             ${field('first_charge', 'Første periode er betalt: første opkrævning den', 'type="date"', 'Tomt = første periode betales ved tilmelding.')}

@@ -7,8 +7,8 @@ import { idOf, StripeError, stripeRequest, type Params } from './stripe';
 /**
  * Tilbud med individuel pris → personligt betalingslink → Stripe Checkout (abonnement).
  *
- * Stripe Billing er det eneste system, der opkræver abonnementet. Shopify (veyro.dk) bruges kun
- * til at modtage forespørgsler og opkræver intet, så samme ydelse ikke kan blive betalt to steder.
+ * Stripe Billing er det eneste system, der opkræver abonnementet. Hjemmesiden (veyro.dk) modtager kun
+ * forespørgsler og opkræver intet, så samme ydelse ikke kan blive betalt to steder.
  *
  * Forløb:
  *  1. Admin opretter tilbuddet. Kunden og prisen oprettes i Stripe med det samme (fast Price-objekt),

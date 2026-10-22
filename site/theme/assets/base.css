@@ -415,7 +415,7 @@ code, pre { font-family: var(--font-mono); }
 .ov__stock b { font-family: var(--font-mono); font-weight: 600; }
 .ov__stock i { font-style: normal; font-size: .62rem; font-weight: 600; padding: .05rem .45rem; border-radius: 999px; }
 .ov__stock .is-low i { background: #f2b84b; color: #2b1a00; }
-.ov__stock .is-out i { background: #e5534b; color: #fff; }
+.ov__stock .is-out i { background: #c0392b; color: #fff; }
 .ov__stock li:not(.is-low):not(.is-out) { grid-template-columns: 1fr auto; }
 @media (max-width: 599px) {
   .ov__toast { bottom: 34%; }
@@ -759,7 +759,6 @@ code, pre { font-family: var(--font-mono); }
 .product__price-current { font-size: 1.6rem; font-weight: 650; letter-spacing: -.02em; }
 .product__form { display: grid; gap: var(--space-5); margin-bottom: var(--space-6); }
 .product__buttons { display: grid; gap: var(--space-3); }
-.product__buttons .shopify-payment-button__button { min-height: 52px; border-radius: var(--radius-button); }
 .product__note { display: flex; gap: var(--space-3); margin-top: var(--space-6); padding: var(--space-4) var(--space-5); border: 1px solid var(--line); border-radius: calc(var(--radius-card) * .7); background: var(--card); }
 @media (min-width: 990px) { .product__inner { grid-template-columns: 1.1fr 1fr; gap: var(--space-8); } .product__media { position: sticky; top: calc(var(--header-h) + 2rem); align-self: start; } }
 .cart .h1 { margin-bottom: var(--space-6); }
@@ -804,7 +803,7 @@ code, pre { font-family: var(--font-mono); }
 /* 10 ─ Animation (kun når JS og bevægelse er tilladt) */
 .reveal-ready [data-reveal] { opacity: 0; transform: translateY(18px); transition: opacity .7s var(--ease), transform .7s var(--ease); transition-delay: var(--delay, 0ms); }
 .reveal-ready [data-reveal].is-visible { opacity: 1; transform: none; }
-.shopify-design-mode .reveal-ready [data-reveal], .reveal-ready .shopify-section-group-header-group [data-reveal] { opacity: 1; transform: none; }
+.reveal-ready .shopify-section-group-header-group [data-reveal] { opacity: 1; transform: none; }
 
 /* 11 ─ Utilities og print */
 @media print {
