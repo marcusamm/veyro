@@ -1,8 +1,14 @@
-// E-mail via Resend. Er der ingen RESEND_API_KEY (fx i demoen), sendes intet: beskeden gemmes
-// som "simuleret", og det står tydeligt i systemet, at den ikke er sendt.
+// E-mail via Resend. Er der ingen RESEND_API_KEY, sendes intet: beskeden gemmes som "simuleret",
+// og det står tydeligt i systemet, at den ikke er sendt.
+//
+// I en demo (DEMO_MODE=1) kan alle logge ind som ejer med ét klik og oprette brugere med en hvilken
+// som helst adresse. Derfor sendes der i demoen kun til Veyros egne adresser i ADMIN_EMAILS; alt
+// andet (fx demobrugerne @nordlysbyg.example) simuleres, så demoen ikke kan bruges til at sende mails
+// fra Veyros domæne til fremmede.
 
 import type { Env } from '../env';
 import { nowSec } from './crypto';
+import { parseAdminEmails } from './session';
 import type { Settings } from './settings';
 
 export interface EmailMessage {
@@ -14,8 +20,10 @@ export interface EmailMessage {
 
 export type DeliveryStatus = 'sendt' | 'simuleret' | 'fejlet';
 
-export function emailConfigured(env: Env): boolean {
-  return !!env.RESEND_API_KEY;
+export function emailConfigured(env: Env, to?: string): boolean {
+  if (!env.RESEND_API_KEY) return false;
+  if (env.DEMO_MODE === '1') return !!to && parseAdminEmails(env).has(to.toLowerCase());
+  return true;
 }
 
 /** Sender via Resends HTTP API. Kaster ved fejl. */
@@ -45,7 +53,7 @@ export async function deliver(
   meta: { kind: string; actor: string; list_id?: number | null; list_version?: number | null },
 ): Promise<{ id: number; status: DeliveryStatus }> {
   let status: DeliveryStatus = 'simuleret';
-  if (emailConfigured(env)) {
+  if (emailConfigured(env, msg.to)) {
     try {
       await sendEmail(env, msg, s);
       status = 'sendt';

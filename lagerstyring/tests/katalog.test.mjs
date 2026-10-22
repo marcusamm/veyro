@@ -7,6 +7,13 @@ const key = (email) => `e:${createHash('sha256').update(email).digest('hex')}:fi
 describe('Kundekatalog til Kundelogin på kunde.veyro.dk', () => {
   let stack;
   const names = () => stack.katalogKeys().map((k) => k.name);
+  // Kører den timevise cron. wrangler dev lukker en genbrugt keep-alive-forbindelse, når testen har
+  // ventet på wrangler-kommandoer i flere sekunder; så prøves én gang mere på en ny forbindelse.
+  const cron = async () => {
+    const url = stack.base + '/__scheduled?cron=7+*+*+*+*';
+    const res = await fetch(url).catch((e) => (e?.cause?.code === 'UND_ERR_SOCKET' ? fetch(url) : Promise.reject(e)));
+    expect(res.status).toBe(200);
+  };
 
   beforeAll(async () => {
     stack = await startStack({ katalog: true });
@@ -26,11 +33,11 @@ describe('Kundekatalog til Kundelogin på kunde.veyro.dk', () => {
 
   it('cron tilføjer nye brugere og fjerner deaktiverede', async () => {
     stack.sql("INSERT INTO users (email, name, role, created_at) VALUES ('svend@firma.dk', 'Svend', 'medarbejder', 0)");
-    await fetch(stack.base + '/__scheduled?cron=7+*+*+*+*');
+    await cron();
     await waitFor(() => names().includes(key('svend@firma.dk')));
 
     stack.sql("UPDATE users SET active = 0 WHERE email = 'svend@firma.dk'");
-    await fetch(stack.base + '/__scheduled?cron=7+*+*+*+*');
+    await cron();
     await waitFor(() => !names().includes(key('svend@firma.dk')));
     expect(names()).toContain(key(ADMIN_EMAIL));
   });

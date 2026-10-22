@@ -9,6 +9,9 @@
 //   4. Oprydning: kontroljobbet, dets bevægelser og den midlertidige session fjernes, og
 //      beholdningen sættes tilbage. Til sidst sammenlignes databasen med tilstanden før testen.
 //
+// Forbruget registreres kun på en vare, hvis lagerstatus ikke ændres af det (så der aldrig oprettes
+// en lageradvarsel eller sendes en e-mail til kunden). Demoinstallationer afvises: de har demodata.
+//
 // Testen logger ind med en midlertidig session (1 time) for en eksisterende ejer, så der ikke
 // sendes login-mails og ikke oprettes testkonti hos kunden.
 //
@@ -30,6 +33,7 @@ if (!TOKEN || !ACCOUNT) throw new Error('CLOUDFLARE_API_TOKEN og CLOUDFLARE_ACCO
 const kunde = laesKunder(undefined, process.env.KUNDE_DOMAENE || 'veyro.dk').find((k) => k.slug === slug);
 const inst = kunde?.systemer.find((s) => s.system === 'lagerstyring');
 if (!inst?.domaene) throw new Error(`${slug} har ingen lagerstyring med domæne`);
+if (kunde.demo) throw new Error(`${slug} er en demoinstallation med demodata; produktionstesten er til rigtige kunder`);
 const BASE = `https://${inst.domaene}`;
 const EMAIL = (process.env.PRODUKTIONSTEST_EMAIL || inst.admins.at(-1)).toLowerCase();
 const OUT = process.env.SKAERMBILLEDER || 'produktionstest';
@@ -66,7 +70,24 @@ const FINGERPRINT = `SELECT
   (SELECT COUNT(*) FROM notices) AS notices, (SELECT COUNT(*) FROM purchase_lines) AS purchase_lines,
   (SELECT COUNT(*) FROM job_log) AS job_log, (SELECT COUNT(*) FROM users) AS users,
   (SELECT COALESCE(SUM(stock), 0) FROM products) AS stock, (SELECT COALESCE(SUM(reserved), 0) FROM products) AS reserved,
-  (SELECT COUNT(*) FROM sessions) AS sessions`;
+  (SELECT COUNT(*) FROM sessions) AS sessions, (SELECT COUNT(*) FROM mails) AS mails,
+  (SELECT COALESCE(SUM(alert_level), 0) FROM products) AS alert_levels`;
+
+// Samme regler som lagerstyring/src/lib/stock.ts (stockPlan og LEVEL), så testen kan vælge en vare,
+// hvis advarselsniveau ikke ændres af ét forbrug.
+function stockLevel(p, available) {
+  const round = (m) => (p.whole_units ? Math.ceil(m / K - 1e-9) * K : Math.ceil(m - 1e-9));
+  const lead = p.lead_time_days ?? p.supplier_lead_time ?? null;
+  let safety = null;
+  if (p.safety_method === 'antal' && p.safety_qty !== null) safety = round(p.safety_qty);
+  if (p.safety_method === 'dage' && p.buffer_days !== null && p.avg_daily_usage !== null) safety = round(p.avg_daily_usage * p.buffer_days);
+  const rop = p.avg_daily_usage !== null && lead !== null && safety !== null ? round(p.avg_daily_usage * lead + safety) : null;
+  if (available <= 0) return 3;
+  if (rop === null || safety === null) return 0;
+  if (available <= safety) return 2;
+  if (available <= rop) return 1;
+  return 0;
+}
 
 const owner = (await sql("SELECT email, name FROM users WHERE email = ? AND active = 1 AND role = 'ejer'", [EMAIL]))[0];
 if (!owner) throw new Error(`${EMAIL} er ikke en aktiv ejer i ${inst.navn}`);
@@ -191,13 +212,12 @@ try {
   tjek((await sql('SELECT id FROM jobs WHERE number = ?', [nummer]))[0]?.id === jobId, `jobbet ${nummer} er gemt i databasen`);
   await page.screenshot({ path: join(OUT, 'job-oprettet-mobil.png'), fullPage: true });
 
-  const vare = (
-    await sql(
-      `SELECT id, name, stock, reserved FROM products WHERE active = 1 AND stock - reserved >= ? AND stock - ? >= COALESCE(safety_qty, 0) * 2
-       ORDER BY stock DESC LIMIT 1`,
-      [K, K],
-    )
-  )[0];
+  const kandidater = await sql(
+    `SELECT p.*, s.lead_time_days AS supplier_lead_time FROM products p LEFT JOIN suppliers s ON s.id = p.supplier_id
+     WHERE p.active = 1 AND p.stock - p.reserved >= ? ORDER BY p.stock DESC`,
+    [2 * K],
+  );
+  const vare = kandidater.find((p) => stockLevel(p, p.stock - p.reserved - K) <= p.alert_level && stockLevel(p, p.stock - p.reserved - K) === stockLevel(p, p.stock - p.reserved));
   if (vare) {
     await page.goto(`${BASE}/job/${jobId}/registrer?type=forbrug`);
     await page.fill(`input[name="q_${vare.id}"]`, '1');
@@ -213,7 +233,7 @@ try {
     await p2.screenshot({ path: join(OUT, 'job-historik-desktop.png'), fullPage: true });
     await ny.close();
   } else {
-    tjek(true, 'ingen vare med beholdning; forbrug springes over (kun oprettelse testet)');
+    tjek(true, 'ingen vare, hvor ét forbrug lader lagerstatus være uændret; forbrug springes over (kun oprettelse testet)');
   }
   await ctx.close();
 } catch (err) {

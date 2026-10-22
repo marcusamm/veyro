@@ -11,7 +11,10 @@ import { getSettings } from './settings';
  *   e:<sha256(email)>:<KATALOG_ID>  metadata { navn, url }, én pr. bruger med adgang
  *   kunde:<KATALOG_ID>              JSON med det, der sidst blev skrevet, så kun ændringer skrives
  *
- * E-mails gemmes kun som hash. Uden KATALOG-binding (demo, test, lokal udvikling) gøres intet.
+ * E-mails gemmes kun som hash. Uden KATALOG-binding (test, lokal udvikling) gøres intet.
+ * I en demo (DEMO_MODE=1) kan alle oprette brugere, så kun Veyros egne adresser i ADMIN_EMAILS
+ * kommer i kataloget; ellers kunne en fremmed lægge en rigtig persons e-mail ind og sende
+ * vedkommende til demoen fra Kundelogin.
  */
 interface Snapshot {
   navn: string;
@@ -26,7 +29,8 @@ export async function syncKatalog(env: Env): Promise<void> {
   const url = (env.APP_URL ?? '').replace(/\/+$/, '');
   if (!/^https:\/\//.test(url)) return;
 
-  const { results } = await env.DB.prepare('SELECT email FROM users WHERE active = 1').all<{ email: string }>();
+  const { results } =
+    env.DEMO_MODE === '1' ? { results: [] } : await env.DB.prepare('SELECT email FROM users WHERE active = 1').all<{ email: string }>();
   const emails = new Set([...results.map((r) => r.email.toLowerCase()), ...parseAdminEmails(env)]);
   const hashes = [...new Set(await Promise.all([...emails].map((e) => sha256Hex(e))))].sort();
   const navn = (await getSettings(env.DB)).company_name;
