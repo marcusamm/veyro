@@ -399,7 +399,7 @@
     });
   }
 
-  /* ---------- Init + Shopify temaeditor ---------- */
+  /* ---------- Init ---------- */
   function initSection(root) {
     initReveal(root);
     initTabs(root);
@@ -412,12 +412,5 @@
     initSection(document);
     initCookies();
     initVariants();
-  });
-
-  document.addEventListener('shopify:section:load', (e) => initSection(e.target));
-  document.addEventListener('shopify:block:select', (e) => {
-    const tab = document.querySelector(`[role="tab"][aria-controls="Panel-${e.detail.blockId}"]`);
-    if (tab) tab.click();
-    e.target.classList?.add('is-visible');
   });
 })();

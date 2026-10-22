@@ -11,7 +11,7 @@ Selvbetjening til Veyros abonnementskunder. Kunderne kan:
 
 Der er også en admin-del (`/admin`), hvor Veyro kan se kunder og henvendelser, ændre status og oprette abonnementer med individuel pris ud fra et tilbud, som kunden tilmelder sig via et personligt Stripe-betalingslink (se [afsnit 14](#14-tilbud-med-individuel-pris-og-betalingslink)).
 
-Teknik: Cloudflare Workers + D1 (database), Hono, Stripe Billing (via Stripes REST API) og Resend til e-mail.
+Teknik: Cloudflare Workers + D1 (database), Hono, Stripe Billing (via Stripes REST API) og Resend til e-mail. Samme Worker leverer også salgshjemmesiden veyro.dk (se [afsnit 15](#15-hjemmesiden-veyrodk)). Kundernes egne systemer (lagerstyring, varebestilling) er separate Workers med hver sin database; se `kunder/README.md`.
 
 ---
 
@@ -31,7 +31,7 @@ Teknik: Cloudflare Workers + D1 (database), Hono, Stripe Billing (via Stripes RE
 12. [Cookies og GDPR](#12-cookies-og-gdpr)
 13. [Udvikling og tests (for udviklere)](#13-udvikling-og-tests-for-udviklere)
 14. [Tilbud med individuel pris og betalingslink](#14-tilbud-med-individuel-pris-og-betalingslink)
-15. [Hjemmesiden veyro.dk uden Shopify](#15-hjemmesiden-veyrodk-uden-shopify)
+15. [Hjemmesiden veyro.dk](#15-hjemmesiden-veyrodk)
 
 ---
 
@@ -114,7 +114,7 @@ npm run migrate                              # opretter tabellerne i den rigtige
 3. I Cloudflare: **Workers & Pages → Create → Workers → Import a repository**.
 4. Forbind din GitHub-konto, og vælg repository'et.
 5. Indstillinger for build:
-   - **Project name:** `veyro-kundepanel` (skal matche `name` i `wrangler.toml`)
+   - **Project name:** `veyro` (skal matche `name` i `wrangler.toml`)
    - **Build command:** lad stå tom
    - **Deploy command:** `npx wrangler deploy`
    - **Root directory:** `/` (eller mappen, hvis koden ligger i en undermappe)
@@ -128,7 +128,7 @@ npm run migrate                              # opretter tabellerne i den rigtige
 
 Hemmeligheder må **aldrig** stå i koden eller i `wrangler.toml`. Sæt dem i Cloudflare:
 
-**Dashboard:** Workers & Pages → `veyro-kundepanel` → **Settings → Variables and Secrets → Add** → Type: **Secret**.
+**Dashboard:** Workers & Pages → `veyro` → **Settings → Variables and Secrets → Add** → Type: **Secret**.
 
 **Eller kommandolinje:**
 
@@ -150,10 +150,10 @@ npx wrangler secret put RESEND_API_KEY
 
 ## 7. Eget domæne: kunde.veyro.dk
 
-1. Workers & Pages → `veyro-kundepanel` → **Settings → Domains & Routes → Add → Custom domain**.
+1. Workers & Pages → `veyro` → **Settings → Domains & Routes → Add → Custom domain**.
 2. Skriv `kunde.veyro.dk`, og bekræft. Cloudflare opretter selv DNS-posten og SSL-certifikatet (det kan tage nogle minutter).
 
-(Alternativt kan du fjerne `#` foran `routes`-linjerne i `wrangler.toml`.)
+(Domænerne står allerede i `routes` i `wrangler.toml`, så de oprettes ved hver udrulning.)
 
 Sørg for, at `APP_URL` i `wrangler.toml` er `https://kunde.veyro.dk` – den bruges i login-links og i links tilbage fra Stripe.
 
@@ -325,7 +325,7 @@ Bruges, når Veyro aftaler ydelse, pris og interval med en kunde og sender et ti
 5. Når en **verificeret webhook** fra Stripe bekræfter tilmelding og første betaling, bliver tilbuddet og kunden aktive, og kunden får en velkomstmail med adgang til kundepanelet. Takkesiden efter betaling er ikke nok i sig selv.
 6. Abonnementet fornyes automatisk, til kunden opsiger. Stripe sender kvittering/faktura ved hver betaling.
 
-**Shopify og Stripe er to adskilte systemer.** Shopify (veyro.dk) modtager kun forespørgsler fra kurven og opkræver intet. Shopify Payments og Stripe Billing synkroniserer ikke, og der oprettes ingen betalingsforpligtelse i Shopify. Stripe Billing i kundepanelet er det eneste sted, abonnementet opkræves. Kunden kobles på e-mail: tilbud, Stripe-kunde og kundepanel bruger samme e-mail. Der er derfor hverken brug for en Shopify-app eller en ekstra backend.
+**Hjemmesiden og Stripe er adskilt.** veyro.dk modtager kun forespørgsler fra kurven og formularerne og opkræver intet. Stripe Billing i kundepanelet er det eneste sted, abonnementet opkræves. Kunden kobles på e-mail: tilbud, Stripe-kunde og kundepanel bruger samme e-mail.
 
 **Tilbud, betalingsanmodning og faktura**
 
@@ -361,11 +361,11 @@ Kunden kan selv skifte kort, hente fakturaer og opsige i kundepanelet, og via St
 
 **Rul tilbage:** Udgiv den forrige version i Cloudflare (**Workers → veyro → Deployments → Rollback**). De nye tabeller og kolonner kan blive stående. Den gamle kode bruger dem ikke.
 
-## 15. Hjemmesiden veyro.dk uden Shopify
+## 15. Hjemmesiden veyro.dk
 
 Salgshjemmesiden kører nu i samme Worker som kundepanelet. Domænet afgør, hvad der vises: `kunde.veyro.dk` er kundepanelet, og domænerne i `SITE_HOSTS` (`veyro.dk`, `www.veyro.dk`, `ny.veyro.dk`) er hjemmesiden. `www` sendes videre til `veyro.dk`.
 
-**Indhold.** Temaet er det samme som i Shopify (flyttet til `site/theme`) og gengives med Liquid i Workeren. Standardindholdet (sider, menuer, abonnementer, juridiske tekster) ligger i `site/content.json`. Alt, der rettes i admin, gemmes i D1 (`site_content`), og den tidligere version lægges i `site_content_history`, så alt kan gendannes. Efter ændringer i `site/` køres `npm run build:site`, som pakker temaet ind i `src/site/theme.generated.ts` (testene fejler, hvis den er glemt).
+**Indhold.** Temaet ligger i `site/theme` og gengives i Workeren med skabelonsproget Liquid (biblioteket `liquidjs`). Der er ingen forbindelse til Shopify; navne som `shopify-section` i HTML'en er kun interne klassenavne fra temaets oprindelse. Standardindholdet (sider, menuer, abonnementer, juridiske tekster) ligger i `site/content.json`. Alt, der rettes i admin, gemmes i D1 (`site_content`), og den tidligere version lægges i `site_content_history`, så alt kan gendannes. Efter ændringer i `site/` køres `npm run build:site`, som pakker temaet ind i `src/site/theme.generated.ts` (testene fejler, hvis den er glemt).
 
 **Admin** (`kunde.veyro.dk/admin`):
 
@@ -389,16 +389,14 @@ Salgshjemmesiden kører nu i samme Worker som kundepanelet. Domænet afgør, hva
 
 **Admin › Statistik** (`/admin/statistik`) viser sidevisninger, forespørgsler, konvertering, betalt omsætning, sendte tilbud, nye kunder, aktive abonnementer og fast månedlig omsætning for en periode (7/30/90 dage, 12 måneder eller en kalendermåned), med ændringen i forhold til perioden før og grafer pr. dag. Omsætningen hentes direkte fra Stripe (betalte fakturaer efter betalingsdato); svarer Stripe ikke, bruges kundepanelets egne betalinger. **Download Excel** giver en .xlsx-fil for perioden med arkene Oversigt, Pr. dag, Sider, Forespørgsler, Tilbud, Betalinger og Nye kunder (`src/lib/stats.ts`, `src/lib/xlsx.ts`).
 
-### Flytning fra Shopify (rækkefølge)
+### Udrulning og tilbagerulning
 
-1. Flet pull requesten, og kør derefter **Actions › Deploy kundepanel › Run workflow** på GitHub. Den opretter migrationsloggen, hvis den mangler (produktionsdatabasen blev oprettet uden, så `npm run migrate` stopper ved 0001), kører de manglende migrationer (0004 og 0005, kun nye kolonner og tabeller), udruller koden og tjekker siderne. Loggen viser et D1 Time Travel-bogmærke fra før migrationerne til en eventuel tilbagerulning.
-2. `ny.veyro.dk` oprettes ved udrulningen som prøveadresse (den er skjult for søgemaskiner). Shopify kører videre uændret på `veyro.dk`.
-3. Gennemgå siden på `https://ny.veyro.dk`, send en test-forespørgsel, og ret indhold i admin.
-4. **Domæneskiftet (kræver jeres godkendelse):** Kør **Actions › Skift domæne** med `skift`. Workflowet viser og gemmer først alle DNS-poster (som fil på kørslen), sletter derefter kun A/AAAA/CNAME-posterne for `veyro.dk` og `www`, der peger på Shopify, og udruller, så Workeren overtager begge adresser (de står i `routes` i `wrangler.toml`). **MX-, SPF-, DKIM- og andre mailposter røres ikke.** Til sidst tjekkes, at veyro.dk svarer fra den nye side, og at www sendes videre. `vis` viser kun posterne. **Tilbagerulning:** kør workflowet med `tilbage` (fjerner Workerens veyro.dk/www og genskaber Shopifys poster A `23.227.38.65` og CNAME `shops.myshopify.com`), og fjern de to adresser fra `routes`. Vent med at opsige Shopify, til veyro.dk har kørt stabilt.
-5. Tjek `https://veyro.dk`, en formular og kurven. Indsend `https://veyro.dk/sitemap.xml` i Google Search Console.
-6. Først når alt virker: fjern domænet i Shopify og opsig Shopify-abonnementet. Gem gerne en eksport af temaet først (det ligger også i `shopify-theme/`).
+veyro.dk, www.veyro.dk og ny.veyro.dk peger på Workeren (de står i `routes` i `wrangler.toml`); domænet blev flyttet fra Shopify 20. oktober 2026, og Shopify bruges ikke længere.
 
-**Rul tilbage:** Indhold rulles tilbage under Admin › Hjemmeside › Historik. Selve domæneskiftet rulles tilbage ved at fjerne `veyro.dk`/`www.veyro.dk` fra routes og genskabe Shopifys to DNS-poster; så viser Shopify-temaet siden igen, så længe Shopify-abonnementet ikke er opsagt.
+1. Flet ændringer til `main`, og kør **Actions › Deploy kundepanel › Run workflow**. Den kører typecheck og temakontrol, viser et D1 Time Travel-bogmærke, kører manglende migrationer, udruller og tjekker kunde.veyro.dk, ny.veyro.dk og de juridiske sider på veyro.dk.
+2. Tjek bagefter `https://veyro.dk`, en formular og kurven.
+
+**Rul tilbage:** Kode: *Cloudflare → Workers → veyro → Deployments → Rollback* til den forrige version. Indhold: Admin › Hjemmeside › Historik › „Gendan". Database: `npx wrangler d1 time-travel restore veyro-kundepanel --timestamp=<bogmærket fra loggen>` (sletter alt, der er skrevet siden; bruges kun efter aftale).
 
 ## 16. Digitale fuldmagter
 

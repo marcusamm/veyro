@@ -1,6 +1,6 @@
 {%- comment -%}
   Abonnementer: løbende vedligeholdelse med eller uden hosting.
-  Har blokken et aktivt Shopify-produkt, kan abonnementet lægges i kurven (sendes som forespørgsel).
+  Er blokken koblet til et aktivt abonnement (Admin › Abonnementer og priser), kan det lægges i kurven (sendes som forespørgsel).
   Ellers går knappen til knaplinket eller kontaktformularen. „Hent tilbud“ går altid
   til kontaktformularen med abonnementet forvalgt.
 {%- endcomment -%}
@@ -88,7 +88,7 @@
         { "type": "text", "id": "button_label", "label": "Knaptekst", "default": "Hør mere" },
         { "type": "url", "id": "link", "label": "Knaplink", "info": "Tomt felt linker til kontaktformularen med abonnementet forvalgt." },
         { "type": "text", "id": "form_key", "label": "Forvalg i kontaktformular", "default": "abonnement-vedligeholdelse" },
-        { "type": "product", "id": "product", "label": "Abonnementsprodukt i Shopify (valgfrit)", "info": "Er produktet aktivt i webshoppen, vises „Læg i kurv“, og prisen hentes fra produktet. Ellers bruges knaplinket." }
+        { "type": "product", "id": "product", "label": "Abonnement til kurven (valgfrit)", "info": "Er abonnementet aktivt under Abonnementer og priser, vises „Læg i kurv“, og prisen hentes derfra. Ellers bruges knaplinket." }
       ]
     }
   ],

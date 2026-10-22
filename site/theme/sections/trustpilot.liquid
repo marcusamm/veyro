@@ -67,13 +67,12 @@
               const box = document.currentScript.previousElementSibling;
               const category = box.dataset.trustpilotConsent || 'marketing';
               const allowed = () => {
-                if (window.Shopify && window.Shopify.designMode) return true;
                 try {
                   const d = JSON.parse(localStorage.getItem('theme-cookie-consent') || 'null');
-                  if (d && d.consent && category in d.consent) return !!d.consent[category];
-                } catch (e) {}
-                const api = window.Shopify && window.Shopify.customerPrivacy;
-                return !!(api && api.currentVisitorConsent && (api.currentVisitorConsent() || {})[category] === 'yes');
+                  return !!(d && d.consent && d.consent[category]);
+                } catch (e) {
+                  return false;
+                }
               };
               const render = () => window.Trustpilot && window.Trustpilot.loadFromElement(box.querySelector('.trustpilot-widget'), true);
               const update = () => {
@@ -93,11 +92,6 @@
               };
               update();
               document.addEventListener('theme:consent', update);
-              document.addEventListener('visitorConsentCollected', update);
-              // Shopifys samtykke-API indlæses asynkront; tjek igen, når det er klar.
-              if (window.Shopify && typeof window.Shopify.loadFeatures === 'function') {
-                window.Shopify.loadFeatures([{ name: 'consent-tracking-api', version: '0.1' }], (error) => { if (!error) update(); });
-              }
             })();
           </script>
         {%- elsif request.design_mode -%}

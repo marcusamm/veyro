@@ -3,16 +3,10 @@
   og skrives som CSS-variabler, som assets/base.css bygger på.
 {%- endcomment -%}
 {%- liquid
-  if settings.use_theme_fonts
-    assign font_heading_family = '"Inter Tight", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
-    assign font_body_family = '"Inter Tight", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
-  else
-    assign font_heading_family = settings.font_heading.family | append: ', ' | append: settings.font_heading.fallback_families
-    assign font_body_family = settings.font_body.family | append: ', ' | append: settings.font_body.fallback_families
-  endif
+  assign font_heading_family = '"Inter Tight", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
+  assign font_body_family = '"Inter Tight", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
 -%}
 <style>
-  {%- if settings.use_theme_fonts -%}
   @font-face {
     font-family: "Inter Tight";
     src: url("{{ 'inter-tight-latin-wght-normal.woff2' | asset_url }}") format("woff2");
@@ -27,10 +21,6 @@
     font-style: normal;
     font-display: swap;
   }
-  {%- else -%}
-  {{ settings.font_heading | font_face: font_display: 'swap' }}
-  {{ settings.font_body | font_face: font_display: 'swap' }}
-  {%- endif -%}
 
   :root {
     --color-bg: {{ settings.color_bg }};
@@ -51,7 +41,7 @@
 
     --font-heading: {{ font_heading_family }};
     --font-body: {{ font_body_family }};
-    --font-mono: {% if settings.use_theme_fonts %}"JetBrains Mono", {% endif %}ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --heading-weight: {{ settings.heading_weight }};
     --heading-scale: {{ settings.heading_scale | divided_by: 100.0 }};
     --body-scale: {{ settings.body_scale | divided_by: 100.0 }};

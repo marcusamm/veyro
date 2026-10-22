@@ -1,7 +1,7 @@
 {%- comment -%}
-  Kontakt- og tilbudsformular. Bruger Shopifys indbyggede kontaktformular
-  ({% form 'contact' %}): henvendelsen sendes som e-mail til butikkens
-  kontakt-e-mail, og Shopify beskytter mod spam. Ingen tredjepartstjenester.
+  Kontakt- og tilbudsformular ({% form 'contact' %}, sendes til /contact): henvendelsen
+  gemmes under Admin › Forespørgsler og sendes som e-mail til Veyro. Beskyttet med
+  Origin-kontrol, honningkrukke og en grænse pr. IP. Ingen tredjepartstjenester.
   Ekstra felter sendes som contact[Feltnavn] og vises i e-mailen.
   ?ydelse=<håndtag> i URL'en forvælger en ydelse (f.eks. ?ydelse=konverteringsoptimering-cro).
 {%- endcomment -%}
@@ -88,7 +88,7 @@
             </div>
             <div class="field field--full">
               <label for="{{ fid }}-body">{{ 'forms.fields.message' | t }} <span class="req" aria-hidden="true">*</span></label>
-              <textarea id="{{ fid }}-body" name="contact[body]" rows="6" required minlength="10" maxlength="5000" placeholder="{{ 'forms.placeholders.message' | t }}" data-label="{{ 'forms.fields.message' | t }}" aria-describedby="{{ fid }}-body-error">{{ form.body }}</textarea>
+              <textarea id="{{ fid }}-body" name="contact[body]" rows="6" required minlength="10" maxlength="5000" placeholder="{{ 'forms.placeholders.message' | t }}" data-label="{{ 'forms.fields.message' | t }}" aria-describedby="{{ fid }}-body-error">{{ form.body | escape }}</textarea>
               <p class="field__error" id="{{ fid }}-body-error" hidden></p>
             </div>
           </div>

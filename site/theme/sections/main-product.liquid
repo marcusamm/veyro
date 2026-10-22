@@ -1,6 +1,6 @@
 {%- comment -%}
-  Produktside til pakker, betalte audits og digitale produkter.
-  Bruger Shopifys produktformular og checkout (inkl. dynamiske betalingsknapper).
+  Abonnementsside. „Læg i kurv“ lægger abonnementet i kurven, som sendes som en forespørgsel.
+  Der betales aldrig på hjemmesiden.
 {%- endcomment -%}
 {%- liquid
   assign current_variant = product.selected_or_first_available_variant
@@ -76,9 +76,6 @@
           <button type="submit" name="add" class="btn btn--{% if is_subscription %}primary{% else %}secondary{% endif %} btn--block"{% unless current_variant.available %} disabled{% endunless %}>
             {%- if current_variant.available -%}{{ 'products.add_to_cart' | t }}{%- else -%}{{ 'products.sold_out' | t }}{%- endif -%}
           </button>
-          {%- if section.settings.show_dynamic_checkout and is_subscription == false -%}
-            {{ form | payment_button }}
-          {%- endif -%}
         </div>
       {%- endform -%}
       {%- if is_subscription -%}<p class="small muted product__no-payment">{{ 'subscriptions.no_payment' | t }}</p>{%- endif -%}
@@ -126,8 +123,7 @@
   "tag": "div",
   "settings": [
     { "type": "text", "id": "subscription_type", "label": "Produkttype for abonnementer", "info": "Produkter med denne type vises som månedlige abonnementer. Kurven sendes som en forespørgsel uden betaling.", "default": "Abonnement" },
-    { "type": "checkbox", "id": "show_dynamic_checkout", "label": "Vis dynamiske betalingsknapper", "info": "F.eks. Shop Pay, Apple Pay og MobilePay, hvis de er aktiveret i Shopify Payments.", "default": true },
-    { "type": "richtext", "id": "note", "label": "Note under beskrivelsen", "default": "<p>I tvivl om pakken passer til din hjemmeside? <a href=\"/pages/kontakt\">Skriv til os</a> før du køber.</p>" }
+    { "type": "richtext", "id": "note", "label": "Note under beskrivelsen", "default": "<p>I tvivl om abonnementet passer til jer? <a href=\"/pages/kontakt\">Skriv til os</a>, før I sender forespørgslen. Der betales ikke her.</p>" }
   ]
 }
 {% endschema %}

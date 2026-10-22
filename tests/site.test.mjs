@@ -1,4 +1,4 @@
-// Salgshjemmesiden (veyro.dk) uden Shopify: gengivelse, kurv, formularer, forespørgsler og admin.
+// Salgshjemmesiden (veyro.dk): gengivelse, kurv, formularer, forespørgsler og admin.
 // Hjemmesiden svarer på localhost, kundepanelet på 127.0.0.1 (se harness.mjs).
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
@@ -242,6 +242,33 @@ describe('Kontaktformularer', () => {
     expect(r.html).toContain('value="Fejl Navn"');
     expect(r.html).toContain('Sæt kryds for at give samtykke');
     expect(sql("SELECT COUNT(*) AS n FROM leads WHERE name = 'Fejl Navn'")[0].n).toBe(0);
+  });
+
+  it('en genvist besked kan ikke bryde ud af tekstfeltet (kontakt og kurv)', async () => {
+    const visitor = new Client(stack.site);
+    const evil = '</textarea><script>alert(1)</script>';
+    const page = await visitor.get('/pages/kontakt');
+    const id = page.html.match(/id="(Contact-[^"]+)"/)[1];
+    const r = await visitor.post('/contact', contactForm(page.html, id, { 'contact[name]': 'XSS', 'contact[email]': 'xss@example.dk', 'contact[body]': evil }));
+    expect(r.status).toBe(422);
+    expect(r.html).not.toContain('<script>alert(1)');
+    expect(r.html).toContain('&lt;/textarea&gt;&lt;script&gt;');
+    await visitor.post('/cart/add', { id: 'business' });
+    const cart = await visitor.get('/cart');
+    const c = await visitor.post('/contact', contactForm(cart.html, 'CartRequest', { 'contact[email]': 'xss@example.dk', 'contact[body]': evil }));
+    expect(c.status).toBe(422);
+    expect(c.html).not.toContain('<script>alert(1)');
+  });
+
+  it('return_to kan kun pege på siden selv', async () => {
+    const visitor = new Client(stack.site);
+    const page = await visitor.get('/pages/kontakt');
+    const id = page.html.match(/id="(Contact-[^"]+)"/)[1];
+    for (const ret of ['/.//evil.example', '/\\evil.example', '//evil.example']) {
+      const r = await visitor.post('/contact', { ...contactForm(page.html, id, { 'contact[email]': 'robot@spam.dk', website_url: 'x' }), return_to: ret });
+      expect(r.status).toBe(303);
+      expect(r.headers.get('location'), ret).toMatch(/^\/(?![\/\\])/);
+    }
   });
 
   it('spam-robotter (honningkrukke) og fremmede sider afvises uden at gemme noget', async () => {

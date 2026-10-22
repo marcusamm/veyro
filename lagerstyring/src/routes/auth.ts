@@ -48,7 +48,7 @@ auth.post('/login', async (c) => {
   if (await findUser(c.env, email)) {
     const token = await createLoginToken(c.env, email);
     const link = `${appUrl(c.env) || new URL(c.req.url).origin}/login/bekraeft?token=${encodeURIComponent(token)}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
-    if (emailConfigured(c.env)) {
+    if (emailConfigured(c.env, email)) {
       c.executionCtx.waitUntil(sendEmail(c.env, { to: email, ...loginEmail(link, s) }, s).catch((err) => console.error('Login-mail fejlede:', (err as Error).message)));
     } else {
       console.log(`[DEV] Ingen RESEND_API_KEY – login-link: ${link}`);
