@@ -442,6 +442,7 @@ site.post('/contact', async (c) => {
       ...(fields['Virksomhed'] ? [`Virksomhed: ${fields['Virksomhed']}`] : []),
       ...(fields['Hjemmeside'] ? [`Hjemmeside: ${fields['Hjemmeside']}`] : []),
       ...(fields['Ydelse'] ? [`Ydelse: ${fields['Ydelse']}`] : []),
+      ...(['Branche', 'Antal medarbejdere'] as const).filter((k) => fields[k]).map((k) => `${k}: ${fields[k]}`),
       ...(cart ?? []).map((l) => `Kurv: ${l.quantity} × ${l.title} – ${formatKr(l.price * l.quantity)} ${l.interval === 'year' ? 'pr. år' : 'pr. md.'}`),
       ...(fields['body'] ? [`Besked: ${fields['body']}`] : []),
     ];

@@ -387,11 +387,11 @@ describe('Fakturaer og betalingskort', () => {
 });
 
 describe('Bestilling (skræddersyet pris via kontaktformularen)', () => {
-  it('ingen faste planer: /bestil sender videre til kontaktformularen på veyro.dk', async () => {
+  it('/bestil sender videre til prissiden på veyro.dk og starter ingen betaling', async () => {
     const c = new Client(stack.base);
     const page = await c.get('/bestil?plan=business');
     expect(page.status).toBe(302);
-    expect(page.headers.get('location')).toBe('https://veyro.dk/pages/kontakt#formular');
+    expect(page.headers.get('location')).toBe('https://veyro.dk/pages/ydelser#priser');
     const before = (await calls()).filter((x) => x.path === '/v1/checkout/sessions').length;
     const { client } = await as('anna@example.dk');
     const login = await c.get('/login');
@@ -399,7 +399,7 @@ describe('Bestilling (skræddersyet pris via kontaktformularen)', () => {
     const konto = await client.get('/konto');
     const res = await client.post('/bestil', { _csrf: csrfFrom(konto.html), plan: 'starter', accept: '1' });
     expect(res.status).toBe(303);
-    expect(res.headers.get('location')).toBe('https://veyro.dk/pages/kontakt#formular');
+    expect(res.headers.get('location')).toBe('https://veyro.dk/pages/ydelser#priser');
     expect((await calls()).filter((x) => x.path === '/v1/checkout/sessions').length).toBe(before);
   });
 

@@ -1,0 +1,157 @@
+{%- comment -%}
+  Pakker og priser: abonnementer, der kan bestilles nu, og kommende løsninger ("På vej").
+  Bestillingsknapper går til kontaktformularen med pakken forvalgt. Kommende løsninger har ingen
+  købsknap, kun "Bliv testkunde", som går til testkundeformularen (sections/pilot-form).
+  Tabellen over ekstra medarbejdere regnes ud fra indstillingerne, så eksemplerne altid passer til prisen.
+{%- endcomment -%}
+<section class="section section--{{ section.settings.scheme }} packages" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container">
+    {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
+
+    {%- if section.settings.offer != blank -%}
+      <div class="packages__offer" data-reveal>
+        <p class="packages__offer-text">{% render 'icon', name: 'check', size: 18 %}<strong>{{ section.settings.offer | escape }}</strong></p>
+        {%- if section.settings.offer_note != blank -%}<p class="small muted">{{ section.settings.offer_note | escape }}</p>{%- endif -%}
+      </div>
+    {%- endif -%}
+
+    <ul class="packages__grid" role="list">
+      {%- for block in section.blocks -%}
+        {%- liquid
+          assign coming = false
+          if block.settings.status == 'coming'
+            assign coming = true
+          endif
+          assign terms = block.settings.terms | newline_to_br | split: '<br />'
+          assign features = block.settings.features | newline_to_br | split: '<br />'
+          assign heading_id = 'Package-' | append: block.id
+        -%}
+        <li class="plan pricing-card card{% if coming %} pricing-card--coming{% endif %}" aria-labelledby="{{ heading_id }}" data-reveal style="--delay: {{ forloop.index0 | times: 90 }}ms" {{ block.shopify_attributes }}>
+          <div class="plan__head">
+            <h3 class="h3" id="{{ heading_id }}">{{ block.settings.title | escape }}</h3>
+            {%- if block.settings.badge != blank -%}<span class="plan__badge{% if coming %} pricing-card__badge--coming{% endif %}">{{ block.settings.badge | escape }}</span>{%- endif -%}
+          </div>
+          {%- if block.settings.text != blank -%}<div class="rte plan__text">{{ block.settings.text }}</div>{%- endif -%}
+
+          <div class="pricing-card__price">
+            {%- if block.settings.price_label != blank -%}<p class="pricing-card__price-label">{{ block.settings.price_label | escape }}</p>{%- endif -%}
+            <p class="plan__price">{{ block.settings.price | escape }}{%- if block.settings.price_note != blank -%}<span>{{ block.settings.price_note | escape }}</span>{%- endif -%}</p>
+          </div>
+
+          {%- if block.settings.terms != blank -%}
+            <ul class="pricing-card__terms" role="list">
+              {%- for t in terms -%}
+                {%- assign term = t | strip -%}
+                {%- if term != blank -%}<li>{{ term | escape }}</li>{%- endif -%}
+              {%- endfor -%}
+            </ul>
+          {%- endif -%}
+
+          {%- if block.settings.features != blank -%}
+            {%- if block.settings.features_label != blank -%}<p class="pricing-card__features-label">{{ block.settings.features_label | escape }}</p>{%- endif -%}
+            <ul class="checklist" role="list">
+              {%- for f in features -%}
+                {%- assign feature = f | strip -%}
+                {%- if feature != blank -%}<li>{% render 'icon', name: 'check', size: 16 %}<span>{{ feature | escape }}</span></li>{%- endif -%}
+              {%- endfor -%}
+            </ul>
+          {%- endif -%}
+
+          <div class="plan__cta">
+            {%- if block.settings.button_label != blank and block.settings.button_link != blank -%}
+              {%- if coming -%}
+                {% render 'button', label: block.settings.button_label, url: block.settings.button_link, style: 'secondary', class: 'btn--block' %}
+              {%- else -%}
+                {% render 'button', label: block.settings.button_label, url: block.settings.button_link, style: 'primary', arrow: settings.button_arrow, class: 'btn--block' %}
+              {%- endif -%}
+            {%- endif -%}
+            {%- if block.settings.button_note != blank -%}<p class="plan__note pricing-card__button-note">{{ block.settings.button_note | escape }}</p>{%- endif -%}
+          </div>
+        </li>
+      {%- endfor -%}
+    </ul>
+
+    {%- if section.settings.staff_heading != blank -%}
+      {%- liquid
+        assign staff_base = section.settings.staff_base_price | times: 1
+        assign staff_included = section.settings.staff_included | times: 1
+        assign staff_extra = section.settings.staff_extra_price | times: 1
+        assign staff_from = staff_included
+        assign staff_to = staff_included | plus: 3
+      -%}
+      <div class="packages__staff card" data-reveal>
+        <div class="packages__staff-text">
+          <h3 class="h4">{{ section.settings.staff_heading | escape }}</h3>
+          {%- if section.settings.staff_text != blank -%}<div class="rte small">{{ section.settings.staff_text }}</div>{%- endif -%}
+        </div>
+        {%- if staff_base > 0 -%}
+          <table class="packages__staff-table">
+            <caption>{{ section.settings.staff_table_caption | escape }}</caption>
+            <thead><tr><th scope="col">Medarbejdere</th><th scope="col">Pris pr. md. ekskl. moms</th></tr></thead>
+            <tbody>
+              {%- for n in (staff_from..staff_to) -%}
+                {%- assign extra = n | minus: staff_included | times: staff_extra -%}
+                {%- assign total = staff_base | plus: extra -%}
+                <tr><th scope="row">{{ n }}</th><td>{{ total | times: 100 | money_without_trailing_zeros }}.</td></tr>
+              {%- endfor -%}
+            </tbody>
+          </table>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+
+    {%- if section.settings.footnote != blank -%}
+      <div class="rte small muted plans__footnote" data-reveal>{{ section.settings.footnote }}</div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Pakker og priser",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
+    ], "default": "surface" },
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "priser" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Priser" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "En løsning, der passer til din virksomhed" },
+    { "type": "richtext", "id": "text", "label": "Introduktion" },
+    { "type": "text", "id": "offer", "label": "Tilbud (fremhævet)", "default": "Første måned gratis · Gratis oprettelse · Ingen binding" },
+    { "type": "text", "id": "offer_note", "label": "Note til tilbuddet" },
+    { "type": "text", "id": "staff_heading", "label": "Ekstra medarbejdere: overskrift" },
+    { "type": "richtext", "id": "staff_text", "label": "Ekstra medarbejdere: tekst" },
+    { "type": "text", "id": "staff_table_caption", "label": "Ekstra medarbejdere: tabeltitel", "default": "Eksempler for Booking" },
+    { "type": "number", "id": "staff_base_price", "label": "Grundpris i tabellen (kr./md.)", "default": 299 },
+    { "type": "number", "id": "staff_included", "label": "Medarbejdere inkluderet", "default": 3 },
+    { "type": "number", "id": "staff_extra_price", "label": "Pris pr. ekstra medarbejder (kr./md.)", "default": 99 },
+    { "type": "richtext", "id": "footnote", "label": "Fodnote" }
+  ],
+  "blocks": [
+    {
+      "type": "package",
+      "name": "Pakke",
+      "limit": 6,
+      "settings": [
+        { "type": "text", "id": "title", "label": "Navn", "default": "Pakke" },
+        { "type": "select", "id": "status", "label": "Status", "options": [
+          { "value": "available", "label": "Kan bestilles nu" }, { "value": "coming", "label": "På vej (kun testkunder)" }
+        ], "default": "available" },
+        { "type": "text", "id": "badge", "label": "Mærkat" },
+        { "type": "richtext", "id": "text", "label": "Beskrivelse" },
+        { "type": "text", "id": "price_label", "label": "Tekst over prisen", "info": "F.eks. „Forventet abonnementspris“ for kommende løsninger." },
+        { "type": "text", "id": "price", "label": "Pris", "default": "199 kr." },
+        { "type": "text", "id": "price_note", "label": "Prisnote", "default": "/md. ekskl. moms" },
+        { "type": "textarea", "id": "terms", "label": "Vilkår under prisen (én pr. linje)" },
+        { "type": "text", "id": "features_label", "label": "Overskrift over indhold", "default": "Indhold" },
+        { "type": "textarea", "id": "features", "label": "Indhold (én pr. linje)" },
+        { "type": "text", "id": "button_label", "label": "Knaptekst" },
+        { "type": "url", "id": "button_link", "label": "Knaplink" },
+        { "type": "text", "id": "button_note", "label": "Tekst under knappen" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Pakker og priser", "blocks": [{ "type": "package" }, { "type": "package" }] }]
+}
+{% endschema %}

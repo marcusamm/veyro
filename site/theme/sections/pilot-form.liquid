@@ -1,0 +1,121 @@
+{%- comment -%}
+  Kort formular til virksomheder, der vil være testkunde på en kommende løsning.
+  Sendes til /contact og gemmes som forespørgsel i admin med den valgte løsning i „Ydelse“.
+  En tilmelding er kun en henvendelse: den starter ikke et abonnement.
+  ?pakke=<håndtag> i URL'en forvælger løsningen (f.eks. ?pakke=drift).
+{%- endcomment -%}
+{%- liquid
+  assign fid = 'Pilot-' | append: section.id
+  assign options = section.settings.options | newline_to_br | split: '<br />'
+  assign sizes = section.settings.sizes | newline_to_br | split: '<br />'
+-%}
+<section class="section section--{{ section.settings.scheme }} assessment pilot" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container assessment__inner">
+    <div class="assessment__intro">
+      {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
+    </div>
+
+    <div class="assessment__card card" data-reveal>
+      {%- form 'contact', id: fid, class: 'form js-validate', novalidate: 'novalidate' -%}
+        {% render 'form-status', form: form, success_heading: section.settings.success_heading, success_text: section.settings.success_text %}
+        {%- unless form.posted_successfully? -%}
+          <div class="form__error-summary" role="alert" tabindex="-1" hidden data-error-summary></div>
+          <input type="hidden" name="contact[Formular]" value="{{ section.settings.form_name | escape }}">
+          <p class="form__legend small muted">{{ 'forms.required_legend' | t }}</p>
+
+          <div class="form__grid">
+            <div class="field field--full">
+              <label for="{{ fid }}-package">Hvilken løsning er I interesserede i? <span class="req" aria-hidden="true">*</span></label>
+              <div class="select">
+                <select id="{{ fid }}-package" name="contact[Ydelse]" required data-label="Løsning" aria-describedby="{{ fid }}-package-error" data-preselect="pakke">
+                  <option value="">{{ 'forms.choose' | t }}</option>
+                  {%- for o in options -%}
+                    {%- assign option = o | strip -%}
+                    {%- if option != blank -%}<option value="Testkunde: {{ option | escape }}" data-key="{{ option | handle }}">{{ option | escape }}</option>{%- endif -%}
+                  {%- endfor -%}
+                </select>
+                {% render 'icon', name: 'arrow-down', size: 18 %}
+              </div>
+              <p class="field__error" id="{{ fid }}-package-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="{{ fid }}-company">Virksomhedsnavn <span class="req" aria-hidden="true">*</span></label>
+              <input type="text" id="{{ fid }}-company" name="contact[Virksomhed]" autocomplete="organization" required maxlength="120" placeholder="{{ 'forms.placeholders.company' | t }}" data-label="Virksomhedsnavn" aria-describedby="{{ fid }}-company-error">
+              <p class="field__error" id="{{ fid }}-company-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="{{ fid }}-name">Kontaktperson <span class="req" aria-hidden="true">*</span></label>
+              <input type="text" id="{{ fid }}-name" name="contact[name]" autocomplete="name" required maxlength="120" value="{{ form.name | escape }}" placeholder="{{ 'forms.placeholders.name' | t }}" data-label="Kontaktperson" aria-describedby="{{ fid }}-name-error">
+              <p class="field__error" id="{{ fid }}-name-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="{{ fid }}-email">{{ 'forms.fields.email' | t }} <span class="req" aria-hidden="true">*</span></label>
+              <input type="email" id="{{ fid }}-email" name="contact[email]" autocomplete="email" inputmode="email" spellcheck="false" autocapitalize="off" required maxlength="160" value="{{ form.email | escape }}" placeholder="{{ 'forms.placeholders.email' | t }}" data-label="{{ 'forms.fields.email' | t }}" aria-describedby="{{ fid }}-email-error"{% if form.errors contains 'email' %} aria-invalid="true"{% endif %}>
+              <p class="field__error" id="{{ fid }}-email-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="{{ fid }}-phone">{{ 'forms.fields.phone' | t }} <span class="field__opt">({{ 'forms.optional' | t }})</span></label>
+              <input type="tel" id="{{ fid }}-phone" name="contact[Telefon]" autocomplete="tel" inputmode="tel" maxlength="30">
+            </div>
+            <div class="field">
+              <label for="{{ fid }}-industry">Branche <span class="req" aria-hidden="true">*</span></label>
+              <input type="text" id="{{ fid }}-industry" name="contact[Branche]" required maxlength="120" placeholder="F.eks. tømrer, murer eller VVS" data-label="Branche" aria-describedby="{{ fid }}-industry-error">
+              <p class="field__error" id="{{ fid }}-industry-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="{{ fid }}-size">Antal medarbejdere <span class="req" aria-hidden="true">*</span></label>
+              <div class="select">
+                <select id="{{ fid }}-size" name="contact[Antal medarbejdere]" required data-label="Antal medarbejdere" aria-describedby="{{ fid }}-size-error">
+                  <option value="">{{ 'forms.choose' | t }}</option>
+                  {%- for s in sizes -%}
+                    {%- assign size = s | strip -%}
+                    {%- if size != blank -%}<option value="{{ size | escape }}">{{ size | escape }}</option>{%- endif -%}
+                  {%- endfor -%}
+                </select>
+                {% render 'icon', name: 'arrow-down', size: 18 %}
+              </div>
+              <p class="field__error" id="{{ fid }}-size-error" hidden></p>
+            </div>
+            <div class="field field--full">
+              <label for="{{ fid }}-body">Hvad vil I gerne have hjælp til? <span class="req" aria-hidden="true">*</span></label>
+              <textarea id="{{ fid }}-body" name="contact[body]" rows="4" required minlength="10" maxlength="3000" placeholder="F.eks. overblik over materialer på jobs, lager i bilen eller bilag." data-label="Hvad vil I gerne have hjælp til?" aria-describedby="{{ fid }}-body-error">{{ form.body | escape }}</textarea>
+              <p class="field__error" id="{{ fid }}-body-error" hidden></p>
+            </div>
+          </div>
+
+          {% render 'form-consent', id: fid %}
+
+          <button class="btn btn--primary btn--lg btn--block" type="submit" data-submit>
+            <span>{{ section.settings.submit_label | escape }}</span>
+            {% render 'icon', name: 'arrow-right', size: 18 %}
+          </button>
+          {%- if section.settings.note != blank -%}<p class="small muted form__note">{{ section.settings.note | escape }}</p>{%- endif -%}
+        {%- endunless -%}
+      {%- endform -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Testkundeformular",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
+    ], "default": "light" },
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "testkunde" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Bliv testkunde" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Vil I teste Drift eller Alt inkl.?" },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "form_name", "label": "Formularens navn i e-mailen", "default": "Testkunde" },
+    { "type": "textarea", "id": "options", "label": "Løsninger (én pr. linje)", "default": "Drift\nAlt inkl." },
+    { "type": "textarea", "id": "sizes", "label": "Valgmuligheder for antal medarbejdere (én pr. linje)", "default": "1\n2-3\n4-10\n11-25\nFlere end 25" },
+    { "type": "text", "id": "submit_label", "label": "Knaptekst", "default": "Send tilmelding" },
+    { "type": "text", "id": "note", "label": "Tekst under knappen" },
+    { "type": "text", "id": "success_heading", "label": "Succes – overskrift", "default": "Tak for din interesse" },
+    { "type": "richtext", "id": "success_text", "label": "Succes – tekst", "default": "<p>Tak for din interesse. Vi kontakter dig for at høre om din virksomhed og aftale, om et testforløb passer til jer.</p>" }
+  ],
+  "presets": [{ "name": "Testkundeformular" }]
+}
+{% endschema %}
