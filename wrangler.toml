@@ -56,6 +56,9 @@ DEV_MODE = "0"
 # Salgshjemmesiden (README, afsnit 15).
 SITE_HOSTS = "veyro.dk,www.veyro.dk,ny.veyro.dk"
 SITE_URL = "https://veyro.dk"
+# Veyros bankkonto (Revolut Business) til bankoverførsel. Står i fodnoten på fakturaer fra admin.
+BANK_IBAN = "LT14 3250 0850 3228 8130"
+BANK_BIC = "REVOLT21"
 # Valgfri momssats (inkluderet i prisen), se README:
 # STRIPE_TAX_RATE_ID = "txr_..."
 

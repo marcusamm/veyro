@@ -139,6 +139,14 @@ export async function vatRateId(env: Env): Promise<string> {
   return created.id;
 }
 
+/** Fodnote med Veyros bankoplysninger, så kunden kan betale ved bankoverførsel. Tom, hvis ingen IBAN er sat. */
+export function bankFooter(env: Env): string {
+  const iban = env.BANK_IBAN?.trim();
+  if (!iban) return '';
+  const bic = env.BANK_BIC?.trim();
+  return `Betaling ved bankoverførsel til Veyro: IBAN ${iban}${bic ? `, BIC/SWIFT ${bic}` : ''}. Angiv fakturanummeret som tekst på overførslen.`;
+}
+
 /** Sender et Stripe-kald; afviser Stripe et ukendt parameter (fx managed_payments), prøves igen uden. */
 export async function postWithFallback<T>(env: Env, path: string, params: Params, optional: string, key: string): Promise<T> {
   try {
@@ -170,6 +178,8 @@ export async function createInvoice(env: Env, d: InvoiceDraft, opts: { send: boo
     'metadata[source]': 'veyro-admin',
   };
   if (d.memo) params.description = d.memo;
+  const bank = bankFooter(env);
+  if (bank) params.footer = bank;
   if (taxRate) params['default_tax_rates[0]'] = taxRate;
   let inv = await postWithFallback<AdminInvoice>(env, '/v1/invoices', params, 'managed_payments', `${opts.key}-invoice`);
 

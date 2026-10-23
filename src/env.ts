@@ -20,6 +20,10 @@ export interface Env {
   /** Hjemmesidens kanoniske adresse (til søgemaskiner og delingslinks) */
   SITE_URL?: string;
 
+  /** Veyros bankkonto til bankoverførsel (vises på fakturaer fra admin) */
+  BANK_IBAN?: string;
+  BANK_BIC?: string;
+
   /** Mærkning af test-/demomiljøer (fx "Testmiljø"). Tom i produktion. */
   TEST_LABEL?: string;
 
