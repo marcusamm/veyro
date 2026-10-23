@@ -109,6 +109,10 @@ export interface StripeInvoice {
   currency: string;
   hosted_invoice_url: string | null;
   invoice_pdf: string | null;
+  paid_out_of_band?: boolean;
+  billing_reason?: string | null;
+  starting_balance?: number;
+  ending_balance?: number | null;
 }
 
 export function idOf(v: string | { id: string } | null | undefined): string | null {

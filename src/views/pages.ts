@@ -3,6 +3,7 @@ import type { RequestRow, SubscriptionRow } from '../env';
 import { systemLoginUrl, type KundeSystem } from '../lib/katalog';
 import { formatDate, formatDateShort, formatKr } from '../lib/format';
 import { PLANS, getPlan, type Plan } from '../lib/plans';
+import { settledLabel } from '../lib/invoices';
 import type { StripeInvoice } from '../lib/stripe';
 import { alert, csrfField, type H } from './layout';
 import { REQUEST_STATUSES, REQUEST_TYPES, badgeClass, subscriptionState } from './status';
@@ -389,7 +390,8 @@ export function invoicesPage(args: { csrf: string; invoices: StripeInvoice[] | n
         : html`<div class="table-wrap"><table class="responsive">
           <thead><tr><th scope="col">Dato</th><th scope="col">Nummer</th><th scope="col">Status</th><th scope="col" class="num">Beløb</th><th scope="col"><span class="visually-hidden">Handlinger</span></th></tr></thead>
           <tbody>${args.invoices.map((inv) => {
-            const st = INVOICE_STATUS[inv.status ?? ''] ?? { label: inv.status ?? '–', cls: 'b-neutral' };
+            const settled = settledLabel(inv);
+            const st = settled ? { label: settled, cls: 'b-ok' } : (INVOICE_STATUS[inv.status ?? ''] ?? { label: inv.status ?? '–', cls: 'b-neutral' });
             return html`<tr>
               <td data-label="Dato">${formatDateShort(inv.created)}</td>
               <td data-label="Nummer">${inv.number ?? '–'}</td>

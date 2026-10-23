@@ -691,6 +691,38 @@ describe('Admin: fakturaer', () => {
     expect((await mockInvoices()).length).toBe(n);
   });
 
+  it('afviser beløb under Stripes mindstebeløb på 2,50 kr.', async () => {
+    const { client } = await as(ADMIN_EMAIL);
+    const page = await client.get('/admin/fakturaer');
+    const n = (await mockInvoices()).length;
+    // 1 kr. + moms = 1,25 kr.: Stripe ville markere den betalt og lægge beløbet på næste faktura.
+    const small = await client.post('/admin/fakturaer', formFrom(page.html, { email: 'x@firma.dk', name: 'X', action: 'send', line0_desc: 'Test', line0_price: '1' }));
+    expect(small.status).toBe(400);
+    expect(small.html).toContain('mindst 2,50 kr. inkl. moms');
+    expect((await mockInvoices()).length).toBe(n);
+    const ok = await client.post('/admin/fakturaer', formFrom(page.html, { email: 'x@firma.dk', name: 'X', action: 'draft', line0_desc: 'Test', line0_price: '2' }));
+    expect(ok.status).toBe(303);
+  });
+
+  it('mailer selv en faktura, som kundens tilgodehavende dækker, da Stripe ikke sender den', async () => {
+    const { client } = await as(ADMIN_EMAIL);
+    await setMock({ customers: { cus_kredit: { id: 'cus_kredit', object: 'customer', email: 'kredit@firma.dk', name: 'Kredit ApS', _credit: 100000 } } });
+    const page = await client.get('/admin/fakturaer');
+    const before = (await emails()).length;
+    const res = await client.post('/admin/fakturaer', formFrom(page.html, { email: 'kredit@firma.dk', name: 'Kredit ApS', action: 'send', line0_desc: 'Ekstra', line0_price: '400' }));
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toMatch(/besked=sendt/);
+    const inv = (await mockInvoices()).at(-1);
+    expect(inv.status).toBe('paid');
+    expect(inv._sent).toBeUndefined();
+    const mail = (await emails()).slice(before).find((e) => e.to[0] === 'kredit@firma.dk');
+    expect(mail.subject).toContain(inv.number);
+    expect(mail.text).toContain('på 500,00 kr. Den er betalt med dit tilgodehavende');
+    expect(mail.text).toContain(inv.hosted_invoice_url);
+    const list = await client.get('/admin/fakturaer');
+    expect(list.html).toContain('Betalt med tilgodehavende');
+  });
+
   it('dobbelt indsendelse bruger samme engangsnøgle', async () => {
     const { client } = await as(ADMIN_EMAIL);
     const page = await client.get('/admin/fakturaer');
@@ -830,6 +862,10 @@ describe('Admin: abonnementer', () => {
     expect((await visitor.get('/kort/' + token.slice(0, -1) + (token.endsWith('a') ? 'b' : 'a'))).status).toBe(400);
     expect((await visitor.get('/kort/sub_A.9999999999.' + '0'.repeat(40))).status).toBe(400);
 
+    // Abonnementets første faktura ligger stadig som kladde med "send faktura".
+    const draftId = 'in_draft_' + id.slice(4);
+    await fetch(stack.mock.url + '/__mock/state', { method: 'POST', body: JSON.stringify({ invoices: [{ id: draftId, object: 'invoice', subscription: id, customer: (await subState(id)).customer, status: 'draft', collection_method: 'send_invoice', total: 0 }] }) });
+
     const go = await visitor.post('/kort/' + token, { _csrf: csrfFrom(cardPage.html) });
     expect(go.status).toBe(303);
     const csId = go.headers.get('location').split('/').pop();
@@ -843,9 +879,36 @@ describe('Admin: abonnementer', () => {
     const sub = await subState(id);
     expect(sub.collection_method).toBe('charge_automatically');
     expect(sub.default_payment_method).toBe('pm_card_' + csId);
+    const draft = (await (await fetch(stack.mock.url + '/__mock/invoices')).json()).find((i) => i.id === draftId);
+    expect(draft.collection_method).toBe('charge_automatically');
+    expect(draft.default_payment_method).toBe('pm_card_' + csId);
 
     const list = await client.get('/admin/abonnementer');
     expect(list.html).toContain('Kort tilknyttet');
+  });
+
+  it('mailer fakturaen på 0 kr. for en gratis første måned, som Stripe ikke selv sender', async () => {
+    const before = (await emails()).length;
+    const inv = {
+      id: 'in_gratis1', object: 'invoice', status: 'paid', billing_reason: 'subscription_create', number: 'VEYRO-0042',
+      total: 0, amount_due: 0, amount_paid: 0, paid_out_of_band: false, starting_balance: 0, ending_balance: 0,
+      customer: 'cus_gratis', customer_email: 'gratis@kunde.dk', customer_name: 'Gitte Gratis',
+      hosted_invoice_url: 'https://invoice.stripe.com/i/gratis1', invoice_pdf: 'https://pay.stripe.com/invoice/gratis1/pdf',
+      parent: { subscription_details: { metadata: { source: 'veyro-admin' } } },
+    };
+    const r = await signedWebhook(stack.base, { id: 'evt_gratis1', type: 'invoice.paid', data: { object: inv } });
+    expect(r.status).toBe(200);
+    const mail = await waitFor(async () => (await emails()).slice(before).find((e) => e.to[0] === 'gratis@kunde.dk'));
+    expect(mail.subject).toBe('Faktura VEYRO-0042 fra Veyro: første måned gratis');
+    expect(mail.text).toContain('Hej Gitte');
+    expect(mail.text).toContain('første måned er gratis');
+    expect(mail.text).toContain('https://invoice.stripe.com/i/gratis1');
+
+    // Betalte fakturaer (Stripe sender selv kvittering) og tilbud (egen velkomstmail) mailes ikke.
+    const n = (await emails()).length;
+    await signedWebhook(stack.base, { id: 'evt_betalt1', type: 'invoice.paid', data: { object: { ...inv, id: 'in_betalt1', total: 50000, amount_paid: 50000 } } });
+    await signedWebhook(stack.base, { id: 'evt_tilbud0', type: 'invoice.paid', data: { object: { ...inv, id: 'in_tilbud0', parent: { subscription_details: { subscription: 'sub_x', metadata: { source: 'veyro-tilbud' } } } } } });
+    expect((await emails()).length).toBe(n);
   });
 
   it('webhook for kort-opsætning gør også abonnementet automatisk', async () => {

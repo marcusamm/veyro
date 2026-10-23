@@ -306,7 +306,9 @@ export function startMock() {
         return json(200, { object: 'invoice', amount_due: (PRICES[price] ?? 0) + 12345, next_payment_attempt: null, period_end: null });
       }
       if (p === '/v1/invoices' && req.method === 'GET') {
-        const data = params.customer ? state.invoices.filter((i) => i.customer === params.customer) : [...state.invoices].reverse();
+        let data = params.customer ? state.invoices.filter((i) => i.customer === params.customer) : [...state.invoices].reverse();
+        if (params.subscription) data = data.filter((i) => i.subscription === params.subscription);
+        if (params.status) data = data.filter((i) => i.status === params.status);
         return json(200, { object: 'list', data, has_more: false });
       }
       // --- Manuelle fakturaer (admin) ---
@@ -335,7 +337,7 @@ export function startMock() {
           id: 'in_test' + String(state.invoices.length + 1).padStart(6, '0'), object: 'invoice', customer: params.customer,
           customer_email: cust.email, customer_name: cust.name, status: 'draft', number: null, created: Math.floor(Date.now() / 1000),
           due_date: null, total: 0, amount_remaining: 0, currency: 'dkk', hosted_invoice_url: null, invoice_pdf: null, livemode: false,
-          _tax: params['default_tax_rates[0]'] ? 25 : 0, _params: params,
+          _tax: params['default_tax_rates[0]'] ? 25 : 0, _params: params, _credit: cust._credit ?? 0,
         };
         state.invoices.push(inv);
         return json(200, inv);
@@ -353,6 +355,12 @@ export function startMock() {
         if (!inv) return stripeErr(res, 404, 'No such invoice', 'resource_missing');
         const act = m[2];
         if (req.method === 'GET' && !act) return json(200, inv);
+        if (req.method === 'POST' && !act) {
+          if (inv.status !== 'draft') return stripeErr(res, 400, 'Only drafts can be updated');
+          if (params.collection_method) inv.collection_method = params.collection_method;
+          if (params.default_payment_method) inv.default_payment_method = params.default_payment_method;
+          return json(200, inv);
+        }
         if (req.method === 'DELETE' && !act) {
           if (inv.status !== 'draft') return stripeErr(res, 400, 'Only drafts can be deleted');
           state.invoices.splice(state.invoices.indexOf(inv), 1);
@@ -362,6 +370,8 @@ export function startMock() {
           if (inv.status !== 'draft') return stripeErr(res, 400, 'Invoice is already finalized');
           Object.assign(inv, { status: 'open', number: 'VEYRO-' + inv.id.slice(-4), due_date: inv.created + 8 * 86400,
             hosted_invoice_url: 'https://invoice.stripe.com/i/' + inv.id, invoice_pdf: 'https://pay.stripe.com/invoice/' + inv.id + '/pdf' });
+          // Som i Stripe: dækker kundens tilgodehavende hele beløbet, er fakturaen betalt ved færdiggørelsen.
+          if (inv._credit && inv._credit >= inv.total) Object.assign(inv, { status: 'paid', amount_paid: 0, amount_remaining: 0, starting_balance: -inv._credit, ending_balance: inv.total - inv._credit });
           return json(200, inv);
         }
         if (act === 'send') {
