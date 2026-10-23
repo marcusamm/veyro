@@ -83,12 +83,12 @@ p { text-wrap: pretty; }
 
 .eyebrow {
   display: inline-flex; align-items: center; gap: .75em;
-  font-family: var(--font-mono);
-  font-size: .74rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+  font-family: var(--font-body);
+  font-size: .9rem; font-weight: 600;
   color: var(--muted);
   margin-bottom: var(--space-5);
 }
-/* Fælles formsprog: en kort orange streg foran små labels. På forsiden får sektionerne et nummer (01, 02 …) */
+/* Fælles formsprog: en kort orange streg foran små labels (sidens almindelige skrift). På forsiden får sektionerne et nummer (01, 02 …) */
 .eyebrow::before { content: ''; flex: none; width: 22px; height: 2px; border-radius: 2px; background: var(--color-accent); }
 .eyebrow--pill { color: var(--fg); }
 .template-index .main { counter-reset: section; }
@@ -528,7 +528,7 @@ code, pre { font-family: var(--font-mono); }
 .service-card__top { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6); }
 .service-card__icon { display: inline-grid; color: var(--fg); transition: color .3s var(--ease); }
 .card--interactive:hover .service-card__icon { color: var(--muted); }
-.service-card__index, .service-detail__num { font-family: var(--font-mono); font-size: .8rem; color: var(--muted); }
+.service-card__index, .service-detail__num { font-family: var(--font-body); font-size: .8rem; color: var(--muted); }
 .service-card__title { margin-bottom: var(--space-3); }
 .service-card__text { color: var(--muted); }
 .service-card .checklist { margin-bottom: var(--space-5); }
@@ -559,7 +559,7 @@ code, pre { font-family: var(--font-mono); }
 /* Den grå linje er grundlaget; den orange streg tegnes én gang i rækkefølge (theme.js › initProcess) */
 .process__step::before { content: ''; position: absolute; left: 0; top: -1px; width: 100%; height: 2px; background: var(--color-accent); transform: scaleX(0); transform-origin: left center; transition: transform .38s var(--ease) var(--step-delay, 0ms); }
 .process__step.is-active::before, .no-js .process__step::before { transform: none; }
-.process__num { display: block; margin-bottom: var(--space-4); font-family: var(--font-mono); font-size: .85rem; font-weight: 600; letter-spacing: .04em; color: var(--muted); transition: color .25s var(--ease) var(--step-delay, 0ms); }
+.process__num { display: block; margin-bottom: var(--space-4); font-size: .95rem; font-weight: 600; color: var(--muted); transition: color .25s var(--ease) var(--step-delay, 0ms); }
 .process__step.is-active .process__num { color: var(--color-accent); }
 /* Mobil: ingen vandret bevægelse; stregen toner ind for det enkelte trin */
 @media (max-width: 749px) {
@@ -681,7 +681,7 @@ code, pre { font-family: var(--font-mono); }
 .caps__list { display: grid; gap: 0; border-top: 1px solid var(--line); }
 .cap { padding-block: var(--space-5); border-bottom: 1px solid var(--line); }
 .cap__head { display: grid; grid-template-columns: 2.35rem 1fr; align-items: baseline; margin-bottom: var(--space-2); }
-.cap__num { font-family: var(--font-mono); font-size: .75rem; color: var(--color-accent); }
+.cap__num { font-family: var(--font-body); font-size: .75rem; color: var(--color-accent); }
 .section--light .cap__num, .section--surface .cap__num { color: var(--muted); }
 .cap__text { color: var(--muted); }
 .cap__text, .cap__example, .cap__tags { margin-left: 2.35rem; }
@@ -752,7 +752,7 @@ code, pre { font-family: var(--font-mono); }
 .contact__next li { display: grid; grid-template-columns: 32px 1fr; gap: var(--space-3); }
 .contact__next strong { display: block; }
 .contact__next span:not(.contact__step-num) { color: var(--muted); font-size: .95rem; }
-.contact__step-num { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--color-accent); color: var(--fg); font-family: var(--font-mono); font-size: .75rem; font-weight: 600; }
+.contact__step-num { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--color-accent); color: var(--fg); font-family: var(--font-body); font-size: .8rem; font-weight: 600; }
 .contact__direct { padding-top: var(--space-5); border-top: 1px solid var(--line); display: grid; gap: var(--space-2); justify-items: start; }
 .contact__direct .eyebrow { margin-bottom: var(--space-2); }
 .contact__direct-link { display: inline-flex; align-items: center; gap: .6rem; min-height: 44px; font-weight: 600; font-size: 1.1rem; text-decoration: none; }
