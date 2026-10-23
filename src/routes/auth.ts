@@ -5,6 +5,7 @@ import { getCustomerByEmail, normalizeEmail, rateLimit, upsertCustomer } from '.
 import { findKundeSystemer, kanRedirecte, systemLoginUrl } from '../lib/katalog';
 import { magicLinkEmail, sendEmail, signupEmail } from '../lib/email';
 import { consumeLoginToken, createLoginToken, createSession, destroySession, isAdmin } from '../lib/session';
+import { staffAccess } from '../lib/pos/staff';
 import { render } from '../render';
 import { chooseSystemPage, flash, linkInvalidPage, loginPage, loginSentPage, signupPage, signupSentPage, verifyPage } from '../views/pages';
 
@@ -39,7 +40,7 @@ auth.post('/login', async (c) => {
     );
   }
 
-  const allowed = isAdmin(c.env, email) || !!(await getCustomerByEmail(c.env.DB, email));
+  const allowed = isAdmin(c.env, email) || !!(await getCustomerByEmail(c.env.DB, email)) || !!(await staffAccess(c.env, email));
 
   // Kundelogin: bruger e-mailen et kundesystem (fx ek.veyro.dk), sendes man videre dertil.
   // Med flere systemer, eller også en konto her, vælger man selv. "kundepanel=1" er det valg.
@@ -88,16 +89,18 @@ auth.post('/login/bekraeft', async (c) => {
 
   let customer = await getCustomerByEmail(c.env.DB, data.email);
   const admin = isAdmin(c.env, data.email);
+  // Medarbejder i kassen (ikke admin): må kun logge ind til kassen
+  const staff = !admin && !customer ? await staffAccess(c.env, data.email) : null;
   // Linket beviser, at e-mailen tilhører personen; først nu oprettes kunden.
-  const created = !customer && !admin && data.signup;
+  const created = !customer && !admin && !staff && data.signup;
   if (created) customer = await upsertCustomer(c.env.DB, { email: data.email, name: data.name });
-  if (!customer && !admin) return render(c, 'Ugyldigt link', linkInvalidPage(), { status: 400 });
+  if (!customer && !admin && !staff) return render(c, 'Ugyldigt link', linkInvalidPage(), { status: 400 });
 
   // Ny session ved hvert login; en evt. gammel session i browseren afsluttes.
   if (c.get('session')) await destroySession(c);
   await createSession(c, data.email);
   if (data.next) return c.redirect(created ? `${data.next}${data.next.includes('?') ? '&' : '?'}besked=konto-oprettet` : data.next, 303);
-  return c.redirect(customer ? '/konto' : '/admin', 303);
+  return c.redirect(customer ? '/konto' : staff ? '/admin/kasse' : '/admin', 303);
 });
 
 // ---------------- Opret konto (før betaling) ----------------

@@ -73,6 +73,18 @@ export function startMock() {
         if (s.rejectManagedPayments !== undefined) state.rejectManagedPayments = s.rejectManagedPayments;
         return json(200, { ok: true });
       }
+      // Stripe Terminal: simulér kortlæseren (kunden betaler, kortet afvises, læseren går offline)
+      if (p === '/__mock/terminal' && req.method === 'POST') {
+        const t = JSON.parse(body || '{}');
+        const term = (state.terminal ??= { pis: {}, readers: {}, refunds: [] });
+        const pi = term.pis[t.pi];
+        if (t.action === 'succeed' && pi) pi.status = 'succeeded';
+        if (t.action === 'decline' && pi) { pi.status = 'requires_payment_method'; pi.last_payment_error = { message: 'Your card was declined.', code: 'card_declined' }; }
+        if (t.reader) Object.assign((term.readers[t.reader] ??= { id: t.reader, status: 'online', action: null }), t.readerState ?? {});
+        if (t.failRefund !== undefined) term.failRefund = t.failRefund;
+        return json(200, { ok: true });
+      }
+      if (p === '/__mock/terminal') return json(200, state.terminal ?? { pis: {}, readers: {}, refunds: [] });
       if (p === '/__mock/calls') return json(200, state.calls);
       if (p === '/__mock/invoices') return json(200, state.invoices);
       if (p === '/__mock/sim') return json(200, { prices: state.prices ?? {}, offerSessions: state.offerSessions ?? {}, schedules: state.schedules ?? {}, subscriptions: state.subscriptions });
@@ -121,6 +133,52 @@ export function startMock() {
         state.invoices.push(inv);
         return inv;
       };
+      // --- Stripe Terminal (kassen) ---
+      const term = (state.terminal ??= { pis: {}, readers: {}, refunds: [] });
+      if (p === '/v1/payment_intents' && req.method === 'POST') {
+        if (idem && state.idem[idem]) return json(200, state.idem[idem]);
+        const id = 'pi_pos' + String(Object.keys(term.pis).length + 1).padStart(4, '0');
+        term.pis[id] = { id, object: 'payment_intent', amount: Number(params.amount), currency: params.currency, status: 'requires_payment_method',
+          payment_method_types: [params['payment_method_types[]']], capture_method: params.capture_method, metadata: { pos_sale: params['metadata[pos_sale]'] }, last_payment_error: null };
+        return remember(term.pis[id]);
+      }
+      if ((m = p.match(/^\/v1\/payment_intents\/([^/]+)$/)) && req.method === 'GET') {
+        return term.pis[m[1]] ? json(200, term.pis[m[1]]) : stripeErr(res, 404, 'No such payment_intent', 'resource_missing');
+      }
+      if ((m = p.match(/^\/v1\/payment_intents\/([^/]+)\/cancel$/)) && req.method === 'POST') {
+        const pi = term.pis[m[1]];
+        if (!pi) return stripeErr(res, 404, 'No such payment_intent', 'resource_missing');
+        if (pi.status === 'succeeded') return stripeErr(res, 400, 'This PaymentIntent has already succeeded', 'payment_intent_unexpected_state');
+        pi.status = 'canceled';
+        return json(200, pi);
+      }
+      if ((m = p.match(/^\/v1\/terminal\/readers\/([^/]+)\/process_payment_intent$/)) && req.method === 'POST') {
+        const reader = (term.readers[m[1]] ??= { id: m[1], status: 'online', action: null });
+        if (!term.pis[params.payment_intent]) return stripeErr(res, 400, 'No such payment_intent', 'resource_missing');
+        if (reader.status === 'offline') return stripeErr(res, 400, 'Reader is currently offline', 'terminal_reader_offline');
+        reader.action = { type: 'process_payment_intent', status: 'in_progress', process_payment_intent: { payment_intent: params.payment_intent } };
+        return json(200, reader);
+      }
+      if ((m = p.match(/^\/v1\/terminal\/readers\/([^/]+)\/cancel_action$/)) && req.method === 'POST') {
+        const reader = term.readers[m[1]];
+        if (!reader?.action) return stripeErr(res, 400, 'No action to cancel', 'terminal_reader_busy');
+        reader.action = null;
+        return json(200, reader);
+      }
+      if ((m = p.match(/^\/v1\/terminal\/readers\/([^/]+)$/)) && req.method === 'GET') {
+        return json(200, term.readers[m[1]] ?? { id: m[1], status: 'online', action: null });
+      }
+      if (p === '/v1/refunds' && req.method === 'POST') {
+        if (idem && state.idem[idem]) return json(200, state.idem[idem]);
+        const pi = term.pis[params.payment_intent];
+        if (!pi || pi.status !== 'succeeded') return stripeErr(res, 400, 'PaymentIntent is not refundable', 'charge_not_refundable');
+        if (term.failRefund) return stripeErr(res, 402, 'Simuleret afvist refusion', 'refund_failed');
+        const refunded = term.refunds.filter((r) => r.payment_intent === pi.id).reduce((a, r) => a + r.amount, 0);
+        if (refunded + Number(params.amount) > pi.amount) return stripeErr(res, 400, 'Refund amount is greater than unrefunded amount', 'amount_too_large');
+        const re = { id: 're_pos' + String(term.refunds.length + 1).padStart(4, '0'), object: 'refund', amount: Number(params.amount), payment_intent: pi.id, status: 'succeeded' };
+        term.refunds.push(re);
+        return remember(re);
+      }
       if (p === '/v1/prices' && req.method === 'POST') {
         const id = 'price_sim' + String(state.calls.length).padStart(5, '0');
         const price = { id, object: 'price', unit_amount: Number(params.unit_amount), currency: params.currency, product: params.product ?? 'prod_onetime_' + state.calls.length,

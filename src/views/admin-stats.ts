@@ -46,7 +46,7 @@ function niceMax(v: number): number {
  * Linjegraf for perioden med perioden før som stiplet linje. Ren SVG (virker uden JavaScript);
  * /static/app.js tilføjer en krydslinje og et tooltip, når musen er over grafen.
  */
-function chart(args: { id: string; title: string; kind?: 'line' | 'bar'; days: string[]; current: number[]; previous: number[]; format: (n: number) => string; axis: (n: number) => string }): H {
+export function chart(args: { id: string; title: string; kind?: 'line' | 'bar'; days: string[]; current: number[]; previous: number[]; format: (n: number) => string; axis: (n: number) => string }): H {
   const W = 640, H = 220, L = 44, R = 12, T = 12, B = 28;
   const n = args.days.length;
   const max = niceMax(Math.max(...args.current, ...args.previous.slice(0, n), 0));
@@ -63,7 +63,7 @@ function chart(args: { id: string; title: string; kind?: 'line' | 'bar'; days: s
   const total = args.current.reduce((s, v) => s + v, 0);
   return html`<figure class="chart" aria-labelledby="${args.id}-t">
     <figcaption class="row between"><h3 id="${args.id}-t" style="margin:0">${args.title}</h3>
-      <span class="chart__legend small muted"><span class="lg lg-now" aria-hidden="true"></span>Perioden <span class="lg lg-prev" aria-hidden="true"></span>Perioden før</span></figcaption>
+      ${args.previous.length ? html`<span class="chart__legend small muted"><span class="lg lg-now" aria-hidden="true"></span>Perioden <span class="lg lg-prev" aria-hidden="true"></span>Perioden før</span>` : ''}</figcaption>
     <svg class="chart__svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${args.title}: i alt ${args.format(total)}" data-chart>
       ${ticks.map((t) => html`<line class="grid" x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}"/><text class="axis" x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${args.axis(t)}</text>`)}
       ${labelIdx.map((i) => html`<text class="axis" x="${x(i)}" y="${H - 8}" text-anchor="${i === 0 && n > 1 ? 'start' : i === n - 1 && n > 1 ? 'end' : 'middle'}">${fmtDay(args.days[i]!)}</text>`)}

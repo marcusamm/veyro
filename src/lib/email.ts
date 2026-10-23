@@ -55,7 +55,7 @@ export function escapeHtml(s: string): string {
     .replace(/'/g, '&#39;');
 }
 
-function wrapHtml(inner: string): string {
+export function wrapHtml(inner: string): string {
   return `<!doctype html><html lang="da"><body style="margin:0;background:#F4F2EC;font-family:'Inter Tight',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0F0F0D">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F2EC;padding:32px 16px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#FBFAF7;border-radius:18px;padding:32px">

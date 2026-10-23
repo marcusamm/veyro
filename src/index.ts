@@ -15,6 +15,9 @@ import adminSite from './routes/admin-site';
 import adminStats from './routes/admin-stats';
 import adminPoa from './routes/admin-poa';
 import adminNda from './routes/admin-nda';
+import kasse from './routes/kasse';
+import { reconcilePending } from './lib/pos/sales';
+import { getPosSettings } from './lib/pos/settings';
 import { applyRetention as ndaRetention } from './lib/nda';
 import { deliverAll as ndaDeliverAll, queueMail as ndaQueueMail, retryMails as ndaRetryMails } from './lib/nda-docs';
 import { policyPage } from './routes/aftaler';
@@ -23,6 +26,7 @@ import { deliverAll, queueMail, retryMails } from './lib/poa-docs';
 import site, { isSiteRequest } from './site/app';
 import { purgeOldLeads } from './site/leads';
 import { CSS, FAVICON, JS } from './views/assets';
+import { KASSE_CSS, KASSE_JS } from './views/kasse-assets';
 import { ICON_PNG, INTER_TIGHT_WOFF2, LOGO_PNG } from './views/brand';
 import { errorPage } from './views/pages';
 
@@ -65,6 +69,8 @@ app.get('/static/app.css', (c) => c.body(CSS, 200, { 'Content-Type': 'text/css; 
 app.get('/static/app.js', (c) =>
   c.body(JS, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': STATIC_CACHE }),
 );
+app.get('/static/kasse.css', (c) => c.body(KASSE_CSS, 200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
+app.get('/static/kasse.js', (c) => c.body(KASSE_JS, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
 app.get('/favicon.svg', (c) => c.body(FAVICON, 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': STATIC_CACHE }));
 app.get('/static/logo.png', (c) => c.body(LOGO_PNG, 200, { 'Content-Type': 'image/png', 'Cache-Control': STATIC_CACHE }));
 app.get('/static/icon.png', (c) => c.body(ICON_PNG, 200, { 'Content-Type': 'image/png', 'Cache-Control': STATIC_CACHE }));
@@ -88,6 +94,8 @@ app.route('/', card);
 app.route('/', offer);
 app.route('/konto', account);
 app.get('/fuldmagter/opbevaring', policyPage);
+// Kassen før resten af admin: medarbejdere med en rolle i kassen skal kunne bruge den uden ADMIN_EMAILS
+app.route('/admin/kasse', kasse);
 app.route('/admin', adminSite);
 app.route('/admin', adminStats);
 app.route('/admin', adminPoa);
@@ -129,6 +137,10 @@ export default {
         }
         await retryMails(env);
       })().catch((err) => logError(env.DB, 'Fuldmagter cron', err)),
+    );
+    // Kassen: kortbetalinger, der har ventet over 30 minutter, afsluttes eller annulleres
+    ctx.waitUntil(
+      (async () => reconcilePending(env, await getPosSettings(env.DB)))().catch((err) => logError(env.DB, 'Kasse cron', err)),
     );
     // Fortrolighedsaftaler: opbevaringsfrister, gamle kladder og genforsøg på mails
     ctx.waitUntil(
