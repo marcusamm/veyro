@@ -837,7 +837,10 @@ describe('Admin: abonnementer', () => {
     expect(cs.mode).toBe('setup');
     expect(cs['metadata[veyro_subscription]']).toBe(id);
 
-    const done = await visitor.get(`/kort/${token}/tak?session_id=${csId}`);
+    const back = await visitor.get(`/kort/${token}/tak?session_id=${csId}`);
+    expect(back.status).toBe(303);
+    expect(back.headers.get('location')).toBe('/kort/tilfoejet');
+    const done = await visitor.get('/kort/tilfoejet');
     expect(done.status).toBe(200);
     expect(done.html).toContain('dit kort er tilføjet');
     const sub = await subState(id);
