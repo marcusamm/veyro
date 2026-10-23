@@ -60,8 +60,8 @@
             "title": "Booking",
             "price": "299 kr.",
             "price_note": "/md.",
-            "badge": "På vej",
-            "available": false,
+            "badge": "Kan bestilles nu",
+            "available": true,
             "text": "Hjemmeside med online booking",
             "link": ""
           }
@@ -105,7 +105,7 @@
         "text": "<p>Vælg den pakke, der passer til jeres virksomhed. Se præcis, hvad hver pakke indeholder, på prissiden.</p>",
         "label": "Se hvad pakkerne indeholder",
         "link": "/pages/ydelser#priser",
-        "note": "<p>Alle priser er ekskl. moms. Basis: første måned gratis, gratis oprettelse og ingen binding. Booking, Drift og Alt inkl. er under udvikling, og priserne er forventede.</p>"
+        "note": "<p>Alle priser er ekskl. moms. Basis: første måned gratis, gratis oprettelse og ingen binding. Drift og Alt inkl. er under udvikling, og priserne er forventede.</p>"
       }
     },
     "workflows": {
@@ -418,7 +418,7 @@
         "heading": "Hvilken løsning er du interesseret i?",
         "text": "<p>Vælg den type løsning, du er interesseret i, og fortæl kort om jeres virksomhed. Vi svarer inden for 24-48 timer og aftaler en demo eller en uforpligtende snak.</p>",
         "form_name": "Forside – løsninger",
-        "services": "Hjemmeside med bestilling og lagerstyring\nInternt system til ordrer og varekontrol\nBook en demo\nAlmindelig hjemmeside eller landingsside\nOptimering, fejlfinding eller vedligeholdelse\nAndet / ved ikke endnu",
+        "services": "Pakke: Basis\nPakke: Booking\nBook en demo\nAlmindelig hjemmeside eller landingsside\nOptimering, fejlfinding eller vedligeholdelse\nAndet / ved ikke endnu",
         "submit_label": "Send henvendelse",
         "success_heading": "Tak, vi har modtaget din henvendelse",
         "success_text": "<p>Vi kigger på din besked og svarer på e-mail inden for 24-48 timer for at aftale næste skridt.</p>",
