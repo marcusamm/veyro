@@ -632,6 +632,7 @@ describe('Admin: fakturaer', () => {
     expect(inv.total).toBe(Math.round(600100 * 1.25));
     expect(inv._params.collection_method).toBe('send_invoice');
     expect(inv._params['managed_payments[enabled]']).toBe('false');
+    expect(inv._params.footer).toContain('IBAN LT14 3250 0850 3228 8130, BIC/SWIFT REVOLT21');
     const made = (await calls()).slice(before);
     expect(made.filter((c) => c.path === '/v1/tax_rates' && c.method === 'POST')).toHaveLength(1);
     expect(made.find((c) => c.path === '/v1/invoices' && c.method === 'POST').idempotencyKey).toMatch(/^admin-inv-/);
