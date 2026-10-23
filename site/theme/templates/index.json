@@ -31,7 +31,7 @@
         "scheme": "light",
         "eyebrow": "Ordrestyring og varekontrol",
         "heading": "Få styr på dine ordrer og dit lager – i én samlet løsning.",
-        "text": "<p>Veyro bygger hjemmesider med kundebestilling og interne websystemer til ordrestyring og varekontrol. Fra første bestilling til opdateret lager får din virksomhed et samlet overblik.</p>",
+        "text": "<p>Veyro bygger hjemmesider og websystemer til ordrestyring og varekontrol, så din virksomhed får overblik hele vejen fra bestilling til opdateret lager.</p>",
         "primary_label": "Se priser",
         "primary_link": "#priser",
         "secondary_label": "Book en demo",
@@ -106,41 +106,6 @@
         "label": "Se hvad pakkerne indeholder",
         "link": "/pages/ydelser#priser",
         "note": "<p>Alle priser er ekskl. moms. Basis og Booking: første måned gratis, gratis oprettelse og ingen binding. Drift og Alt inkl. er under udvikling, og priserne er forventede.</p>"
-      }
-    },
-    "workflows": {
-      "type": "workflows",
-      "blocks": {
-        "w1": {
-          "type": "flow",
-          "settings": {
-            "icon": "cart",
-            "label": "Løsning 1",
-            "title": "Kunden bestiller på hjemmesiden",
-            "steps": "Kunden bestiller | Kunden finder varerne på jeres hjemmeside og sender en bestilling.\nOrdren lander hos jer | Ordren vises straks i administrationspanelet, og I får en notifikation.\nI bekræfter ordren | Varerne trækkes fra den disponible beholdning, så de ikke kan sælges to gange.\nOrdren behandles og afsluttes | I følger ordren, til varerne er sendt eller udleveret."
-          }
-        },
-        "w2": {
-          "type": "flow",
-          "settings": {
-            "icon": "phone",
-            "label": "Løsning 2",
-            "title": "Medarbejderen opretter ordren",
-            "steps": "Ordren kommer ind | En kunde ringer, skriver en e-mail eller handler direkte hos jer.\nMedarbejderen opretter ordren | Varer, antal og kundeoplysninger tastes ind i systemet.\nOrdren bekræftes | Varerne reserveres og trækkes fra den disponible beholdning.\nOrdren følges, til den er færdig | Alle kan se, hvor ordren er, og lagertallene passer hele vejen.",
-            "note": "Ingen webshop, intet produktkatalog til kunder og ingen onlinebetaling nødvendig."
-          }
-        }
-      },
-      "block_order": [
-        "w1",
-        "w2"
-      ],
-      "settings": {
-        "scheme": "light",
-        "anchor": "arbejdsgang",
-        "eyebrow": "Sådan fungerer det",
-        "heading": "Fra første bestilling til opdateret lager",
-        "text": "<p>Uanset om kunden bestiller online, eller en medarbejder opretter ordren, ender det samme sted: én ordreoversigt og et lager, der passer.</p>"
       }
     },
     "demo": {
@@ -241,7 +206,7 @@
         "anchor": "funktioner",
         "eyebrow": "Kernefunktioner",
         "heading": "Det får du til ordrer og lager",
-        "text": "<p>Funktionerne til ordrer og lager er de samme, uanset om ordren kommer fra hjemmesiden eller bliver oprettet af en medarbejder.</p>"
+        "text": "<p>Ordrer og lager samlet ét sted, uanset om ordren kommer fra hjemmesiden, telefonen eller e-mailen.</p>"
       }
     },
     "benefits": {
@@ -305,18 +270,11 @@
     "faq": {
       "type": "faq",
       "blocks": {
-        "q1": {
-          "type": "question",
-          "settings": {
-            "question": "Hvad er forskellen på de to løsninger?",
-            "answer": "<p>Hjemmesiden med bestilling er til virksomheder, hvor kunderne selv skal kunne se produkter og bestille. Det interne system er kun for jer og jeres medarbejdere og bruges til ordrer, der kommer ind på telefon, e-mail eller ved direkte salg. Begge løsninger har de samme funktioner til ordrer og lager.</p>"
-          }
-        },
         "q2": {
           "type": "question",
           "settings": {
             "question": "Skal vi have en webshop med onlinebetaling?",
-            "answer": "<p>Nej. Det interne system kræver hverken en offentlig webshop, et produktkatalog til kunder eller onlinebetaling. Vælger I hjemmesiden med bestilling, afklarer vi sammen, hvordan bestilling og betaling skal fungere hos jer.</p>"
+            "answer": "<p>Nej. Et system til ordrer og lager kræver hverken en offentlig webshop, et produktkatalog til kunder eller onlinebetaling. Skal jeres kunder kunne bestille på hjemmesiden, afklarer vi sammen, hvordan bestilling og betaling skal fungere hos jer.</p>"
           }
         },
         "q3": {
@@ -363,7 +321,6 @@
         }
       },
       "block_order": [
-        "q1",
         "q2",
         "q3",
         "q4",
@@ -506,7 +463,6 @@
   "order": [
     "hero",
     "priser",
-    "workflows",
     "demo",
     "functions",
     "benefits",

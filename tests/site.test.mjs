@@ -212,6 +212,16 @@ describe('Pakker og priser', () => {
     expect(r.html).toContain('href="#priser"');
   });
 
+  it('de gamle "Løsning 1/Løsning 2"-sektioner findes ingen steder på hjemmesiden', async () => {
+    for (const p of ['/', '/pages/ydelser', '/pages/website-optimering', '/pages/custom-losninger', '/pages/om-os', '/pages/kontakt', '/cart']) {
+      const r = await site.get(p);
+      expect(r.status, p).toBe(200);
+      for (const t of ['Løsning 1', 'Løsning 2', 'To måder at få styr på ordrer og lager', 'Fra første bestilling til opdateret lager', 'Hovedløsninger', 'de to løsninger', 'begge løsninger', 'Internt system til ordrer og varekontrol']) {
+        expect(r.html, `${p}: ${t}`).not.toContain(t);
+      }
+    }
+  });
+
   it('"Bliv testkunde" gemmer en forespørgsel med pakken og starter intet abonnement', async () => {
     const page = await site.get('/pages/ydelser?pakke=drift');
     const id = page.html.match(/id="(Pilot-[^"]+)"/)[1];
