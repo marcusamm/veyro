@@ -32,61 +32,80 @@
         "eyebrow": "Ordrestyring og varekontrol",
         "heading": "Få styr på dine ordrer og dit lager – i én samlet løsning.",
         "text": "<p>Veyro bygger hjemmesider med kundebestilling og interne websystemer til ordrestyring og varekontrol. Fra første bestilling til opdateret lager får din virksomhed et samlet overblik.</p>",
-        "primary_label": "Se løsninger",
-        "primary_link": "#losninger",
+        "primary_label": "Se priser",
+        "primary_link": "#priser",
         "secondary_label": "Book en demo",
         "secondary_link": "/?ydelse=book-en-demo#kontakt",
         "visual": "orders"
       }
     },
-    "solutions": {
-      "type": "solutions",
+    "priser": {
+      "type": "price-banner",
       "blocks": {
-        "s1": {
-          "type": "solution",
+        "basis": {
+          "type": "package",
           "settings": {
-            "icon": "cart",
-            "label": "Løsning 1",
-            "anchor": "bestilling-og-lager",
-            "title": "Hjemmeside med bestilling og lagerstyring",
-            "text": "<p>En hjemmeside, hvor dine kunder kan se jeres produkter og afgive bestillinger. Ordren lander straks i dit administrationspanel, du får en notifikation, og varerne trækkes fra den disponible beholdning, når ordren bekræftes.</p>",
-            "points": "Kunderne ser produkter og bestiller selv\nNye ordrer vises straks i administrationspanelet\nNotifikation ved hver ny bestilling\nLageret opdateres automatisk ved ordrebekræftelse\nKundernes bestillinger hænger sammen med jeres interne ordre- og lagerstyring",
-            "fit": "virksomheder, hvor kunderne skal kunne bestille selv.",
-            "button_label": "Book en demo",
-            "button_link": "/?ydelse=hjemmeside-med-bestilling-og-lagerstyring#kontakt",
-            "link_label": "Se arbejdsgangen",
-            "link": "#arbejdsgang"
+            "title": "Basis",
+            "price": "199 kr.",
+            "price_note": "/md.",
+            "badge": "Kan bestilles nu",
+            "available": true,
+            "text": "Hjemmeside med hosting og vedligeholdelse",
+            "link": ""
           }
         },
-        "s2": {
-          "type": "solution",
+        "booking": {
+          "type": "package",
           "settings": {
-            "icon": "list",
-            "label": "Løsning 2",
-            "anchor": "internt-system",
-            "title": "Internt system til ordrer og varekontrol",
-            "text": "<p>Et selvstændigt system med login, kun for jer og jeres medarbejdere. Det kræver hverken en offentlig webshop, et produktkatalog til kunder eller onlinebetaling.</p>",
-            "points": "Opret ordrer fra telefon, e-mail eller direkte salg\nFølg hver ordre gennem hele behandlingen\nOverblik over varebeholdningen\nLageret opdateres automatisk, når ordrer bekræftes\nKun adgang for medarbejdere med login",
-            "fit": "virksomheder, der tager imod ordrer på telefon, e-mail eller ved direkte salg.",
-            "button_label": "Book en demo",
-            "button_link": "/?ydelse=internt-system-til-ordrer-og-varekontrol#kontakt",
-            "link_label": "Se arbejdsgangen",
-            "link": "#arbejdsgang"
+            "title": "Booking",
+            "price": "299 kr.",
+            "price_note": "/md.",
+            "badge": "På vej",
+            "available": false,
+            "text": "Hjemmeside med online booking",
+            "link": ""
+          }
+        },
+        "drift": {
+          "type": "package",
+          "settings": {
+            "title": "Drift",
+            "price": "599 kr.",
+            "price_note": "/md.",
+            "badge": "På vej",
+            "available": false,
+            "text": "Ordrer, opgaver og lager",
+            "link": ""
+          }
+        },
+        "alt_inkl": {
+          "type": "package",
+          "settings": {
+            "title": "Alt inkl.",
+            "price": "1.099 kr.",
+            "price_note": "/md.",
+            "badge": "På vej",
+            "available": false,
+            "text": "Hjemmeside, booking, drift og bilag samlet",
+            "link": ""
           }
         }
       },
       "block_order": [
-        "s1",
-        "s2"
+        "basis",
+        "booking",
+        "drift",
+        "alt_inkl"
       ],
       "settings": {
         "scheme": "surface",
-        "anchor": "losninger",
-        "eyebrow": "Løsninger",
-        "heading": "To måder at få styr på ordrer og lager",
-        "text": "<p>Vælg den løsning, der passer til den måde, jeres kunder bestiller på. Begge bygger på de samme funktioner til ordrer og lager.</p>",
-        "fit_label": "Passer til",
-        "note": "<p>Begge løsninger tilpasses jeres varer og arbejdsgange. <a href=\"#funktioner\">Se de fælles funktioner</a>.</p>"
+        "anchor": "priser",
+        "eyebrow": "Pakker og priser",
+        "heading": "Fire pakker med fast månedspris",
+        "text": "<p>Vælg den pakke, der passer til jeres virksomhed. Se præcis, hvad hver pakke indeholder, på prissiden.</p>",
+        "label": "Se hvad pakkerne indeholder",
+        "link": "/pages/ydelser#priser",
+        "note": "<p>Alle priser er ekskl. moms. Basis: første måned gratis, gratis oprettelse og ingen binding. Booking, Drift og Alt inkl. er under udvikling, og priserne er forventede.</p>"
       }
     },
     "workflows": {
@@ -221,7 +240,7 @@
         "layout": "stacked",
         "anchor": "funktioner",
         "eyebrow": "Kernefunktioner",
-        "heading": "Det får du i begge løsninger",
+        "heading": "Det får du til ordrer og lager",
         "text": "<p>Funktionerne til ordrer og lager er de samme, uanset om ordren kommer fra hjemmesiden eller bliver oprettet af en medarbejder.</p>"
       }
     },
@@ -486,7 +505,7 @@
   },
   "order": [
     "hero",
-    "solutions",
+    "priser",
     "workflows",
     "demo",
     "functions",

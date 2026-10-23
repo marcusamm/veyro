@@ -177,7 +177,10 @@ code, pre { font-family: var(--font-mono); }
 /* Header */
 .site-header { position: relative; z-index: 50; background: rgba(var(--ink-rgb), 0); transition: background-color .25s var(--ease), box-shadow .25s var(--ease), backdrop-filter .25s; }
 .site-header--sticky { position: sticky; top: 0; }
-.site-header { background: color-mix(in srgb, var(--color-bg) 82%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid transparent; }
+/* Sløringen ligger på ::before: backdrop-filter på selve headeren ville gøre den til ramme for
+   position: fixed, så mobilmenuen kun blev lige så høj som headeren og skulle scrolles indeni. */
+.site-header { border-bottom: 1px solid transparent; }
+.site-header::before { content: ''; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--color-bg) 82%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); pointer-events: none; }
 .site-header.is-scrolled { border-bottom-color: rgba(var(--ink-rgb), .1); }
 .site-header__inner { display: flex; align-items: center; gap: var(--space-5); min-height: var(--header-h); }
 .site-header .logo { margin-right: auto; }
@@ -196,7 +199,7 @@ code, pre { font-family: var(--font-mono); }
 .nav-toggle__bars span { display: block; height: 1.6px; background: currentColor; border-radius: 2px; transition: transform .3s var(--ease); }
 .nav-toggle[aria-expanded='true'] .nav-toggle__bars span:first-child { transform: translateY(3.8px) rotate(45deg); }
 .nav-toggle[aria-expanded='true'] .nav-toggle__bars span:last-child { transform: translateY(-3.8px) rotate(-45deg); }
-.mobile-nav { position: fixed; inset: var(--header-h) 0 0; z-index: 49; overflow-y: auto; background: var(--color-bg); border-top: 1px solid rgba(var(--ink-rgb), .1); padding-block: var(--space-5) var(--space-8); animation: nav-in .35s var(--ease); }
+.mobile-nav { position: fixed; inset: var(--header-h) 0 0; z-index: 49; overflow-y: auto; overscroll-behavior: contain; background: var(--color-bg); border-top: 1px solid rgba(var(--ink-rgb), .1); padding-block: var(--space-5) var(--space-8); animation: nav-in .35s var(--ease); }
 .mobile-nav__list { margin-bottom: var(--space-6); }
 .mobile-nav__link { display: flex; align-items: center; justify-content: space-between; min-height: 64px; border-bottom: 1px solid rgba(var(--ink-rgb), .1); text-decoration: none; font-family: var(--font-heading); font-size: 1.6rem; font-weight: 550; letter-spacing: -.025em; }
 .mobile-nav__link[aria-current='page'] { color: var(--color-ink); }
@@ -529,6 +532,24 @@ code, pre { font-family: var(--font-mono); }
 .cta-banner__alt { margin-top: var(--space-4); color: var(--muted); font-size: .92rem; }
 .cta-banner__alt a { color: var(--fg); }
 @media (min-width: 990px) { .cta-banner__box { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } .cta-banner__actions { justify-self: end; text-align: right; } }
+/* Prisbar på forsiden: pakkernes navn, pris og status; indholdet står på prissiden */
+.price-banner__box { align-items: stretch; }
+.price-banner__head { display: grid; gap: var(--space-5); align-items: end; }
+.price-banner__title { max-width: 16em; }
+.price-banner__grid { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); }
+.price-banner__item { display: flex; flex-direction: column; gap: .35rem; height: 100%; padding: var(--space-4) var(--space-5); border: 1px solid var(--line-strong); border-radius: var(--radius-card); background: rgba(var(--dark-ink-rgb), .04); color: var(--fg); text-decoration: none; transition: border-color .2s, background-color .2s; }
+.price-banner__item:hover, .price-banner__item:focus-visible { border-color: var(--color-accent); background: rgba(var(--dark-ink-rgb), .08); }
+.price-banner__top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem .75rem; }
+.price-banner__name { font-family: var(--font-heading); font-size: 1.25rem; font-weight: 600; letter-spacing: -.02em; }
+.price-banner__badge { padding: .15rem .55rem; border: 1px solid var(--line-strong); border-radius: 999px; font-size: .75rem; color: var(--muted); white-space: nowrap; }
+.price-banner__badge--now { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-ink); }
+.price-banner__price { color: var(--muted); font-size: .95rem; }
+.price-banner__price strong { font-family: var(--font-heading); font-size: clamp(1.6rem, 1.3rem + 1vw, 2.1rem); font-weight: 650; letter-spacing: -.03em; color: var(--fg); }
+.price-banner__text { font-size: .9rem; color: var(--muted); }
+.price-banner__note { color: var(--muted); }
+.price-banner__note p { margin: 0; }
+.price-banner__note a { color: var(--fg); }
+@media (min-width: 990px) { .price-banner__box { grid-template-columns: none; } .price-banner__head { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } }
 
 /* Sidetop */
 .page-hero { padding-block: clamp(2.5rem, 2rem + 4vw, 6rem) clamp(3rem, 2rem + 4vw, 6rem); }

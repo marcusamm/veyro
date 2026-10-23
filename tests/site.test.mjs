@@ -184,6 +184,20 @@ describe('Pakker og priser', () => {
     expect(kontakt.html).not.toContain('data-key="pakke-booking"');
   });
 
+  it('forsiden viser pakkernes priser i en bar, der sender videre til prissiden', async () => {
+    const r = await site.get('/');
+    expect(r.html).not.toContain('To måder at få styr på ordrer og lager');
+    const bar = r.html.slice(r.html.indexOf('class="section section--surface price-banner"'), r.html.indexOf('</section>', r.html.indexOf('price-banner')));
+    expect(bar).toContain('id="priser"');
+    expect(bar).toContain('href="/pages/ydelser#priser"');
+    expect([...bar.matchAll(/class="price-banner__name">([^<]+)</g)].map((m) => m[1])).toEqual(['Basis', 'Booking', 'Drift', 'Alt inkl.']);
+    expect([...bar.matchAll(/<strong>([^<]+)<\/strong>/g)].map((m) => m[1])).toEqual(['199 kr.', '299 kr.', '599 kr.', '1.099 kr.']);
+    expect(bar).toContain('Alle priser er ekskl. moms.');
+    // Indholdet af pakkerne står kun på prissiden
+    expect(bar).not.toContain('Planlagt indhold');
+    expect(r.html).toContain('href="#priser"');
+  });
+
   it('"Bliv testkunde" gemmer en forespørgsel med pakken og starter intet abonnement', async () => {
     const page = await site.get('/pages/ydelser?pakke=drift');
     const id = page.html.match(/id="(Pilot-[^"]+)"/)[1];
