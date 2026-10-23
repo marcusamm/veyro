@@ -212,6 +212,25 @@ describe('Pakker og priser', () => {
     expect(r.html).toContain('href="#priser"');
   });
 
+  it('hvert pakkekort på forsiden går direkte til samme pakke på prissiden', async () => {
+    const [home, prices] = await Promise.all([site.get('/'), site.get('/pages/ydelser')]);
+    const links = [...home.html.matchAll(/class="price-banner__item[^"]*" href="([^"]+)"/g)].map((m) => m[1]);
+    expect(links).toEqual(['/pages/ydelser#pakke-basis', '/pages/ydelser#pakke-booking', '/pages/ydelser#pakke-drift', '/pages/ydelser#pakke-alt-inkl']);
+    for (const l of links) expect(prices.html).toContain(`id="${l.split('#')[1]}"`);
+  });
+
+  it('lagerdemoen er mærket som eksempel på Drift, og tallene hænger sammen', async () => {
+    const r = await site.get('/');
+    const demo = r.html.slice(r.html.indexOf('data-demo-try'), r.html.indexOf('</figure>', r.html.indexOf('data-demo-try')));
+    expect(demo).toContain('Eksempel – Drift er på vej');
+    expect(demo).toContain('Prøv et eksempel');
+    // Uden JavaScript vises knappen ikke
+    expect(r.html).toMatch(/data-demo-try data-qty="3" hidden>/);
+    const n = (k) => Number(demo.match(new RegExp(`data-demo-${k}>(\\d+)<`))[1]);
+    expect([n('physical'), n('reserved'), n('available')]).toEqual([120, 24, 96]);
+    expect(n('physical') - n('reserved')).toBe(n('available'));
+  });
+
   it('de gamle "Løsning 1/Løsning 2"-sektioner findes ingen steder på hjemmesiden', async () => {
     for (const p of ['/', '/pages/ydelser', '/pages/website-optimering', '/pages/custom-losninger', '/pages/om-os', '/pages/kontakt', '/cart']) {
       const r = await site.get(p);

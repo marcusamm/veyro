@@ -7,18 +7,18 @@
   <div class="container hero__inner">
     <div class="hero__content">
       {%- if section.settings.eyebrow != blank -%}
-        <p class="eyebrow eyebrow--pill" data-reveal>{{ section.settings.eyebrow | escape }}</p>
+        <p class="eyebrow eyebrow--pill">{{ section.settings.eyebrow | escape }}</p>
       {%- endif -%}
-      <h1 class="hero__title h-display" id="HeroTitle-{{ section.id }}" data-reveal>{{ section.settings.heading }}</h1>
+      <h1 class="hero__title h-display" id="HeroTitle-{{ section.id }}">{{ section.settings.heading }}</h1>
       {%- if section.settings.text != blank -%}
-        <div class="hero__text lead" data-reveal>{{ section.settings.text }}</div>
+        <div class="hero__text lead">{{ section.settings.text }}</div>
       {%- endif -%}
-      <div class="hero__actions" data-reveal>
+      <div class="hero__actions">
         {% render 'button', label: section.settings.primary_label, url: primary_url, style: 'primary', arrow: settings.button_arrow %}
         {% render 'button', label: section.settings.secondary_label, url: secondary_url, style: 'secondary' %}
       </div>
       {%- if section.blocks.size > 0 -%}
-        <ul class="hero__points" role="list" data-reveal>
+        <ul class="hero__points" role="list">
           {%- for block in section.blocks -%}
             <li {{ block.shopify_attributes }}>{% render 'icon', name: 'check', size: 18 %}<span>{{ block.settings.text | escape }}</span></li>
           {%- endfor -%}
@@ -27,7 +27,7 @@
     </div>
 
     {%- unless section.settings.visual == 'none' -%}
-    <div class="hero__visual" data-reveal>
+    <div class="hero__visual">
       {%- if section.settings.visual == 'image' and section.settings.image != blank -%}
         {{
           section.settings.image

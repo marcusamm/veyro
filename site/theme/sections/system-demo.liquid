@@ -2,6 +2,8 @@
   Visuel demonstration af et Veyro-system: ordreoversigt, lagerstatus og advarsler.
   Alt indhold i demoen er fiktivt og markeret som eksempel. Ingen billedfiler, kun HTML/CSS.
   Disponibel = fysisk beholdning − reserveret.
+  „Prøv et eksempel“ (theme.js, initDemo) ændrer kun tallene her på siden: et forbrug på et job trækker
+  fra den fysiske og den disponible beholdning, mens det reserverede er uændret. Intet gemmes eller sendes.
 {%- endcomment -%}
 {%- assign rules = section.settings.rules | newline_to_br | split: '<br />' -%}
 <section class="section section--{{ section.settings.scheme }} demo" id="{{ section.settings.anchor | default: section.id | handle }}">
@@ -9,6 +11,15 @@
     {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
 
     <figure class="demo__figure" data-reveal>
+      <div class="demo__try" data-demo-try data-qty="3" hidden>
+        <div class="demo__try-text">
+          <p class="demo__try-label">Eksempel – Drift er på vej</p>
+          <p class="demo__try-desc">En medarbejder registrerer forbrug af 3 par arbejdshandsker på et job.</p>
+          <p class="demo__try-status" role="status" data-demo-status></p>
+        </div>
+        <button type="button" class="btn btn--secondary btn--sm demo__try-btn" data-demo-play data-label-reset="Nulstil eksempel">Prøv et eksempel</button>
+      </div>
+      <div class="demo__frame">
       <p class="demo__badge"><span aria-hidden="true"></span>{{ section.settings.badge | escape }}</p>
       <div class="demo__app">
         <div class="demo__bar" aria-hidden="true">
@@ -42,7 +53,7 @@
               <caption class="visually-hidden">Eksempel på lagerstatus</caption>
               <thead><tr><th scope="col">Vare</th><th scope="col" class="num">Fysisk</th><th scope="col" class="num">Reserveret</th><th scope="col" class="num">Disponibel</th></tr></thead>
               <tbody>
-                <tr><td>Arbejdshandsker, str. L<small>VN-1001</small></td><td class="num">120</td><td class="num">24</td><td class="num"><b>96</b></td></tr>
+                <tr data-demo-row><td>Arbejdshandsker, str. L<small>VN-1001</small></td><td class="num"><span data-demo-physical>120</span></td><td class="num"><span data-demo-reserved>24</span></td><td class="num"><b data-demo-available>96</b></td></tr>
                 <tr><td>Skruer 4×40, 200 stk.<small>VN-1022</small></td><td class="num">64</td><td class="num">8</td><td class="num"><b>56</b></td></tr>
                 <tr class="is-low"><td>Malertape 25 mm<small>VN-1014</small></td><td class="num">18</td><td class="num">12</td><td class="num"><b>6</b><span class="pill pill--low">Lav</span></td></tr>
                 <tr class="is-low"><td>Spartelmasse 1 L<small>VN-1041</small></td><td class="num">7</td><td class="num">2</td><td class="num"><b>5</b><span class="pill pill--low">Lav</span></td></tr>
@@ -59,7 +70,7 @@
               <li><b>Spartelmasse 1 L</b><span>Lav beholdning: 5 disponible (minimum 8).</span></li>
             </ul>
             <h3 class="demo__title demo__title--sub">{% render 'icon', name: 'history', size: 16 %}Seneste ændringer</h3>
-            <ul class="demo__log" role="list">
+            <ul class="demo__log" role="list" data-demo-log>
               <li><span>Ordre #1047 bekræftet</span><em>5 varer reserveret</em></li>
               <li><span>Varemodtagelse</span><em>Skruer 4×40 +50</em></li>
               <li><span>Optælling (svind)</span><em>Malertape 25 mm −2</em></li>
@@ -67,6 +78,7 @@
             </ul>
           </div>
         </div>
+      </div>
       </div>
       {%- if section.settings.caption != blank -%}
         <figcaption class="demo__caption small muted">{{ section.settings.caption | escape }}</figcaption>

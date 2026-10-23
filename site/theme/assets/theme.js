@@ -1,7 +1,7 @@
 /*
  * Veyro – tema-JavaScript
  * Ingen afhængigheder. Alt er progressiv forbedring: siden virker uden JS.
- * Moduler: header, reveal, tabs, filter, formularer, cookies, varianter.
+ * Moduler: header, reveal, proces, systemdemo, FAQ, tabs, filter, formularer, cookies, varianter.
  */
 (() => {
   'use strict';
@@ -78,6 +78,186 @@
         { rootMargin: '0px 0px -8% 0px', threshold: 0.08 }
       );
     items.forEach((el) => revealObserver.observe(el));
+  }
+
+  const motionAllowed = () => document.body.classList.contains('has-motion') && !reducedMotion.matches;
+
+  /* ---------- „Sådan arbejder vi“: orange streg over hvert trin, én gang ----------
+   * Trin, der bliver synlige samtidig (fire på række på desktop), aktiveres i rækkefølge;
+   * på mobil aktiveres hvert trin, når det kommer ind i skærmbilledet. */
+  function initProcess(root = document) {
+    const steps = Array.from(root.querySelectorAll('[data-process-step]:not(.is-active)'));
+    if (!steps.length) return;
+    if (!motionAllowed() || !('IntersectionObserver' in window)) {
+      steps.forEach((el) => el.classList.add('is-active'));
+      return;
+    }
+    const STAGGER = 250;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries
+          .filter((e) => e.isIntersecting)
+          .map((e) => e.target)
+          .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+          .forEach((el, i) => {
+            el.style.setProperty('--step-delay', `${i * STAGGER}ms`);
+            el.classList.add('is-active');
+            observer.unobserve(el);
+          });
+      },
+      { rootMargin: '0px 0px -12% 0px', threshold: 0.35 }
+    );
+    steps.forEach((el) => {
+      el.classList.add('is-pending');
+      observer.observe(el);
+    });
+  }
+
+  /* ---------- Systemdemo: „Prøv et eksempel“ ----------
+   * Ændrer kun tallene på siden (fysisk og disponibel; reserveret er uændret). Intet gemmes eller sendes. */
+  function initDemo(root = document) {
+    root.querySelectorAll('[data-demo-try]').forEach((bar) => {
+      if (bar.dataset.demoReady) return;
+      const figure = bar.closest('.demo__figure');
+      const row = figure?.querySelector('[data-demo-row]');
+      const physicalEl = row?.querySelector('[data-demo-physical]');
+      const reservedEl = row?.querySelector('[data-demo-reserved]');
+      const availableEl = row?.querySelector('[data-demo-available]');
+      const btn = bar.querySelector('[data-demo-play]');
+      const status = bar.querySelector('[data-demo-status]');
+      const log = figure?.querySelector('[data-demo-log]');
+      if (!physicalEl || !reservedEl || !availableEl || !btn || !status) return;
+      bar.dataset.demoReady = 'true';
+
+      const qty = parseInt(bar.dataset.qty, 10) || 3;
+      const start = { physical: parseInt(physicalEl.textContent, 10), reserved: parseInt(reservedEl.textContent, 10) };
+      const playLabel = btn.textContent.trim();
+      const resetLabel = btn.dataset.labelReset || playLabel;
+      let played = false;
+      let timers = [];
+      const numbers = [physicalEl, reservedEl, availableEl];
+      // Afbrydes en overgang (hurtige klik), sættes tallene straks til deres sidste værdi
+      const clearTimers = () => {
+        timers.forEach(clearTimeout);
+        timers = [];
+        numbers.forEach((el) => {
+          if (el.dataset.target) el.textContent = el.dataset.target;
+          el.classList.remove('is-changing');
+        });
+      };
+      const later = (fn, ms) => (motionAllowed() ? timers.push(setTimeout(fn, ms)) : fn());
+
+      // Kort overgang: tallet toner ud, skiftes og toner ind (ingen rullende tal)
+      const setNumber = (el, value) => {
+        el.dataset.target = value;
+        if (el.textContent === String(value)) return;
+        if (!motionAllowed()) {
+          el.textContent = value;
+          return;
+        }
+        el.classList.add('is-changing');
+        timers.push(
+          setTimeout(() => {
+            el.textContent = el.dataset.target;
+            el.classList.remove('is-changing');
+          }, 160)
+        );
+      };
+      const render = (physical) => {
+        setNumber(physicalEl, physical);
+        setNumber(reservedEl, start.reserved);
+        setNumber(availableEl, physical - start.reserved);
+      };
+
+      let logItem;
+      const showLog = (show) => {
+        if (!log) return;
+        if (show && !logItem) {
+          logItem = document.createElement('li');
+          logItem.className = 'demo__log-new';
+          const a = document.createElement('span');
+          a.textContent = 'Forbrug registreret på job';
+          const b = document.createElement('em');
+          b.textContent = `Arbejdshandsker −${qty}`;
+          logItem.append(a, b);
+          log.prepend(logItem);
+          if (log.lastElementChild !== logItem) log.lastElementChild.hidden = true;
+        } else if (!show && logItem) {
+          logItem.remove();
+          logItem = null;
+          Array.from(log.children).forEach((li) => (li.hidden = false));
+        }
+      };
+
+      btn.addEventListener('click', () => {
+        clearTimers();
+        row.classList.remove('is-highlight');
+        status.classList.remove('is-shown');
+        if (!played) {
+          played = true;
+          btn.textContent = resetLabel;
+          row.classList.add('is-highlight');
+          later(() => render(start.physical - qty), 280);
+          later(() => {
+            showLog(true);
+            status.textContent = `${qty} par registreret på jobbet. Lager opdateret.`;
+            status.classList.add('is-shown');
+          }, 520);
+          later(() => row.classList.remove('is-highlight'), 1600);
+        } else {
+          played = false;
+          btn.textContent = playLabel;
+          render(start.physical);
+          showLog(false);
+          status.textContent = 'Eksemplet er nulstillet.';
+          status.classList.add('is-shown');
+        }
+      });
+
+      bar.hidden = false;
+    });
+  }
+
+  /* ---------- FAQ: svar åbner og lukker blødt ----------
+   * <details> virker uden JS; her animeres kun højden. Åben/lukket status følger altid elementet. */
+  function initFaq(root = document) {
+    root.querySelectorAll('details.faq__item').forEach((item) => {
+      if (item.dataset.faqReady) return;
+      const summary = item.querySelector('summary');
+      const answer = item.querySelector('.faq__answer');
+      if (!summary || !answer || typeof answer.animate !== 'function') return;
+      item.dataset.faqReady = 'true';
+      let anim = null;
+
+      const run = (opening) => {
+        const style = getComputedStyle(answer);
+        const full = { height: `${answer.scrollHeight}px`, paddingBottom: style.paddingBottom, opacity: 1 };
+        const from = anim ? { height: style.height, paddingBottom: style.paddingBottom, opacity: style.opacity } : opening ? { height: '0px', paddingBottom: '0px', opacity: 0 } : full;
+        const to = opening ? full : { height: '0px', paddingBottom: '0px', opacity: 0 };
+        if (anim) anim.cancel();
+        answer.style.overflow = 'hidden';
+        anim = answer.animate([from, to], { duration: 200, easing: 'cubic-bezier(.2, .7, .2, 1)' });
+        anim.onfinish = () => {
+          anim = null;
+          answer.style.overflow = '';
+          if (!opening) item.open = false;
+          item.classList.remove('is-closing');
+        };
+      };
+
+      summary.addEventListener('click', (e) => {
+        if (!motionAllowed()) return;
+        e.preventDefault();
+        if (item.open && !item.classList.contains('is-closing')) {
+          item.classList.add('is-closing');
+          run(false);
+        } else {
+          item.classList.remove('is-closing');
+          item.open = true;
+          run(true);
+        }
+      });
+    });
   }
 
   /* ---------- Faneblade (ARIA tabs) ---------- */
@@ -402,6 +582,9 @@
   /* ---------- Init ---------- */
   function initSection(root) {
     initReveal(root);
+    initProcess(root);
+    initDemo(root);
+    initFaq(root);
     initTabs(root);
     initFilters(root);
     initForms(root);

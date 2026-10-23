@@ -43,7 +43,7 @@
           assign features = block.settings.features | newline_to_br | split: '<br />'
           assign heading_id = 'Package-' | append: block.id
         -%}
-        <li class="plan pricing-card card{% if coming %} pricing-card--coming{% endif %}" aria-labelledby="{{ heading_id }}" data-reveal style="--delay: {{ forloop.index0 | times: 90 }}ms" {{ block.shopify_attributes }}>
+        <li class="plan pricing-card card{% if coming %} pricing-card--coming{% endif %}" id="pakke-{{ block.settings.title | handle }}" aria-labelledby="{{ heading_id }}" data-reveal style="--delay: {{ forloop.index0 | times: 60 }}ms" {{ block.shopify_attributes }}>
           <div class="plan__head">
             <h3 class="h3" id="{{ heading_id }}">{{ block.settings.title | escape }}</h3>
             {%- if block.settings.badge != blank -%}<span class="plan__badge{% if coming %} pricing-card__badge--coming{% endif %}">{{ block.settings.badge | escape }}</span>{%- endif -%}
