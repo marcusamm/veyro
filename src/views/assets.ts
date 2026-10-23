@@ -263,7 +263,11 @@ input[readonly]{background:var(--surface,#f4f2ec);color:var(--muted)}
 @media(min-width:720px){.inv-line{grid-template-columns:minmax(0,1fr) 90px 200px;gap:12px}}
 .label-like{display:block;font-weight:600;margin-bottom:6px}
 .check{display:flex;gap:10px;align-items:center;font-weight:400}
-.check input{width:auto;margin:0}
+.check input{width:auto;margin:0;flex:none}
+.check>span{flex:1;min-width:0}
+.consent-check{align-items:flex-start;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--bg);cursor:pointer;line-height:1.6}
+.consent-check input{width:20px;height:20px;margin-top:3px}
+.consent-check a{text-underline-offset:2px}
 .h-small{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:8px 0 0}
 .offer-table th{font-weight:500;text-align:left;white-space:normal;font-size:15px;color:var(--ink,inherit);border-bottom:1px solid var(--line);padding:12px 12px 12px 0}
 .offer-table td{padding:12px 0 12px 12px}

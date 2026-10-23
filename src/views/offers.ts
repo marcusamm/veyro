@@ -117,8 +117,8 @@ export function publicOfferPage(args: { csrf: string; offer: OfferRow; error?: s
     <p class="small muted">Du får en kvittering og faktura fra Stripe ved hver betaling. Tilbuddet gælder til og med ${formatDate(o.valid_until)}. Abonnementet sælges kun til virksomheder, og der er ingen fortrydelsesret.</p>
     <form method="post" action="/tilbud/${o.token}" class="stack">
       ${csrfField(args.csrf)}
-      <label class="check"><input type="checkbox" name="accept" value="1" required${args.checked ? html` checked` : ''}>
-        Jeg godkender tilbuddet og tilmelder mig et løbende abonnement på ${kr(offerTotals(o).recurringTotal)} ${iv(o.interval).per}${o.vat ? ' inkl. moms' : ''} på vilkårene ovenfor, og jeg accepterer på virksomhedens vegne ${legalLinks()}.</label>
+      <label class="check consent-check"><input type="checkbox" name="accept" value="1" required${args.checked ? html` checked` : ''}>
+        <span>Jeg godkender tilbuddet og tilmelder mig et løbende abonnement på ${kr(offerTotals(o).recurringTotal)} ${iv(o.interval).per}${o.vat ? ' inkl. moms' : ''} på vilkårene ovenfor, og jeg accepterer på virksomhedens vegne ${legalLinks()}.</span></label>
       <button class="btn btn-accent btn-block" type="submit" data-loading="Åbner Stripe …">Godkend og gå til betaling</button>
       <p class="small muted">Betalingen sker sikkert hos Stripe. Kortoplysninger gemmes aldrig hos Veyro.</p>
     </form>
