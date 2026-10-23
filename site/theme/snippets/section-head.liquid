@@ -4,7 +4,7 @@
 {%- endcomment -%}
 {%- assign tag = tag | default: 'h2' -%}
 {%- if eyebrow != blank or heading != blank or text != blank -%}
-  <header class="section-head section-head--{{ align | default: 'left' }}" data-reveal>
+  <header class="section-head section-head--{{ align | default: 'left' }}">
     {%- if eyebrow != blank -%}
       <p class="eyebrow">{{ eyebrow | escape }}</p>
     {%- endif -%}
