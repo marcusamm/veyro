@@ -164,6 +164,9 @@ describe('Pakker og priser', () => {
     expect(booking).toContain('299 kr.<span>/md. ekskl. moms</span>');
     expect(booking).toContain('Ekstra medarbejdere til 99 kr./md. pr. medarbejder ekskl. moms');
     expect(booking).toContain('href="/pages/kontakt?ydelse=pakke-booking#formular"');
+    expect(booking).toContain('0 kr. den første måned. Herefter 299 kr./md. ekskl. moms');
+    expect(booking).toContain('Gratis oprettelse og ingen binding.');
+    expect(r.html).toContain('Gælder Basis og Booking.');
     expect(booking).not.toContain('pricing-card--coming');
     expect(booking).not.toMatch(/På vej|Forventet|testkunde/);
     for (const [card, key] of [[drift, 'drift'], [alt, 'alt-inkl']]) {

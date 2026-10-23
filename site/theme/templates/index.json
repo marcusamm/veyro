@@ -105,7 +105,7 @@
         "text": "<p>Vælg den pakke, der passer til jeres virksomhed. Se præcis, hvad hver pakke indeholder, på prissiden.</p>",
         "label": "Se hvad pakkerne indeholder",
         "link": "/pages/ydelser#priser",
-        "note": "<p>Alle priser er ekskl. moms. Basis: første måned gratis, gratis oprettelse og ingen binding. Drift og Alt inkl. er under udvikling, og priserne er forventede.</p>"
+        "note": "<p>Alle priser er ekskl. moms. Basis og Booking: første måned gratis, gratis oprettelse og ingen binding. Drift og Alt inkl. er under udvikling, og priserne er forventede.</p>"
       }
     },
     "workflows": {
