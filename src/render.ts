@@ -10,7 +10,7 @@ export async function render(
   c: Context<AppEnv>,
   title: string,
   body: H,
-  opts: { nav?: NavKey; status?: ContentfulStatusCode; admin?: boolean; isCustomer?: boolean; kasse?: boolean } = {},
+  opts: { nav?: NavKey; status?: ContentfulStatusCode; admin?: boolean; isCustomer?: boolean; kasse?: boolean; refresh?: number } = {},
 ) {
   const session = c.get('session');
   const admin = isAdmin(c.env, session?.email);
@@ -33,6 +33,7 @@ export async function render(
         // Kassens medarbejdere uden for ADMIN_EMAILS ser kun kassen
         staffNav: !!opts.kasse && !admin && !!session,
         kasse: opts.kasse,
+        refresh: opts.refresh,
       },
       body,
     ),

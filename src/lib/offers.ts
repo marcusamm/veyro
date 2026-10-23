@@ -3,6 +3,8 @@ import { nowSec } from './crypto';
 import { normalizeEmail, upsertCustomer } from './db';
 import { parseKr, VAT_PERCENT, vatRateId } from './invoices';
 import { idOf, StripeError, stripeRequest, type Params } from './stripe';
+import { logError } from './errlog';
+import { onOfferActivated } from './prospects';
 
 /**
  * Tilbud med individuel pris → personligt betalingslink → Stripe Checkout (abonnement).
@@ -662,6 +664,8 @@ export async function activateFromSession(env: Env, sessionId: string): Promise<
     .run();
   const updated = (await getOffer(env.DB, o.id))!;
   if (!paid) return { kind: 'processing', offer: updated, subId };
+  // Tilbud fra et kundeemne: knyt emnet til den nye kunde (historik, tid og udgifter følger med)
+  await onOfferActivated(env.DB, o.id, customer.id).catch((err) => logError(env.DB, 'kundeemne.tilbud-betalt', err));
   return { kind: o.status === 'active' ? 'already' : 'activated', offer: updated, subId };
 }
 

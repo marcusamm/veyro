@@ -16,6 +16,12 @@ import adminStats from './routes/admin-stats';
 import adminPoa from './routes/admin-poa';
 import adminNda from './routes/admin-nda';
 import kasse from './routes/kasse';
+import adminProspects from './routes/admin-prospects';
+import adminCosts from './routes/admin-costs';
+import adminMail from './routes/admin-mail';
+import adminProspectTools from './routes/admin-prospect-tools';
+import { runMailSync } from './lib/gmail-sync';
+import { runJobs } from './lib/prospect-jobs';
 import { reconcilePending } from './lib/pos/sales';
 import { getPosSettings } from './lib/pos/settings';
 import { applyRetention as ndaRetention } from './lib/nda';
@@ -96,6 +102,11 @@ app.route('/konto', account);
 app.get('/fuldmagter/opbevaring', policyPage);
 // Kassen før resten af admin: medarbejdere med en rolle i kassen skal kunne bruge den uden ADMIN_EMAILS
 app.route('/admin/kasse', kasse);
+// Faste undersider (mail, link, find) før /kundeemner/:id
+app.route('/admin', adminMail);
+app.route('/admin', adminProspectTools);
+app.route('/admin', adminProspects);
+app.route('/admin', adminCosts);
 app.route('/admin', adminSite);
 app.route('/admin', adminStats);
 app.route('/admin', adminPoa);
@@ -116,12 +127,19 @@ app.onError((err, c) => {
   );
 });
 
+/** Skal svare til den hyppige cron i wrangler.toml; den daglige oprydning kører kun ved den daglige */
+const FREQUENT_CRON = '*/10 * * * *';
+
 export default {
   // Salgshjemmesiden (veyro.dk) og kundepanelet (kunde.veyro.dk) kører i samme Worker; domænet afgør hvilken.
   fetch(req: Request, env: Env, ctx: ExecutionContext) {
     return isSiteRequest(req, env) ? site.fetch(req, env, ctx) : app.fetch(req, env, ctx);
   },
-  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
+  async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    // Kundeemner (hvert 10. minut): Gmail-synkronisering og genforsøg på hentninger. Gør intet, før Google er sat op.
+    ctx.waitUntil(runMailSync(env).catch((err) => logError(env.DB, 'Gmail cron', err)));
+    ctx.waitUntil(runJobs(env).catch((err) => logError(env.DB, 'Kundeemner cron', err)));
+    if (event.cron === FREQUENT_CRON) return;
     ctx.waitUntil(cleanup(env.DB));
     ctx.waitUntil(purgeOldLeads(env.DB));
     // Fuldmagter: udløb, opbevaringspolitik og genforsøg på mails

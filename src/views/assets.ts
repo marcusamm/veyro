@@ -96,7 +96,7 @@ form.inline{display:inline}
 /* Formularer */
 label{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
 .hint{font-size:14px;color:var(--muted);margin-top:4px}
-input[type=email],input[type=text],input[type=number],input[type=password],input[type=tel],input[type=date],textarea,select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;
+input[type=email],input[type=text],input[type=number],input[type=password],input[type=tel],input[type=date],input[type=search],input[type=datetime-local],textarea,select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;
   border:1px solid var(--line-strong);border-radius:var(--r-btn);padding:11px 14px;min-height:46px}
 textarea{min-height:140px;resize:vertical;line-height:1.5}
 select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
@@ -241,6 +241,7 @@ input[readonly]{background:var(--surface,#f4f2ec);color:var(--muted)}
   table.responsive td{display:flex;justify-content:space-between;gap:16px;padding:3px 0;border:0;text-align:right}
   table.responsive td::before{content:attr(data-label);color:var(--muted);font-size:14px;text-align:left}
   table.responsive td.num{text-align:right}
+  table.responsive td>.cell{min-width:0;overflow-wrap:anywhere}
 }
 
 /* Bekræftelse */
@@ -305,6 +306,12 @@ details.card summary{font-size:16px;color:var(--ink)}
 .nda-toc{margin:0;padding-left:20px;columns:2;column-gap:24px}
 @media(max-width:559px){.nda-toc{columns:1}}
 .nda-project{border-left:3px solid var(--accent,#FF5A1F);padding:4px 0 4px 14px}
+/* Kundeemner og mail */
+.text-err{color:var(--err)}
+.mail-msg{border-top:1px solid var(--line);padding:8px 0}
+.mail-msg summary{cursor:pointer;word-break:break-word}
+.mail-body{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:15px;background:var(--bg,#F4F2EC);padding:12px;border-radius:8px;max-height:480px;overflow:auto;margin:8px 0 0}
+.obs-list li{margin-bottom:6px}
 `;
 
 export const JS = `

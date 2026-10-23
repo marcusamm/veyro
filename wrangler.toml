@@ -35,7 +35,8 @@ id = "3c625abe4eca4137926bef27947a605f"
 
 # Daglig oprydning af udløbne login-links, sessioner m.m. (kl. 03:17 UTC)
 [triggers]
-crons = ["17 3 * * *"]
+# Dagligt kl. 03:17 (oprydning m.m.) og hvert 10. minut (Gmail-synkronisering og hentninger til kundeemner)
+crons = ["17 3 * * *", "*/10 * * * *"]
 
 # Offentlige (ikke-hemmelige) indstillinger.
 # Hemmeligheder (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RESEND_API_KEY)
@@ -59,6 +60,10 @@ SITE_URL = "https://veyro.dk"
 # Veyros bankkonto (Revolut Business) til bankoverførsel. Står i fodnoten på fakturaer fra admin.
 BANK_IBAN = "LT14 3250 0850 3228 8130"
 BANK_BIC = "REVOLT21"
+# Kundeemner: Google Workspace-postkasser, der kan forbindes (README, "Kundeemner og Gmail"), og hvilke af dem der er fælles.
+# GOOGLE_CLIENT_ID sættes her, når Google Cloud-projektet er oprettet. GOOGLE_CLIENT_SECRET og MAIL_TOKEN_KEY er secrets.
+MAIL_ACCOUNTS = "efe@veyro.dk,marcus@veyro.dk,kontakt@veyro.dk,tobias@veyro.dk"
+SHARED_MAILBOXES = "kontakt@veyro.dk"
 # Valgfri momssats (inkluderet i prisen), se README:
 # STRIPE_TAX_RATE_ID = "txr_..."
 
@@ -75,6 +80,8 @@ ADMIN_EMAILS = "kontakt@veyro.dk,efe@veyro.dk,marcus@veyro.dk"
 NOTIFY_EMAIL = "kontakt@veyro.dk"
 EMAIL_FROM = "Veyro <kontakt@veyro.dk>"
 DEV_MODE = "0"
+MAIL_ACCOUNTS = "efe@veyro.dk,marcus@veyro.dk,kontakt@veyro.dk,tobias@veyro.dk"
+SHARED_MAILBOXES = "kontakt@veyro.dk"
 # Mærker alle sider og dokumenter som test (fx fuldmagter: "Testmiljø – ikke gyldig")
 TEST_LABEL = "Testmiljø"
 # I testmiljøet kan alle admins godkende NDA'er på Veyros vegne (testaftaler er ikke gyldige)
