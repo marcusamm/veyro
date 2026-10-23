@@ -1,0 +1,80 @@
+{%- comment -%}
+  Stor, mørk bar, der viser pakkerne kort og sender videre til prissiden.
+  Selve pakkerne og vilkårene står på prissiden; her er kun navn, pris og status.
+{%- endcomment -%}
+{%- liquid
+  assign cta_url = section.settings.link | default: '/pages/ydelser#priser'
+-%}
+<section class="section section--{{ section.settings.scheme }} price-banner" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container">
+    <div class="cta-banner__box price-banner__box" data-reveal>
+      <div class="price-banner__head">
+        <div class="cta-banner__content">
+          {%- if section.settings.eyebrow != blank -%}<p class="eyebrow">{{ section.settings.eyebrow | escape }}</p>{%- endif -%}
+          <h2 class="h1 cta-banner__title price-banner__title">{{ section.settings.heading }}</h2>
+          {%- if section.settings.text != blank -%}<div class="lead rte">{{ section.settings.text }}</div>{%- endif -%}
+        </div>
+        <div class="cta-banner__actions">
+          {% render 'button', label: section.settings.label, url: cta_url, style: 'primary', arrow: settings.button_arrow, class: 'btn--lg' %}
+        </div>
+      </div>
+
+      {%- if section.blocks.size > 0 -%}
+        <ul class="price-banner__grid" role="list">
+          {%- for block in section.blocks -%}
+            <li {{ block.shopify_attributes }}>
+              <a class="price-banner__item" href="{{ block.settings.link | default: cta_url }}">
+                <span class="price-banner__top">
+                  <span class="price-banner__name">{{ block.settings.title | escape }}</span>
+                  {%- if block.settings.badge != blank -%}<span class="price-banner__badge{% if block.settings.available %} price-banner__badge--now{% endif %}">{{ block.settings.badge | escape }}</span>{%- endif -%}
+                </span>
+                <span class="price-banner__price"><strong>{{ block.settings.price | escape }}</strong> {{ block.settings.price_note | escape }}</span>
+                {%- if block.settings.text != blank -%}<span class="price-banner__text">{{ block.settings.text | escape }}</span>{%- endif -%}
+              </a>
+            </li>
+          {%- endfor -%}
+        </ul>
+      {%- endif -%}
+
+      {%- if section.settings.note != blank -%}
+        <div class="price-banner__note rte small">{{ section.settings.note }}</div>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Prisbar",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
+      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
+    ], "default": "surface" },
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "pakker" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Pakker og priser" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Fire pakker med fast månedspris" },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "label", "label": "Knaptekst", "default": "Se pakker og priser" },
+    { "type": "url", "id": "link", "label": "Knaplink", "info": "Tomt felt linker til /pages/ydelser#priser." },
+    { "type": "richtext", "id": "note", "label": "Note under pakkerne" }
+  ],
+  "blocks": [
+    {
+      "type": "package",
+      "name": "Pakke",
+      "limit": 6,
+      "settings": [
+        { "type": "text", "id": "title", "label": "Navn", "default": "Basis" },
+        { "type": "text", "id": "price", "label": "Pris", "default": "199 kr." },
+        { "type": "text", "id": "price_note", "label": "Tekst efter pris", "default": "/md." },
+        { "type": "text", "id": "badge", "label": "Mærkat", "default": "Kan bestilles nu" },
+        { "type": "checkbox", "id": "available", "label": "Kan bestilles nu (fremhæv mærkat)", "default": false },
+        { "type": "text", "id": "text", "label": "Kort beskrivelse" },
+        { "type": "url", "id": "link", "label": "Link", "info": "Tomt felt bruger knaplinket." }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Prisbar" }]
+}
+{% endschema %}
