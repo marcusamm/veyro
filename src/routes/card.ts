@@ -52,6 +52,13 @@ async function loadSub(c: Parameters<typeof render>[0], token: string): Promise<
   return sub && !['canceled', 'incomplete_expired'].includes(sub.status) ? sub : null;
 }
 
+// Skal stå før /kort/:token, ellers fanges adressen som et token.
+card.get('/kort/tilfoejet', (c) =>
+  render(c, 'Tak', html`<div class="narrow stack-lg">
+  <div><h1>Tak, dit kort er tilføjet</h1><p class="lead">Betalingen trækkes nu automatisk hver måned. Du får en kvittering på mail fra Stripe, hver gang.</p></div>
+  <div class="card stack"><p>Du kan altid se dit abonnement og dine fakturaer i kundepanelet.</p><a class="btn btn-primary" href="/login">Log ind i kundepanelet</a></div>
+</div>`));
+
 card.get('/kort/:token', async (c) => {
   const token = c.req.param('token');
   const sub = await loadSub(c, token);
@@ -105,6 +112,9 @@ card.post('/kort/:token', async (c) => {
   }
 });
 
+// Stripe sender kunden tilbage hertil med et langt token og session-id i adressen. Kortet gemmes,
+// og kunden sendes straks videre til en kort, ren adresse, så den lange adresse ikke bliver stående
+// i adresselinjen og browserhistorikken (lange token-adresser efter et betalingsflow ligner phishing).
 card.get('/kort/:token/tak', async (c) => {
   const token = c.req.param('token');
   const subId = await readCardToken(c.env, token);
@@ -117,10 +127,7 @@ card.get('/kort/:token/tak', async (c) => {
     await logError(c.env.DB, 'Kort-tilknyt', err);
     return render(c, 'Tilføj betalingskort', errorPage('Kortet blev gemt, men…', 'Vi kunne ikke færdiggøre opsætningen lige nu. Vi kigger på det, og du behøver ikke gøre mere.', { href: 'https://veyro.dk', label: 'Til veyro.dk' }), { status: 502 });
   }
-  return render(c, 'Tak', html`<div class="narrow stack-lg">
-  <div><h1>Tak, dit kort er tilføjet</h1><p class="lead">Betalingen trækkes nu automatisk hver måned. Du får en kvittering på mail fra Stripe, hver gang.</p></div>
-  <div class="card stack"><p>Du kan altid se dit abonnement og dine fakturaer i kundepanelet.</p><a class="btn btn-primary" href="/login">Log ind i kundepanelet</a></div>
-</div>`);
+  return c.redirect('/kort/tilfoejet', 303);
 });
 
 export default card;
