@@ -15,6 +15,23 @@
       </div>
     {%- endif -%}
 
+    {%- if section.settings.pay_heading != blank -%}
+      {%- assign pay_steps = section.settings.pay_steps | newline_to_br | split: '<br />' -%}
+      <div class="packages__pay" id="betaling" data-reveal>
+        <h3 class="h4 packages__pay-title">{{ section.settings.pay_heading | escape }}</h3>
+        <ol class="packages__pay-steps" role="list">
+          {%- for line in pay_steps -%}
+            {%- assign step = line | strip -%}
+            {%- if step != blank -%}
+              {%- assign parts = step | split: '|' -%}
+              <li><span class="packages__pay-num" aria-hidden="true">{{ forloop.index }}</span><div><strong>{{ parts[0] | strip | escape }}</strong>{%- if parts[1] -%}<span>{{ parts[1] | strip | escape }}</span>{%- endif -%}</div></li>
+            {%- endif -%}
+          {%- endfor -%}
+        </ol>
+        {%- if section.settings.pay_note != blank -%}<p class="small muted packages__pay-note">{{ section.settings.pay_note }}</p>{%- endif -%}
+      </div>
+    {%- endif -%}
+
     <ul class="packages__grid" role="list">
       {%- for block in section.blocks -%}
         {%- liquid
@@ -120,6 +137,9 @@
     { "type": "richtext", "id": "text", "label": "Introduktion" },
     { "type": "text", "id": "offer", "label": "Tilbud (fremhævet)", "default": "Første måned gratis · Gratis oprettelse · Ingen binding" },
     { "type": "text", "id": "offer_note", "label": "Note til tilbuddet" },
+    { "type": "text", "id": "pay_heading", "label": "Betaling: overskrift", "default": "Sådan bestiller og betaler du" },
+    { "type": "textarea", "id": "pay_steps", "label": "Betaling: trin (ét pr. linje, „Titel | tekst“)" },
+    { "type": "inline_richtext", "id": "pay_note", "label": "Betaling: note" },
     { "type": "text", "id": "staff_heading", "label": "Ekstra medarbejdere: overskrift" },
     { "type": "richtext", "id": "staff_text", "label": "Ekstra medarbejdere: tekst" },
     { "type": "text", "id": "staff_table_caption", "label": "Ekstra medarbejdere: tabeltitel", "default": "Eksempler for Booking" },

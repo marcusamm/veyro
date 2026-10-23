@@ -148,6 +148,11 @@ describe('Pakker og priser', () => {
     expect(r.html).toContain('id="priser"');
     expect(r.html).toContain('En løsning, der passer til din virksomhed');
     expect(r.html).toContain('Første måned gratis · Gratis oprettelse · Ingen binding');
+    // Det fremgår tydeligt, hvor og hvordan man betaler
+    expect(r.html).toContain('Sådan bestiller og betaler du');
+    expect(r.html).toContain('Betal sikkert med kort');
+    expect(r.html).toContain('href="https://kunde.veyro.dk/login"');
+    expect(r.html).toContain('Du betaler ikke her. Vi sender et tilbud med et personligt betalingslink.');
     const grid = r.html.slice(r.html.indexOf('class="packages__grid"'), r.html.indexOf('class="packages__staff'));
     const cards = grid.split('<li class="plan pricing-card card').slice(1);
     expect(cards.map((c) => c.match(/<h3[^>]*>([^<]+)</)[1])).toEqual(['Basis', 'Booking', 'Drift', 'Alt inkl.']);

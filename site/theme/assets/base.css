@@ -470,7 +470,15 @@ code, pre { font-family: var(--font-mono); }
 }
 
 /* Ydelseskort */
-.services__grid, .packages__grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.services__grid, .packages__pay { margin-bottom: var(--space-6); }
+.packages__pay-title { margin: 0 0 var(--space-4); }
+.packages__pay-steps { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+.packages__pay-steps li { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--card); }
+.packages__pay-steps strong { display: block; }
+.packages__pay-steps span:not(.packages__pay-num) { display: block; margin-top: .2rem; font-size: .9rem; color: var(--muted); }
+.packages__pay-num { flex: none; display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--color-accent); color: var(--color-accent-ink); font-size: .85rem; font-weight: 600; }
+.packages__pay-note { margin: var(--space-3) 0 0; }
+.packages__grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
 .service-card { display: flex; flex-direction: column; }
 .service-card__top { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6); }
 .service-card__icon { display: inline-grid; color: var(--fg); transition: color .3s var(--ease); }
