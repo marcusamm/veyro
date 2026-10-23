@@ -1,5 +1,6 @@
 import type { Env } from '../env';
 import { hmacSha256Hex, timingSafeEqual } from './crypto';
+import { logError } from './errlog';
 import { StripeError, stripeRequest } from './stripe';
 
 /**
@@ -64,5 +65,31 @@ export async function attachCardFromSession(env: Env, sessionId: string, expecte
     if (!(err instanceof StripeError && err.status === 400 && /days_until_due/.test(err.message))) throw err;
     await stripeRequest(env, 'POST', `/v1/subscriptions/${subId}`, { ...params, days_until_due: '' });
   }
+  // Kortet er gemt og abonnementet automatisk; fejler skiftet af en kladde, må det ikke vælte kunden.
+  await chargeDraftsAutomatically(env, subId, pm).catch((err) => logError(env.DB, 'kort.kladde', err));
   return subId;
+}
+
+/**
+ * Abonnementets første faktura ligger som kladde i en time og arver "send faktura" fra oprettelsen.
+ * Tilføjer kunden kort inden da, skal også den trækkes på kortet i stedet for at blive sendt som
+ * en faktura til bankoverførsel.
+ */
+async function chargeDraftsAutomatically(env: Env, subId: string, pm: string): Promise<void> {
+  const drafts = await stripeRequest<{ data: Array<{ id: string; collection_method: string }> }>(env, 'GET', '/v1/invoices', {
+    subscription: subId,
+    status: 'draft',
+    limit: 10,
+  });
+  for (const inv of drafts.data ?? []) {
+    if (inv.collection_method !== 'send_invoice') continue;
+    const params = { collection_method: 'charge_automatically', default_payment_method: pm };
+    try {
+      await stripeRequest(env, 'POST', `/v1/invoices/${inv.id}`, params);
+    } catch (err) {
+      // Som for abonnementet: en betalingsfrist hører kun til "send faktura" og fjernes ved automatisk træk.
+      if (!(err instanceof StripeError && err.status === 400 && /due_date|days_until_due/.test(err.message))) throw err;
+      await stripeRequest(env, 'POST', `/v1/invoices/${inv.id}`, { ...params, due_date: '' });
+    }
+  }
 }

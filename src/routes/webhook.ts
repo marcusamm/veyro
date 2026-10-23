@@ -5,6 +5,7 @@ import { nowSec } from '../lib/crypto';
 import { getCustomerByStripeId, normalizeEmail, upsertCustomer, upsertSubscription } from '../lib/db';
 import { adminNoticeEmail, offerActivatedEmail, sendEmail } from '../lib/email';
 import { logError } from '../lib/errlog';
+import { isSettledWithoutCharge, mailSettledInvoice } from '../lib/invoices';
 import { formatKr } from '../lib/format';
 import {
   activateFromSession,
@@ -67,6 +68,18 @@ function invoiceSubscriptionId(inv: any): string | null {
     idOf(inv?.lines?.data?.[0]?.parent?.subscription_item_details?.subscription) ??
     null
   );
+}
+
+/**
+ * Stripe mailer ikke fakturaer, der er gjort op uden et træk (fx første måned gratis med en
+ * 100 %-rabat eller prøveperiode), så kunden får dem fra os. Manuelle fakturaer mailes, når de
+ * sendes fra admin, og tilbud får deres egen velkomstmail.
+ */
+async function mailInvoiceWithoutCharge(env: Env, inv: any) {
+  if (!isSettledWithoutCharge(inv) || inv.billing_reason === 'manual') return;
+  const source = inv.parent?.subscription_details?.metadata?.source ?? inv.subscription_details?.metadata?.source;
+  if (source === 'veyro-tilbud') return;
+  await mailSettledInvoice(env, inv).catch((err) => logError(env.DB, 'webhook.invoice-mail', err));
 }
 
 /** Mail til Veyro (NOTIFY_EMAIL). Fejler mailen, logges det, men webhooken gennemføres. */
@@ -170,6 +183,7 @@ webhook.post('/stripe/webhook', async (c) => {
         const subId = invoiceSubscriptionId(obj);
         await recordInvoice(c.env, obj, 'paid', subId);
         if (subId) await syncSubscription(c.env, subId, undefined, { paymentFailed: false });
+        await mailInvoiceWithoutCharge(c.env, obj);
         break;
       }
       case 'invoice.payment_failed': {

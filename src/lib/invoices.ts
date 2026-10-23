@@ -1,5 +1,6 @@
 import type { Env } from '../env';
 import { normalizeEmail } from './db';
+import { sendEmail, settledInvoiceEmail, type SettledReason } from './email';
 import { StripeError, stripeRequest, type Params } from './stripe';
 
 /**
@@ -10,6 +11,12 @@ import { StripeError, stripeRequest, type Params } from './stripe';
 
 export const MAX_LINES = 5;
 export const VAT_PERCENT = 25;
+/**
+ * Stripes mindstebeløb for et korttræk i DKK (øre). En faktura under beløbet trækkes ikke:
+ * Stripe markerer den som betalt og lægger beløbet over på kundens næste faktura
+ * (vises som "betalt med kredit" i Stripe), og kunden får ingen mail.
+ */
+export const MIN_CHARGE_OERE = 250;
 
 export interface InvoiceLine {
   description: string;
@@ -40,6 +47,11 @@ export interface AdminInvoice {
   hosted_invoice_url: string | null;
   invoice_pdf: string | null;
   livemode?: boolean;
+  amount_paid?: number;
+  paid_out_of_band?: boolean;
+  billing_reason?: string | null;
+  starting_balance?: number;
+  ending_balance?: number | null;
 }
 
 /** "1.234,50", "1234.5", "1500" -> øre. Returnerer null ved ugyldigt beløb. */
@@ -92,7 +104,11 @@ export function validateDraft(f: DraftForm): { draft: InvoiceDraft } | { error: 
     lines.push({ description: l.description, quantity, unitAmount });
   }
   if (lines.length === 0) return { error: 'Tilføj mindst én linje med beskrivelse og pris.', field: 'line0_desc' };
-  return { draft: { email, name: f.name, lines, daysUntilDue: days, addVat: f.vat, memo: f.memo } };
+  const draft = { email, name: f.name, lines, daysUntilDue: days, addVat: f.vat, memo: f.memo };
+  if (draftTotals(draft).total < MIN_CHARGE_OERE) {
+    return { error: 'Beløbet skal være mindst 2,50 kr. inkl. moms. Stripe trækker ikke mindre beløb, men lægger dem over på kundens næste faktura.', field: 'line0_price' };
+  }
+  return { draft };
 }
 
 export function draftTotals(d: InvoiceDraft): { net: number; vat: number; total: number } {
@@ -198,12 +214,52 @@ export async function createInvoice(env: Env, d: InvoiceDraft, opts: { send: boo
   return inv;
 }
 
-/** Færdiggør en kladde (hvis den stadig er kladde) og e-mailer den til kunden. */
+/**
+ * Færdiggør en kladde (hvis den stadig er kladde) og e-mailer den til kunden.
+ * Er der intet at betale efter færdiggørelsen (fx dækket af kundens tilgodehavende), sender Stripe
+ * ingen mail, så kunden får fakturaen fra os i stedet.
+ */
 export async function sendInvoice(env: Env, id: string): Promise<AdminInvoice> {
   let inv = await stripeRequest<AdminInvoice>(env, 'GET', `/v1/invoices/${id}`);
-  if (inv.status === 'draft') inv = await stripeRequest<AdminInvoice>(env, 'POST', `/v1/invoices/${id}/finalize`, { auto_advance: 'false' });
+  const wasDraft = inv.status === 'draft';
+  if (wasDraft) inv = await stripeRequest<AdminInvoice>(env, 'POST', `/v1/invoices/${id}/finalize`, { auto_advance: 'false' });
+  if (wasDraft && inv.status === 'paid') {
+    if (!(await mailSettledInvoice(env, inv))) throw new StripeError('Fakturaen er udstedt, men mailen kunne ikke sendes (mangler RESEND_API_KEY eller kundens e-mail).', 500);
+    return inv;
+  }
   if (inv.status !== 'open') throw new StripeError('Kun ubetalte fakturaer kan sendes.', 400);
   return stripeRequest<AdminInvoice>(env, 'POST', `/v1/invoices/${id}/send`);
+}
+
+/** Fakturaer, som Stripe har gjort op uden et træk (0 kr. at betale), og som Stripe derfor ikke mailer. */
+export function isSettledWithoutCharge(inv: Pick<AdminInvoice, 'status' | 'amount_paid' | 'paid_out_of_band'>): boolean {
+  return inv.status === 'paid' && (inv.amount_paid ?? 0) === 0 && !inv.paid_out_of_band;
+}
+
+/** Status til visning for en faktura uden træk, fx "Første måned gratis" i stedet for blot "Betalt". */
+export function settledLabel(inv: Pick<AdminInvoice, 'status' | 'total' | 'amount_paid' | 'paid_out_of_band' | 'billing_reason' | 'starting_balance' | 'ending_balance'>): string | null {
+  if (inv.amount_paid === undefined || !isSettledWithoutCharge(inv)) return null;
+  if (inv.total === 0) return inv.billing_reason === 'subscription_create' ? 'Første måned gratis' : 'Gratis';
+  // Positiv saldo efter fakturaen betyder, at kunden skylder beløbet til næste faktura; negativ er et tilgodehavende.
+  return (inv.ending_balance ?? 0) > 0 ? 'Lagt på næste faktura' : 'Betalt med tilgodehavende';
+}
+
+/** Sender kunden fakturaen fra Veyro. Returnerer false, hvis der ikke er nogen at sende til. */
+export async function mailSettledInvoice(env: Env, inv: AdminInvoice): Promise<boolean> {
+  if (!inv.customer_email || !inv.hosted_invoice_url) return false;
+  const reason: SettledReason =
+    inv.total === 0
+      ? inv.billing_reason === 'subscription_create'
+        ? 'first-month-free'
+        : 'free'
+      : (inv.ending_balance ?? 0) > 0
+        ? 'deferred'
+        : 'credit';
+  return sendEmail(env, {
+    to: inv.customer_email,
+    replyTo: 'kontakt@veyro.dk',
+    ...settledInvoiceEmail({ name: inv.customer_name ?? '', number: inv.number, total: inv.total, reason, link: inv.hosted_invoice_url, pdf: inv.invoice_pdf }),
+  });
 }
 
 export async function listAdminInvoices(env: Env): Promise<AdminInvoice[]> {

@@ -1,4 +1,5 @@
 import type { Env } from '../env';
+import { formatKr } from './format';
 
 export interface EmailMessage {
   to: string;
@@ -246,6 +247,42 @@ Veyro`;
 <p style="margin:0 0 16px">${escapeHtml(body)}</p>
 <p style="margin:0 0 8px;color:#55534D;font-size:14px">Har du spørgsmål, så svar på denne mail. Du kan altid opsige abonnementet i kundepanelet til udgangen af en betalt periode.</p>`);
   return { subject: 'Ny pris på dit abonnement hos Veyro', text, html };
+}
+
+/**
+ * Hvorfor en faktura er gjort op uden et træk: første måned gratis, rabat på hele beløbet,
+ * dækket af kundens tilgodehavende, eller under Stripes mindstebeløb og lagt over på næste faktura.
+ */
+export type SettledReason = 'first-month-free' | 'free' | 'credit' | 'deferred';
+
+/** Faktura, som Stripe ikke selv mailer, fordi der ikke var noget at trække. */
+export function settledInvoiceEmail(args: { name: string; number: string | null; total: number; reason: SettledReason; link: string; pdf: string | null }): Omit<EmailMessage, 'to'> {
+  const h = hello(args.name);
+  const nr = args.number ? ` ${args.number}` : '';
+  const body = {
+    'first-month-free': `Din første måned er gratis. Her er fakturaen${nr} på 0 kr. til dit regnskab. Du skal ikke betale noget nu.`,
+    free: `Her er fakturaen${nr} på 0 kr. til dit regnskab. Rabatten dækker hele beløbet, så du skal ikke betale noget.`,
+    credit: `Her er fakturaen${nr} på ${formatKr(args.total, { decimals: true })} Den er betalt med dit tilgodehavende hos Veyro, så der er ikke trukket noget fra dit kort.`,
+    deferred: `Her er fakturaen${nr} på ${formatKr(args.total, { decimals: true })} Beløbet er for lille til et korttræk, så det lægges til din næste faktura. Du skal ikke betale noget nu.`,
+  }[args.reason];
+  const text = `${h}
+
+${body}
+
+Se fakturaen:
+${args.link}
+${args.pdf ? `\nHent den som PDF:\n${args.pdf}\n` : ''}
+Har du spørgsmål, så svar på denne mail.
+
+Venlig hilsen
+Veyro`;
+  const html = wrapHtml(`<p style="margin:0 0 16px">${escapeHtml(h)}</p>
+<p style="margin:0 0 24px">${escapeHtml(body)}</p>
+${button(args.link, 'Se fakturaen')}
+${args.pdf ? `<p style="margin:0 0 8px;font-size:14px"><a href="${escapeHtml(args.pdf)}" style="color:#0F0F0D">Hent fakturaen som PDF</a></p>` : ''}
+<p style="margin:0 0 8px;color:#55534D;font-size:14px">Har du spørgsmål, så svar på denne mail.</p>`);
+  const subject = args.reason === 'first-month-free' ? `Faktura${nr} fra Veyro: første måned gratis` : `Faktura${nr} fra Veyro`;
+  return { subject, text, html };
 }
 
 /** Kort besked til Veyro selv (NOTIFY_EMAIL). */

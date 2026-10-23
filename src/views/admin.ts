@@ -1,6 +1,6 @@
 import { html } from 'hono/html';
 import type { AdminRequestRow, CustomerListRow } from '../lib/db';
-import { MAX_LINES, VAT_PERCENT, type AdminInvoice, type DraftForm } from '../lib/invoices';
+import { MAX_LINES, VAT_PERCENT, settledLabel, type AdminInvoice, type DraftForm } from '../lib/invoices';
 import type { AdminSubscription } from '../lib/admin-subscriptions';
 import { formatDate, formatDateShort, formatKr } from '../lib/format';
 import { getPlan } from '../lib/plans';
@@ -207,7 +207,8 @@ export function adminInvoicesPage(args: {
         : html`<div class="table-wrap"><table class="responsive">
       <thead><tr><th scope="col">Kunde</th><th scope="col">Nummer</th><th scope="col">Status</th><th scope="col">Forfald</th><th scope="col" class="num">Beløb</th><th scope="col"><span class="visually-hidden">Handlinger</span></th></tr></thead>
       <tbody>${args.invoices.map((inv) => {
-        const st = ADMIN_INVOICE_STATUS[inv.status ?? ''] ?? { label: inv.status ?? '–', cls: 'b-neutral' };
+        const settled = settledLabel(inv);
+        const st = settled ? { label: settled, cls: 'b-ok' } : (ADMIN_INVOICE_STATUS[inv.status ?? ''] ?? { label: inv.status ?? '–', cls: 'b-neutral' });
         return html`<tr id="${inv.id}">
           <td data-label="Kunde"><strong>${inv.customer_name ?? '–'}</strong><br><span class="small muted">${inv.customer_email ?? ''}</span></td>
           <td data-label="Nummer">${inv.number ?? '–'}<br><span class="small muted">${formatDateShort(inv.created)}</span></td>
