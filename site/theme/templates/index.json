@@ -276,11 +276,11 @@
         "anchor": "hjemmesider",
         "icon": "design",
         "heading": "Har du blot brug for en hjemmeside? Det laver vi også.",
-        "text": "<p>Vi laver almindelige virksomhedshjemmesider og landingssider til en skræddersyet pris, der passer til jeres behov, gerne inkl. hosting og vedligeholdelse. Vi hjælper også med optimering, fejlfinding og vedligeholdelse af din nuværende hjemmeside.</p>",
-        "primary_label": "Få et tilbud",
-        "primary_link": "/?ydelse=almindelig-hjemmeside-eller-landingsside#kontakt",
-        "secondary_label": "Se ydelserne",
-        "secondary_link": "/pages/ydelser#webloesninger"
+        "text": "<p>Vi laver almindelige virksomhedshjemmesider og landingssider som abonnement fra 199 kr./md. ekskl. moms, inkl. hosting og teknisk vedligeholdelse Første måned er gratis, oprettelsen er gratis, og der er ingen binding. Vi hjælper også med optimering, fejlfinding og vedligeholdelse af din nuværende hjemmeside.</p>",
+        "primary_label": "Se priser",
+        "primary_link": "/pages/ydelser#priser",
+        "secondary_label": "Få et tilbud",
+        "secondary_link": "/?ydelse=almindelig-hjemmeside-eller-landingsside#kontakt"
       }
     },
     "faq": {
@@ -339,7 +339,7 @@
           "type": "question",
           "settings": {
             "question": "Laver I stadig almindelige hjemmesider?",
-            "answer": "<p>Ja. Vi laver virksomhedshjemmesider og landingssider til en skræddersyet pris, og vi hjælper med optimering og vedligeholdelse. <a href=\"/pages/kontakt?ydelse=almindelig-hjemmeside-eller-landingsside#formular\">Skriv til os</a>, så får du et tilbud.</p>"
+            "answer": "<p>Ja. Vi laver virksomhedshjemmesider og landingssider som abonnement fra 199 kr./md. ekskl. moms med gratis første måned, gratis oprettelse og ingen binding. Vi hjælper også med optimering og vedligeholdelse. <a href=\"/pages/ydelser#priser\">Se pakker og priser</a>.</p>"
           }
         }
       },

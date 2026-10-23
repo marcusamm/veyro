@@ -142,14 +142,64 @@ describe('Hjemmesiden vises uden Shopify', () => {
   });
 });
 
-describe('Ingen faste planer', () => {
-  it('standardindholdet viser ingen planer eller faste priser, kun skræddersyet tilbud', async () => {
-    for (const h of ['starter', 'business', 'premium']) expect((await site.get('/products/' + h)).status).toBe(404);
-    for (const p of ['/', '/pages/ydelser', '/pages/kontakt']) {
-      const r = await site.get(p);
-      expect(r.html, p).not.toMatch(/299 kr|599 kr|1\.099 kr|Vælg (Starter|Business|Premium)|Abonnement: (Starter|Business|Premium)/);
-      expect(r.html, p).not.toContain('action="/cart/add"');
+describe('Pakker og priser', () => {
+  it('viser fire pakker med priser ekskl. moms, vilkår og "På vej" uden købsknap', async () => {
+    const r = await site.get('/pages/ydelser');
+    expect(r.html).toContain('id="priser"');
+    expect(r.html).toContain('En løsning, der passer til din virksomhed');
+    expect(r.html).toContain('Første måned gratis · Gratis oprettelse · Ingen binding');
+    const grid = r.html.slice(r.html.indexOf('class="packages__grid"'), r.html.indexOf('class="packages__staff'));
+    const cards = grid.split('<li class="plan pricing-card card').slice(1);
+    expect(cards.map((c) => c.match(/<h3[^>]*>([^<]+)</)[1])).toEqual(['Basis', 'Booking', 'Drift', 'Alt inkl.']);
+    const [basis, booking, drift, alt] = cards;
+    expect(basis).toContain('199 kr.<span>/md. ekskl. moms</span>');
+    expect(basis).toContain('0 kr. den første måned. Herefter 199 kr./md. ekskl. moms.');
+    expect(basis).toContain('href="/pages/kontakt?ydelse=pakke-basis#formular"');
+    expect(basis).not.toContain('pricing-card--coming');
+    expect(booking).toContain('Ekstra medarbejdere til forventet 99 kr./md. pr. medarbejder ekskl. moms');
+    for (const [card, key] of [[booking, 'booking'], [drift, 'drift'], [alt, 'alt-inkl']]) {
+      expect(card).toContain('pricing-card--coming');
+      expect(card).toContain('På vej');
+      expect(card).toContain('Forventet abonnementspris');
+      expect(card).toContain(`href="/pages/ydelser?pakke=${key}#testkunde"`);
+      expect(card).not.toContain('/pages/kontakt');
+      expect(card).not.toContain('Vælg ');
     }
+    expect(alt).toContain('1.099 kr.<span>/md. ekskl. moms</span>');
+    expect(r.html).not.toMatch(/Mest populær|Komplet|All in|Starter|Premium/);
+    expect(r.html).not.toContain('action="/cart/add"');
+    // Ekstra medarbejdere: 299 + (n - 3) × 99
+    const rows = Object.fromEntries([...r.html.matchAll(/<tr><th scope="row">(\d+)<\/th><td>([^<]+)<\/td><\/tr>/g)].map((m) => [m[1], m[2]]));
+    expect(rows).toEqual({ 3: '299 kr.', 4: '398 kr.', 5: '497 kr.', 6: '596 kr.' });
+    expect(r.html).toContain('Booking med 5 medarbejdere forventes at koste 497 kr./md. ekskl. moms.');
+    // De gamle planer kan ikke købes
+    for (const h of ['starter', 'business', 'premium']) expect((await site.get('/products/' + h)).status).toBe(404);
+    const kontakt = await site.get('/pages/kontakt');
+    expect(kontakt.html).toContain('data-key="pakke-basis"');
+    expect(kontakt.html).not.toContain('data-key="pakke-booking"');
+  });
+
+  it('"Bliv testkunde" gemmer en forespørgsel med pakken og starter intet abonnement', async () => {
+    const page = await site.get('/pages/ydelser?pakke=drift');
+    const id = page.html.match(/id="(Pilot-[^"]+)"/)[1];
+    expect(page.html).toContain('data-preselect="pakke"');
+    expect(page.html).toContain('data-key="alt-inkl"');
+    expect(page.html).toContain('data-key="booking"');
+    const before = (await (await fetch(stack.mock.url + '/__mock/calls')).json()).length;
+    const r = await site.post('/contact', contactForm(page.html, id, {
+      'contact[Formular]': 'Testkunde', 'contact[Ydelse]': 'Testkunde: Drift', 'contact[Virksomhed]': 'Tømrer ApS', 'contact[name]': 'Tina Test', 'contact[email]': 'tina@toemrer.dk',
+      'contact[Telefon]': '', 'contact[Branche]': 'Tømrer', 'contact[Antal medarbejdere]': '4-10', 'contact[body]': 'Vi vil have styr på materialer på jobs.', 'contact[Samtykke]': 'Ja',
+    }));
+    expect(r.status).toBe(303);
+    const done = await site.get(r.headers.get('location').split('#')[0]);
+    expect(done.html).toContain('Vi kontakter dig for at høre om din virksomhed og aftale, om et testforløb passer til jer.');
+    const [lead] = sql("SELECT * FROM leads WHERE email = 'tina@toemrer.dk'");
+    expect(lead).toMatchObject({ kind: 'kontakt', form_name: 'Testkunde', service: 'Testkunde: Drift', company: 'Tømrer ApS', name: 'Tina Test', page: '/pages/ydelser' });
+    expect(JSON.parse(lead.fields)).toMatchObject({ Branche: 'Tømrer', 'Antal medarbejdere': '4-10' });
+    const mail = await waitFor(async () => (await emails()).find((e) => e.text.includes('tina@toemrer.dk')));
+    expect(mail.text).toContain('Branche: Tømrer');
+    expect(mail.text).toContain('Antal medarbejdere: 4-10');
+    expect((await (await fetch(stack.mock.url + '/__mock/calls')).json()).length).toBe(before);
   });
 });
 

@@ -825,6 +825,31 @@ code, pre { font-family: var(--font-mono); }
 .plan--highlight { background: var(--color-dark-bg); color: var(--color-dark-ink); border-color: transparent; --fg: var(--color-dark-ink); --bg: var(--color-dark-bg); --muted: var(--color-dark-muted); --line: rgba(var(--dark-ink-rgb), .14); --line-strong: rgba(var(--dark-ink-rgb), .28); }
 .plan--highlight .btn--primary:hover { --btn-bg: var(--color-dark-ink); --btn-fg: var(--color-dark-bg); --btn-border: var(--color-dark-ink); }
 .plans__footnote { margin-top: var(--space-6); max-width: 60ch; }
+/* Pakker og priser */
+.packages__offer { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem var(--space-4); margin-bottom: var(--space-6); padding: var(--space-4) var(--space-5); border: 1px solid var(--line-strong); border-radius: var(--radius-card); background: var(--card); }
+.packages__offer-text { display: flex; align-items: center; gap: .5rem; margin: 0; font-size: 1.05rem; }
+.packages__offer-text svg { flex: none; color: var(--color-accent); }
+.packages__offer .small { margin: 0; }
+.packages__grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 265px), 1fr)); align-items: stretch; }
+.pricing-card__price { padding-block: var(--space-3); border-block: 1px solid var(--line); }
+.pricing-card .plan__price { margin: 0; padding: 0; border: 0; }
+.pricing-card__price-label { margin: 0 0 .15rem; font-size: .8rem; color: var(--muted); }
+.pricing-card__terms { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; font-size: .88rem; }
+.pricing-card__terms li:first-child { font-weight: 600; }
+.pricing-card__features-label { margin: var(--space-2) 0 0; font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.pricing-card .checklist { margin-top: 0; }
+.pricing-card__button-note { margin-top: var(--space-3); }
+.pricing-card--coming { border-style: dashed; border-color: var(--line-strong); background: transparent; }
+.pricing-card__badge--coming { background: transparent; color: var(--fg); border: 1px solid var(--line-strong); }
+.packages__staff { display: grid; gap: var(--space-4); margin-top: var(--space-6); align-items: start; }
+@media (min-width: 750px) { .packages__staff { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); } }
+.packages__staff-text .h4 { margin-top: 0; }
+.packages__staff-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.packages__staff-table caption { text-align: left; font-size: .8rem; color: var(--muted); padding-bottom: .4rem; }
+.packages__staff-table th, .packages__staff-table td { padding: .45rem 0; border-bottom: 1px solid var(--line); text-align: left; font-weight: 400; }
+.packages__staff-table td { text-align: right; font-variant-numeric: tabular-nums; }
+.packages__staff-table thead th { font-size: .8rem; color: var(--muted); }
+.packages__staff-table thead th:last-child { text-align: right; }
 /* Abonnement: vilkår, kurv og „Hent tilbud“ */
 .sub-terms { display: flex; align-items: flex-start; gap: .5rem; font-size: .88rem; color: var(--muted); }
 .sub-terms svg { flex: none; margin-top: .2em; color: var(--color-accent); }

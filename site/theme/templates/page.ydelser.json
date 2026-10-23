@@ -58,9 +58,17 @@
             "label": "Ordrer og lager",
             "target": "losninger"
           }
+        },
+        "a8": {
+          "type": "anchor",
+          "settings": {
+            "label": "Priser",
+            "target": "priser"
+          }
         }
       },
       "block_order": [
+        "a8",
         "a0",
         "a1",
         "a2",
@@ -275,9 +283,127 @@
         "anchor": "webloesninger",
         "icon": "design",
         "heading": "Hjemmesider og øvrige webløsninger",
-        "text": "<p>Har du blot brug for en hjemmeside, eller skal din nuværende side forbedres? Her er de ydelser, vi også tilbyder, uden ordre- og lagerstyring. Prisen er skræddersyet efter jeres behov.</p>",
-        "primary_label": "Få et tilbud",
-        "primary_link": "/pages/kontakt?ydelse=almindelig-hjemmeside-eller-landingsside#formular"
+        "text": "<p>Har du blot brug for en hjemmeside, eller skal din nuværende side forbedres? Her er de ydelser, vi også tilbyder, uden ordre- og lagerstyring. Hjemmesider laver vi som abonnement fra 199 kr./md. ekskl. moms.</p>",
+        "primary_label": "Se priser",
+        "primary_link": "#priser",
+        "secondary_label": "Få et tilbud",
+        "secondary_link": "/pages/kontakt?ydelse=almindelig-hjemmeside-eller-landingsside#formular"
+      }
+    },
+    "packages": {
+      "type": "packages",
+      "blocks": {
+        "basis": {
+          "type": "package",
+          "settings": {
+            "title": "Basis",
+            "status": "available",
+            "badge": "Kan bestilles nu",
+            "text": "<p>En professionel hjemmeside til virksomheder, der vil være nemme at finde og kontakte.</p>",
+            "price_label": "",
+            "price": "199 kr.",
+            "price_note": "/md. ekskl. moms",
+            "terms": "0 kr. den første måned. Herefter 199 kr./md. ekskl. moms.\nGratis oprettelse og ingen binding.",
+            "features_label": "Indhold",
+            "features": "Hjemmeside tilpasset virksomhedens udtryk\nDesign til mobil, tablet og computer\nPræsentation af ydelser og kontaktoplysninger\nKontaktformular\nHosting og teknisk vedligeholdelse",
+            "button_label": "Vælg Basis",
+            "button_link": "/pages/kontakt?ydelse=pakke-basis#formular",
+            "button_note": ""
+          }
+        },
+        "booking": {
+          "type": "package",
+          "settings": {
+            "title": "Booking",
+            "status": "coming",
+            "badge": "På vej",
+            "text": "<p>En hjemmeside med booking, så kunderne nemt kan finde og bestille en ledig tid. Vi udvikler lige nu Booking og søger virksomheder, der vil teste løsningen.</p>",
+            "price_label": "Forventet abonnementspris",
+            "price": "299 kr.",
+            "price_note": "/md. ekskl. moms",
+            "terms": "",
+            "features_label": "Planlagt indhold",
+            "features": "Alt fra Basis\nOnline booking\nKalender med overblik over aftaler\nOpsætning af ydelser og tilgængelige tider\nOp til 3 medarbejdere med egen bruger eller bookingkalender\nEkstra medarbejdere til forventet 99 kr./md. pr. medarbejder ekskl. moms",
+            "button_label": "Bliv testkunde",
+            "button_link": "/pages/ydelser?pakke=booking#testkunde",
+            "button_note": "Løsningen er under udvikling. Kontakt os om et testforløb – vilkår aftales individuelt."
+          }
+        },
+        "drift": {
+          "type": "package",
+          "settings": {
+            "title": "Drift",
+            "status": "coming",
+            "badge": "På vej",
+            "text": "<p>Få overblik over opgaver, materialeforbrug og lager i én samlet løsning. Vi udvikler lige nu Drift og søger virksomheder, der vil teste systemet i deres hverdag.</p>",
+            "price_label": "Forventet abonnementspris",
+            "price": "599 kr.",
+            "price_note": "/md. ekskl. moms",
+            "terms": "",
+            "features_label": "Planlagt indhold",
+            "features": "Alt fra Basis\nEn lagerportal med overblik over varer og lagermængder\nEn jobportal til opgaver, timer og materialeforbrug\nAutomatisk lagertræk ved registreret materialeforbrug\nGenbestillingspunkter og sikkerhedslager med notifikationer\nIndkøbslister til de enkelte jobs\nFakturagrundlag med materialer og arbejdstimer\nOp til 3 medarbejdere\nEkstra medarbejdere til forventet 99 kr./md. pr. medarbejder ekskl. moms",
+            "button_label": "Bliv testkunde",
+            "button_link": "/pages/ydelser?pakke=drift#testkunde",
+            "button_note": "Løsningen er under udvikling. Kontakt os om et testforløb – vilkår aftales individuelt."
+          }
+        },
+        "alt_inkl": {
+          "type": "package",
+          "settings": {
+            "title": "Alt inkl.",
+            "status": "coming",
+            "badge": "På vej",
+            "text": "<p>Saml hjemmeside, booking, opgaver, lager og bilag hos Veyro. Vi søger testkunder, der vil hjælpe os med at afprøve den samlede løsning.</p>",
+            "price_label": "Forventet abonnementspris",
+            "price": "1.099 kr.",
+            "price_note": "/md. ekskl. moms",
+            "terms": "",
+            "features_label": "Planlagt indhold",
+            "features": "Alt fra Basis, Booking og Drift\nUpload af kvitteringer og bilag\nAflæsning af bilagsoplysninger med mulighed for at kontrollere og rette dem\nDigital oversigt over bilaget, hvor originalen bevares\nTilknytning af bilag til jobs\nEksport af bilag og oplysninger\nOp til 3 medarbejdere\nEkstra medarbejdere til forventet 99 kr./md. pr. medarbejder ekskl. moms\nPrioriteret support med svar inden for 24 timer",
+            "button_label": "Bliv testkunde",
+            "button_link": "/pages/ydelser?pakke=alt-inkl#testkunde",
+            "button_note": "Løsningen er under udvikling. Kontakt os om et testforløb – vilkår aftales individuelt."
+          }
+        }
+      },
+      "block_order": [
+        "basis",
+        "booking",
+        "drift",
+        "alt_inkl"
+      ],
+      "settings": {
+        "scheme": "surface",
+        "anchor": "priser",
+        "eyebrow": "Priser",
+        "heading": "En løsning, der passer til din virksomhed",
+        "text": "<p>Vælg en professionel hjemmeside – eller bliv testkunde på vores kommende løsninger til booking, opgaver og lager.</p>",
+        "offer": "Første måned gratis · Gratis oprettelse · Ingen binding",
+        "offer_note": "Gælder Basis, som kan bestilles nu. Testforløb på Booking, Drift og Alt inkl. aftales særskilt.",
+        "staff_heading": "Ekstra medarbejdere",
+        "staff_text": "<p>Booking, Drift og Alt inkl. er planlagt med op til 3 medarbejdere, og en ekstra medarbejder forventes at koste 99 kr./md. ekskl. moms. Som medarbejder tæller en person med egen bruger eller bookingkalender. En person med både bruger og kalender tæller kun én gang, og virksomhedens ejer tæller med, hvis vedkommende har en sådan adgang.</p><p>Medarbejdere, der kun vises på hjemmesiden med navn, billede eller beskrivelse, koster ikke ekstra. Det gælder også i Basis.</p><p>Eksempel: Booking med 5 medarbejdere forventes at koste 497 kr./md. ekskl. moms.</p>",
+        "staff_table_caption": "Booking (forventet): samlet månedspris efter antal medarbejdere",
+        "staff_base_price": 299,
+        "staff_included": 3,
+        "staff_extra_price": 99,
+        "footnote": "<p>Alle priser er månedlige priser ekskl. moms. For Basis er oprettelsen gratis, og den første måned er gratis fra den dag, løsningen går live og er klar til brug. Herefter betales den oplyste månedspris. Der er ingen binding, og I kan opsige inden næste betalingsperiode. I ser vilkårene, før I accepterer abonnementet, og de fremgår også af vores <a href=\"/pages/handelsbetingelser\">handelsbetingelser</a>. Særlige udviklingsønsker uden for pakkens indhold aftales og prissættes særskilt på forhånd.</p><p>Booking, Drift og Alt inkl. er under udvikling, og priserne er forventede priser ved lancering. En tilmelding som testkunde er en henvendelse og starter ikke et abonnement. Pris, varighed, funktioner og support under testforløbet aftales individuelt, og et testforløb bliver ikke til et betalt abonnement uden jeres udtrykkelige accept. Prioriteret support betyder, at vi svarer inden for 24 timer. Det er en svartid, ikke en garanti for, at problemet er løst inden for 24 timer.</p>"
+      }
+    },
+    "pilot": {
+      "type": "pilot-form",
+      "settings": {
+        "scheme": "light",
+        "anchor": "testkunde",
+        "eyebrow": "Bliv testkunde",
+        "heading": "Vil I teste Booking, Drift eller Alt inkl.?",
+        "text": "<p>Booking, Drift og Alt inkl. er under udvikling, og vi søger virksomheder, der vil teste løsningerne i deres hverdag. Fortæl kort om jer, så kontakter vi jer og aftaler, om et testforløb passer. Pris, varighed og vilkår for testforløbet aftales individuelt.</p>",
+        "form_name": "Testkunde",
+        "options": "Booking\nDrift\nAlt inkl.",
+        "sizes": "1\n2-3\n4-10\n11-25\nFlere end 25",
+        "submit_label": "Send tilmelding",
+        "note": "En tilmelding er en henvendelse og starter ikke et abonnement.",
+        "success_heading": "Tak for din interesse",
+        "success_text": "<p>Tak for din interesse. Vi kontakter dig for at høre om din virksomhed og aftale, om et testforløb passer til jer.</p>"
       }
     }
   },
@@ -292,6 +418,8 @@
     "s5",
     "s6",
     "s7",
+    "packages",
+    "pilot",
     "cta"
   ]
 }
