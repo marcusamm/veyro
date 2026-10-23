@@ -17,7 +17,7 @@
           assign form_id = 'PlanForm-' | append: block.id
           assign features = block.settings.features | newline_to_br | split: '<br />'
         -%}
-        <li class="plan card{% if block.settings.highlight %} plan--highlight{% endif %}" data-reveal style="--delay: {{ forloop.index0 | times: 90 }}ms" {{ block.shopify_attributes }}>
+        <li class="plan card{% if block.settings.highlight %} plan--highlight{% endif %}" {{ block.shopify_attributes }}>
           <div class="plan__head">
             <h3 class="h3">{{ block.settings.title | escape }}</h3>
             {%- if block.settings.badge != blank -%}<span class="plan__badge">{{ block.settings.badge | escape }}</span>{%- endif -%}
@@ -51,7 +51,7 @@
     </ul>
 
     {%- if section.settings.footnote != blank -%}
-      <div class="rte small muted plans__footnote" data-reveal>{{ section.settings.footnote }}</div>
+      <div class="rte small muted plans__footnote">{{ section.settings.footnote }}</div>
     {%- endif -%}
   </div>
 </section>

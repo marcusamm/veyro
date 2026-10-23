@@ -3,7 +3,7 @@
 -%}
 <section class="section section--{{ section.settings.scheme }} cta-banner" id="{{ section.settings.anchor | default: section.id | handle }}">
   <div class="container">
-    <div class="cta-banner__box" data-reveal>
+    <div class="cta-banner__box">
       <div class="cta-banner__glow" aria-hidden="true"></div>
       <div class="cta-banner__content">
         {%- if section.settings.eyebrow != blank -%}<p class="eyebrow">{{ section.settings.eyebrow | escape }}</p>{%- endif -%}

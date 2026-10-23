@@ -5,7 +5,7 @@
     <ol class="process__steps" role="list" data-process style="--steps: {{ section.blocks.size }}">
       {%- for block in section.blocks -%}
         <li class="process__step" data-process-step {{ block.shopify_attributes }}>
-          <span class="process__num" aria-hidden="true">{{ forloop.index }}</span>
+          <span class="process__num" aria-hidden="true">{% if forloop.index < 10 %}0{% endif %}{{ forloop.index }}</span>
           <h3 class="h3 process__title"><span class="visually-hidden">{{ forloop.index }}. </span>{{ block.settings.title | escape }}</h3>
           <p class="process__lead">{{ block.settings.lead | escape }}</p>
           <div class="rte process__text">{{ block.settings.text }}</div>
@@ -14,7 +14,7 @@
     </ol>
 
     {%- if section.settings.link_label != blank -%}
-      <div class="process__cta" data-reveal>
+      <div class="process__cta">
         {% render 'button', label: section.settings.link_label, url: section.settings.link, fallback: pages['kontakt'].url, style: 'primary', arrow: settings.button_arrow %}
       </div>
     {%- endif -%}

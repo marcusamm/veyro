@@ -10,7 +10,7 @@
   <div class="container">
     {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
 
-    <figure class="demo__figure" data-reveal>
+    <figure class="demo__figure">
       <div class="demo__try" data-demo-try data-qty="3" hidden>
         <div class="demo__try-text">
           <p class="demo__try-label">Eksempel – Drift er på vej</p>
@@ -86,7 +86,7 @@
     </figure>
 
     {%- if section.settings.rules != blank -%}
-      <div class="demo__rules" data-reveal>
+      <div class="demo__rules">
         {%- if section.settings.rules_heading != blank -%}<h3 class="h4 demo__rules-title">{{ section.settings.rules_heading | escape }}</h3>{%- endif -%}
         <ul class="demo__rules-list" role="list">
           {%- for r in rules -%}

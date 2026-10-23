@@ -15,7 +15,7 @@
       {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
     </div>
 
-    <div class="assessment__card card" data-reveal>
+    <div class="assessment__card card">
       {%- form 'contact', id: fid, class: 'form js-validate', novalidate: 'novalidate' -%}
         {% render 'form-status', form: form, success_heading: section.settings.success_heading, success_text: section.settings.success_text %}
         {%- unless form.posted_successfully? -%}

@@ -6,7 +6,7 @@
   <div class="container image-text__inner">
     <div class="image-text__content">
       {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading %}
-      <div class="rte image-text__text" data-reveal>{{ section.settings.text }}</div>
+      <div class="rte image-text__text">{{ section.settings.text }}</div>
       {% render 'button', label: section.settings.link_label, url: section.settings.link, style: 'secondary' %}
     </div>
     {%- if section.settings.image != blank -%}

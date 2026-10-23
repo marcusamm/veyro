@@ -67,9 +67,9 @@ h1, h2, h3, h4, h5, .h-display, .h1, .h2, .h3, .h4, .h5 {
   letter-spacing: -.025em;
   text-wrap: balance;
 }
-.h-display { font-size: calc(clamp(2.4rem, 1.5rem + 3.6vw, 4.4rem) * var(--heading-scale)); line-height: 1.06; letter-spacing: -.025em; }
-.h1 { font-size: calc(clamp(2.1rem, 1.5rem + 2.6vw, 3.5rem) * var(--heading-scale)); letter-spacing: -.03em; }
-.h2 { font-size: calc(clamp(1.8rem, 1.3rem + 2vw, 2.85rem) * var(--heading-scale)); letter-spacing: -.025em; }
+.h-display { font-size: calc(clamp(2.55rem, 1.35rem + 4.6vw, 5.4rem) * var(--heading-scale)); line-height: 1; letter-spacing: -.045em; font-weight: 650; }
+.h1 { font-size: calc(clamp(2.2rem, 1.4rem + 3.2vw, 4rem) * var(--heading-scale)); line-height: 1.04; letter-spacing: -.04em; }
+.h2 { font-size: calc(clamp(1.95rem, 1.25rem + 2.7vw, 3.3rem) * var(--heading-scale)); line-height: 1.06; letter-spacing: -.035em; }
 .h3 { font-size: calc(clamp(1.3rem, 1.12rem + .6vw, 1.6rem) * var(--heading-scale)); }
 .h4 { font-size: calc(1.25rem * var(--heading-scale)); letter-spacing: -.015em; }
 .h5 { font-size: calc(1.05rem * var(--heading-scale)); letter-spacing: -.01em; }
@@ -82,13 +82,22 @@ p { text-wrap: pretty; }
 :is(h1, h2, h3, .h-display, .h1, .h2) em { font-style: normal; color: var(--em-color); }
 
 .eyebrow {
-  display: inline-flex; align-items: center; gap: .6em;
-  font-family: var(--font-body);
-  font-size: .9rem; font-weight: 600;
+  display: inline-flex; align-items: center; gap: .75em;
+  font-family: var(--font-mono);
+  font-size: .74rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
 }
+/* Fælles formsprog: en kort orange streg foran små labels. På forsiden får sektionerne et nummer (01, 02 …) */
+.eyebrow::before { content: ''; flex: none; width: 22px; height: 2px; border-radius: 2px; background: var(--color-accent); }
 .eyebrow--pill { color: var(--fg); }
+.template-index .main { counter-reset: section; }
+.template-index .section-head .eyebrow, .template-index .price-banner .eyebrow { counter-increment: section; }
+.template-index .section-head .eyebrow::before, .template-index .price-banner .eyebrow::before {
+  content: counter(section, decimal-leading-zero); width: auto; height: auto; border-radius: 0; padding-right: 32px;
+  color: var(--color-accent); font-weight: 600;
+  background: linear-gradient(var(--color-accent), var(--color-accent)) no-repeat right center / 22px 2px;
+}
 
 .rte > * + * { margin-top: .9em; }
 .rte a { text-decoration-thickness: 1px; text-underline-offset: .2em; }
@@ -129,14 +138,19 @@ code, pre { font-family: var(--font-mono); }
   text-decoration: none; white-space: nowrap;
   color: var(--btn-fg); background: var(--btn-bg);
   border: 1px solid var(--btn-border); border-radius: var(--radius-button);
-  transition: background-color .18s var(--ease), color .18s var(--ease), border-color .18s var(--ease), transform .15s var(--ease), box-shadow .18s var(--ease);
+  transition: background-color .12s var(--ease), color .12s var(--ease), border-color .12s var(--ease), transform .12s var(--ease), box-shadow .12s var(--ease);
 }
-.btn:active { transform: translateY(1px) scale(.985); }
+/* Ved hover løftes knappen 2 px op mod en skarp skygge i tekstfarven; ved tryk trykkes den ned i den */
+@media (hover: hover) {
+  .btn--primary:hover, .btn--secondary:hover { transform: translate(-2px, -2px); box-shadow: 3px 3px 0 var(--fg); }
+}
+.btn:active { transform: translate(1px, 1px); box-shadow: 0 0 0 var(--fg); }
 .btn[disabled] { opacity: .55; cursor: not-allowed; }
-.btn__icon { display: inline-flex; transition: transform .18s var(--ease); }
-@media (hover: hover) { .btn:hover .btn__icon { transform: translateX(3px); } }
+.btn__icon { display: inline-flex; transition: transform .12s var(--ease); }
+.btn__icon .icon { stroke-width: 2.2; }
+@media (hover: hover) { .btn:hover .btn__icon { transform: translateX(4px); } }
 .btn--primary { --btn-bg: var(--color-accent); --btn-fg: var(--color-accent-ink); --btn-border: var(--color-accent); }
-.btn--primary:hover { --btn-bg: var(--fg); --btn-fg: var(--bg); --btn-border: var(--fg); }
+.btn--primary:hover { --btn-border: var(--fg); }
 .btn--secondary:hover { --btn-border: var(--fg); --btn-bg: rgba(var(--ink-rgb), .04); }
 .section--dark .btn--secondary:hover { --btn-bg: rgba(var(--dark-ink-rgb), .06); }
 .btn--ghost { --btn-border: transparent; }
@@ -175,12 +189,12 @@ code, pre { font-family: var(--font-mono); }
 .logo__mark::after { content: ''; position: absolute; inset: 6px 6px 6px 11px; background: var(--color-accent-ink); border-radius: 1px; }
 
 /* Header */
-.site-header { position: relative; z-index: 50; background: rgba(var(--ink-rgb), 0); transition: background-color .25s var(--ease), box-shadow .25s var(--ease), backdrop-filter .25s; }
+.site-header { position: relative; z-index: 50; background: rgba(var(--ink-rgb), 0); transition: border-color .2s var(--ease); }
 .site-header--sticky { position: sticky; top: 0; }
 /* Sløringen ligger på ::before: backdrop-filter på selve headeren ville gøre den til ramme for
    position: fixed, så mobilmenuen kun blev lige så høj som headeren og skulle scrolles indeni. */
 .site-header { border-bottom: 1px solid transparent; }
-.site-header::before { content: ''; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--color-bg) 82%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); pointer-events: none; }
+.site-header::before { content: ''; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--color-bg) 96%, transparent); pointer-events: none; }
 .site-header.is-scrolled { border-bottom-color: rgba(var(--ink-rgb), .1); }
 .site-header__inner { display: flex; align-items: center; gap: var(--space-5); min-height: var(--header-h); }
 .site-header .logo { margin-right: auto; }
@@ -246,14 +260,23 @@ code, pre { font-family: var(--font-mono); }
 /* Hero */
 .hero { padding-block: clamp(3rem, 2rem + 5vw, 7rem) clamp(4rem, 3rem + 5vw, 8rem); }
 .hero__inner { position: relative; display: grid; gap: clamp(3rem, 2rem + 4vw, 5rem); align-items: center; }
-.hero__title { margin-bottom: var(--space-5); max-width: 14em; }
+.hero__title { margin-bottom: var(--space-5); max-width: 13em; }
+.hero__title em { color: inherit; background: linear-gradient(var(--color-accent), var(--color-accent)) no-repeat 0 94% / 100% .09em; padding-bottom: .04em; }
+.hero__visual { position: relative; isolation: isolate; }
 .hero__text { margin-bottom: var(--space-6); }
 .hero__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .hero__points { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; margin-top: var(--space-6); font-size: .92rem; color: var(--muted); }
 .hero__points li { display: flex; align-items: center; gap: .45rem; }
 .hero__points .icon { color: var(--fg); stroke-width: 2.2; }
 .hero__image { width: 100%; border-radius: var(--radius-card); }
-@media (min-width: 990px) { .hero__inner { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); } .hero--text-only .hero__inner { grid-template-columns: minmax(0, 1fr); } }
+@media (min-width: 990px) {
+  .hero__inner { grid-template-columns: minmax(0, 1.4fr) minmax(0, .9fr); align-items: start; }
+  .hero--text-only .hero__inner { grid-template-columns: minmax(0, 1fr); }
+  .hero__content { position: relative; z-index: 1; }
+  /* Illustrationen sidder lavere og trækker lidt ud mod højre kant */
+  .hero__visual { margin-top: clamp(3rem, 7vw, 6.5rem); margin-right: calc(var(--gutter) * -.6); }
+  .hero__visual::before { content: ''; position: absolute; z-index: -1; top: -46px; left: -54px; width: 132px; aspect-ratio: 1; border: 1.5px solid var(--color-accent); border-radius: 50%; }
+}
 .hero--text-only .hero__content { max-width: 54rem; }
 @media (max-width: 599px) { .hero__actions .btn { flex: 1 1 100%; } }
 
@@ -505,7 +528,7 @@ code, pre { font-family: var(--font-mono); }
 .service-card__top { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6); }
 .service-card__icon { display: inline-grid; color: var(--fg); transition: color .3s var(--ease); }
 .card--interactive:hover .service-card__icon { color: var(--muted); }
-.service-card__index, .service-detail__num { font-family: var(--font-body); font-size: .8rem; color: var(--muted); }
+.service-card__index, .service-detail__num { font-family: var(--font-mono); font-size: .8rem; color: var(--muted); }
 .service-card__title { margin-bottom: var(--space-3); }
 .service-card__text { color: var(--muted); }
 .service-card .checklist { margin-bottom: var(--space-5); }
@@ -536,7 +559,7 @@ code, pre { font-family: var(--font-mono); }
 /* Den grå linje er grundlaget; den orange streg tegnes én gang i rækkefølge (theme.js › initProcess) */
 .process__step::before { content: ''; position: absolute; left: 0; top: -1px; width: 100%; height: 2px; background: var(--color-accent); transform: scaleX(0); transform-origin: left center; transition: transform .38s var(--ease) var(--step-delay, 0ms); }
 .process__step.is-active::before, .no-js .process__step::before { transform: none; }
-.process__num { display: block; margin-bottom: var(--space-4); font-size: .95rem; font-weight: 600; color: var(--muted); transition: color .25s var(--ease) var(--step-delay, 0ms); }
+.process__num { display: block; margin-bottom: var(--space-4); font-family: var(--font-mono); font-size: .85rem; font-weight: 600; letter-spacing: .04em; color: var(--muted); transition: color .25s var(--ease) var(--step-delay, 0ms); }
 .process__step.is-active .process__num { color: var(--color-accent); }
 /* Mobil: ingen vandret bevægelse; stregen toner ind for det enkelte trin */
 @media (max-width: 749px) {
@@ -563,13 +586,20 @@ code, pre { font-family: var(--font-mono); }
 .price-banner__head { display: grid; gap: var(--space-5); align-items: end; }
 .price-banner__title { max-width: 16em; }
 .price-banner__grid { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); }
-.price-banner__item { display: flex; flex-direction: column; gap: .35rem; height: 100%; padding: var(--space-4) var(--space-5); border: 1px solid var(--line-strong); border-radius: var(--radius-card); background: rgba(var(--dark-ink-rgb), .04); color: var(--fg); text-decoration: none; transition: transform .18s var(--ease), border-color .18s var(--ease), background-color .18s var(--ease); }
-/* Hover kun med mus: løft 3 px, diskret orange kant og en anelse lysere flade. Basis og Booking får tydeligst respons */
+.price-banner__item { position: relative; display: flex; flex-direction: column; gap: .35rem; height: 100%; padding: var(--space-4) var(--space-5); border: 1px solid rgba(var(--dark-ink-rgb), .1); border-radius: var(--radius-card); background: rgba(var(--dark-ink-rgb), .04); color: var(--fg); text-decoration: none; transition: background-color .12s var(--ease); }
+/* Rammen: Basis og Booking i orange, Drift og Alt inkl. afdæmpet. Fuldt optrukket som udgangspunkt */
+.price-banner__frame { position: absolute; inset: -1px; width: calc(100% + 2px); height: calc(100% + 2px); overflow: visible; pointer-events: none; }
+.price-banner__frame rect { fill: none; stroke: rgba(var(--dark-ink-rgb), .42); stroke-width: 1.5; transition: stroke-width .12s var(--ease), stroke .12s var(--ease); }
+.price-banner__item--now .price-banner__frame rect { stroke: var(--color-accent); }
+/* Tegnes rundt (theme.js › initFrames): skjult, indtil kortet er i billedet, derefter 900 ms */
+.frame-pending .price-banner__frame rect { stroke-dasharray: var(--frame-len) var(--frame-len); stroke-dashoffset: var(--frame-len); }
+.frame-drawing .price-banner__frame rect { stroke-dashoffset: 0; transition: stroke-dashoffset .9s cubic-bezier(.65, 0, .35, 1) var(--frame-delay, 0ms), stroke-width .12s var(--ease); }
 @media (hover: hover) and (pointer: fine) {
-  .price-banner__item:hover { transform: translateY(-3px); border-color: rgba(var(--color-accent-rgb), .5); background: rgba(var(--dark-ink-rgb), .065); }
-  .price-banner__item--now:hover { border-color: var(--color-accent); background: rgba(var(--dark-ink-rgb), .09); }
+  .price-banner__item:hover { background: rgba(var(--dark-ink-rgb), .08); }
+  .price-banner__item:hover .price-banner__frame rect { stroke-width: 2.5; }
+  .price-banner__item:not(.price-banner__item--now):hover .price-banner__frame rect { stroke: rgba(var(--dark-ink-rgb), .7); }
 }
-.price-banner .price-banner__item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; border-color: var(--color-accent); background: rgba(var(--dark-ink-rgb), .08); }
+.price-banner .price-banner__item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; background: rgba(var(--dark-ink-rgb), .08); }
 .cta-banner__box :focus-visible { outline-color: var(--color-accent); }
 .price-banner__top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem .75rem; }
 .price-banner__name { font-family: var(--font-heading); font-size: 1.25rem; font-weight: 600; letter-spacing: -.02em; }
@@ -651,7 +681,7 @@ code, pre { font-family: var(--font-mono); }
 .caps__list { display: grid; gap: 0; border-top: 1px solid var(--line); }
 .cap { padding-block: var(--space-5); border-bottom: 1px solid var(--line); }
 .cap__head { display: grid; grid-template-columns: 2.35rem 1fr; align-items: baseline; margin-bottom: var(--space-2); }
-.cap__num { font-family: var(--font-body); font-size: .75rem; color: var(--color-accent); }
+.cap__num { font-family: var(--font-mono); font-size: .75rem; color: var(--color-accent); }
 .section--light .cap__num, .section--surface .cap__num { color: var(--muted); }
 .cap__text { color: var(--muted); }
 .cap__text, .cap__example, .cap__tags { margin-left: 2.35rem; }
@@ -722,7 +752,7 @@ code, pre { font-family: var(--font-mono); }
 .contact__next li { display: grid; grid-template-columns: 32px 1fr; gap: var(--space-3); }
 .contact__next strong { display: block; }
 .contact__next span:not(.contact__step-num) { color: var(--muted); font-size: .95rem; }
-.contact__step-num { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--fg); color: var(--bg); font-family: var(--font-body); font-size: .8rem; }
+.contact__step-num { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--color-accent); color: var(--fg); font-family: var(--font-mono); font-size: .75rem; font-weight: 600; }
 .contact__direct { padding-top: var(--space-5); border-top: 1px solid var(--line); display: grid; gap: var(--space-2); justify-items: start; }
 .contact__direct .eyebrow { margin-bottom: var(--space-2); }
 .contact__direct-link { display: inline-flex; align-items: center; gap: .6rem; min-height: 44px; font-weight: 600; font-size: 1.1rem; text-decoration: none; }
@@ -872,9 +902,9 @@ code, pre { font-family: var(--font-mono); }
 }
 /* Forsidens illustration: kort og rolig introduktion i ren CSS (virker også, hvis JS fejler). Står stille bagefter */
 @media (prefers-reduced-motion: no-preference) {
-  .js .has-motion .hero__visual { animation: hero-in .42s var(--ease) both; }
-  .js .has-motion .hero__visual .hv__card { animation: hero-in .4s var(--ease) both; animation-delay: 90ms; }
-  .js .has-motion .hero__visual .hv__card:last-child { animation-delay: 180ms; }
+  .js .has-motion .hero__visual { animation: hero-in .3s var(--ease) both; }
+  .js .has-motion .hero__visual .hv__card { animation: hero-in .3s var(--ease) both; animation-delay: 80ms; }
+  .js .has-motion .hero__visual .hv__card:last-child { animation-delay: 160ms; }
 }
 @keyframes hero-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
