@@ -164,6 +164,9 @@ describe('Pakker og priser', () => {
     expect(booking).toContain('299 kr.<span>/md. ekskl. moms</span>');
     expect(booking).toContain('Ekstra medarbejdere til 99 kr./md. pr. medarbejder ekskl. moms');
     expect(booking).toContain('href="/pages/kontakt?ydelse=pakke-booking#formular"');
+    expect(booking).toContain('0 kr. den første måned. Herefter 299 kr./md. ekskl. moms');
+    expect(booking).toContain('Gratis oprettelse og ingen binding.');
+    expect(r.html).toContain('Gælder Basis og Booking.');
     expect(booking).not.toContain('pricing-card--coming');
     expect(booking).not.toMatch(/På vej|Forventet|testkunde/);
     for (const [card, key] of [[drift, 'drift'], [alt, 'alt-inkl']]) {
@@ -207,6 +210,16 @@ describe('Pakker og priser', () => {
     // Indholdet af pakkerne står kun på prissiden
     expect(bar).not.toContain('Planlagt indhold');
     expect(r.html).toContain('href="#priser"');
+  });
+
+  it('de gamle "Løsning 1/Løsning 2"-sektioner findes ingen steder på hjemmesiden', async () => {
+    for (const p of ['/', '/pages/ydelser', '/pages/website-optimering', '/pages/custom-losninger', '/pages/om-os', '/pages/kontakt', '/cart']) {
+      const r = await site.get(p);
+      expect(r.status, p).toBe(200);
+      for (const t of ['Løsning 1', 'Løsning 2', 'To måder at få styr på ordrer og lager', 'Fra første bestilling til opdateret lager', 'Hovedløsninger', 'de to løsninger', 'begge løsninger', 'Internt system til ordrer og varekontrol']) {
+        expect(r.html, `${p}: ${t}`).not.toContain(t);
+      }
+    }
   });
 
   it('"Bliv testkunde" gemmer en forespørgsel med pakken og starter intet abonnement', async () => {
