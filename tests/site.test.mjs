@@ -155,9 +155,9 @@ describe('Pakker og priser', () => {
     expect(basis).toContain('199 kr.<span>/md. ekskl. moms</span>');
     expect(basis).toContain('0 kr. den første måned. Herefter 199 kr./md. ekskl. moms.');
     expect(basis).toContain('href="/pages/kontakt?ydelse=pakke-basis#formular"');
-    expect(booking).toContain('Ekstra medarbejdere: 99 kr./md. pr. medarbejder ekskl. moms.');
-    expect(booking).toContain('href="/pages/kontakt?ydelse=pakke-booking#formular"');
-    for (const [card, key] of [[drift, 'drift'], [alt, 'alt-inkl']]) {
+    expect(basis).not.toContain('pricing-card--coming');
+    expect(booking).toContain('Ekstra medarbejdere til forventet 99 kr./md. pr. medarbejder ekskl. moms');
+    for (const [card, key] of [[booking, 'booking'], [drift, 'drift'], [alt, 'alt-inkl']]) {
       expect(card).toContain('pricing-card--coming');
       expect(card).toContain('På vej');
       expect(card).toContain('Forventet abonnementspris');
@@ -171,12 +171,12 @@ describe('Pakker og priser', () => {
     // Ekstra medarbejdere: 299 + (n - 3) × 99
     const rows = Object.fromEntries([...r.html.matchAll(/<tr><th scope="row">(\d+)<\/th><td>([^<]+)<\/td><\/tr>/g)].map((m) => [m[1], m[2]]));
     expect(rows).toEqual({ 3: '299 kr.', 4: '398 kr.', 5: '497 kr.', 6: '596 kr.' });
-    expect(r.html).toContain('Booking med 5 medarbejdere koster 497 kr./md. ekskl. moms.');
+    expect(r.html).toContain('Booking med 5 medarbejdere forventes at koste 497 kr./md. ekskl. moms.');
     // De gamle planer kan ikke købes
     for (const h of ['starter', 'business', 'premium']) expect((await site.get('/products/' + h)).status).toBe(404);
     const kontakt = await site.get('/pages/kontakt');
     expect(kontakt.html).toContain('data-key="pakke-basis"');
-    expect(kontakt.html).toContain('data-key="pakke-booking"');
+    expect(kontakt.html).not.toContain('data-key="pakke-booking"');
   });
 
   it('"Bliv testkunde" gemmer en forespørgsel med pakken og starter intet abonnement', async () => {
@@ -184,6 +184,7 @@ describe('Pakker og priser', () => {
     const id = page.html.match(/id="(Pilot-[^"]+)"/)[1];
     expect(page.html).toContain('data-preselect="pakke"');
     expect(page.html).toContain('data-key="alt-inkl"');
+    expect(page.html).toContain('data-key="booking"');
     const before = (await (await fetch(stack.mock.url + '/__mock/calls')).json()).length;
     const r = await site.post('/contact', contactForm(page.html, id, {
       'contact[Formular]': 'Testkunde', 'contact[Ydelse]': 'Testkunde: Drift', 'contact[Virksomhed]': 'Tømrer ApS', 'contact[name]': 'Tina Test', 'contact[email]': 'tina@toemrer.dk',
