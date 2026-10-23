@@ -308,7 +308,7 @@
             "features": "Hjemmeside tilpasset virksomhedens udtryk\nDesign til mobil, tablet og computer\nPræsentation af ydelser og kontaktoplysninger\nKontaktformular\nHosting og teknisk vedligeholdelse",
             "button_label": "Vælg Basis",
             "button_link": "/pages/kontakt?ydelse=pakke-basis#formular",
-            "button_note": ""
+            "button_note": "Du betaler ikke her. Vi sender et tilbud med et personligt betalingslink."
           }
         },
         "booking": {
@@ -386,7 +386,10 @@
         "staff_base_price": 299,
         "staff_included": 3,
         "staff_extra_price": 99,
-        "footnote": "<p>Alle priser er månedlige priser ekskl. moms. For Basis er oprettelsen gratis, og den første måned er gratis fra den dag, løsningen går live og er klar til brug. Herefter betales den oplyste månedspris. Der er ingen binding, og I kan opsige inden næste betalingsperiode. I ser vilkårene, før I accepterer abonnementet, og de fremgår også af vores <a href=\"/pages/handelsbetingelser\">handelsbetingelser</a>. Særlige udviklingsønsker uden for pakkens indhold aftales og prissættes særskilt på forhånd.</p><p>Booking, Drift og Alt inkl. er under udvikling, og priserne er forventede priser ved lancering. En tilmelding som testkunde er en henvendelse og starter ikke et abonnement. Pris, varighed, funktioner og support under testforløbet aftales individuelt, og et testforløb bliver ikke til et betalt abonnement uden jeres udtrykkelige accept. Prioriteret support betyder, at vi svarer inden for 24 timer. Det er en svartid, ikke en garanti for, at problemet er løst inden for 24 timer.</p>"
+        "footnote": "<p>Alle priser er månedlige priser ekskl. moms. For Basis er oprettelsen gratis, og den første måned er gratis fra den dag, løsningen går live og er klar til brug. Herefter betales den oplyste månedspris. Der er ingen binding, og I kan opsige inden næste betalingsperiode. I ser vilkårene, før I accepterer abonnementet, og de fremgår også af vores <a href=\"/pages/handelsbetingelser\">handelsbetingelser</a>. Særlige udviklingsønsker uden for pakkens indhold aftales og prissættes særskilt på forhånd.</p><p>Booking, Drift og Alt inkl. er under udvikling, og priserne er forventede priser ved lancering. En tilmelding som testkunde er en henvendelse og starter ikke et abonnement. Pris, varighed, funktioner og support under testforløbet aftales individuelt, og et testforløb bliver ikke til et betalt abonnement uden jeres udtrykkelige accept. Prioriteret support betyder, at vi svarer inden for 24 timer. Det er en svartid, ikke en garanti for, at problemet er løst inden for 24 timer.</p>",
+        "pay_heading": "Sådan bestiller og betaler du",
+        "pay_steps": "Vælg Basis | Send os en kort henvendelse via knappen. Det er gratis og uforpligtende.\nFå et tilbud på e-mail | Du får pris og vilkår samt et personligt betalingslink fra os.\nBetal sikkert med kort | Linket åbner Stripes sikre betalingsside, hvor du tilmelder kortet. Første betaling trækkes, når den gratis måned er gået.\nStyr det i kundepanelet | På kunde.veyro.dk ser du fakturaer, skifter betalingskort og opsiger, når du vil.",
+        "pay_note": "Du betaler ikke på hjemmesiden, og vi gemmer aldrig dine kortoplysninger. Er du allerede kunde, kan du <a href=\"https://kunde.veyro.dk/login\">logge ind i kundepanelet</a> og se dine betalinger."
       }
     },
     "pilot": {
