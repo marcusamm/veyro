@@ -82,22 +82,13 @@ p { text-wrap: pretty; }
 :is(h1, h2, h3, .h-display, .h1, .h2) em { font-style: normal; color: var(--em-color); }
 
 .eyebrow {
-  display: inline-flex; align-items: center; gap: .75em;
+  display: inline-flex; align-items: center; gap: .6em;
   font-family: var(--font-body);
   font-size: .9rem; font-weight: 600;
   color: var(--muted);
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-4);
 }
-/* Fælles formsprog: en kort orange streg foran små labels (sidens almindelige skrift). På forsiden får sektionerne et nummer (01, 02 …) */
-.eyebrow::before { content: ''; flex: none; width: 22px; height: 2px; border-radius: 2px; background: var(--color-accent); }
 .eyebrow--pill { color: var(--fg); }
-.template-index .main { counter-reset: section; }
-.template-index .section-head .eyebrow, .template-index .price-banner .eyebrow { counter-increment: section; }
-.template-index .section-head .eyebrow::before, .template-index .price-banner .eyebrow::before {
-  content: counter(section, decimal-leading-zero); width: auto; height: auto; border-radius: 0; padding-right: 32px;
-  color: var(--color-accent); font-weight: 600;
-  background: linear-gradient(var(--color-accent), var(--color-accent)) no-repeat right center / 22px 2px;
-}
 
 .rte > * + * { margin-top: .9em; }
 .rte a { text-decoration-thickness: 1px; text-underline-offset: .2em; }
