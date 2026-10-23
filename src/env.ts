@@ -30,6 +30,22 @@ export interface Env {
   /** Veyro-medarbejdere (kommasepareret e-mail), der må godkende fortrolighedsaftaler på Veyros vegne. Skal også stå i ADMIN_EMAILS. */
   NDA_SIGNERS?: string;
 
+  /** Google Workspace-mailkonti, der kan forbindes til Kundeemner (kommasepareret) */
+  MAIL_ACCOUNTS?: string;
+  /** Fælles postkasser (ikke personer), fx kontakt@veyro.dk. Kan ikke være ansvarlig. */
+  SHARED_MAILBOXES?: string;
+  /** Google OAuth-klient til Gmail (Google Cloud-projektet). ID er offentligt; hemmeligheden er en secret. */
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  /** Nøgle (base64, 32 bytes) til kryptering af Gmail-tokens i databasen. Secret. */
+  MAIL_TOKEN_KEY?: string;
+  /** Kun test: Google-API'er mod en lokal mock */
+  GOOGLE_OAUTH_BASE?: string;
+  GOOGLE_TOKEN_BASE?: string;
+  GMAIL_API_BASE?: string;
+  /** Kun test (kræver DEV_MODE=1): vært:port, som hentning må nå (den lokale testserver) */
+  TEST_FETCH_ALLOW?: string;
+
   /** Fælles kundekatalog: hvilke kundesystemer en e-mail har adgang til (valgfri) */
   KATALOG?: KVNamespace;
 

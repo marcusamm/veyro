@@ -2,7 +2,7 @@ import { html } from 'hono/html';
 
 export type H = ReturnType<typeof html>;
 
-export type NavKey = 'overblik' | 'aftaler' | 'fuldmagter' | 'admin-fuldmagter' | 'admin-nda' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer' | 'admin-abonnementer' | 'admin-tilbud' | 'admin-hjemmeside' | 'admin-forespoergsler' | 'admin-statistik' | 'admin-kasse';
+export type NavKey = 'overblik' | 'aftaler' | 'fuldmagter' | 'admin-fuldmagter' | 'admin-nda' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer' | 'admin-abonnementer' | 'admin-tilbud' | 'admin-hjemmeside' | 'admin-forespoergsler' | 'admin-statistik' | 'admin-kasse' | 'admin-kundeemner';
 
 export interface LayoutOpts {
   title: string;
@@ -19,6 +19,8 @@ export interface LayoutOpts {
   staffNav?: boolean;
   /** Kassens sider: bred side og kassens stylesheet og script */
   kasse?: boolean;
+  /** Genindlæs siden efter så mange sekunder (fx mens et baggrundsjob kører) */
+  refresh?: number;
 }
 
 function navLink(href: string, label: string, active: boolean, short?: string): H {
@@ -35,6 +37,7 @@ export function layout(opts: LayoutOpts, body: H): H {
       navLink('/admin/kasse', 'Kasse', opts.nav === 'admin-kasse'),
       navLink('/admin/statistik', 'Statistik', opts.nav === 'admin-statistik'),
       navLink('/admin/hjemmeside', 'Hjemmeside', opts.nav === 'admin-hjemmeside'),
+      navLink('/admin/kundeemner', 'Kundeemner', opts.nav === 'admin-kundeemner'),
       navLink('/admin/forespoergsler', 'Forespørgsler', opts.nav === 'admin-forespoergsler'),
       navLink('/admin/kunder', 'Kunder', opts.nav === 'admin-kunder'),
       navLink('/admin/henvendelser', 'Henvendelser', opts.nav === 'admin-henvendelser'),
@@ -66,13 +69,14 @@ export function layout(opts: LayoutOpts, body: H): H {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<meta name="color-scheme" content="light">
+${opts.refresh ? html`<meta http-equiv="refresh" content="${String(opts.refresh)}">
+` : ''}<meta name="color-scheme" content="light">
 <meta name="theme-color" content="#F4F2EC">
 <title>${opts.title} · Veyro kundepanel</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/icon.png">
 <link rel="preload" href="/static/inter-tight.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/static/app.css?v=5">
+<link rel="stylesheet" href="/static/app.css?v=7">
 <script src="/static/app.js?v=2" defer></script>
 ${opts.kasse ? html`<link rel="stylesheet" href="/static/kasse.css?v=1">
 <script src="/static/kasse.js?v=1" defer></script>` : ''}

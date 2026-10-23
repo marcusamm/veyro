@@ -65,6 +65,12 @@ import { adminCustomersPage, adminInvoicesPage, adminLoginPage, adminOverviewPag
 import { errorPage } from '../views/pages';
 import { REQUEST_STATUSES } from '../views/status';
 import { getLead, updateLead, type LeadRow } from '../site/leads';
+import { html } from 'hono/html';
+import { costHistory, getDefaultRate, periodRange, summarize } from '../lib/costs';
+import { addEvent, getProspect, staffList, today } from '../lib/prospects';
+import { DEFAULT_VALID_DAYS } from '../lib/offers';
+import { COST_FLASH, costSection } from '../views/costs';
+import { takeCostError } from './admin-costs';
 import { offerFormFromLead } from './admin-site';
 
 const admin = new Hono<AppEnv>();
@@ -331,10 +337,11 @@ admin.post('/fakturaer/:id/:action', async (c) => {
 
 async function offersView(
   c: Context<AppEnv>,
-  extra: { form?: OfferForm | null; error?: string | null; errorField?: string | null; existing?: ExistingBilling | null; status?: 400 | 409 | 502; formKey?: string; lead?: LeadRow | null } = {},
+  extra: { form?: OfferForm | null; error?: string | null; errorField?: string | null; existing?: ExistingBilling | null; status?: 400 | 409 | 502; formKey?: string; lead?: LeadRow | null; prospect?: { id: number; company: string } | null } = {},
 ) {
   const offers = await listOffers(c.env.DB);
   const lead = extra.lead ?? null;
+  const prospect = extra.prospect ?? null;
   return render(
     c,
     'Tilbud',
@@ -348,6 +355,7 @@ async function offersView(
       existing: extra.existing ?? null,
       flash: extra.form || extra.error ? null : (c.req.query('besked') ?? null),
       lead: lead ? { id: lead.id, label: `forespørgsel #${lead.id} fra ${lead.name || lead.email}` } : null,
+      prospect: prospect ? { id: prospect.id, label: prospect.company } : null,
     }),
     { nav: 'admin-tilbud', admin: true, status: extra.status },
   );
@@ -357,8 +365,36 @@ admin.get('/tilbud', async (c) => {
   // ?forespoergsel=<id>: udfyld tilbuddet ud fra en forespørgsel fra hjemmesiden
   const leadId = Number(c.req.query('forespoergsel'));
   const lead = Number.isSafeInteger(leadId) && leadId > 0 ? await getLead(c.env.DB, leadId) : null;
+  // ?kundeemne=<id>: udfyld ud fra et kundeemne
+  const pid = Number(c.req.query('kundeemne'));
+  const prospect = !lead && Number.isSafeInteger(pid) && pid > 0 ? await getProspect(c.env.DB, pid) : null;
+  if (prospect) return offersView(c, { form: await offerFormFromProspect(c.env.DB, prospect), prospect });
   return offersView(c, lead ? { form: offerFormFromLead(lead), lead } : {});
 });
+
+/** Udfylder tilbudsformularen ud fra et kundeemne (kun bekræftede kontaktoplysninger) */
+async function offerFormFromProspect(db: D1Database, p: NonNullable<Awaited<ReturnType<typeof getProspect>>>): Promise<OfferForm> {
+  const email = await db.prepare("SELECT value FROM prospect_contacts WHERE prospect_id = ? AND kind = 'email' AND unverified = 0 AND bounced_at IS NULL ORDER BY id LIMIT 1").bind(p.id).first<{ value: string }>();
+  const phone = await db.prepare("SELECT value FROM prospect_contacts WHERE prospect_id = ? AND kind = 'phone' AND unverified = 0 ORDER BY id LIMIT 1").bind(p.id).first<{ value: string }>();
+  const form = readOfferForm({});
+  return {
+    ...form,
+    email: email?.value ?? '',
+    name: p.contact_name ?? '',
+    company: p.company,
+    cvr: p.cvr ?? '',
+    phone: phone?.value ?? '',
+    address: p.address ?? '',
+    city: p.city ?? '',
+    service: (p.services ?? '').slice(0, 120),
+    valid_days: String(DEFAULT_VALID_DAYS),
+  };
+}
+
+async function prospectFromBody(c: Context<AppEnv>, body: Record<string, unknown>) {
+  const id = Number(body['prospect']);
+  return Number.isSafeInteger(id) && id > 0 ? getProspect(c.env.DB, id) : null;
+}
 
 async function leadFromBody(c: Context<AppEnv>, body: Record<string, unknown>): Promise<LeadRow | null> {
   const id = Number(body['lead']);
@@ -370,23 +406,30 @@ admin.post('/tilbud', async (c) => {
   const form = readOfferForm(body);
   const key = typeof body['key'] === 'string' && /^[0-9a-f-]{36}$/.test(body['key']) ? body['key'] : crypto.randomUUID();
   const lead = await leadFromBody(c, body);
+  const prospect = await prospectFromBody(c, body);
   const v = validateOffer(form);
-  if ('error' in v) return offersView(c, { form, error: v.error, errorField: v.field, status: 400, formKey: key, lead });
+  if ('error' in v) return offersView(c, { form, error: v.error, errorField: v.field, status: 400, formKey: key, lead, prospect });
   try {
     // Undgå dobbelt fakturering: vis kundens eksisterende abonnementer, fakturaer og tilbud, før der laves et nyt link.
     const found = await stripeRequest<{ data: Array<{ id: string }> }>(c.env, 'GET', '/v1/customers', { email: v.draft.email, limit: 1 });
     const existing = await existingBilling(c.env, v.draft.email, found.data?.[0]?.id ?? null);
     if (hasExisting(existing) && !form.confirm_existing) {
-      return offersView(c, { form, existing, error: 'Kunden har allerede et abonnement, en faktura eller et tilbud. Tjek listen, og bekræft nederst.', status: 409, formKey: key, lead });
+      return offersView(c, { form, existing, error: 'Kunden har allerede et abonnement, en faktura eller et tilbud. Tjek listen, og bekræft nederst.', status: 409, formKey: key, lead, prospect });
     }
     const customerId = await ensureStripeCustomer(c.env, v.draft, `admin-offer-${key}`);
     const offer = await createOffer(c.env, v.draft, { key, createdBy: c.get('session')!.email, stripeCustomerId: customerId });
     if (lead) await updateLead(c.env.DB, lead.id, { offer_id: offer.id, status: 'tilbud' });
+    if (prospect) {
+      await c.env.DB.batch([
+        c.env.DB.prepare('UPDATE offers SET prospect_id = ? WHERE id = ?').bind(prospect.id, offer.id),
+        addEvent(c.env.DB, prospect.id, { kind: 'offer', actor: c.get('session')!.email, new_value: String(offer.id), body: `Tilbud oprettet: ${offer.service}. Ikke sendt endnu.` }),
+      ]);
+    }
     return c.redirect(`/admin/tilbud/${offer.id}?besked=oprettet`, 303);
   } catch (err) {
     await logError(c.env.DB, 'admin.offers.create', err);
     const detail = err instanceof StripeError ? ` Stripe svarede: ${err.message}` : '';
-    return offersView(c, { form, error: `Tilbuddet kunne ikke oprettes.${detail}`, status: 502, formKey: key, lead });
+    return offersView(c, { form, error: `Tilbuddet kunne ikke oprettes.${detail}`, status: 502, formKey: key, lead, prospect });
   }
 });
 
@@ -469,17 +512,54 @@ async function customerView(c: Context<AppEnv>, customerId: number, extra: { err
       renewals: sub.current_period_end ? renewalDates(sub.current_period_end, interval, 6) : [],
     };
   });
-  const [payments, priceChanges, accepted] = await Promise.all([
+  const [payments, priceChanges, accepted, internal] = await Promise.all([
     customer.stripe_customer_id ? listPayments(c.env.DB, customer.stripe_customer_id) : Promise.resolve([]),
     listPriceChanges(c.env.DB, subs.map((s) => s.id)),
     acceptancesFor(c.env.DB, customer.email),
+    customerCosts(c, customer.id),
   ]);
   return render(
     c,
     customer.company ?? customer.name ?? customer.email,
-    adminCustomerPage({ csrf: c.get('csrf'), customer, subs: views, offers, payments, priceChanges, accepted, flash: extra.error ? null : (c.req.query('besked') ?? null), error: extra.error ?? null }),
+    adminCustomerPage({ csrf: c.get('csrf'), customer, subs: views, offers, payments, priceChanges, accepted, internal, flash: extra.error ? null : (c.req.query('besked') ?? null), error: extra.error ?? null }),
     { nav: 'admin-kunder', admin: true, status: extra.status },
   );
+}
+
+/** Internt: Tid og omkostninger på kundekortet. Omfatter også tidligere salgsarbejde på tilknyttede kundeemner (uden kopiering). */
+async function customerCosts(c: Context<AppEnv>, customerId: number) {
+  const db = c.env.DB;
+  const subject = { kind: 'customer' as const, id: customerId };
+  const period = periodRange(c.req.query('periode'), c.req.query('fra'), c.req.query('til'));
+  const [summary, history, rate, linked, files] = await Promise.all([
+    summarize(db, { from: period.from, to: period.to, staff: null, purpose: null, subject }),
+    costHistory(db, subject),
+    getDefaultRate(db),
+    db.prepare('SELECT id, company, status FROM prospects WHERE customer_id = ?').bind(customerId).all<{ id: number; company: string; status: string }>(),
+    db.prepare('SELECT f.id, f.expense_id, f.name FROM expense_files f JOIN expenses e ON e.id = f.expense_id WHERE e.deleted_at IS NULL AND (e.customer_id = ?1 OR e.prospect_id IN (SELECT id FROM prospects WHERE customer_id = ?1))').bind(customerId).all<{ id: number; expense_id: number; name: string }>(),
+  ]);
+  const staff = staffList(c.env);
+  const me = c.get('session')!.email.toLowerCase();
+  const flash = c.req.query('besked');
+  return html`${(linked.results ?? []).length
+    ? html`<section class="card"><h2>Kundeemne</h2><p class="small">Kunden kom fra ${(linked.results ?? []).map((p, i) => html`${i ? ', ' : ''}<a href="/admin/kundeemner/${p.id}">${p.company}</a>`)}. Kontakthistorik og tidligere salgsarbejde ligger der og indgår i tid og omkostninger herunder.</p></section>`
+    : ''}${costSection({
+    csrf: c.get('csrf'),
+    subject,
+    title: 'Internt: Tid og omkostninger',
+    summary,
+    history,
+    staff,
+    me: staff.includes(me) ? me : staff[0] ?? me,
+    today: today(),
+    rate,
+    back: `/admin/kunder/${customerId}`,
+    period,
+    linkedProspects: linked.results ?? [],
+    files: files.results ?? [],
+    flash: flash && COST_FLASH[flash] ? flash : null,
+    error: takeCostError(c),
+  })}`;
 }
 
 admin.get('/kunder/:id', (c) => {

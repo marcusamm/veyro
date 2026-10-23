@@ -536,7 +536,7 @@ export function leadsPage(args: { rows: LeadRow[]; filter: string; counts: Recor
 
 const FIELD_SKIP = new Set(['name', 'email', 'body', 'Formular', 'Kurv', 'Samtykke']);
 
-export function leadDetailPage(args: { csrf: string; lead: LeadRow; flash: string | null; offerUrl: string | null }): H {
+export function leadDetailPage(args: { csrf: string; lead: LeadRow; flash: string | null; offerUrl: string | null; prospects?: { id: number; name: string; signals: string[]; linked: boolean }[] }): H {
   const l = args.lead;
   let fields: Record<string, string> = {};
   let cart: LeadCartLine[] = [];
@@ -587,6 +587,16 @@ export function leadDetailPage(args: { csrf: string; lead: LeadRow; flash: strin
       <p class="prewrap">${l.message || '–'}</p>
     </section>
   </div>
+  ${args.prospects?.length
+    ? html`<section class="card stack" aria-labelledby="lp-h"><h2 id="lp-h" class="h-small" style="margin:0">Kendt som kundeemne?</h2>
+        <p class="small" style="margin:0">Forespørgslen ligner et kundeemne, I allerede har. Knyt den til kundeemnet, så historikken samles. Intet knyttes automatisk.</p>
+        <ul class="list">${args.prospects.map(
+          (p) => html`<li class="row between"><span><a href="/admin/kundeemner/${p.id}">${p.name}</a> <span class="meta">${p.signals.join(', ')}</span></span>
+            ${p.linked
+              ? html`<span class="badge b-ok">Knyttet</span>`
+              : html`<form method="post" action="/admin/kundeemner/${p.id}/forespoergsel" class="inline">${csrfField(args.csrf)}<input type="hidden" name="lead" value="${l.id}"><button class="btn btn-secondary btn-small" type="submit">Knyt til kundeemnet</button></form>`}</li>`,
+        )}</ul></section>`
+    : ''}
   <form method="post" action="/admin/forespoergsler/${l.id}" class="card stack">
     ${csrfField(args.csrf)}
     <h2 class="h-small" style="margin:0">Opfølgning</h2>

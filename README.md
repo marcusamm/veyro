@@ -34,6 +34,7 @@ Teknik: Cloudflare Workers + D1 (database), Hono, Stripe Billing (via Stripes RE
 15. [Hjemmesiden veyro.dk](#15-hjemmesiden-veyrodk)
 16. [Digitale fuldmagter](#16-digitale-fuldmagter)
 17. [Kassen (point of sale)](#17-kassen-point-of-sale)
+18. [Kundeemner, Gmail og interne omkostninger](#18-kundeemner-gmail-og-interne-omkostninger)
 
 ---
 
@@ -432,3 +433,36 @@ Kassen ligger i admin på **`/admin/kasse`** og bruges til at sælge Veyros egne
 Kassen gemmer aldrig kortnumre eller andre kortdata; de håndteres kun af Stripe/terminalen.
 
 **Tests.** `tests/kasse.test.mjs` afprøver adgang og roller, salg, afrunding, delte betalinger, overbooking af lager (også parallelt), rabatgodkendelse, Stripe Terminal mod en mock (godkendt, afvist, annulleret), refusioner, kvittering og rapporter.
+
+## 18. Kundeemner, Gmail og interne omkostninger
+
+Internt salgsværktøj i admin under **Kundeemner** (`/admin/kundeemner`) og et omkostningsoverblik under **Statistik › Omkostninger** (`/admin/statistik/omkostninger`). Alt er kun for `ADMIN_EMAILS` og kontrolleres på serveren. Kunder ser aldrig noget af det, og intet her opretter fakturaer, abonnementer, betalinger eller mails til kunder.
+
+**Kundeemner.** Kun virksomhedsnavnet er påkrævet. Statusser: *Skal undersøges*, *Klar til kontakt*, *Afventer svar*, *I dialog*, *Afslag* og *Blev kunde* (kun med en rigtig kundetilknytning). "Kontaktet" registreres som en aktivitet med *Registrér kontakt* (telefon, møde, mail, andet) og foreslår opfølgning om fem arbejdsdage. Arkivering og blacklisting er egne egenskaber. Listen har arbejdsvisninger (mine, mangler ansvarlig, klar, i dag, overskredet, afventer, arkiverede, blacklistede), filtre og CSV-eksport med beskyttelse mod regnearksformler. Dubletter findes på CVR, mail, domæne og navn og lægges kun sammen manuelt (historikken bevares). *Opret tilbud* bruger det eksisterende tilbudsflow, og et betalt tilbud knytter kunden til kundeemnet.
+
+**Tilføj via link og Find nye kundeemner.** Hjemmesider hentes i baggrunden med beskyttelse mod interne adresser (ingen IP-adresser, private netværk, interne navne eller Veyros egne domæner, DNS-kontrol, kontrol af hver omdirigering, 8 sekunders timeout og 1,5 MB pr. side). Alt hentet er markeret *Ubekræftet*, og vurderingen skal godkendes, før den bruges i mailudkast. Søgning bruger kun offentlige kilder, I selv tilføjer (fx udstillerlister); der er ingen søgemaskine forbundet. Fund importeres kun manuelt som *Skal undersøges*.
+
+**Tid og omkostninger.** På kundeemner og kunder (*Internt: Tid og omkostninger*). Tid gemmes med sin egen timesats (standard 299 kr./t ekskl. moms, kan ændres under Statistik › Omkostninger og gælder kun nye registreringer). Tidsværdi = minutter / 60 × sats; samlet = tidsværdi + udgifter. Tilbagevendende udgifter vises som forventede perioder, indtil de registreres som afholdt, og tælles aldrig dobbelt. Fælles udgifter kan fordeles, men aldrig ud over beløbet. Rettelser og sletninger gemmes i historikken.
+
+**Gmail (kræver opsætning; vises som "Ikke forbundet", indtil det virker).** Postkasserne står i `MAIL_ACCOUNTS`, og fælles postkasser i `SHARED_MAILBOXES` (kontakt@). Personlige postkasser kan kun forbindes og gennemgås af deres ejer; fælles kan bruges af alle admins. Bemærk: `tobias@veyro.dk` kan vælges som ansvarlig, men skal stå i `ADMIN_EMAILS` for at kunne logge ind i admin og forbinde sin postkasse.
+
+Opsætning (kun Massa kan gøre det, da det kræver adgang til Veyros Google Workspace):
+
+1. Opret et projekt på [console.cloud.google.com](https://console.cloud.google.com) med en Veyro-konto.
+2. *APIs & Services › Library*: slå **Gmail API** til.
+3. *APIs & Services › OAuth consent screen*: vælg brugertype **Internal** (kun brugere i veyro.dk; kræver ingen verificering hos Google). Tilføj rettighederne `gmail.readonly` og `gmail.compose`.
+4. *APIs & Services › Credentials › Create credentials › OAuth client ID*: type **Web application**. Godkendt omdirigerings-URI: `https://kunde.veyro.dk/admin/kundeemner/mail/callback`.
+5. Sæt client-id som variabel `GOOGLE_CLIENT_ID` i `wrangler.toml` under `[vars]` (det er ikke hemmeligt).
+6. Sæt hemmelighederne:
+
+```bash
+npx wrangler secret put GOOGLE_CLIENT_SECRET
+# 32 tilfældige bytes i base64 til kryptering af Googles adgangstokens:
+openssl rand -base64 32 | npx wrangler secret put MAIL_TOKEN_KEY
+```
+
+7. Deploy, gå til *Kundeemner › Mailkonti*, og forbind hver postkasse (hver medarbejder logger selv ind med sin egen konto; kontakt@ forbindes af en, der kan logge ind på den). Kladder kræver, at "Tillad oprettelse af kladder" er slået til.
+
+Sådan virker det: Veyro læser kun mails til og fra adresser på kundeemner og kunder. En præcis kendt adresse knyttes direkte; mails, der kun deler virksomhedsdomæne, gemmes kun med afsender og emne, til en medarbejder bekræfter dem. Mailindhold vises kun som ren tekst (ingen billeder eller sporingspixels). Første udgående mail sætter *Afventer svar*; et svar giver en påmindelse og et forslag om *I dialog*. Automatikken ændrer aldrig en nyere manuel beslutning, genåbner aldrig afslag, arkiverede eller blacklistede emner og ændrer aldrig *Blev kunde*. Der sendes aldrig mails; kladder oprettes kun ved klik. Synkronisering kører hvert 10. minut (cron `*/10 * * * *`) med genforsøg og en daglig kontrol af manglende mails. Adgangstokens krypteres med `MAIL_TOKEN_KEY` (AES-GCM) og logges aldrig. Afbrydes en forbindelse, tilbagekaldes adgangen hos Google.
+
+**Udrulning.** Migrationerne `0010_kundeemner.sql` og `0011_kundeemner_mail_og_soegning.sql` tilføjer nye tabeller og kolonnen `offers.prospect_id`. **Tests:** `tests/prospects.test.mjs` med simulatorer af Google og en hjemmeside (`tests/google-mock.mjs`).

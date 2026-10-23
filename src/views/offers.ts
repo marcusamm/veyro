@@ -172,6 +172,8 @@ export function adminOffersPage(args: {
   flash: string | null;
   /** Forespørgsel fra hjemmesiden, som tilbuddet laves ud fra */
   lead?: { id: number; label: string } | null;
+  /** Kundeemne, som tilbuddet laves ud fra */
+  prospect?: { id: number; label: string } | null;
 }): H {
   const f = args.form;
   const v = (k: keyof OfferForm) => (f ? String(f[k] ?? '') : k === 'valid_days' ? String(DEFAULT_VALID_DAYS) : '');
@@ -186,11 +188,13 @@ export function adminOffersPage(args: {
   <section class="card stack" aria-labelledby="nyt-h">
     <h2 id="nyt-h">Nyt tilbud</h2>
     ${args.lead ? alert('info', html`Udfyldt fra <a href="/admin/forespoergsler/${args.lead.id}">${args.lead.label}</a>. Tjek pris og ydelse, før du opretter tilbuddet.`) : ''}
+    ${args.prospect ? alert('info', html`Udfyldt fra kundeemnet <a href="/admin/kundeemner/${args.prospect.id}">${args.prospect.label}</a>. Tjek pris og ydelse, før du opretter tilbuddet. Tilbuddet sendes ikke, før du selv vælger det.`) : ''}
     ${args.error ? alert('err', args.error) : ''}
     <form method="post" action="/admin/tilbud" class="stack" novalidate>
       ${csrfField(args.csrf)}
       <input type="hidden" name="key" value="${args.formKey}">
       ${args.lead ? html`<input type="hidden" name="lead" value="${args.lead.id}">` : ''}
+      ${args.prospect ? html`<input type="hidden" name="prospect" value="${args.prospect.id}">` : ''}
       <h3 class="h-small">Kunde</h3>
       <div class="grid grid-2">
         ${field('name', 'Kontaktperson', 'type="text" required maxlength="100" autocomplete="off"')}
@@ -329,6 +333,8 @@ export function adminCustomerPage(args: {
   flash: string | null;
   error: string | null;
   accepted?: Partial<Record<LegalDocKey, Acceptance>>;
+  /** Internt: Tid og omkostninger (kun admin) */
+  internal?: H;
 }): H {
   const c = args.customer;
   return html`<div class="stack-lg">
@@ -417,5 +423,6 @@ export function adminCustomerPage(args: {
           (o) => html`<li><a href="/admin/tilbud/${o.id}">${o.service}</a> · ${kr(o.amount)} ${iv(o.interval).short} · ${offerBadge(o)}</li>`,
         )}</ul>`}
   </section>
+  ${args.internal ?? ''}
 </div>`;
 }

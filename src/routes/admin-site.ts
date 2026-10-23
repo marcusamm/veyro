@@ -1,6 +1,7 @@
 // Admin for salgshjemmesiden: indhold, sider, menuer, priser, billeder, historik og forespørgsler.
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import type { AppEnv } from '../env';
+import { prospectsForLead } from '../lib/prospects';
 import type { OfferForm } from '../lib/offers';
 import { isAdmin } from '../lib/session';
 import { render } from '../render';
@@ -583,7 +584,8 @@ adminSite.get('/forespoergsler', async (c) => {
 adminSite.get('/forespoergsler/:id', async (c) => {
   const lead = await getLead(c.env.DB, Number(c.req.param('id')));
   if (!lead) return render(c, 'Findes ikke', errorPage('Forespørgslen findes ikke', '', { href: '/admin/forespoergsler', label: 'Til forespørgsler' }), { status: 404, admin: true });
-  return render(c, `Forespørgsel #${lead.id}`, leadDetailPage({ csrf: c.get('csrf'), lead, flash: c.req.query('besked') ?? null, offerUrl: null }), { nav: 'admin-forespoergsler', admin: true });
+  const prospects = await prospectsForLead(c.env.DB, lead);
+  return render(c, `Forespørgsel #${lead.id}`, leadDetailPage({ csrf: c.get('csrf'), lead, flash: c.req.query('besked') ?? null, offerUrl: null, prospects }), { nav: 'admin-forespoergsler', admin: true });
 });
 
 adminSite.post('/forespoergsler/:id', async (c) => {
