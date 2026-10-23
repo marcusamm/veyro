@@ -2,7 +2,7 @@ import { html } from 'hono/html';
 
 export type H = ReturnType<typeof html>;
 
-export type NavKey = 'overblik' | 'aftaler' | 'fuldmagter' | 'admin-fuldmagter' | 'admin-nda' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer' | 'admin-abonnementer' | 'admin-tilbud' | 'admin-hjemmeside' | 'admin-forespoergsler' | 'admin-statistik';
+export type NavKey = 'overblik' | 'aftaler' | 'fuldmagter' | 'admin-fuldmagter' | 'admin-nda' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer' | 'admin-abonnementer' | 'admin-tilbud' | 'admin-hjemmeside' | 'admin-forespoergsler' | 'admin-statistik' | 'admin-kasse';
 
 export interface LayoutOpts {
   title: string;
@@ -15,6 +15,10 @@ export interface LayoutOpts {
   adminNav?: boolean;
   /** Vis "Aftaler og dokumenter" (kunden har adgang til fuldmagter eller har dokumenter) */
   agreementsNav?: boolean;
+  /** Medarbejder i kassen uden adgang til resten af admin: kun kassens menupunkt */
+  staffNav?: boolean;
+  /** Kassens sider: bred side og kassens stylesheet og script */
+  kasse?: boolean;
 }
 
 function navLink(href: string, label: string, active: boolean, short?: string): H {
@@ -28,6 +32,7 @@ export function layout(opts: LayoutOpts, body: H): H {
   if (opts.adminNav) {
     navItems = [
       navLink('/admin', 'Oversigt', opts.nav === 'admin'),
+      navLink('/admin/kasse', 'Kasse', opts.nav === 'admin-kasse'),
       navLink('/admin/statistik', 'Statistik', opts.nav === 'admin-statistik'),
       navLink('/admin/hjemmeside', 'Hjemmeside', opts.nav === 'admin-hjemmeside'),
       navLink('/admin/forespoergsler', 'Forespørgsler', opts.nav === 'admin-forespoergsler'),
@@ -49,6 +54,8 @@ export function layout(opts: LayoutOpts, body: H): H {
     ];
     if (opts.agreementsNav) navItems.push(navLink('/konto/aftaler', 'Aftaler og dokumenter', opts.nav === 'aftaler' || opts.nav === 'fuldmagter', 'Aftaler'));
     if (opts.isAdmin) navItems.push(navLink('/admin', 'Admin', false));
+  } else if (opts.staffNav) {
+    navItems = [navLink('/admin/kasse', 'Kasse', opts.nav === 'admin-kasse')];
   } else if (loggedIn && opts.isAdmin) {
     navItems = [navLink('/admin', 'Admin', false)];
   }
@@ -67,8 +74,10 @@ export function layout(opts: LayoutOpts, body: H): H {
 <link rel="preload" href="/static/inter-tight.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/app.css?v=5">
 <script src="/static/app.js?v=2" defer></script>
+${opts.kasse ? html`<link rel="stylesheet" href="/static/kasse.css?v=1">
+<script src="/static/kasse.js?v=1" defer></script>` : ''}
 </head>
-<body>
+<body${opts.kasse ? html` class="kasse"` : ''}>
 <a class="skip" href="#indhold">Spring til indhold</a>
 <header class="site-header">
   <div class="wrap">

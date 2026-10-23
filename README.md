@@ -32,6 +32,8 @@ Teknik: Cloudflare Workers + D1 (database), Hono, Stripe Billing (via Stripes RE
 13. [Udvikling og tests (for udviklere)](#13-udvikling-og-tests-for-udviklere)
 14. [Tilbud med individuel pris og betalingslink](#14-tilbud-med-individuel-pris-og-betalingslink)
 15. [Hjemmesiden veyro.dk](#15-hjemmesiden-veyrodk)
+16. [Digitale fuldmagter](#16-digitale-fuldmagter)
+17. [Kassen (point of sale)](#17-kassen-point-of-sale)
 
 ---
 
@@ -405,3 +407,28 @@ veyro.dk, www.veyro.dk og ny.veyro.dk peger på Workeren (de står i `routes` i 
 Kunder kan give Veyro fuldmagt under **Aftaler og dokumenter** i kundepanelet, og Veyro administrerer dem i admin under **Fuldmagter**.
 Opsætning, forløb, sikkerhed og opbevaringspolitik er beskrevet i [docs/FULDMAGTER.md](docs/FULDMAGTER.md).
 Funktionen er et udkast: den er kun åben for pilotkunder, indtil teksten, godkendelsesmetoden og politikken er godkendt i admin.
+
+## 17. Kassen (point of sale)
+
+Kassen ligger i admin på **`/admin/kasse`** og bruges til at sælge Veyros egne ydelser (og evt. varer) ved disken eller i telefonen. Hvert salg får et fortløbende nummer, gemmes med kilden `kasse` og kan findes under **Salgshistorik**.
+
+**Hvad den kan.** Søgning på navn, varenummer eller stregkode (også med stregkodescanner), kategorier, kurv med antal, rabat pr. linje og på hele salget, moms (priser er inkl. moms) og kontantafrunding til 50 øre. Kunde kan vælges blandt eksisterende kunder eller skrives ind til salget (det opretter ikke kundepanel-adgang), og der kan skrives en note. Betaling med kontant (med byttepenge), kort og egne metoder (fx MobilePay), også delt på flere metoder. Kvittering kan udskrives (58 mm, 80 mm eller A4) eller sendes på mail. Refusion af hele eller dele af et salg, med lageret lagt tilbage. Rapporter pr. periode (omsætning, moms, rabat, refusioner, betalingsmetoder, top-ydelser, pr. medarbejder). Genveje: `F2` eller `/` søg, `F4` kunde, `F6` rabat, `F8` tøm kurv, `F9` eller `Ctrl+Enter` betal.
+
+**Ydelser og varer** oprettes i kassen under *Ydelser og varer*. Lager er valgfrit pr. vare; slås det til, trækkes der fra ved salg, og databasen afviser et salg, der ville gøre lageret negativt (også ved to samtidige salg). Alle lagerændringer logges.
+
+**Roller.** Administratorer (`ADMIN_EMAILS`) har altid fuld adgang. Under *Personale* kan de give andre adgang som *Leder* (sælge, se alle salg, refundere, rapporter, ydelser) eller *Kasseassistent* (kun sælge og se egne salg). Personale logger ind på `/admin/login` med e-mail-link og ser kun kassen. Rettigheder kontrolleres på serveren. Rabat over grænsen for rollen og refusioner af kasseassistenter kræver en leders eller administrators PIN-kode, som hver især sætter under *Min PIN-kode*. Godkendelser, prisændringer, refusioner og ændringer af indstillinger og personale skrives i en revisionslog.
+
+**Opsætning ved udrulning.**
+
+1. Migrationen `migrations/0009_kasse.sql` køres af deploy-workflowet (eller `npm run migrate`). Den tilføjer kun nye tabeller (`pos_*`).
+2. Gå til *Kasse › Indstillinger* og udfyld butiksoplysninger (adresse, telefon, CVR) til kvitteringen og vælg betalingsmetoder.
+3. Kvitteringer på mail bruger den eksisterende `RESEND_API_KEY`. Mangler den, vises en fejl i stedet for at lade som om mailen er sendt.
+
+**Kortbetaling.**
+
+- *Kort (Stripe)*: kassen sender beløbet til en Stripe Terminal-kortlæser i Veyros Stripe-konto og venter på svar. Salget er først betalt, når Stripe bekræfter betalingen; afvises eller annulleres den, annulleres salget, og lageret lægges tilbage. Refusion af kortbetalinger sker via Stripe. Et cron-job lukker salg, der har ventet på kortlæseren i mere end 30 minutter. **Kræver en Stripe Terminal-kortlæser** (fx Stripe Reader S700), der registreres i Stripe under *Terminal › Læsere*; læserens id (`tmr_…`) indtastes i Indstillinger. Køb af kortlæser er en ny udgift og er ikke foretaget.
+- *Kort (terminal)*: til en separat betalingsterminal, der ikke er forbundet med kassen. Ekspedienten skal sætte kryds ved, at terminalen har godkendt betalingen, og kan skrive kvitteringsnummeret ind. Kassen kan ikke selv kontrollere betalingen.
+
+Kassen gemmer aldrig kortnumre eller andre kortdata; de håndteres kun af Stripe/terminalen.
+
+**Tests.** `tests/kasse.test.mjs` afprøver adgang og roller, salg, afrunding, delte betalinger, overbooking af lager (også parallelt), rabatgodkendelse, Stripe Terminal mod en mock (godkendt, afvist, annulleret), refusioner, kvittering og rapporter.

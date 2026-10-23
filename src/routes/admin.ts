@@ -32,6 +32,7 @@ import {
 } from '../lib/admin-subscriptions';
 import { parseKr } from '../lib/invoices';
 import { createLoginToken, isAdmin } from '../lib/session';
+import { staffAccess } from '../lib/pos/staff';
 import { getCustomerByEmail, getCustomerById, upsertSubscription } from '../lib/db';
 import { offerEmail, priceChangeEmail } from '../lib/email';
 import { formatDate, formatKr } from '../lib/format';
@@ -70,9 +71,10 @@ const admin = new Hono<AppEnv>();
 
 // ---- Login via link på mail (før adgangskontrollen nedenfor) ----
 
-admin.get('/login', (c) => {
+admin.get('/login', async (c) => {
   const session = c.get('session');
   if (session && isAdmin(c.env, session.email)) return c.redirect('/admin', 303);
+  if (session && (await staffAccess(c.env, session.email))) return c.redirect('/admin/kasse', 303);
   return render(c, 'Admin-login', adminLoginPage({ csrf: c.get('csrf') }));
 });
 
@@ -86,8 +88,10 @@ admin.post('/login', async (c) => {
     return render(c, 'Admin-login', adminLoginPage({ csrf: c.get('csrf'), email: email ?? '', error: 'For mange forsøg. Vent 15 minutter, og prøv igen.' }), { status: 429 });
   }
   let devLink: string | null = null;
-  if (email && isAdmin(c.env, email)) {
-    const token = await createLoginToken(c.env, email, { next: '/admin' });
+  // Admins (ADMIN_EMAILS) og aktive medarbejdere i kassen (de sendes direkte til kassen)
+  const staff = email && !isAdmin(c.env, email) ? await staffAccess(c.env, email) : null;
+  if (email && (isAdmin(c.env, email) || staff)) {
+    const token = await createLoginToken(c.env, email, { next: staff ? '/admin/kasse' : '/admin' });
     const link = `${c.env.APP_URL.replace(/\/+$/, '')}/login/bekraeft?token=${encodeURIComponent(token)}`;
     if (c.env.RESEND_API_KEY) {
       c.executionCtx.waitUntil(
@@ -104,6 +108,7 @@ admin.use('*', async (c, next) => {
   const session = c.get('session');
   if (!session) return c.redirect('/admin/login', 303);
   if (!isAdmin(c.env, session.email)) {
+    if (await staffAccess(c.env, session.email)) return c.redirect('/admin/kasse', 303);
     return render(c, 'Ingen adgang', errorPage('Ingen adgang', 'Du har ikke adgang til denne side.', { href: '/konto', label: 'Til kundepanelet' }), {
       status: 403,
     });
