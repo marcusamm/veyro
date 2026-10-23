@@ -1,7 +1,7 @@
 /*
  * Veyro – tema-JavaScript
  * Ingen afhængigheder. Alt er progressiv forbedring: siden virker uden JS.
- * Moduler: header, reveal, proces, systemdemo, FAQ, tabs, filter, formularer, cookies, varianter.
+ * Moduler: header, reveal, proces, pakkerammer, systemdemo, FAQ, tabs, filter, formularer, cookies, varianter.
  */
 (() => {
   'use strict';
@@ -21,9 +21,15 @@
     const header = document.querySelector('[data-header]');
     if (!header) return;
 
-    const onScroll = () => header.classList.toggle('is-scrolled', window.scrollY > 8);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
+    // „Scrollet“-tilstand uden scroll-lytter: en usynlig markør 8 px nede på siden
+    // (ingen tvungen layoutberegning ved start og intet arbejde pr. scroll-hændelse)
+    if ('IntersectionObserver' in window) {
+      const marker = document.createElement('div');
+      marker.setAttribute('aria-hidden', 'true');
+      marker.style.cssText = 'position:absolute;top:8px;left:0;width:1px;height:1px;pointer-events:none;';
+      document.body.prepend(marker);
+      new IntersectionObserver(([e]) => header.classList.toggle('is-scrolled', !e.isIntersecting)).observe(marker);
+    }
 
     const toggle = header.querySelector('[data-nav-toggle]');
     const panel = header.querySelector('[data-mobile-nav]');
@@ -113,6 +119,55 @@
     });
   }
 
+  /* ---------- Pakkekort: rammen tegnes rundt om kortet, én gang ----------
+   * Rammen er en SVG-kant, der som udgangspunkt er fuldt optrukket (uden JS eller ved reduceret
+   * bevægelse). Her skjules den kun, indtil kortet kommer ind i billedet, og tegnes så rundt. Kort,
+   * der bliver synlige samtidig, får en lille forskydning; på mobil aktiveres hvert kort for sig. */
+  function initFrames(root = document) {
+    const cards = Array.from(root.querySelectorAll('[data-frame]:not(.frame-pending):not(.frame-done)'));
+    if (!cards.length || !motionAllowed() || !('IntersectionObserver' in window)) return;
+    const STAGGER = 110;
+    const measure = (card) => {
+      const rect = card.querySelector('rect');
+      if (!rect || typeof rect.getTotalLength !== 'function') return false;
+      card.style.setProperty('--frame-len', Math.ceil(rect.getTotalLength()) + 1);
+      return true;
+    };
+    const finish = (card) => {
+      card.classList.remove('frame-pending', 'frame-drawing');
+      card.classList.add('frame-done');
+    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries
+          .filter((e) => e.isIntersecting)
+          .map((e) => e.target)
+          .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+          .forEach((card, i) => {
+            observer.unobserve(card);
+            card.style.setProperty('--frame-delay', `${i * STAGGER}ms`);
+            card.classList.add('frame-drawing');
+            const rect = card.querySelector('rect');
+            rect.addEventListener('transitionend', () => finish(card), { once: true });
+            // Sikkerhedsnet, hvis transitionend aldrig kommer (fx skjult fane)
+            setTimeout(() => finish(card), 1400 + i * STAGGER);
+          });
+      },
+      { rootMargin: '0px 0px -10% 0px', threshold: 0.6 }
+    );
+    cards.forEach((card) => {
+      if (!measure(card)) return;
+      card.classList.add('frame-pending');
+      observer.observe(card);
+    });
+    // Ændres bredden, før rammen er tegnet, måles omkredsen igen
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => cards.forEach((c) => c.classList.contains('frame-pending') && !c.classList.contains('frame-drawing') && measure(c)), 150);
+    }, { passive: true });
+  }
+
   /* ---------- Systemdemo: „Prøv et eksempel“ ----------
    * Ændrer kun tallene på siden (fysisk og disponibel; reserveret er uændret). Intet gemmes eller sendes. */
   function initDemo(root = document) {
@@ -188,6 +243,23 @@
           Array.from(log.children).forEach((li) => (li.hidden = false));
         }
       };
+
+      // Kører en overgang, når demoen forlader skærmen eller fanen skjules, springes den til slutningen
+      const settle = () => {
+        if (!timers.length) return;
+        clearTimers();
+        if (played) {
+          render(start.physical - qty);
+          showLog(true);
+          status.textContent = `${qty} par registreret på jobbet. Lager opdateret.`;
+          status.classList.add('is-shown');
+        }
+        row.classList.remove('is-highlight');
+      };
+      document.addEventListener('visibilitychange', () => document.hidden && settle());
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver(([e]) => !e.isIntersecting && settle()).observe(figure);
+      }
 
       btn.addEventListener('click', () => {
         clearTimers();
@@ -583,6 +655,7 @@
   function initSection(root) {
     initReveal(root);
     initProcess(root);
+    initFrames(root);
     initDemo(root);
     initFaq(root);
     initTabs(root);

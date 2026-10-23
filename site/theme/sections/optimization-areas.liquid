@@ -7,7 +7,7 @@
   <div class="container">
     {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
 
-    <div class="areas__legend" data-reveal>
+    <div class="areas__legend">
       <p class="scope scope--direct"><span class="scope__dot" aria-hidden="true"></span><strong>{{ section.settings.direct_label | escape }}</strong> – {{ section.settings.direct_text | escape }}</p>
       <p class="scope scope--depends"><span class="scope__dot" aria-hidden="true"></span><strong>{{ section.settings.depends_label | escape }}</strong> – {{ section.settings.depends_text | escape }}</p>
     </div>

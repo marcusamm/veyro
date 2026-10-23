@@ -16,7 +16,7 @@
       {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text, tag: section.settings.heading_tag, size: 'lg' %}
 
       {%- if section.blocks.size > 0 -%}
-        <div class="contact__next" data-reveal>
+        <div class="contact__next">
           <h2 class="h5 contact__next-title">{{ section.settings.steps_heading | escape }}</h2>
           <ol role="list">
             {%- for block in section.blocks -%}
@@ -29,7 +29,7 @@
         </div>
       {%- endif -%}
 
-      <div class="contact__direct" data-reveal>
+      <div class="contact__direct">
         <p class="eyebrow">{{ section.settings.direct_heading | escape }}</p>
         {%- if settings.company_email != blank -%}
           <a class="contact__direct-link" href="mailto:{{ settings.company_email | escape }}">{% render 'icon', name: 'mail', size: 20 %}{{ settings.company_email | escape }}</a>
@@ -43,7 +43,7 @@
       </div>
     </div>
 
-    <div class="contact__form-wrap card" data-reveal>
+    <div class="contact__form-wrap card">
       {%- form 'contact', id: fid, class: 'form js-validate', novalidate: 'novalidate' -%}
         {% render 'form-status', form: form, success_heading: section.settings.success_heading, success_text: section.settings.success_text %}
 

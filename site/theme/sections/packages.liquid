@@ -9,7 +9,7 @@
     {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
 
     {%- if section.settings.offer != blank -%}
-      <div class="packages__offer" data-reveal>
+      <div class="packages__offer">
         <p class="packages__offer-text">{% render 'icon', name: 'check', size: 18 %}<strong>{{ section.settings.offer | escape }}</strong></p>
         {%- if section.settings.offer_note != blank -%}<p class="small muted">{{ section.settings.offer_note | escape }}</p>{%- endif -%}
       </div>
@@ -17,7 +17,7 @@
 
     {%- if section.settings.pay_heading != blank -%}
       {%- assign pay_steps = section.settings.pay_steps | newline_to_br | split: '<br />' -%}
-      <div class="packages__pay" id="betaling" data-reveal>
+      <div class="packages__pay" id="betaling">
         <h3 class="h4 packages__pay-title">{{ section.settings.pay_heading | escape }}</h3>
         <ol class="packages__pay-steps" role="list">
           {%- for line in pay_steps -%}
@@ -43,7 +43,7 @@
           assign features = block.settings.features | newline_to_br | split: '<br />'
           assign heading_id = 'Package-' | append: block.id
         -%}
-        <li class="plan pricing-card card{% if coming %} pricing-card--coming{% endif %}" id="pakke-{{ block.settings.title | handle }}" aria-labelledby="{{ heading_id }}" data-reveal style="--delay: {{ forloop.index0 | times: 60 }}ms" {{ block.shopify_attributes }}>
+        <li class="plan pricing-card card{% if coming %} pricing-card--coming{% endif %}" id="pakke-{{ block.settings.title | handle }}" aria-labelledby="{{ heading_id }}" {{ block.shopify_attributes }}>
           <div class="plan__head">
             <h3 class="h3" id="{{ heading_id }}">{{ block.settings.title | escape }}</h3>
             {%- if block.settings.badge != blank -%}<span class="plan__badge{% if coming %} pricing-card__badge--coming{% endif %}">{{ block.settings.badge | escape }}</span>{%- endif -%}
@@ -118,7 +118,7 @@
     {%- endif -%}
 
     {%- if section.settings.footnote != blank -%}
-      <div class="rte small muted plans__footnote" data-reveal>{{ section.settings.footnote }}</div>
+      <div class="rte small muted plans__footnote">{{ section.settings.footnote }}</div>
     {%- endif -%}
   </div>
 </section>

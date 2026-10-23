@@ -13,7 +13,7 @@
 <section class="section section--{{ section.settings.scheme }} service-detail" id="{{ anchor }}" aria-labelledby="Title-{{ section.id }}">
   <div class="container">
   <div class="service-detail__inner">
-    <header class="service-detail__head" data-reveal>
+    <header class="service-detail__head">
       <div class="service-detail__meta">
         <span class="service-card__icon">{% render 'icon', name: section.settings.icon, size: 26 %}</span>
         {%- if section.settings.number != blank -%}<span class="service-detail__num">{{ section.settings.number | escape }}</span>{%- endif -%}
@@ -27,13 +27,13 @@
     </header>
 
     <div class="service-detail__body">
-      <div class="service-detail__block service-detail__block--problem" data-reveal>
+      <div class="service-detail__block service-detail__block--problem">
         <h3 class="tag tag--muted">{{ section.settings.problem_label | escape }}</h3>
         <div class="rte">{{ section.settings.problem }}</div>
       </div>
 
       {%- assign includes = section.settings.includes | newline_to_br | split: '<br />' -%}
-      <div class="service-detail__block" data-reveal>
+      <div class="service-detail__block">
         <h3 class="tag">{{ section.settings.includes_label | escape }}</h3>
         <ul class="checklist" role="list">
           {%- for i in includes -%}
@@ -44,12 +44,12 @@
       </div>
 
       <div class="service-detail__split">
-        <div class="service-detail__block" data-reveal>
+        <div class="service-detail__block">
           <h3 class="tag">{{ section.settings.audience_label | escape }}</h3>
           <div class="rte">{{ section.settings.audience }}</div>
         </div>
         {%- assign deliverables = section.settings.deliverables | newline_to_br | split: '<br />' -%}
-        <div class="service-detail__block service-detail__block--deliver" data-reveal>
+        <div class="service-detail__block service-detail__block--deliver">
           <h3 class="tag tag--accent">{{ section.settings.deliverables_label | escape }}</h3>
           <ul class="deliverables" role="list">
             {%- for d in deliverables -%}

@@ -3,7 +3,7 @@
 {%- endcomment -%}
 <section class="section section--{{ section.settings.scheme }} note-banner" id="{{ section.settings.anchor | default: section.id | handle }}">
   <div class="container">
-    <div class="note-banner__box" data-reveal>
+    <div class="note-banner__box">
       {%- if section.settings.icon != 'none' -%}<span class="note-banner__icon">{% render 'icon', name: section.settings.icon, size: 24 %}</span>{%- endif -%}
       <div class="note-banner__content">
         <h2 class="h3 note-banner__title">{{ section.settings.heading }}</h2>

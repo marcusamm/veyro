@@ -2,6 +2,8 @@
   Stor, mørk bar, der viser pakkerne kort og sender videre til prissiden.
   Selve pakkerne og vilkårene står på prissiden; her er kun navn, pris og status.
   Et kort uden eget link går direkte til samme pakke på prissiden (#pakke-<navn>, se sections/packages).
+  Rammen (SVG) er altid optrukket; theme.js (initFrames) tegner den én gang, når kortet kommer ind i billedet.
+  Tekst, pris og link er synlige og klikbare fra start.
 {%- endcomment -%}
 {%- liquid
   assign cta_url = section.settings.link | default: '/pages/ydelser#priser'
@@ -25,8 +27,9 @@
         <ul class="price-banner__grid" role="list">
           {%- for block in section.blocks -%}
             {%- capture package_url -%}{{ package_page }}#pakke-{{ block.settings.title | handle }}{%- endcapture -%}
-            <li data-reveal style="--delay: {{ forloop.index0 | times: 60 }}ms" {{ block.shopify_attributes }}>
-              <a class="price-banner__item{% if block.settings.available %} price-banner__item--now{% endif %}" href="{{ block.settings.link | default: package_url }}">
+            <li {{ block.shopify_attributes }}>
+              <a class="price-banner__item{% if block.settings.available %} price-banner__item--now{% endif %}" href="{{ block.settings.link | default: package_url }}" data-frame>
+                <svg class="price-banner__frame" aria-hidden="true" focusable="false"><rect width="100%" height="100%" rx="{{ settings.card_radius }}" ry="{{ settings.card_radius }}"/></svg>
                 <span class="price-banner__top">
                   <span class="price-banner__name">{{ block.settings.title | escape }}</span>
                   {%- if block.settings.badge != blank -%}<span class="price-banner__badge{% if block.settings.available %} price-banner__badge--now{% endif %}">{{ block.settings.badge | escape }}</span>{%- endif -%}

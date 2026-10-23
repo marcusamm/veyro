@@ -36,7 +36,7 @@
 {%- if tp_url != blank or request.design_mode -%}
 <section class="section section--{{ section.settings.scheme }} note-banner trustpilot" id="{{ section.settings.anchor | default: section.id | handle }}">
   <div class="container">
-    <div class="note-banner__box trustpilot__box" data-reveal>
+    <div class="note-banner__box trustpilot__box">
       <span class="note-banner__icon"><svg class="icon icon--star" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></span>
       <div class="note-banner__content">
         <h2 class="h3 note-banner__title">{{ section.settings.heading }}</h2>

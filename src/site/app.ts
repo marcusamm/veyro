@@ -80,7 +80,12 @@ site.use('*', async (c, next) => {
   if (url.protocol === 'https:') h.set('Strict-Transport-Security', 'max-age=31536000');
   // Prøveadressen (fx ny.veyro.dk) må ikke indekseres af søgemaskiner
   if (!isCanonicalHost(c)) h.set('X-Robots-Tag', 'noindex, nofollow');
-  if (!h.has('Cache-Control')) h.set('Cache-Control', 'no-store');
+  // Sider hentes altid på ny (no-cache), men uden no-store, så browserens frem/tilbage-cache
+  // kan vise forsiden med det samme, når man går tilbage fra en underside.
+  if (!h.has('Cache-Control')) {
+    const html = c.req.method === 'GET' && (h.get('Content-Type') || '').startsWith('text/html');
+    h.set('Cache-Control', html ? 'private, no-cache' : 'no-store');
+  }
 });
 
 /** Formularer må kun sendes fra siden selv */

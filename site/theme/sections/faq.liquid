@@ -6,7 +6,7 @@
     <div class="faq__intro">
       {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
     </div>
-    <div class="faq__list" data-reveal>
+    <div class="faq__list">
       {%- for block in section.blocks -%}
         <details class="faq__item" {{ block.shopify_attributes }}>
           <summary><span>{{ block.settings.question | escape }}</span><span class="faq__icon" aria-hidden="true">{% render 'icon', name: 'plus', size: 20 %}</span></summary>
