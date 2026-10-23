@@ -12,8 +12,8 @@ export function legalLinks(): H {
 
 /** Afkrydsningsfelt til accept af betingelser og databehandleraftale. */
 export function acceptField(checked = false): H {
-  return html`<label class="check"><input type="checkbox" name="accept" value="1" required${checked ? html` checked` : ''}>
-    Jeg accepterer på virksomhedens vegne ${legalLinks()}.</label>`;
+  return html`<label class="check consent-check"><input type="checkbox" name="accept" value="1" required${checked ? html` checked` : ''}>
+    <span>Jeg accepterer på virksomhedens vegne ${legalLinks()}.</span></label>`;
 }
 
 /** Kort i kundepanelets overblik: hvad kunden har accepteret, eller en knap til at acceptere den nye version. */
