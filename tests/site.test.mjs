@@ -196,39 +196,80 @@ describe('Pakker og priser', () => {
     expect(kontakt.html).not.toContain('Internt system til ordrer og varekontrol');
   });
 
-  it('forsiden viser pakkernes priser i en bar, der sender videre til prissiden', async () => {
+  it('forsiden viser Basis, Booking og Webshop øverst og Drift og Alt inkl. længere nede som "På vej"', async () => {
     const r = await site.get('/');
     expect(r.html).not.toContain('To måder at få styr på ordrer og lager');
-    const bar = r.html.slice(r.html.indexOf('class="section section--surface price-banner"'), r.html.indexOf('</section>', r.html.indexOf('price-banner')));
-    expect(bar).toContain('id="priser"');
-    expect(bar).toContain('href="/pages/ydelser#priser"');
-    expect([...bar.matchAll(/class="price-banner__name">([^<]+)</g)].map((m) => m[1])).toEqual(['Basis', 'Booking', 'Drift', 'Alt inkl.']);
-    expect([...bar.matchAll(/<strong>([^<]+)<\/strong>/g)].map((m) => m[1])).toEqual(['199 kr.', '299 kr.', '599 kr.', '1.099 kr.']);
-    expect(bar).toContain('Alle priser er ekskl. moms.');
-    expect([...bar.matchAll(/price-banner__badge--now">([^<]+)</g)].length).toBe(2);
-    expect(r.html).not.toContain('Hjemmeside med bestilling og lagerstyring');
-    // Indholdet af pakkerne står kun på prissiden
-    expect(bar).not.toContain('Planlagt indhold');
-    expect(r.html).toContain('href="#priser"');
+    const at = (cls) => r.html.indexOf(`<section class="${cls}"`);
+    const section = (cls) => r.html.slice(at(cls), r.html.indexOf('</section>', at(cls)));
+    // Hero: én primær knap til priserne, eksemplet er mærket som fiktivt
+    const hero = section('hh');
+    expect(hero).toContain('<h1');
+    expect(hero.match(/class="btn btn--primary/g)).toHaveLength(1);
+    expect(hero).toContain('href="#priser"');
+    expect(hero).toContain('fiktiv');
+    // Rækkefølge: produkter og priser før Drift
+    expect(at('hp')).toBeGreaterThan(at('hh'));
+    expect(at('hpr')).toBeGreaterThan(at('hp'));
+    expect(at('hd')).toBeGreaterThan(at('hpr'));
+    const prices = section('hpr');
+    expect(prices).toContain('id="priser"');
+    const name = (html) => [...html.matchAll(/class="pc__name">([^<]+)</g)].map((m) => m[1]);
+    expect(name(prices)).toEqual(['Basis', 'Booking', 'Webshop']);
+    expect([...prices.matchAll(/class="pc__amount"><strong>([^<]+)<\/strong>/g)].map((m) => m[1]).slice(0, 2)).toEqual(['199 kr.', '299 kr.']);
+    for (const t of ['Gratis oprettelse', 'Første måned gratis', 'Ingen binding', 'Gælder Basis og Booking.', 'Alle priser er ekskl. moms.', 'kontakt os']) expect(prices).toContain(t);
+    // Samme opbygning i alle kort: pris, interval og momsnote
+    expect(prices.match(/class="pc__vat">ekskl. moms</g)).toHaveLength(3);
+    expect(prices).not.toContain('På vej');
+    expect(prices).toContain('href="/?ydelse=pakke-basis#kontakt"');
+    expect(prices).toContain('href="/?ydelse=pakke-booking#kontakt"');
+    expect(prices).toContain('href="/?ydelse=webshop#kontakt"');
+    // Drift og Alt inkl. er stadig "På vej" med forventede priser og testkunde-link
+    const drift = section('hd');
+    expect(drift).toContain('På vej');
+    expect(name(drift)).toEqual(['Drift', 'Alt inkl.']);
+    for (const [price, key] of [['599 kr.', 'drift'], ['1.099 kr.', 'alt-inkl']]) {
+      expect(drift).toContain(`<strong>${price}</strong>`);
+      expect(drift).toContain(`href="/pages/ydelser?pakke=${key}#testkunde"`);
+    }
+    // Mærkat ved overskriften og på begge kort
+    expect(drift.match(/class="pc__badge">På vej</g)).toHaveLength(3);
+    expect(drift).toContain('Forventet pris');
+    expect(r.html).not.toMatch(/Mest populær/);
+    // Forvalgte pakker findes i kontaktformularen
+    for (const k of ['pakke-basis', 'pakke-booking', 'webshop']) expect(r.html).toContain(`data-key="${k}"`);
   });
 
-  it('hvert pakkekort på forsiden går direkte til samme pakke på prissiden', async () => {
+  it('detaljelinks på forsiden går til samme pakke på prissiden', async () => {
     const [home, prices] = await Promise.all([site.get('/'), site.get('/pages/ydelser')]);
-    const links = [...home.html.matchAll(/class="price-banner__item[^"]*" href="([^"]+)"/g)].map((m) => m[1]);
+    const links = [...home.html.matchAll(/class="pc__details" href="([^"]+)"/g)].map((m) => m[1]);
     expect(links).toEqual(['/pages/ydelser#pakke-basis', '/pages/ydelser#pakke-booking', '/pages/ydelser#pakke-drift', '/pages/ydelser#pakke-alt-inkl']);
     for (const l of links) expect(prices.html).toContain(`id="${l.split('#')[1]}"`);
   });
 
-  it('lagerdemoen er mærket som eksempel på Drift, og tallene hænger sammen', async () => {
+  it('eksemplerne er mærket som fiktive og sender intet; lagerforklaringerne står ved demoen', async () => {
     const r = await site.get('/');
-    const demo = r.html.slice(r.html.indexOf('data-demo-try'), r.html.indexOf('</figure>', r.html.indexOf('data-demo-try')));
-    expect(demo).toContain('Eksempel – Drift er på vej');
-    expect(demo).toContain('Prøv et eksempel');
-    // Uden JavaScript vises knappen ikke
-    expect(r.html).toMatch(/data-demo-try data-qty="3" hidden>/);
-    const n = (k) => Number(demo.match(new RegExp(`data-demo-${k}>(\\d+)<`))[1]);
+    const at = r.html.indexOf('<section class="hp"');
+    const products = r.html.slice(at, r.html.indexOf('</section>', at));
+    expect(products.match(/Eksempel · fiktive data/g).length).toBeGreaterThanOrEqual(2);
+    // Ingen formularer, der kan sendes: kun lokale knapper, skjult uden JavaScript
+    expect(products).not.toContain('<form');
+    expect(products).toMatch(/data-example-book hidden/);
+    expect(products).toMatch(/data-example-add hidden/);
+    const d = r.html.indexOf('<section class="hd"');
+    const drift = r.html.slice(d, r.html.indexOf('</section>', d));
+    expect(drift).toContain('Eksempel – Drift er på vej');
+    expect(drift).toContain('Registrér forbrug');
+    // Uden JavaScript vises knappen ikke, men forklaringen gør
+    expect(drift).toMatch(/data-demo-try data-qty="3" hidden>/);
+    expect(drift).toContain('Registreret forbrug trækker fra fysisk og disponibel');
+    for (const t of ['på lageret', 'på bekræftede ordrer', 'Lav beholdning', 'Disponibel</strong> er fysisk minus reserveret']) expect(drift).toContain(t);
+    const n = (k) => Number(drift.match(new RegExp(`data-demo-${k}>(\\d+)<`))[1]);
     expect([n('physical'), n('reserved'), n('available')]).toEqual([120, 24, 96]);
     expect(n('physical') - n('reserved')).toBe(n('available'));
+    // Kort forløb og kontakt med de aftalte tider
+    expect(r.html).toContain('Demo inden for 24–48 timer');
+    expect(r.html).toContain('inden for op til otte hverdage efter modtagelse af nødvendigt materiale og aftalt omfang');
+    expect(r.html).toContain('uforpligtende');
   });
 
   it('de gamle "Løsning 1/Løsning 2"-sektioner findes ingen steder på hjemmesiden', async () => {

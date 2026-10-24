@@ -1,0 +1,34 @@
+{%- comment -%}
+  Kort forløb: overskrift til venstre, trin som en kompakt nummereret liste til højre.
+{%- endcomment -%}
+<section class="hs" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container hs__grid">
+    <h2 class="h-mid">{{ section.settings.heading }}</h2>
+    <ol class="hs__list" role="list">
+      {%- for block in section.blocks -%}
+        <li {{ block.shopify_attributes }}>
+          <span class="hs__num" aria-hidden="true">{{ forloop.index }}</span>
+          <p><strong>{{ block.settings.title | escape }}</strong> {{ block.settings.text | escape }}</p>
+        </li>
+      {%- endfor -%}
+    </ol>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Forside: forløb",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "proces" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Sådan kommer du i gang" }
+  ],
+  "blocks": [
+    { "type": "step", "name": "Trin", "limit": 5, "settings": [
+      { "type": "text", "id": "title", "label": "Titel", "default": "Trin" },
+      { "type": "text", "id": "text", "label": "Tekst" }
+    ] }
+  ],
+  "presets": [{ "name": "Forside: forløb", "blocks": [{ "type": "step" }, { "type": "step" }, { "type": "step" }] }]
+}
+{% endschema %}

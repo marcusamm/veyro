@@ -891,14 +891,6 @@ code, pre { font-family: var(--font-mono); }
 .reveal-ready .card--interactive[data-reveal], .reveal-ready .pricing-card[data-reveal] {
   transition: opacity .4s var(--ease) var(--delay, 0ms), translate .4s var(--ease) var(--delay, 0ms), transform .18s var(--ease), border-color .18s var(--ease), box-shadow .18s var(--ease);
 }
-/* Forsidens illustration: kort og rolig introduktion i ren CSS (virker også, hvis JS fejler). Står stille bagefter */
-@media (prefers-reduced-motion: no-preference) {
-  .js .has-motion .hero__visual { animation: hero-in .3s var(--ease) both; }
-  .js .has-motion .hero__visual .hv__card { animation: hero-in .3s var(--ease) both; animation-delay: 80ms; }
-  .js .has-motion .hero__visual .hv__card:last-child { animation-delay: 160ms; }
-}
-@keyframes hero-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-
 /* 11 ─ Utilities og print */
 @media print {
   .site-header, .site-footer, .cookie, .btn { display: none !important; }

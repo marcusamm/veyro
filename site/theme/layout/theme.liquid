@@ -49,6 +49,7 @@
 
     {%- render 'theme-styles' -%}
     {{ 'base.css' | asset_url | stylesheet_tag }}
+    {%- if template.name == 'index' -%}{{ 'home.css' | asset_url | stylesheet_tag }}{%- endif -%}
 
     <script>document.documentElement.className = document.documentElement.className.replace('no-js', 'js');</script>
     <script src="{{ 'theme.js' | asset_url }}" defer="defer"></script>

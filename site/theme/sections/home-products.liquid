@@ -1,0 +1,155 @@
+{%- comment -%}
+  Hjemmeside, booking og webshop vist som tre forskellige, konkrete eksempler: ét stort og to mindre.
+  Alle data er fiktive og mærket som eksempler. Interaktionen (theme.js › initExamples) er lokal:
+  den sender ingen mails, opretter ingen bookinger og gennemfører ingen betalinger.
+  Uden JavaScript står eksemplerne i en udfyldt standardtilstand, så intet vigtigt er skjult.
+{%- endcomment -%}
+{%- assign sid = section.id | handle -%}
+<section class="hp" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container">
+    <header class="hp__head">
+      <h2 class="h-big">{{ section.settings.heading }}</h2>
+      {%- if section.settings.text != blank -%}<div class="hp__lead">{{ section.settings.text }}</div>{%- endif -%}
+    </header>
+
+    {%- comment -%} 1 · Hjemmeside: det store eksempel {%- endcomment -%}
+    <article class="hp__item hp__item--site" aria-labelledby="{{ sid }}-site">
+      <div class="hp__example">
+        <div class="ex-web" role="img" aria-label="Eksempel på en hjemmeside for en fiktiv tømrervirksomhed med ydelser, åbningstider og kontaktformular">
+          <div class="ex-bar" aria-hidden="true"><span class="ex-bar__url">holm-toemrer.eksempel</span><span class="ex-bar__tag">Eksempel</span></div>
+          <div class="ex-web__page" aria-hidden="true">
+            <div class="ex-web__nav"><b>Holm Tømrer</b><span>Ydelser</span><span>Om os</span><span>Kontakt</span><i>Få et tilbud</i></div>
+            <div class="ex-web__hero">
+              <div>
+                <p class="ex-web__h">Tømrerarbejde<br>i Vejle og omegn</p>
+                <p class="ex-web__p">Tag, vinduer og tilbygninger. Vi kommer ud og giver et fast tilbud.</p>
+                <span class="ex-web__btn">Få et tilbud</span>
+              </div>
+              <div class="ex-web__img"><span></span></div>
+            </div>
+            <div class="ex-web__cols">
+              <div><b>Tag og kviste</b><span>Nyt tag, efterisolering og kviste.</span></div>
+              <div><b>Vinduer og døre</b><span>Udskiftning og montering.</span></div>
+              <div><b>Tilbygninger</b><span>Fra tegning til færdigt rum.</span></div>
+            </div>
+            <div class="ex-web__foot"><span>Man–fre 7–16</span><span>Kontaktformular</span><span>Vejle</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="hp__text">
+        <p class="hp__kicker">{{ section.settings.site_price | escape }}</p>
+        <h3 class="hp__title" id="{{ sid }}-site">{{ section.settings.site_title | escape }}</h3>
+        <div class="hp__body">{{ section.settings.site_text }}</div>
+        {%- if section.settings.site_link_label != blank -%}<a class="hp__more" href="{{ section.settings.site_link }}">{{ section.settings.site_link_label | escape }}</a>{%- endif -%}
+      </div>
+    </article>
+
+    <div class="hp__pair">
+      {%- comment -%} 2 · Booking: vælg ydelse og tid, se en demo-bekræftelse {%- endcomment -%}
+      <article class="hp__item hp__item--booking" aria-labelledby="{{ sid }}-booking">
+        <div class="hp__text">
+          <p class="hp__kicker">{{ section.settings.booking_price | escape }}</p>
+          <h3 class="hp__title" id="{{ sid }}-booking">{{ section.settings.booking_title | escape }}</h3>
+          <div class="hp__body">{{ section.settings.booking_text }}</div>
+          {%- if section.settings.booking_link_label != blank -%}<a class="hp__more" href="{{ section.settings.booking_link }}">{{ section.settings.booking_link_label | escape }}</a>{%- endif -%}
+        </div>
+        <div class="hp__example">
+          <div class="ex-card" data-example="booking">
+            <div class="ex-bar"><span class="ex-bar__url">Salon Nord · Book tid</span><span class="ex-bar__tag">Eksempel · fiktive data</span></div>
+            <div class="ex-card__body">
+              <fieldset class="ex-field">
+                <legend>1. Vælg behandling</legend>
+                <label class="ex-opt"><input type="radio" name="{{ sid }}-svc" value="Herreklip" data-label="Herreklip, 30 min" checked><span>Herreklip</span><em>30 min · 320 kr.</em></label>
+                <label class="ex-opt"><input type="radio" name="{{ sid }}-svc" value="Dameklip" data-label="Dameklip, 60 min"><span>Dameklip</span><em>60 min · 520 kr.</em></label>
+                <label class="ex-opt"><input type="radio" name="{{ sid }}-svc" value="Skægtrim" data-label="Skægtrim, 20 min"><span>Skægtrim</span><em>20 min · 180 kr.</em></label>
+              </fieldset>
+              <fieldset class="ex-field">
+                <legend>2. Vælg tid torsdag 6. november</legend>
+                <div class="ex-times">
+                  <label class="ex-time"><input type="radio" name="{{ sid }}-time" value="09.00"><span>09.00</span></label>
+                  <label class="ex-time"><input type="radio" name="{{ sid }}-time" value="10.30" checked><span>10.30</span></label>
+                  <label class="ex-time"><input type="radio" name="{{ sid }}-time" value="12.00" disabled><span>12.00<small> optaget</small></span></label>
+                  <label class="ex-time"><input type="radio" name="{{ sid }}-time" value="13.30"><span>13.30</span></label>
+                  <label class="ex-time"><input type="radio" name="{{ sid }}-time" value="15.00"><span>15.00</span></label>
+                </div>
+              </fieldset>
+              <div class="ex-confirm" data-example-confirm>
+                <p class="ex-confirm__label">Bekræftelse i eksemplet</p>
+                <p class="ex-confirm__text" role="status" data-example-status>Herreklip, 30 min, torsdag 6. november kl. 10.30.</p>
+                <button type="button" class="btn btn--primary btn--sm" data-example-book hidden>Book tiden (demo)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      {%- comment -%} 3 · Webshop: produkt med variant og en lille kurv {%- endcomment -%}
+      <article class="hp__item hp__item--shop" aria-labelledby="{{ sid }}-shop">
+        <div class="hp__text">
+          <p class="hp__kicker">{{ section.settings.shop_price | escape }}</p>
+          <h3 class="hp__title" id="{{ sid }}-shop">{{ section.settings.shop_title | escape }}</h3>
+          <div class="hp__body">{{ section.settings.shop_text }}</div>
+          {%- if section.settings.shop_link_label != blank -%}<a class="hp__more" href="{{ section.settings.shop_link }}">{{ section.settings.shop_link_label | escape }}</a>{%- endif -%}
+        </div>
+        <div class="hp__example">
+          <div class="ex-shop" data-example="shop" data-price="189">
+            <div class="ex-bar"><span class="ex-bar__url">Lerværk · Webshop</span><span class="ex-bar__tag">Eksempel · fiktive data</span></div>
+            <div class="ex-shop__body">
+              <div class="ex-shop__img" aria-hidden="true"><span></span></div>
+              <div class="ex-shop__info">
+                <p class="ex-shop__name">Håndlavet krus</p>
+                <p class="ex-shop__price">189 kr.</p>
+                <fieldset class="ex-field">
+                  <legend>Farve</legend>
+                  <div class="ex-swatches">
+                    <label class="ex-swatch ex-swatch--sand"><input type="radio" name="{{ sid }}-color" value="Sand" checked><span>Sand</span></label>
+                    <label class="ex-swatch ex-swatch--skifer"><input type="radio" name="{{ sid }}-color" value="Skifer"><span>Skifer</span></label>
+                    <label class="ex-swatch ex-swatch--rust"><input type="radio" name="{{ sid }}-color" value="Rust"><span>Rust</span></label>
+                  </div>
+                </fieldset>
+                <button type="button" class="btn btn--primary btn--sm" data-example-add hidden>Læg i kurv (demo)</button>
+              </div>
+            </div>
+            <div class="ex-cart">
+              <p class="ex-cart__head"><span>Kurv</span><span data-example-count>1 vare</span></p>
+              <ul class="ex-cart__lines" role="list" data-example-lines><li><span>Håndlavet krus, Sand</span><span>1 × 189 kr.</span></li></ul>
+              <p class="ex-cart__total"><span>I alt</span><b data-example-total>189 kr.</b></p>
+            </div>
+            <p class="visually-hidden" role="status" data-example-status></p>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    {%- if section.settings.note != blank -%}<div class="hp__note">{{ section.settings.note }}</div>{%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Forside: produkteksempler",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "losninger" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Det kan vi sætte op for dig" },
+    { "type": "richtext", "id": "text", "label": "Intro" },
+    { "type": "text", "id": "site_title", "label": "Hjemmeside – titel", "default": "Hjemmeside" },
+    { "type": "text", "id": "site_price", "label": "Hjemmeside – pris", "default": "Basis · 199 kr./md. ekskl. moms" },
+    { "type": "richtext", "id": "site_text", "label": "Hjemmeside – tekst" },
+    { "type": "text", "id": "site_link_label", "label": "Hjemmeside – linktekst" },
+    { "type": "url", "id": "site_link", "label": "Hjemmeside – link" },
+    { "type": "text", "id": "booking_title", "label": "Booking – titel", "default": "Booking" },
+    { "type": "text", "id": "booking_price", "label": "Booking – pris", "default": "Booking · 299 kr./md. ekskl. moms" },
+    { "type": "richtext", "id": "booking_text", "label": "Booking – tekst" },
+    { "type": "text", "id": "booking_link_label", "label": "Booking – linktekst" },
+    { "type": "url", "id": "booking_link", "label": "Booking – link" },
+    { "type": "text", "id": "shop_title", "label": "Webshop – titel", "default": "Webshop" },
+    { "type": "text", "id": "shop_price", "label": "Webshop – pris" },
+    { "type": "richtext", "id": "shop_text", "label": "Webshop – tekst" },
+    { "type": "text", "id": "shop_link_label", "label": "Webshop – linktekst" },
+    { "type": "url", "id": "shop_link", "label": "Webshop – link" },
+    { "type": "richtext", "id": "note", "label": "Note under eksemplerne" }
+  ],
+  "presets": [{ "name": "Forside: produkteksempler" }]
+}
+{% endschema %}
