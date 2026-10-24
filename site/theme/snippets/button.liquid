@@ -1,14 +1,10 @@
 {%- comment -%}
-  Knap/link i temaets stil.
-  Parametre: label, url, style ('primary'|'secondary'|'ghost'|'link'), arrow (bool), class, fallback (URL, hvis url er tom)
+  Knap eller link i temaets stil.
+  Parametre: label, url, style ('primary'|'secondary'|'link'), class, fallback (URL, hvis url er tom)
+  Faste knaptekster på sitet: "Se priser", "Se eksempler", "Aftal en demo", "Bliv testkunde", "Kontakt os om tilkøb".
 {%- endcomment -%}
 {%- assign href = url | default: fallback -%}
 {%- assign style = style | default: 'primary' -%}
 {%- if label != blank and href != blank -%}
-  <a class="btn btn--{{ style }} {{ class }}" href="{{ href }}">
-    <span>{{ label | escape }}</span>
-    {%- if arrow or style == 'link' -%}
-      <span class="btn__icon">{% render 'icon', name: 'arrow-right', size: 18 %}</span>
-    {%- endif -%}
-  </a>
+  <a class="btn btn--{{ style }}{% if class %} {{ class }}{% endif %}" href="{{ href }}">{{ label | escape }}</a>
 {%- endif -%}

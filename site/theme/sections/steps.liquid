@@ -1,0 +1,49 @@
+{%- comment -%} Nummererede trin, fx forløbet fra første henvendelse til en side, der kører. {%- endcomment -%}
+<section class="section steps" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container">
+    <div class="steps__head">
+      {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
+    </div>
+    <ol class="steps__list" role="list">
+      {%- for block in section.blocks -%}
+        <li class="steps__item" {{ block.shopify_attributes }}>
+          <span class="steps__num" aria-hidden="true">{{ forloop.index }}</span>
+          <h3 class="steps__title">{{ block.settings.title | escape }}</h3>
+          <div class="steps__text rte">{{ block.settings.text }}</div>
+        </li>
+      {%- endfor -%}
+    </ol>
+    {%- if section.settings.note != blank or section.settings.link_label != blank -%}
+      <div class="steps__foot">
+        {%- if section.settings.note != blank -%}<div class="rte">{{ section.settings.note }}</div>{%- endif -%}
+        {% render 'button', label: section.settings.link_label, url: section.settings.link, style: section.settings.link_style %}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Trin",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "forloeb" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Sådan foregår det" },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "richtext", "id": "note", "label": "Note under trinene" },
+    { "type": "text", "id": "link_label", "label": "Knap – tekst" },
+    { "type": "url", "id": "link", "label": "Knap – link" },
+    { "type": "select", "id": "link_style", "label": "Knaptype", "options": [
+      { "value": "primary", "label": "Primær" }, { "value": "secondary", "label": "Sekundær" }
+    ], "default": "secondary" }
+  ],
+  "blocks": [
+    { "type": "step", "name": "Trin", "limit": 6, "settings": [
+      { "type": "text", "id": "title", "label": "Titel", "default": "Trin" },
+      { "type": "richtext", "id": "text", "label": "Tekst", "default": "<p>Tekst</p>" }
+    ] }
+  ],
+  "presets": [{ "name": "Trin", "blocks": [{ "type": "step" }, { "type": "step" }, { "type": "step" }] }]
+}
+{% endschema %}

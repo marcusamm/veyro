@@ -1,10 +1,13 @@
-<section class="section section--{{ section.settings.scheme }} rich-text" id="{{ section.settings.anchor | default: section.id | handle }}">
-  <div class="container container--narrow rich-text--{{ section.settings.align }}">
-    {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, align: section.settings.align %}
-    <div class="rte rte--long">{{ section.settings.text }}</div>
-    {%- if section.settings.link_label != blank -%}
-      <div class="rich-text__cta">{% render 'button', label: section.settings.link_label, url: section.settings.link, fallback: pages['kontakt'].url, style: 'primary', arrow: settings.button_arrow %}</div>
-    {%- endif -%}
+{%- comment -%} Fri tekst i læsevenlig bredde. {%- endcomment -%}
+<section class="section rich-text" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container">
+    <div class="rich-text__inner">
+      {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading %}
+      <div class="rte rte--long">{{ section.settings.text }}</div>
+      {%- if section.settings.link_label != blank -%}
+        <div class="actions">{% render 'button', label: section.settings.link_label, url: section.settings.link, fallback: pages['kontakt'].url, style: 'secondary' %}</div>
+      {%- endif -%}
+    </div>
   </div>
 </section>
 
@@ -13,12 +16,6 @@
   "name": "Tekst",
   "tag": "div",
   "settings": [
-    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
-      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
-    ], "default": "light" },
-    { "type": "select", "id": "align", "label": "Justering", "options": [
-      { "value": "left", "label": "Venstre" }, { "value": "center", "label": "Centreret" }
-    ], "default": "left" },
     { "type": "text", "id": "anchor", "label": "Anker-id" },
     { "type": "text", "id": "eyebrow", "label": "Lille overskrift" },
     { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Overskrift" },

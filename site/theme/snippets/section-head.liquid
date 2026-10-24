@@ -1,18 +1,15 @@
 {%- comment -%}
-  Fælles sektionshoved: eyebrow, overskrift og intro.
-  Parametre: eyebrow, heading, text (richtext), tag (h1/h2), align ('left'|'center'), size ('lg'|'md'), id
+  Fælles sektionshoved: lille label (bruges sparsomt), overskrift og intro.
+  Parametre: eyebrow, heading, text (richtext), tag (h1/h2), size ('xl'|'lg'|'md'), id, class
 {%- endcomment -%}
 {%- assign tag = tag | default: 'h2' -%}
+{%- assign size = size | default: 'lg' -%}
 {%- if eyebrow != blank or heading != blank or text != blank -%}
-  <header class="section-head section-head--{{ align | default: 'left' }}">
-    {%- if eyebrow != blank -%}
-      <p class="eyebrow">{{ eyebrow | escape }}</p>
-    {%- endif -%}
+  <header class="head{% if class %} {{ class }}{% endif %}">
+    {%- if eyebrow != blank -%}<p class="label">{{ eyebrow | escape }}</p>{%- endif -%}
     {%- if heading != blank -%}
-      <{{ tag }} class="section-head__title {% if size == 'lg' %}h1{% else %}h2{% endif %}"{% if id %} id="{{ id }}"{% endif %}>{{ heading }}</{{ tag }}>
+      <{{ tag }} class="head__title t-{{ size }}"{% if id %} id="{{ id }}"{% endif %}>{{ heading }}</{{ tag }}>
     {%- endif -%}
-    {%- if text != blank -%}
-      <div class="section-head__text rte">{{ text }}</div>
-    {%- endif -%}
+    {%- if text != blank -%}<div class="head__text rte">{{ text }}</div>{%- endif -%}
   </header>
 {%- endif -%}

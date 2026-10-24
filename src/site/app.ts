@@ -333,7 +333,11 @@ async function pageHtml(c: Context<SiteEnv>, data: SiteData, path: string, r: Re
 /** Ting, der er forskellige for hver besøgende, sættes ind efter cachen */
 function personalize(c: Context<SiteEnv>, data: SiteData, html: string): string {
   const count = cartDrop(data, readCart(c)).item_count;
-  const badge = count > 0 ? `<span class="site-header__count" aria-label="${translate('cart.count', { count })}">${count}</span>` : '';
+  // Kurven vises kun i headeren, når der ligger noget i den
+  const badge =
+    count > 0
+      ? `<a class="site-header__cart" href="/cart">Kurv <span class="site-header__count" aria-label="${translate('cart.count', { count })}">${count}</span></a>`
+      : '';
   const nonce = c.get('nonce');
   return html.replace('<!--cart-count-->', badge).replace(/<script(?=[\s>])/g, `<script nonce="${nonce}"`);
 }

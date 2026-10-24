@@ -1,0 +1,80 @@
+{%- comment -%}
+  En ydelse, der svarer på fem spørgsmål: hvem er den til, hvad hjælper vi med, hvad er med,
+  hvad kræver en særskilt aftale, og hvordan kommer man videre.
+  Tre visninger, så siden ikke bliver ensformig: "split", "columns" og "compact".
+{%- endcomment -%}
+{%- liquid
+  assign s = section.settings
+  assign helps = s.helps | newline_to_br | split: '<br />'
+  assign included = s.included | newline_to_br | split: '<br />'
+  assign separate = s.separate | newline_to_br | split: '<br />'
+-%}
+<section class="section service service--{{ s.layout }}" id="{{ s.anchor | default: section.id | handle }}">
+  <div class="container service__inner">
+    <header class="service__head">
+      {%- if s.label != blank -%}<p class="label">{{ s.label | escape }}</p>{%- endif -%}
+      <h2 class="t-lg">{{ s.title | escape }}</h2>
+      {%- if s.intro != blank -%}<div class="lead rte">{{ s.intro }}</div>{%- endif -%}
+    </header>
+    <div class="service__body">
+      {%- if s.audience != blank -%}
+        <div class="service__part service__part--audience">
+          <h3 class="service__q">Hvem er det til?</h3>
+          <div class="rte">{{ s.audience }}</div>
+        </div>
+      {%- endif -%}
+      {%- if s.helps != blank -%}
+        <div class="service__part">
+          <h3 class="service__q">Det hjælper vi med</h3>
+          <ul class="ticks" role="list">{%- for l in helps -%}{%- assign line = l | strip -%}{%- if line != blank -%}<li>{{ line | escape }}</li>{%- endif -%}{%- endfor -%}</ul>
+        </div>
+      {%- endif -%}
+      {%- if s.included != blank -%}
+        <div class="service__part">
+          <h3 class="service__q">Det er med</h3>
+          <ul class="ticks" role="list">{%- for l in included -%}{%- assign line = l | strip -%}{%- if line != blank -%}<li>{{ line | escape }}</li>{%- endif -%}{%- endfor -%}</ul>
+        </div>
+      {%- endif -%}
+      {%- if s.separate != blank -%}
+        <div class="service__part">
+          <h3 class="service__q">Kræver en særskilt aftale</h3>
+          <ul class="dashes" role="list">{%- for l in separate -%}{%- assign line = l | strip -%}{%- if line != blank -%}<li>{{ line | escape }}</li>{%- endif -%}{%- endfor -%}</ul>
+        </div>
+      {%- endif -%}
+      <div class="service__part service__part--next">
+        <h3 class="service__q">Sådan kommer du videre</h3>
+        {%- if s.next != blank -%}<div class="rte">{{ s.next }}</div>{%- endif -%}
+        <div class="actions">
+          {% render 'button', label: s.button_label, url: s.button_link, style: 'primary' %}
+          {%- if s.secondary_label != blank -%}<a class="arrow-link" href="{{ s.secondary_link }}">{{ s.secondary_label | escape }}</a>{%- endif -%}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Ydelse",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "anchor", "label": "Anker-id" },
+    { "type": "select", "id": "layout", "label": "Visning", "options": [
+      { "value": "split", "label": "To kolonner" }, { "value": "columns", "label": "Spørgsmål i kolonner" }, { "value": "compact", "label": "Kompakt" }
+    ], "default": "split" },
+    { "type": "text", "id": "label", "label": "Lille overskrift", "info": "Fx Efter tilbud." },
+    { "type": "text", "id": "title", "label": "Titel", "default": "Ydelse" },
+    { "type": "richtext", "id": "intro", "label": "Kort intro" },
+    { "type": "richtext", "id": "audience", "label": "Hvem er det til?" },
+    { "type": "textarea", "id": "helps", "label": "Det hjælper vi med (én pr. linje)" },
+    { "type": "textarea", "id": "included", "label": "Det er med (én pr. linje)" },
+    { "type": "textarea", "id": "separate", "label": "Kræver en særskilt aftale (én pr. linje)" },
+    { "type": "richtext", "id": "next", "label": "Sådan kommer du videre" },
+    { "type": "text", "id": "button_label", "label": "Knaptekst", "default": "Aftal en demo" },
+    { "type": "url", "id": "button_link", "label": "Knaplink" },
+    { "type": "text", "id": "secondary_label", "label": "Ekstra link – tekst" },
+    { "type": "url", "id": "secondary_link", "label": "Ekstra link" }
+  ],
+  "presets": [{ "name": "Ydelse" }]
+}
+{% endschema %}

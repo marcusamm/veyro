@@ -1,0 +1,43 @@
+{%- comment -%}
+  Et pakkekort. Pris, interval og momsnote står altid samme sted.
+  Parametre: block (pakke-blok), layout ('summary'|'detail'), id_suffix (fx '-forside', så id'et er unikt på siden)
+  Status "coming" viser mærkatet (fx "På vej") og bruges til pakker, der ikke kan bestilles endnu.
+{%- endcomment -%}
+{%- liquid
+  assign s = block.settings
+  assign features = s.features | newline_to_br | split: '<br />'
+  assign limits = s.limits | newline_to_br | split: '<br />'
+  assign key = s.handle | default: s.title | handle
+  assign card_id = 'pakke-' | append: key | append: id_suffix
+-%}
+<li class="pc pc--{{ s.status }} pc--{{ layout | default: 'summary' }}" id="{{ card_id }}" {{ block.shopify_attributes }}>
+  <div class="pc__top">
+    <h3 class="pc__name">{{ s.title | escape }}</h3>
+    {%- if s.status == 'coming' and s.badge != blank -%}<span class="badge badge--coming">{{ s.badge | escape }}</span>{%- endif -%}
+  </div>
+  {%- if s.text != blank -%}<p class="pc__desc">{{ s.text | escape }}</p>{%- endif -%}
+  <div class="pc__price">
+    {%- if s.price_label != blank -%}<span class="pc__price-label">{{ s.price_label | escape }}</span>{%- endif -%}
+    <span class="pc__amount"><strong>{{ s.price | escape }}</strong>{%- if s.interval != blank -%}<span class="pc__interval">{{ s.interval | escape }}</span>{%- endif -%}</span>
+    {%- if s.vat != blank -%}<span class="pc__vat">{{ s.vat | escape }}</span>{%- endif -%}
+  </div>
+  {%- if features.size > 0 and s.features != blank -%}
+    {%- if layout == 'detail' and s.features_label != blank -%}<p class="pc__list-title">{{ s.features_label | escape }}</p>{%- endif -%}
+    <ul class="pc__list ticks" role="list">
+      {%- for f in features -%}{%- assign line = f | strip -%}{%- if line != blank -%}<li>{{ line | escape }}</li>{%- endif -%}{%- endfor -%}
+    </ul>
+  {%- endif -%}
+  {%- if layout == 'detail' and s.limits != blank -%}
+    {%- if s.limits_label != blank -%}<p class="pc__list-title">{{ s.limits_label | escape }}</p>{%- endif -%}
+    <ul class="pc__list pc__list--limits" role="list">
+      {%- for f in limits -%}{%- assign line = f | strip -%}{%- if line != blank -%}<li>{{ line | escape }}</li>{%- endif -%}{%- endfor -%}
+    </ul>
+  {%- endif -%}
+  {%- if layout == 'detail' and s.note != blank -%}<div class="pc__note rte">{{ s.note }}</div>{%- endif -%}
+  <div class="pc__actions">
+    {% render 'button', label: s.button_label, url: s.button_link, style: s.button_style %}
+    {%- if s.details_label != blank and s.details_link != blank -%}
+      <a class="pc__details" href="{{ s.details_link }}">{{ s.details_label | escape }}</a>
+    {%- endif -%}
+  </div>
+</li>

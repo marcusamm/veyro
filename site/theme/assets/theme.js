@@ -1,7 +1,7 @@
 /*
  * Veyro – tema-JavaScript
  * Ingen afhængigheder. Alt er progressiv forbedring: siden virker uden JS.
- * Moduler: header, reveal, proces, pakkerammer, systemdemo, FAQ, tabs, filter, formularer, cookies, varianter.
+ * Moduler: header, lagerdemo, designkoncepter, FAQ, formularer, cookies, varianter.
  */
 (() => {
   'use strict';
@@ -40,7 +40,7 @@
       toggle.setAttribute('aria-expanded', String(open));
       panel.hidden = !open;
       document.documentElement.classList.toggle('nav-open', open);
-      if (label) label.textContent = open ? strings.closeMenu : strings.openMenu;
+      if (label) label.textContent = open ? 'Luk' : 'Menu';
       if (open) {
         panel.querySelector('a')?.focus();
       } else if (returnFocus) {
@@ -60,115 +60,9 @@
     });
   }
 
-  /* ---------- Diskrete scroll-animationer ---------- */
-  let revealObserver;
-  function initReveal(root = document) {
-    const enabled = document.body.classList.contains('has-motion') && !reducedMotion.matches && 'IntersectionObserver' in window;
-    const items = root.querySelectorAll('[data-reveal]:not(.is-visible)');
-    if (!enabled) {
-      items.forEach((el) => el.classList.add('is-visible'));
-      return;
-    }
-    document.documentElement.classList.add('reveal-ready');
-    revealObserver =
-      revealObserver ||
-      new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('is-visible');
-              revealObserver.unobserve(entry.target);
-            }
-          });
-        },
-        { rootMargin: '0px 0px -8% 0px', threshold: 0.08 }
-      );
-    items.forEach((el) => revealObserver.observe(el));
-  }
-
   const motionAllowed = () => document.body.classList.contains('has-motion') && !reducedMotion.matches;
 
-  /* ---------- „Sådan arbejder vi“: orange streg over hvert trin, én gang ----------
-   * Trin, der bliver synlige samtidig (fire på række på desktop), aktiveres i rækkefølge;
-   * på mobil aktiveres hvert trin, når det kommer ind i skærmbilledet. */
-  function initProcess(root = document) {
-    const steps = Array.from(root.querySelectorAll('[data-process-step]:not(.is-active)'));
-    if (!steps.length) return;
-    if (!motionAllowed() || !('IntersectionObserver' in window)) {
-      steps.forEach((el) => el.classList.add('is-active'));
-      return;
-    }
-    const STAGGER = 250;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries
-          .filter((e) => e.isIntersecting)
-          .map((e) => e.target)
-          .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
-          .forEach((el, i) => {
-            el.style.setProperty('--step-delay', `${i * STAGGER}ms`);
-            el.classList.add('is-active');
-            observer.unobserve(el);
-          });
-      },
-      { rootMargin: '0px 0px -12% 0px', threshold: 0.35 }
-    );
-    steps.forEach((el) => {
-      el.classList.add('is-pending');
-      observer.observe(el);
-    });
-  }
-
-  /* ---------- Pakkekort: rammen tegnes rundt om kortet, én gang ----------
-   * Rammen er en SVG-kant, der som udgangspunkt er fuldt optrukket (uden JS eller ved reduceret
-   * bevægelse). Her skjules den kun, indtil kortet kommer ind i billedet, og tegnes så rundt. Kort,
-   * der bliver synlige samtidig, får en lille forskydning; på mobil aktiveres hvert kort for sig. */
-  function initFrames(root = document) {
-    const cards = Array.from(root.querySelectorAll('[data-frame]:not(.frame-pending):not(.frame-done)'));
-    if (!cards.length || !motionAllowed() || !('IntersectionObserver' in window)) return;
-    const STAGGER = 110;
-    const measure = (card) => {
-      const rect = card.querySelector('rect');
-      if (!rect || typeof rect.getTotalLength !== 'function') return false;
-      card.style.setProperty('--frame-len', Math.ceil(rect.getTotalLength()) + 1);
-      return true;
-    };
-    const finish = (card) => {
-      card.classList.remove('frame-pending', 'frame-drawing');
-      card.classList.add('frame-done');
-    };
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries
-          .filter((e) => e.isIntersecting)
-          .map((e) => e.target)
-          .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
-          .forEach((card, i) => {
-            observer.unobserve(card);
-            card.style.setProperty('--frame-delay', `${i * STAGGER}ms`);
-            card.classList.add('frame-drawing');
-            const rect = card.querySelector('rect');
-            rect.addEventListener('transitionend', () => finish(card), { once: true });
-            // Sikkerhedsnet, hvis transitionend aldrig kommer (fx skjult fane)
-            setTimeout(() => finish(card), 1400 + i * STAGGER);
-          });
-      },
-      { rootMargin: '0px 0px -10% 0px', threshold: 0.6 }
-    );
-    cards.forEach((card) => {
-      if (!measure(card)) return;
-      card.classList.add('frame-pending');
-      observer.observe(card);
-    });
-    // Ændres bredden, før rammen er tegnet, måles omkredsen igen
-    let resizeTimer;
-    window.addEventListener('resize', () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => cards.forEach((c) => c.classList.contains('frame-pending') && !c.classList.contains('frame-drawing') && measure(c)), 150);
-    }, { passive: true });
-  }
-
-  /* ---------- Systemdemo: „Prøv et eksempel“ ----------
+  /* ---------- Drift-demo: „Registrér forbrug“ ----------
    * Ændrer kun tallene på siden (fysisk og disponibel; reserveret er uændret). Intet gemmes eller sendes. */
   function initDemo(root = document) {
     root.querySelectorAll('[data-demo-try]').forEach((bar) => {
@@ -290,7 +184,7 @@
     });
   }
 
-  /* ---------- Forsidens eksempler: booking og webshop ----------
+  /* ---------- Designkoncepter: booking og webshop ----------
    * Kun lokalt på siden: der sendes ingen mails, oprettes ingen bookinger og betales intet.
    * Uden JS står eksemplerne i en udfyldt standardtilstand, og knapperne er skjulte. */
   function initExamples(root = document) {
@@ -400,84 +294,6 @@
     });
   }
 
-  /* ---------- Faneblade (ARIA tabs) ---------- */
-  function initTabs(root = document) {
-    root.querySelectorAll('[data-tabs]').forEach((wrap) => {
-      if (wrap.dataset.tabsReady) return;
-      wrap.dataset.tabsReady = 'true';
-      const tabs = Array.from(wrap.querySelectorAll('[role="tab"]'));
-      if (!tabs.length) return;
-      wrap.classList.add('tabs-ready');
-
-      const select = (tab, focus = false) => {
-        tabs.forEach((t) => {
-          const selected = t === tab;
-          t.setAttribute('aria-selected', String(selected));
-          t.tabIndex = selected ? 0 : -1;
-          const panel = document.getElementById(t.getAttribute('aria-controls'));
-          if (panel) panel.hidden = !selected;
-        });
-        if (focus) tab.focus();
-      };
-
-      select(tabs.find((t) => t.getAttribute('aria-selected') === 'true') || tabs[0]);
-
-      tabs.forEach((tab, i) => {
-        tab.addEventListener('click', () => select(tab));
-        tab.addEventListener('keydown', (e) => {
-          const vertical = tab.closest('[role="tablist"]')?.getAttribute('aria-orientation') === 'vertical';
-          const next = vertical ? 'ArrowDown' : 'ArrowRight';
-          const prev = vertical ? 'ArrowUp' : 'ArrowLeft';
-          let target;
-          if (e.key === next || (!vertical && e.key === 'ArrowDown') || (vertical && e.key === 'ArrowRight')) target = tabs[(i + 1) % tabs.length];
-          if (e.key === prev || (!vertical && e.key === 'ArrowUp') || (vertical && e.key === 'ArrowLeft')) target = tabs[(i - 1 + tabs.length) % tabs.length];
-          if (e.key === 'Home') target = tabs[0];
-          if (e.key === 'End') target = tabs[tabs.length - 1];
-          if (target) {
-            e.preventDefault();
-            select(target, true);
-          }
-        });
-      });
-
-      // Vertikal tabliste på store skærme
-      const list = wrap.querySelector('[role="tablist"]');
-      if (list && wrap.closest('.problems')) {
-        const mq = window.matchMedia('(min-width: 990px)');
-        const setOrientation = () => list.setAttribute('aria-orientation', mq.matches ? 'vertical' : 'horizontal');
-        setOrientation();
-        mq.addEventListener('change', setOrientation);
-      }
-    });
-  }
-
-  /* ---------- Filter (optimeringsområder) ---------- */
-  function initFilters(root = document) {
-    root.querySelectorAll('[data-filter]').forEach((group) => {
-      if (group.dataset.filterReady) return;
-      group.dataset.filterReady = 'true';
-      const list = document.getElementById(group.dataset.filter);
-      if (!list) return;
-      const status = group.parentElement.querySelector('[data-filter-status]');
-      const buttons = group.querySelectorAll('[data-filter-value]');
-      group.hidden = false;
-
-      buttons.forEach((btn) =>
-        btn.addEventListener('click', () => {
-          const value = btn.dataset.filterValue;
-          buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
-          let shown = 0;
-          list.querySelectorAll('[data-scope]').forEach((item) => {
-            const match = value === 'all' || item.dataset.scope.split(' ').includes(value);
-            item.hidden = !match;
-            if (match) shown += 1;
-          });
-          if (status) status.textContent = `${shown} / ${list.children.length}`;
-        })
-      );
-    });
-  }
-
   /* ---------- Formularvalidering (dansk) ---------- */
   // „Custom Shopify-løsning“ -> „custom-shopify-loesning“ (bruges til ?ydelse=)
   const slugify = (s) =>
@@ -488,6 +304,21 @@
       .replace(/å/g, 'aa')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
+
+  const ALIASES = {
+    'book-en-demo': 'aftal-en-demo',
+    'pakke-basis': 'pakke-hjemmeside',
+    webshop: 'pakke-webshop',
+    hjemmeside: 'pakke-hjemmeside',
+    booking: 'pakke-booking',
+    'almindelig-hjemmeside-eller-landingsside': 'pakke-hjemmeside',
+    'gratis-vurdering-af-min-hjemmeside': 'website-optimering',
+    'custom-shopify-loesning': 'shopify-specialudvikling',
+    'web-og-webshopdesign': 'aftal-en-demo',
+    'vedligeholdelse-af-eksisterende-hjemmeside': 'hosting-og-vedligeholdelse',
+    'optimering-fejlfinding-eller-vedligeholdelse': 'fejlfinding-og-teknisk-hjaelp',
+    tilkoeb: 'tilkoeb-eller-stoerre-aendring',
+  };
 
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
   const URL_RE = /^(https?:\/\/)?([a-z0-9æøå-]+\.)+[a-z]{2,}(:\d+)?(\/\S*)?$/i;
@@ -615,11 +446,12 @@
       );
     });
 
-    // Forvælg ydelse fra URL (?ydelse=handle)
+    // Forvælg ydelse fra URL (?ydelse=handle). Gamle nøgler fra tidligere links og mails virker stadig.
     const params = new URLSearchParams(window.location.search);
     root.querySelectorAll('select[data-preselect]').forEach((select) => {
-      const key = params.get(select.dataset.preselect);
-      if (!key) return;
+      const raw = params.get(select.dataset.preselect);
+      if (!raw) return;
+      const key = ALIASES[raw] || raw;
       const opt = Array.from(select.options).find((o) => o.value && (o.dataset.key === key || slugify(o.value) === key));
       if (opt) select.value = opt.value;
     });
@@ -721,18 +553,27 @@
 
   /* ---------- Init ---------- */
   function initSection(root) {
-    initReveal(root);
-    initProcess(root);
-    initFrames(root);
     initDemo(root);
     initExamples(root);
     initFaq(root);
-    initTabs(root);
-    initFilters(root);
     initForms(root);
   }
 
+  // Gamle ankre på Ydelser peger nu på de nye sider. Fx /pages/ydelser?pakke=drift#testkunde → Drift-siden.
+  const OLD_ANCHORS = {
+    '#testkunde': '/pages/drift',
+    '#webdesign': '/pages/priser',
+    '#pakke-basis': '/pages/priser',
+  };
+  const NEW_HASH = { '#pakke-basis': '#pakke-hjemmeside', '#webdesign': '' };
+  function redirectOldAnchors() {
+    const { pathname, hash, search } = window.location;
+    if (pathname !== '/pages/ydelser' || !OLD_ANCHORS[hash]) return;
+    window.location.replace(OLD_ANCHORS[hash] + search + (hash in NEW_HASH ? NEW_HASH[hash] : hash));
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    redirectOldAnchors();
     initHeader();
     initSection(document);
     initCookies();

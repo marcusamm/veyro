@@ -1,0 +1,73 @@
+{%- comment -%}
+  Drift (på vej): et uddrag af lagerportalen med fiktive data. Forklaringerne står som synlig tekst
+  ved kolonnerne, ved varen med lav beholdning og ved handlingen; på mobil under eksemplet.
+  "Registrér forbrug" (theme.js › initDemo) ændrer kun tallene her på siden. Intet gemmes eller sendes.
+  Disponibel = fysisk − reserveret.
+{%- endcomment -%}
+{%- assign rules = section.settings.rules | newline_to_br | split: '<br />' -%}
+<section class="section drift" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container drift__inner">
+    <div class="drift__copy">
+      {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
+      <ul class="drift__legend" role="list">
+        <li class="drift__legend-m"><strong>Fysisk</strong> er det, der står på lageret.</li>
+        <li class="drift__legend-m"><strong>Reserveret</strong> er varer på bekræftede ordrer.</li>
+        <li class="drift__legend-m"><strong>Disponibel</strong> er fysisk minus reserveret: det, der reelt kan bruges eller sælges.</li>
+        {%- for r in rules -%}
+          {%- assign line = r | strip -%}
+          {%- if line != blank -%}{%- assign parts = line | split: '|' -%}
+            <li><strong>{{ parts[0] | strip | escape }}.</strong> {{ parts[1] | strip | escape }}</li>
+          {%- endif -%}
+        {%- endfor -%}
+      </ul>
+    </div>
+    <figure class="demo__figure drift__demo">
+      <div class="app">
+        <div class="app__bar"><span>Lagerportal</span><span class="badge badge--on-dark">{{ section.settings.demo_badge | escape }}</span></div>
+        <table class="app__table">
+          <caption class="visually-hidden">Eksempel på lagerstatus med fiktive varer</caption>
+          <thead>
+            <tr>
+              <th scope="col">Vare</th>
+              <th scope="col" class="num">Fysisk<small class="app__note">på lageret</small></th>
+              <th scope="col" class="num">Reserveret<small class="app__note">på bekræftede ordrer</small></th>
+              <th scope="col" class="num">Disponibel<small class="app__note">kan bruges</small></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-demo-row><td>Arbejdshandsker, str. L<small>VN-1001</small></td><td class="num"><span data-demo-physical>120</span></td><td class="num"><span data-demo-reserved>24</span></td><td class="num"><b data-demo-available>96</b></td></tr>
+            <tr><td>Skruer 4×40, 200 stk.<small>VN-1022</small></td><td class="num">64</td><td class="num">8</td><td class="num"><b>56</b></td></tr>
+            <tr class="is-low"><td>Malertape 25 mm<small>VN-1014</small><small class="app__note app__note--low">Lav beholdning: under minimum på 10</small></td><td class="num">18</td><td class="num">12</td><td class="num"><b>6</b></td></tr>
+          </tbody>
+        </table>
+        <div class="app__action">
+          <div>
+            <p class="app__what">Job #214: 3 par arbejdshandsker brugt</p>
+            <p class="app__note app__note--action">Registreret forbrug trækker fra fysisk og disponibel. Reserveret er uændret.</p>
+          </div>
+          <div class="app__try" data-demo-try data-qty="3" hidden>
+            <button type="button" class="btn btn--primary btn--sm" data-demo-play data-label-reset="Nulstil eksempel">Registrér forbrug</button>
+            <p class="app__status" role="status" data-demo-status></p>
+          </div>
+        </div>
+      </div>
+      <figcaption class="concept__cap"><span class="badge">Demo</span>Eksempel – Drift er på vej. Varer og tal er fiktive.</figcaption>
+    </figure>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Drift: lagerdemo",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "lager" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Lageret opdateres, når forbrug registreres" },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "demo_badge", "label": "Mærkat på demoen", "default": "Fiktive data" },
+    { "type": "textarea", "id": "rules", "label": "Lagerregler (én pr. linje: Titel | Forklaring)" }
+  ],
+  "presets": [{ "name": "Drift: lagerdemo" }]
+}
+{% endschema %}

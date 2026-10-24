@@ -1,0 +1,162 @@
+{
+  "sections": {
+    "hero": {
+      "type": "page-hero",
+      "settings": {
+        "show_breadcrumbs": true,
+        "parent_label": "Løsninger",
+        "parent_link": "/pages/ydelser",
+        "heading": "Booking, så kunderne selv kan finde en ledig tid",
+        "text": "<p>En hjemmeside med online booking. Kunderne booker, flytter og aflyser selv, og både I og kunden får besked på mail.</p>",
+        "primary_label": "Aftal en demo",
+        "primary_link": "/pages/kontakt?ydelse=pakke-booking#formular",
+        "secondary_label": "Se priser",
+        "secondary_link": "/pages/priser#pakke-booking",
+        "note": "299 kr./md. ekskl. moms · Gratis oprettelse · Første måned gratis · Ingen binding",
+        "concept": "salon",
+        "concept_caption": "Salon Nord er en fiktiv virksomhed med fiktive priser."
+      }
+    },
+    "indhold": {
+      "type": "service",
+      "settings": {
+        "anchor": "indhold",
+        "layout": "split",
+        "label": "Booking · 299 kr./md. ekskl. moms",
+        "title": "Det får I",
+        "intro": "<p>En hjemmeside med online booking, så kunderne selv kan finde og booke en ledig tid.</p>",
+        "audience": "<p>Til virksomheder, der arbejder med tidsbestilling: frisører, klinikker, behandlere, værksteder og rådgivere.</p>",
+        "helps": "Opsætning af jeres ydelser og ledige tider\nOverblik over aftaler\nBookingkalender til hver medarbejder\nKobling af bookingkalenderen til kalenderen på mobilen",
+        "included": "Alt i Hjemmeside\nOnline booking\nOverblik over aftaler og ledige tider\nOpsætning af jeres ydelser\nKunden kan selv booke, flytte og aflyse\nBekræftelse og besked om ændring eller aflysning på mail til både jer og kunden\nEjer og medarbejdere kan koble bookingkalenderen til kalenderen på deres mobil\nOp til 3 medarbejdere med egen bruger eller bookingkalender",
+        "separate": "Flere end 3 medarbejdere (99 kr./md. pr. ekstra medarbejder)\nSMS, påmindelser og onlinebetaling\nIntegrationer med andre systemer\nNye funktioner og større ændringer",
+        "next": "<p>Aftal en demo, så viser vi, hvordan booking kan se ud hos jer. Fortæl gerne, hvor mange medarbejdere der skal have en kalender.</p>",
+        "button_label": "Aftal en demo",
+        "button_link": "/pages/kontakt?ydelse=pakke-booking#formular",
+        "secondary_label": "Se alle priser og vilkår",
+        "secondary_link": "/pages/priser"
+      }
+    },
+    "forklaring": {
+      "type": "info-grid",
+      "settings": {
+        "anchor": "rammer",
+        "layout": "rows",
+        "heading": "Mails, kalender og medarbejdere",
+        "text": ""
+      },
+      "blocks": {
+        "item_1": {
+          "type": "item",
+          "settings": {
+            "title": "Mails til jer og kunden",
+            "text": "<p>Når en tid bookes, flyttes eller aflyses, får både I og kunden en mail.</p>"
+          }
+        },
+        "item_2": {
+          "type": "item",
+          "settings": {
+            "title": "Kalenderen på mobilen",
+            "text": "<p>Ejer og medarbejdere kan koble bookingkalenderen til kalenderen på deres mobil, så aftalerne kan ses dér. Aftaler oprettes, flyttes og aflyses i bookingsystemet.</p>"
+          }
+        },
+        "item_3": {
+          "type": "item",
+          "settings": {
+            "title": "Op til 3 medarbejdere",
+            "text": "<p>En medarbejder er en person med egen bruger eller bookingkalender. En person med begge dele tæller kun én gang, og ejeren tæller med, hvis ejeren har adgang.</p>"
+          }
+        },
+        "item_4": {
+          "type": "item",
+          "settings": {
+            "title": "Kun på hjemmesiden",
+            "text": "<p>Medarbejdere, der kun vises på hjemmesiden med navn eller billede, er gratis.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "item_1",
+        "item_2",
+        "item_3",
+        "item_4"
+      ]
+    },
+    "faq": {
+      "type": "faq",
+      "settings": {
+        "anchor": "faq",
+        "eyebrow": "",
+        "heading": "Spørgsmål om Booking",
+        "text": "",
+        "link_label": "",
+        "link": "",
+        "schema": true
+      },
+      "blocks": {
+        "question_1": {
+          "type": "question",
+          "settings": {
+            "question": "Hvem får en mail, når der bookes?",
+            "answer": "<p>Både I og kunden får en bekræftelse. Det samme gælder, når en tid flyttes eller aflyses.</p>"
+          }
+        },
+        "question_2": {
+          "type": "question",
+          "settings": {
+            "question": "Kan vi se aftalerne i kalenderen på mobilen?",
+            "answer": "<p>Ja. Ejer og medarbejdere kan koble bookingkalenderen til kalenderen på deres mobil, så aftalerne kan ses dér. Ændringer laver I i bookingsystemet.</p>"
+          }
+        },
+        "question_3": {
+          "type": "question",
+          "settings": {
+            "question": "Kan kunderne betale online eller få en SMS?",
+            "answer": "<p>Nej. Onlinebetaling, SMS og påmindelser er ikke en del af Booking. Kunden får bekræftelse og besked om ændringer på mail.</p>"
+          }
+        },
+        "question_4": {
+          "type": "question",
+          "settings": {
+            "question": "Hvordan får vi flere brugere?",
+            "answer": "<p>Kontakt os, så tilføjer vi dem. Booking og Webshop har 3 brugere med, og hver ekstra bruger koster 99 kr./md. ekskl. moms. I Booking tæller en person med egen bruger eller bookingkalender, og en person med begge dele tæller kun én gang. Ejeren tæller med, hvis ejeren har adgang. Medarbejdere, der kun vises på hjemmesiden med navn eller billede, er gratis.</p>"
+          }
+        },
+        "question_5": {
+          "type": "question",
+          "settings": {
+            "question": "Er den første måned gratis?",
+            "answer": "<p>Ja. Oprettelsen er gratis inden for det aftalte indhold, og den første måned er gratis fra den dag, løsningen går live og er klar til brug. Derefter betaler I den faste månedspris. Der er ingen binding.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "question_1",
+        "question_2",
+        "question_3",
+        "question_4",
+        "question_5"
+      ]
+    },
+    "cta": {
+      "type": "cta-banner",
+      "settings": {
+        "anchor": "kom-i-gang",
+        "heading": "Vil du se, hvordan det kan se ud hos jer?",
+        "text": "<p>Vi viser en demo inden for 24–48 timer. Det er uforpligtende.</p>",
+        "label": "Aftal en demo",
+        "link": "/pages/kontakt?ydelse=pakke-booking#formular",
+        "secondary_label": "Se eksempler",
+        "secondary_link": "/pages/eksempler",
+        "show_email": true,
+        "email_prefix": "Eller skriv til"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "indhold",
+    "forklaring",
+    "faq",
+    "cta"
+  ]
+}

@@ -34,13 +34,12 @@
 -%}
 
 {%- if tp_url != blank or request.design_mode -%}
-<section class="section section--{{ section.settings.scheme }} note-banner trustpilot" id="{{ section.settings.anchor | default: section.id | handle }}">
+<section class="section section--tight note trustpilot" id="{{ section.settings.anchor | default: section.id | handle }}">
   <div class="container">
-    <div class="note-banner__box trustpilot__box">
-      <span class="note-banner__icon"><svg class="icon icon--star" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></span>
-      <div class="note-banner__content">
-        <h2 class="h3 note-banner__title">{{ section.settings.heading }}</h2>
-        {%- if section.settings.text != blank -%}<div class="rte note-banner__text">{{ section.settings.text }}</div>{%- endif -%}
+    <div class="note__box trustpilot__box">
+      <div class="note__content">
+        <h2 class="t-sm note__title">{{ section.settings.heading }}</h2>
+        {%- if section.settings.text != blank -%}<div class="rte">{{ section.settings.text }}</div>{%- endif -%}
 
         {%- if tp_url == blank -%}
           <p class="small muted trustpilot__note">{{ 'trustpilot.editor_missing_url' | t }}</p>
@@ -99,7 +98,7 @@
         {%- endif -%}
       </div>
       {%- if tp_url != blank -%}
-        <div class="note-banner__actions">
+        <div class="note__actions">
           {%- if section.settings.link_label != blank -%}
             <a class="btn btn--secondary" href="{{ tp_url | escape }}" target="_blank" rel="noopener"><span>{{ section.settings.link_label | escape }}</span></a>
           {%- endif -%}

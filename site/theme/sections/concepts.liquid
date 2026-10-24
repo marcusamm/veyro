@@ -1,0 +1,70 @@
+{%- comment -%}
+  Designkoncepter i stor størrelse: tekst ved siden af et læsbart udsnit af siden.
+  Virksomhederne er fiktive og mærkes "Designkoncept". Interaktionen i booking og webshop sker kun
+  lokalt i browseren (theme.js › initExamples).
+{%- endcomment -%}
+<section class="section concepts" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container">
+    {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text, tag: section.settings.heading_tag %}
+    <div class="concepts__list">
+      {%- for block in section.blocks -%}
+        {%- assign s = block.settings -%}
+        {%- assign points = s.points | newline_to_br | split: '<br />' -%}
+        <article class="concepts__item" id="{{ s.anchor | default: block.id | handle }}" {{ block.shopify_attributes }}>
+          <div class="concepts__text">
+            {%- if s.package != blank -%}<p class="label">{{ s.package | escape }}</p>{%- endif -%}
+            <h3 class="t-md">{{ s.title | escape }}</h3>
+            {%- if s.text != blank -%}<div class="rte">{{ s.text }}</div>{%- endif -%}
+            {%- if s.points != blank -%}
+              <ul class="ticks" role="list">
+                {%- for p in points -%}{%- assign line = p | strip -%}{%- if line != blank -%}<li>{{ line | escape }}</li>{%- endif -%}{%- endfor -%}
+              </ul>
+            {%- endif -%}
+            {%- if s.link_label != blank -%}<a class="arrow-link" href="{{ s.link }}">{{ s.link_label | escape }}</a>{%- endif -%}
+          </div>
+          <figure class="concept">
+            {% render 'concept', name: s.concept, uid: block.id, photo: s.photo, alt: s.photo_alt %}
+            <figcaption class="concept__cap"><span class="badge">Designkoncept</span>{{ s.caption | escape }}</figcaption>
+          </figure>
+        </article>
+      {%- endfor -%}
+    </div>
+    {%- if section.settings.link_label != blank -%}
+      <div class="concepts__more">{% render 'button', label: section.settings.link_label, url: section.settings.link, style: 'secondary' %}</div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Designkoncepter",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "eksempler" },
+    { "type": "select", "id": "heading_tag", "label": "Overskriftsniveau", "options": [{ "value": "h2", "label": "H2" }, { "value": "h1", "label": "H1" }], "default": "h2" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Eksempler" },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "link_label", "label": "Knap under eksemplerne – tekst" },
+    { "type": "url", "id": "link", "label": "Knap under eksemplerne – link" }
+  ],
+  "blocks": [
+    { "type": "concept", "name": "Designkoncept", "limit": 3, "settings": [
+      { "type": "select", "id": "concept", "label": "Koncept", "options": [
+        { "value": "craft", "label": "Hjemmeside (tømrer)" }, { "value": "salon", "label": "Booking (frisør)" }, { "value": "shop", "label": "Webshop (keramik)" }
+      ], "default": "craft" },
+      { "type": "text", "id": "anchor", "label": "Anker-id" },
+      { "type": "text", "id": "package", "label": "Pakke (lille overskrift)" },
+      { "type": "text", "id": "title", "label": "Titel", "default": "Hjemmeside til en håndværker" },
+      { "type": "richtext", "id": "text", "label": "Tekst" },
+      { "type": "textarea", "id": "points", "label": "Det viser eksemplet (én pr. linje)" },
+      { "type": "text", "id": "link_label", "label": "Link – tekst" },
+      { "type": "url", "id": "link", "label": "Link" },
+      { "type": "image_picker", "id": "photo", "label": "Foto", "info": "Brug kun fotos, I har ret til at bruge." },
+      { "type": "text", "id": "photo_alt", "label": "Alt-tekst til fotoet" },
+      { "type": "text", "id": "caption", "label": "Tekst under eksemplet", "default": "Fiktiv virksomhed." }
+    ] }
+  ],
+  "presets": [{ "name": "Designkoncepter", "blocks": [{ "type": "concept" }] }]
+}
+{% endschema %}

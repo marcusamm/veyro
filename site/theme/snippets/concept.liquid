@@ -1,0 +1,144 @@
+{%- comment -%}
+  Designkoncepter: tre fiktive virksomheder, vist som et udsnit af en rigtig side i et browservindue.
+  Parametre:
+    name   'craft' (hjemmeside, tømrer) | 'salon' (booking, frisør) | 'shop' (webshop, keramik)
+    uid    unik id-del (flere eksempler på samme side)
+    photo  billede fra Admin › Billeder (valgfrit) · photo_src: adresse på et billede i temaet (valgfrit)
+    alt    alt-tekst til billedet
+    eager  true for eksemplet øverst på siden
+  Uden billede vises en udgave af layoutet, der er bygget til at stå uden foto (ingen pladsholdere eller tegninger).
+  Booking- og webshopeksemplet kan bruges (theme.js › initExamples), men alt sker lokalt i browseren:
+  der sendes ingen mails, oprettes ingen bookinger og betales intet. Uden JavaScript vises en udfyldt standardtilstand.
+{%- endcomment -%}
+{%- liquid
+  assign src = ''
+  assign w = 1200
+  assign h = 800
+  if photo != blank
+    assign src = photo | image_url: width: 1400
+    assign w = photo.width
+    assign h = photo.height
+  elsif photo_src != blank
+    assign src = photo_src
+    if photo_w
+      assign w = photo_w
+      assign h = photo_h
+    endif
+  endif
+  if eager
+    assign loading = 'eager'
+  else
+    assign loading = 'lazy'
+  endif
+-%}
+{%- case name -%}
+{%- when 'craft' -%}
+  <div class="browser" data-concept="craft">
+    <div class="browser__bar" aria-hidden="true"><span class="browser__url">holm-toemrer.dk</span></div>
+    <div class="cx cx-craft{% if src != blank %} has-photo{% endif %}" aria-hidden="true">
+      <div class="cx-craft__nav">
+        <span class="cx-craft__logo">Holm<b>Tømrer</b></span>
+        <span class="cx-craft__links"><span>Ydelser</span><span>Opgaver</span><span>Om os</span><span>Kontakt</span></span>
+        <span class="cx-btn cx-craft__cta">Få et tilbud</span>
+      </div>
+      <div class="cx-craft__hero">
+        <div class="cx-craft__intro">
+          <span class="cx-craft__kicker">Tømrer og snedker · Sydsjælland</span>
+          <span class="cx-craft__h">Tag, vinduer og tilbygninger. Gjort ordentligt fra start.</span>
+          <span class="cx-craft__p">Fast pris efter besigtigelse, og du ved hele tiden, hvornår vi kommer.</span>
+          <span class="cx-craft__actions"><span class="cx-btn">Få et tilbud</span><span class="cx-link">Se opgaver</span></span>
+        </div>
+        {%- if src != blank -%}
+          <img class="cx-craft__photo" src="{{ src }}" alt="" width="{{ w }}" height="{{ h }}" loading="{{ loading }}" decoding="async">
+        {%- endif -%}
+      </div>
+      <div class="cx-craft__services">
+        <span><b>Tag og isolering</b><small>Nyt tag, reparationer og efterisolering af loft.</small></span>
+        <span><b>Vinduer og døre</b><small>Udskiftning og montering med fuger og lister.</small></span>
+        <span><b>Tilbygninger</b><small>Fra tegning til færdig tilbygning eller carport.</small></span>
+        <span><b>Terrasser og hegn</b><small>Træ, der er lagt, så det holder.</small></span>
+      </div>
+      <div class="cx-craft__strip"><span>Gratis besigtigelse</span><span>Fast pris i tilbuddet</span><span>Vi rydder op efter os</span></div>
+    </div>
+  </div>
+
+{%- when 'salon' -%}
+  {%- assign svc = 'Ex-' | append: uid | append: '-svc' -%}
+  {%- assign time = 'Ex-' | append: uid | append: '-time' -%}
+  <div class="browser" data-concept="salon">
+    <div class="browser__bar" aria-hidden="true"><span class="browser__url">salon-nord.dk/book</span></div>
+    <div class="cx cx-salon{% if src != blank %} has-photo{% endif %}" data-example="booking">
+      <div class="cx-salon__nav" aria-hidden="true">
+        <span class="cx-salon__logo">Salon Nord</span>
+        <span class="cx-salon__links"><span>Behandlinger</span><span class="is-on">Book tid</span><span>Kontakt</span></span>
+      </div>
+      {%- if src != blank -%}
+        <img class="cx-salon__photo" src="{{ src }}" alt="" width="{{ w }}" height="{{ h }}" loading="{{ loading }}" decoding="async">
+      {%- endif -%}
+      <div class="cx-salon__body">
+        <fieldset class="cx-salon__step">
+          <legend><span class="cx-salon__num" aria-hidden="true">1</span>Vælg behandling</legend>
+          <label class="cx-opt"><input type="radio" name="{{ svc }}" value="Dameklip" data-label="Dameklip, 45 min" checked><span><b>Dameklip</b><small>45 min</small></span><em>450 kr.</em></label>
+          <label class="cx-opt"><input type="radio" name="{{ svc }}" value="Klip og føn" data-label="Klip og føn, 60 min"><span><b>Klip og føn</b><small>60 min</small></span><em>590 kr.</em></label>
+          <label class="cx-opt"><input type="radio" name="{{ svc }}" value="Farve og klip" data-label="Farve og klip, 2 timer"><span><b>Farve og klip</b><small>2 timer</small></span><em>1.150 kr.</em></label>
+        </fieldset>
+        <fieldset class="cx-salon__step">
+          <legend><span class="cx-salon__num" aria-hidden="true">2</span>Vælg tid · torsdag 6. november</legend>
+          <div class="cx-times">
+            <label class="cx-time"><input type="radio" name="{{ time }}" value="09:00"><span>09:00</span></label>
+            <label class="cx-time is-taken"><input type="radio" name="{{ time }}" value="10:30" disabled><span>10:30<small>Optaget</small></span></label>
+            <label class="cx-time"><input type="radio" name="{{ time }}" value="13:00" checked><span>13:00</span></label>
+            <label class="cx-time"><input type="radio" name="{{ time }}" value="14:30"><span>14:30</span></label>
+            <label class="cx-time"><input type="radio" name="{{ time }}" value="16:00"><span>16:00</span></label>
+          </div>
+        </fieldset>
+        <div class="cx-salon__confirm" data-example-confirm>
+          <p class="cx-salon__confirm-title"><span class="cx-salon__num" aria-hidden="true">3</span>Din booking</p>
+          <p class="cx-salon__summary" role="status" data-example-status>Dameklip, 45 min, torsdag 6. november kl. 13:00.</p>
+          <p class="cx-salon__mail">Du får en bekræftelse på mail med et link, hvor du kan flytte eller aflyse.</p>
+          <button type="button" class="cx-btn cx-btn--salon" data-example-book hidden>Bekræft booking</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+{%- when 'shop' -%}
+  {%- assign color = 'Ex-' | append: uid | append: '-color' -%}
+  <div class="browser" data-concept="shop">
+    <div class="browser__bar" aria-hidden="true"><span class="browser__url">lervaerk.dk/krus</span></div>
+    <div class="cx cx-shop{% if src != blank %} has-photo{% endif %}" data-example="shop" data-price="185">
+      <div class="cx-shop__nav" aria-hidden="true">
+        <span class="cx-shop__logo">lerværk</span>
+        <span class="cx-shop__links"><span class="is-on">Krus</span><span>Skåle</span><span>Fade</span><span>Værkstedet</span></span>
+      </div>
+      <div class="cx-shop__body">
+        {%- if src != blank -%}
+          <img class="cx-shop__photo" src="{{ src }}" alt="{{ alt | escape }}" width="{{ w }}" height="{{ h }}" loading="{{ loading }}" decoding="async">
+        {%- endif -%}
+        <div class="cx-shop__product">
+          <p class="cx-shop__crumb" aria-hidden="true">Krus / Stentøj</p>
+          <p class="cx-shop__title">Krus, håndlavet</p>
+          <p class="cx-shop__price">185 kr.</p>
+          <p class="cx-shop__text">Drejet i stentøj og glaseret i hånd. 30 cl. Tåler opvaskemaskine.</p>
+          <fieldset class="cx-shop__variants">
+            <legend>Glasur</legend>
+            <label class="cx-glaze cx-glaze--sand"><input type="radio" name="{{ color }}" value="Sand" checked><span>Sand</span></label>
+            <label class="cx-glaze cx-glaze--skov"><input type="radio" name="{{ color }}" value="Skovgrøn"><span>Skovgrøn</span></label>
+            <label class="cx-glaze cx-glaze--hav"><input type="radio" name="{{ color }}" value="Blågrå"><span>Blågrå</span></label>
+          </fieldset>
+          <p class="cx-shop__stock">På lager · sendes inden for 2 hverdage</p>
+          <button type="button" class="cx-btn cx-btn--shop" data-example-add hidden>Læg i kurv</button>
+          <p class="visually-hidden" role="status" data-example-status></p>
+        </div>
+        <div class="cx-shop__cart">
+          <p class="cx-shop__cart-title">Kurv <span data-example-count>1 vare</span></p>
+          <ul class="cx-shop__lines" role="list" data-example-lines>
+            <li><span>Håndlavet krus, Sand</span><span>1 × 185 kr.</span></li>
+          </ul>
+          <p class="cx-shop__total"><span>I alt</span><b data-example-total>185 kr.</b></p>
+          <p class="cx-shop__checkout">Kassen er ikke en del af eksemplet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+{%- endcase -%}

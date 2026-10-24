@@ -3,403 +3,360 @@
     "hero": {
       "type": "home-hero",
       "settings": {
-        "eyebrow": "Hjemmesider til mindre virksomheder",
-        "heading": "Hjemmeside,\nbooking\nog webshop.",
-        "text": "<p>Vi sætter løsningen op for dig og holder den ved lige for en fast månedspris. Du skal ikke selv samle noget.</p>",
+        "heading": "En hjemmeside, der passer til din forretning.",
+        "text": "<p>Vi laver hjemmesider, booking og webshops til mindre virksomheder og hjælper med at holde dem opdateret. Fast månedspris, og vi sætter det hele op for dig.</p>",
         "primary_label": "Se priser",
-        "primary_link": "#priser",
-        "secondary_label": "Skriv til os",
-        "secondary_link": "#kontakt",
-        "facts": "Basis 199 kr./md. · Booking 299 kr./md. · ekskl. moms · første måned gratis",
-        "caption": "Eksempel på en hjemmeside med booking. Virksomheden er fiktiv."
+        "primary_link": "/pages/priser",
+        "secondary_label": "Se eksempler",
+        "secondary_link": "/pages/eksempler",
+        "facts": "Fra 199 kr./md. ekskl. moms · Første måned gratis · Ingen binding",
+        "concept": "craft",
+        "caption": "Holm Tømrer er en fiktiv virksomhed. Udsnittet viser, hvordan pakken Hjemmeside kan se ud."
       }
     },
-    "benefits": {
-      "type": "home-benefits",
+    "eksempler": {
+      "type": "concepts",
       "settings": {
-        "anchor": "fordele",
-        "heading": "Vi sætter det op. Du passer din forretning.",
-        "text": "<p>Du får en løsning, der er klar til brug, og en fast kontakt, når noget skal ændres.</p>"
+        "anchor": "eksempler",
+        "heading_tag": "h2",
+        "heading": "Udvalgte eksempler",
+        "text": "<p>Booking og webshop i rigtig størrelse. Du kan klikke i dem: intet bliver sendt, booket eller betalt.</p>",
+        "link_label": "Se eksempler",
+        "link": "/pages/eksempler"
       },
       "blocks": {
-        "benefit1": {
-          "type": "benefit",
+        "concept_1": {
+          "type": "concept",
           "settings": {
-            "title": "En professionel løsning, vi hjælper med at sætte op",
-            "text": "<p>Vi tilpasser hjemmesiden til jeres udtryk og sætter ydelser, kontaktoplysninger og eventuelt booking op. Den virker på mobil, tablet og computer.</p>"
+            "concept": "salon",
+            "package": "Booking · 299 kr./md. ekskl. moms",
+            "title": "Booking til en frisørsalon",
+            "text": "<p>Kunden vælger behandling og tid, og begge får en bekræftelse på mail. Kunden kan selv flytte eller aflyse.</p>",
+            "points": "Ydelser med varighed og pris\nOptagne tider kan ikke vælges\nBekræftelse til både salon og kunde",
+            "link_label": "Se hvad Booking indeholder",
+            "link": "/pages/booking",
+            "caption": "Salon Nord er en fiktiv virksomhed med fiktive priser."
           }
         },
-        "benefit2": {
-          "type": "benefit",
+        "concept_2": {
+          "type": "concept",
           "settings": {
-            "title": "En klar månedspris med konkret, aftalt indhold",
-            "text": "<p>Du kan se præcis, hvad der er med i pakken, før du bestiller. Særlige ønsker uden for pakken aftales og prissættes på forhånd.</p>"
-          }
-        },
-        "benefit3": {
-          "type": "benefit",
-          "settings": {
-            "title": "Hjælp til vedligeholdelse og mindre justeringer",
-            "text": "<p>Hosting og teknisk vedligeholdelse er en del af abonnementet, og du kan skrive til os, når noget på siden skal rettes.</p>"
+            "concept": "shop",
+            "package": "Webshop · 499 kr./md. ekskl. moms",
+            "title": "Lille webshop til et keramikværksted",
+            "text": "<p>En produktside med varianter og en kurv, der opdateres med det samme.</p>",
+            "points": "Tre glasurer er ét produkt med tre varianter\nOp til 50 aktive produkter og 200 varianter\nI kan selv rette produkter bagefter",
+            "link_label": "Se hvad Webshop indeholder",
+            "link": "/pages/webshop",
+            "caption": "Lerværk er en fiktiv virksomhed med fiktive priser."
           }
         }
       },
       "block_order": [
-        "benefit1",
-        "benefit2",
-        "benefit3"
+        "concept_1",
+        "concept_2"
       ]
     },
-    "products": {
-      "type": "home-products",
-      "settings": {
-        "anchor": "losninger",
-        "heading": "Det kan vi sætte op for dig",
-        "text": "<p>Tre eksempler med fiktive virksomheder. Du kan klikke i booking og webshop. Intet bliver sendt, booket eller betalt.</p>",
-        "site_title": "Hjemmeside",
-        "site_price": "Basis · 199 kr./md. ekskl. moms",
-        "site_text": "<p>En professionel hjemmeside med jeres ydelser, kontaktoplysninger og kontaktformular. Hosting og teknisk vedligeholdelse er med.</p>",
-        "site_link_label": "Se hvad Basis indeholder",
-        "site_link": "/pages/ydelser#pakke-basis",
-        "booking_title": "Booking",
-        "booking_price": "Booking · 299 kr./md. ekskl. moms",
-        "booking_text": "<p>Alt fra Basis plus online booking og en kalender med overblik over aftalerne. Op til 3 medarbejdere er inkluderet.</p>",
-        "booking_link_label": "Se hvad Booking indeholder",
-        "booking_link": "/pages/ydelser#pakke-booking",
-        "shop_title": "Webshop",
-        "shop_price": "Webshop · pris følger",
-        "shop_text": "<p>En webshop med jeres varer, varianter og kurv. Vi afklarer betaling og levering med jer, før vi går i gang.</p>",
-        "shop_link_label": "Spørg om en webshop",
-        "shop_link": "/?ydelse=webshop#kontakt",
-        "note": "<p>Har du allerede en hjemmeside? Vi hjælper også med optimering, fejlfinding og vedligeholdelse. <a href=\"/pages/ydelser\">Se alle ydelser</a></p>"
-      }
-    },
     "priser": {
-      "type": "home-prices",
+      "type": "packages",
       "settings": {
         "anchor": "priser",
-        "heading": "Priser",
-        "text": "<p>Fast månedspris og konkret indhold. Vælg en pakke, så sender vi et tilbud med pris og vilkår. Du betaler ikke her.</p>",
-        "offer": "Gratis oprettelse · Første måned gratis · Ingen binding",
-        "offer_note": "Gælder Basis og Booking. Første måned regnes fra den dag, løsningen går live.",
-        "note": "<p>Alle priser er ekskl. moms. Har du brug for ekstra tilvalg eller flere medarbejdere, så <a href=\"#kontakt\">kontakt os</a>, så aftaler vi pris på forhånd. <a href=\"/pages/ydelser#priser\">Se alle vilkår</a>.</p>"
+        "layout": "summary",
+        "id_suffix": "-forside",
+        "heading": "Tre pakker med fast månedspris",
+        "text": "<p>Vælg den pakke, der passer. Alle priser er ekskl. moms.</p>",
+        "terms": "Gratis oprettelse · Første måned gratis · Ingen binding",
+        "note": "<p>Har du brug for flere brugere eller noget, der ikke står her? <a href=\"/pages/kontakt?ydelse=tilkoeb-eller-stoerre-aendring#formular\">Kontakt os om tilkøb</a>, så aftaler vi pris på forhånd. <a href=\"/pages/priser\">Se alle vilkår</a>.</p>"
       },
       "blocks": {
-        "package1": {
+        "package_1": {
           "type": "package",
           "settings": {
-            "title": "Basis",
+            "handle": "hjemmeside",
+            "title": "Hjemmeside",
             "status": "available",
-            "badge": "Kan bestilles nu",
-            "text": "Hjemmeside med hosting og vedligeholdelse",
-            "price_label": "",
+            "text": "En professionel hjemmeside til virksomheder, der vil være nemme at finde og kontakte.",
             "price": "199 kr.",
             "interval": "/md.",
             "vat": "ekskl. moms",
-            "features": "Hjemmeside tilpasset virksomhedens udtryk\nDesign til mobil, tablet og computer\nYdelser, kontaktoplysninger og kontaktformular\nHosting og teknisk vedligeholdelse",
-            "button_label": "Vælg Basis",
-            "button_link": "/?ydelse=pakke-basis#kontakt",
+            "price_label": "",
+            "badge": "",
+            "features": "Op til 5 sider med design tilpasset jer\nVirker på mobil, tablet og computer\nKontaktformular og kontaktoplysninger\nHosting og teknisk vedligeholdelse\n3 korrekturrunder under opsætningen\nMindre løbende justeringer",
+            "features_label": "Det er med",
+            "button_label": "Aftal en demo",
+            "button_link": "/pages/kontakt?ydelse=pakke-hjemmeside#formular",
             "button_style": "primary",
-            "details_label": "Se alle detaljer",
-            "details_link": "/pages/ydelser#pakke-basis"
+            "details_label": "Se hele indholdet",
+            "details_link": "/pages/hjemmeside"
           }
         },
-        "package2": {
+        "package_2": {
           "type": "package",
           "settings": {
+            "handle": "booking",
             "title": "Booking",
             "status": "available",
-            "badge": "Kan bestilles nu",
-            "text": "Hjemmeside med online booking",
-            "price_label": "",
+            "text": "En hjemmeside med online booking, så kunderne selv kan finde og booke en ledig tid.",
             "price": "299 kr.",
             "interval": "/md.",
             "vat": "ekskl. moms",
-            "features": "Alt fra Basis\nOnline booking og kalender\nOpsætning af ydelser og ledige tider\nOp til 3 medarbejdere, ekstra 99 kr./md. pr. medarbejder",
-            "button_label": "Vælg Booking",
-            "button_link": "/?ydelse=pakke-booking#kontakt",
+            "price_label": "",
+            "badge": "",
+            "features": "Alt i Hjemmeside\nOnline booking af jeres ydelser\nKunden kan selv booke, flytte og aflyse\nBekræftelser på mail til jer og kunden\nOp til 3 medarbejdere med egen bruger eller kalender",
+            "features_label": "Det er med",
+            "button_label": "Aftal en demo",
+            "button_link": "/pages/kontakt?ydelse=pakke-booking#formular",
             "button_style": "primary",
-            "details_label": "Se alle detaljer",
-            "details_link": "/pages/ydelser#pakke-booking"
+            "details_label": "Se hele indholdet",
+            "details_link": "/pages/booking"
           }
         },
-        "package3": {
+        "package_3": {
           "type": "package",
           "settings": {
+            "handle": "webshop",
             "title": "Webshop",
-            "status": "quote",
-            "badge": "Pris følger",
-            "text": "Webshop med varer, varianter og kurv",
-            "price_label": "",
-            "price": "Pris følger",
-            "interval": "",
+            "status": "available",
+            "text": "En webshop til jeres varer, som vi sætter op og holder ved lige.",
+            "price": "499 kr.",
+            "interval": "/md.",
             "vat": "ekskl. moms",
-            "features": "Webshop tilpasset jeres varer\nVarianter og kurv\nBetaling og levering afklares med jer",
-            "button_label": "Spørg om en webshop",
-            "button_link": "/?ydelse=webshop#kontakt",
+            "price_label": "",
+            "badge": "",
+            "features": "Webshop tilpasset jeres virksomhed\nOp til 50 aktive produkter og 200 varianter\nVi opretter de første 10 produkter eller importerer op til 50\nOp til 3 administratorbrugere\nHosting og teknisk vedligeholdelse",
+            "features_label": "Det er med",
+            "button_label": "Aftal en demo",
+            "button_link": "/pages/kontakt?ydelse=pakke-webshop#formular",
             "button_style": "primary",
-            "details_label": "",
-            "details_link": ""
+            "details_label": "Se hele indholdet",
+            "details_link": "/pages/webshop"
           }
         }
       },
       "block_order": [
-        "package1",
-        "package2",
-        "package3"
+        "package_1",
+        "package_2",
+        "package_3"
       ]
     },
-    "drift": {
-      "type": "home-drift",
+    "proces": {
+      "type": "steps",
       "settings": {
-        "anchor": "drift",
-        "badge": "På vej",
-        "status_text": "Drift og Alt inkl. er under udvikling",
-        "heading": "Drift: jobs, ordrer og lager samlet",
-        "text": "<p>Vi udvikler Drift og søger virksomheder, der vil teste det i hverdagen. Alt herunder er eksempler med fiktive data.</p>",
-        "cta_label": "Bliv testkunde",
-        "cta_link": "/pages/ydelser?pakke=drift#testkunde",
-        "demo_badge": "Eksempel · fiktive data",
-        "f1_title": "Automatisk lageropdatering ved registreret forbrug",
-        "f1_text": "<p>Når en medarbejder registrerer materialer på et job, trækkes de fra lageret. Prøv det i eksemplet.</p>",
-        "rules": "Lageret trækkes kun én gang | Hver ordre reducerer lageret én gang, også hvis den gemmes eller bekræftes igen.\nIngen oversalg | Kommer to bestillinger på samme tid, kan den samme vare ikke sælges to gange.\nAnnullering frigiver varer | Annulleres en ordre, bliver de reserverede varer disponible igen.",
-        "f2_title": "Overblik over jobs og ordrer",
-        "f2_text": "<p>Jobs og ordrer samlet ét sted, uanset om de kommer fra hjemmesiden, telefonen eller e-mailen. På hver kan du se status, varer og materialer.</p>",
-        "list_heading": "Også planlagt",
-        "list": "Ordredetaljer med varer, kunde og levering\nVarer, varenumre og lagerantal\nManuel lagerregulering ved varemodtagelse, optælling og svind\nAdvarsler ved lav beholdning\nHistorik over alle ændringer\nVirker på computer, tablet og mobil",
-        "note": "<p>Priserne er forventede priser ved lancering. En tilmelding som testkunde er en henvendelse og starter ikke et abonnement.</p>"
+        "anchor": "proces",
+        "heading": "Sådan arbejder vi sammen",
+        "text": "<p>Du får én fast kontakt hos os, fra den første demo til de små rettelser bagefter.</p>",
+        "note": "<p>Jeres oplysninger er fortrolige, og jeres indhold og data er jeres. Vi tilbyder også en gensidig <a href=\"/pages/fortrolighedsaftale\">fortrolighedsaftale (NDA)</a>, som I godkender digitalt i kundeportalen.</p>",
+        "link_label": "Aftal en demo",
+        "link": "/pages/kontakt?ydelse=aftal-en-demo#formular",
+        "link_style": "primary"
       },
       "blocks": {
-        "package1": {
+        "step_1": {
+          "type": "step",
+          "settings": {
+            "title": "Aftal en demo",
+            "text": "<p>Fortæl kort om virksomheden. Du får en demo inden for 24–48 timer.</p>"
+          }
+        },
+        "step_2": {
+          "type": "step",
+          "settings": {
+            "title": "Send materiale og godkend",
+            "text": "<p>Tekster, billeder og logo. Du har 3 korrekturrunder på det aftalte design og indhold.</p>"
+          }
+        },
+        "step_3": {
+          "type": "step",
+          "settings": {
+            "title": "Siden går live",
+            "text": "<p>En almindelig hjemmeside er klar inden for op til otte hverdage efter modtagelse af nødvendigt materiale og aftalt omfang.</p>"
+          }
+        },
+        "step_4": {
+          "type": "step",
+          "settings": {
+            "title": "Vi holder den ved lige",
+            "text": "<p>Hosting, opdateringer og mindre justeringer er med. Vi svarer på henvendelser inden for 24–48 timer på hverdage.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "step_1",
+        "step_2",
+        "step_3",
+        "step_4"
+      ]
+    },
+    "paa_vej": {
+      "type": "coming",
+      "settings": {
+        "anchor": "paa-vej",
+        "id_suffix": "-forside",
+        "badge": "På vej",
+        "status_text": "Under udvikling",
+        "heading": "Drift og Alt inkl.",
+        "text": "<p>To kommende løsninger til jobs, timer, materialer, lager og bilag. Vi søger virksomheder, der vil teste dem i hverdagen.</p>",
+        "primary_label": "Bliv testkunde",
+        "primary_link": "/pages/drift?pakke=drift#testkunde",
+        "secondary_label": "Læs om Drift og Alt inkl.",
+        "secondary_link": "/pages/drift",
+        "note": "<p>Priserne er forventede priser ved lancering. En tilmelding som testkunde er uforpligtende og bliver aldrig automatisk til et betalt abonnement.</p>"
+      },
+      "blocks": {
+        "package_1": {
           "type": "package",
           "settings": {
+            "handle": "drift",
             "title": "Drift",
             "status": "coming",
             "badge": "På vej",
-            "text": "Ordrer, opgaver og lager",
+            "text": "Jobs, timer, materialer og lager samlet ét sted.",
             "price_label": "Forventet pris",
             "price": "599 kr.",
             "interval": "/md.",
             "vat": "ekskl. moms",
-            "features": "Alt fra Basis\nLagerportal og jobportal\nAutomatisk lagertræk ved registreret forbrug\nOp til 3 medarbejdere",
+            "features": "Lagerportal og jobportal\nTimer og materialer på hvert job\nLageret opdateres ved registreret forbrug\nPlanlagt: 3 medarbejdere, ekstra forventet 99 kr./md.",
             "button_label": "Bliv testkunde",
-            "button_link": "/pages/ydelser?pakke=drift#testkunde",
+            "button_link": "/pages/drift?pakke=drift#testkunde",
             "button_style": "secondary",
             "details_label": "Se planlagt indhold",
-            "details_link": "/pages/ydelser#pakke-drift"
+            "details_link": "/pages/drift#pakke-drift"
           }
         },
-        "package2": {
+        "package_2": {
           "type": "package",
           "settings": {
+            "handle": "alt-inkl",
             "title": "Alt inkl.",
             "status": "coming",
             "badge": "På vej",
-            "text": "Hjemmeside, booking, drift og bilag samlet",
+            "text": "Hjemmeside, booking, Drift og bilag samlet hos Veyro.",
             "price_label": "Forventet pris",
             "price": "1.099 kr.",
             "interval": "/md.",
             "vat": "ekskl. moms",
-            "features": "Alt fra Basis, Booking og Drift\nUpload og aflæsning af bilag\nPrioriteret support med svar inden for 24 timer\nOp til 3 medarbejdere",
+            "features": "Alt i Hjemmeside, Booking og Drift\nUpload og aflæsning af kvitteringer og bilag\nPrioriteret support med svar inden for 24 timer\nWebshop er ikke automatisk med",
             "button_label": "Bliv testkunde",
-            "button_link": "/pages/ydelser?pakke=alt-inkl#testkunde",
+            "button_link": "/pages/drift?pakke=alt-inkl#testkunde",
             "button_style": "secondary",
             "details_label": "Se planlagt indhold",
-            "details_link": "/pages/ydelser#pakke-alt-inkl"
+            "details_link": "/pages/drift#pakke-alt-inkl"
           }
         }
       },
       "block_order": [
-        "package1",
-        "package2"
+        "package_1",
+        "package_2"
       ]
-    },
-    "fortrolighed": {
-      "type": "note-banner",
-      "settings": {
-        "scheme": "light",
-        "anchor": "fortrolighed",
-        "icon": "none",
-        "heading": "Jeres oplysninger er fortrolige. Det skriver vi under på.",
-        "text": "<p>Vi tilbyder en gensidig fortrolighedsaftale (NDA), som I læser og godkender digitalt i kundeportalen. Den beskytter kundedata, priser, kode og adgangsoplysninger, også når samarbejdet er slut.</p>",
-        "primary_label": "Læs om fortrolighedsaftalen",
-        "primary_link": "/pages/fortrolighedsaftale",
-        "secondary_label": "Se skabelonen som PDF",
-        "secondary_link": "/fortrolighedsaftale-skabelon.pdf"
-      }
-    },
-    "proces": {
-      "type": "home-steps",
-      "settings": {
-        "anchor": "proces",
-        "heading": "Sådan kommer du i gang"
-      },
-      "blocks": {
-        "step1": {
-          "type": "step",
-          "settings": {
-            "title": "Skriv eller ring.",
-            "text": "Fortæl kort om virksomheden, og hvad du har brug for."
-          }
-        },
-        "step2": {
-          "type": "step",
-          "settings": {
-            "title": "Demo inden for 24–48 timer.",
-            "text": "Vi viser dig, hvordan løsningen kan se ud."
-          }
-        },
-        "step3": {
-          "type": "step",
-          "settings": {
-            "title": "Klar inden for op til otte hverdage.",
-            "text": "En almindelig hjemmeside er klar inden for op til otte hverdage efter modtagelse af nødvendigt materiale og aftalt omfang."
-          }
-        }
-      },
-      "block_order": [
-        "step1",
-        "step2",
-        "step3"
-      ]
-    },
-    "trustpilot": {
-      "type": "trustpilot",
-      "settings": {
-        "scheme": "light",
-        "anchor": "anmeldelser",
-        "heading": "Se hvad vores kunder siger",
-        "text": "<p>Vi beder alle kunder om en ærlig anmeldelse på Trustpilot, når et projekt er afsluttet.</p>",
-        "link_label": "Læs anmeldelserne",
-        "widget": "micro_combo"
-      }
     },
     "faq": {
       "type": "faq",
+      "settings": {
+        "anchor": "faq",
+        "eyebrow": "",
+        "heading": "Spørgsmål og svar",
+        "text": "",
+        "link_label": "Flere svar om priser",
+        "link": "/pages/priser#faq",
+        "schema": true
+      },
       "blocks": {
-        "q2": {
+        "question_1": {
           "type": "question",
           "settings": {
-            "question": "Skal vi have en webshop for at bruge Drift?",
-            "answer": "<p>Nej. Drift kræver hverken en offentlig webshop, et produktkatalog til kunder eller onlinebetaling. Skal jeres kunder kunne bestille på hjemmesiden, afklarer vi sammen, hvordan bestilling og betaling skal fungere hos jer.</p>"
+            "question": "Hvad er med i pakkerne?",
+            "answer": "<p>Hjemmeside (199 kr./md.) er en hjemmeside med op til 5 sider, jeres eget design, kontaktformular, hosting og vedligeholdelse. Booking (299 kr./md.) lægger online booking oven i. Webshop (499 kr./md.) er en webshop med op til 50 aktive produkter. Alle priser er ekskl. moms. <a href=\"/pages/priser\">Se alt indhold på prissiden</a>.</p>"
           }
         },
-        "q3": {
+        "question_2": {
           "type": "question",
           "settings": {
-            "question": "Hvordan undgår systemet, at vi sælger varer, vi ikke har?",
-            "answer": "<p>Systemet skelner mellem fysisk beholdning, reserverede varer og disponibel beholdning. Når en ordre bekræftes, reserveres varerne, så de ikke kan sælges igen. Lageret trækkes kun én gang pr. ordre, og to samtidige bestillinger kan ikke købe den samme vare.</p>"
+            "question": "Hvad betyder 5 sider og 3 korrekturrunder?",
+            "answer": "<p>5 sider kan fx være forside, ydelser, om os, galleri og kontakt. Flere afsnit på samme side tæller som én side.</p><p>En korrekturrunde er én samlet tilbagemelding fra jer på det aftalte design og indhold. Nye funktioner eller et større omfang er ikke en korrekturrunde og aftales særskilt.</p>"
           }
         },
-        "q4": {
+        "question_3": {
           "type": "question",
           "settings": {
-            "question": "Hvad sker der med lageret, hvis en ordre annulleres?",
-            "answer": "<p>De reserverede varer frigives og bliver disponible igen. Ændringen kan ses i historikken.</p>"
+            "question": "Er den første måned gratis?",
+            "answer": "<p>Ja. Oprettelsen er gratis inden for det aftalte indhold, og den første måned er gratis fra den dag, løsningen går live og er klar til brug. Derefter betaler I den faste månedspris. Der er ingen binding.</p>"
           }
         },
-        "q5": {
+        "question_4": {
           "type": "question",
           "settings": {
-            "question": "Kan vi bruge systemet på telefon og tablet?",
-            "answer": "<p>Ja. Administrationspanelet er bygget til at fungere på computer, tablet og mobil.</p>"
+            "question": "Hvor hurtigt kan vi komme i gang?",
+            "answer": "<p>Du får en demo inden for 24–48 timer. En almindelig hjemmeside er klar inden for op til otte hverdage efter modtagelse af nødvendigt materiale og aftalt omfang. Til større eller mere komplekse løsninger aftaler vi en tidsplan.</p>"
           }
         },
-        "q6": {
+        "question_5": {
           "type": "question",
           "settings": {
-            "question": "Kan det kobles sammen med de systemer, vi allerede bruger?",
-            "answer": "<p>Det afhænger af systemerne. Fortæl os, hvad I bruger i dag, så undersøger vi mulighederne, før I får et tilbud.</p>"
-          }
-        },
-        "q7": {
-          "type": "question",
-          "settings": {
-            "question": "Hvad koster det?",
-            "answer": "<p>Basis koster 199 kr./md. og Booking 299 kr./md. ekskl. moms med gratis oprettelse, første måned gratis og ingen binding. Drift og Alt inkl. er på vej med forventede priser på 599 kr. og 1.099 kr./md. ekskl. moms. Særlige ønsker uden for pakkerne aftales og prissættes på forhånd. <a href=\"#priser\">Se priserne</a>.</p>"
-          }
-        },
-        "q8": {
-          "type": "question",
-          "settings": {
-            "question": "Hvor hurtigt kan min hjemmeside være klar?",
-            "answer": "<p>Du får en demo inden for 24–48 timer. En almindelig hjemmeside er klar inden for op til otte hverdage efter modtagelse af nødvendigt materiale og aftalt omfang.</p>"
+            "question": "Hvad sker der, hvis vi opsiger?",
+            "answer": "<p>I kan opsige når som helst i kundepanelet eller på mail. Opsigelsen gælder fra udgangen af den periode, I har betalt for. I ejer jeres eget indhold og jeres data og kan inden for 30 dage efter ophøret få dem udleveret. Veyro beholder rettighederne til software, skabeloner og kode, og domæner, der tilhører jer, overføres efter aftale. <a href=\"/pages/handelsbetingelser\">Læs handelsbetingelserne</a>.</p>"
           }
         }
       },
       "block_order": [
-        "q2",
-        "q3",
-        "q4",
-        "q5",
-        "q6",
-        "q7",
-        "q8"
-      ],
-      "settings": {
-        "scheme": "light",
-        "anchor": "faq",
-        "eyebrow": "Spørgsmål og svar",
-        "heading": "Godt at vide, før du skriver",
-        "schema": true
-      }
+        "question_1",
+        "question_2",
+        "question_3",
+        "question_4",
+        "question_5"
+      ]
     },
     "contact": {
       "type": "contact-form",
+      "settings": {
+        "anchor": "kontakt",
+        "heading_tag": "h2",
+        "eyebrow": "",
+        "heading": "Fortæl os, hvad du har brug for",
+        "text": "<p>Vælg en løsning, og skriv et par linjer om virksomheden. Har du en hjemmeside i dag, så send gerne linket. Det er uforpligtende, og vi svarer inden for 24–48 timer.</p>",
+        "form_name": "Forside",
+        "services": "Aftal en demo\nPakke: Hjemmeside\nPakke: Booking\nPakke: Webshop\nTilkøb eller større ændring\nWebsite-optimering\nKonverteringsoptimering (CRO)\nShopify-specialudvikling\nFejlfinding og teknisk hjælp\nIntegrationer og automatisering\nHosting og vedligeholdelse\nAndet / ved ikke endnu",
+        "submit_label": "Send henvendelse",
+        "success_heading": "Tak, vi har modtaget din henvendelse",
+        "success_text": "<p>Vi læser din besked og svarer på e-mail inden for 24–48 timer. Har du flere oplysninger i mellemtiden, er du velkommen til at svare på vores mail.</p>",
+        "steps_heading": "Det skal du skrive",
+        "direct_heading": "Vil du hellere ringe eller skrive direkte?"
+      },
       "blocks": {
-        "step1": {
+        "step_1": {
           "type": "step",
           "settings": {
-            "title": "Hvilken løsning",
-            "text": "du er interesseret i. Er du i tvivl, vælg \"Andet / ved ikke endnu\"."
+            "title": "Hvad du er interesseret i",
+            "text": "Er du i tvivl, så vælg \"Andet / ved ikke endnu\"."
           }
         },
-        "step2": {
+        "step_2": {
           "type": "step",
           "settings": {
             "title": "Lidt om virksomheden",
             "text": "og hvad siden skal kunne."
           }
         },
-        "step3": {
+        "step_3": {
           "type": "step",
           "settings": {
             "title": "Din e-mail",
-            "text": "så vi kan svare dig inden for 24–48 timer."
+            "text": "så vi kan svare dig."
           }
         }
       },
       "block_order": [
-        "step1",
-        "step2",
-        "step3"
-      ],
-      "settings": {
-        "scheme": "light",
-        "anchor": "kontakt",
-        "heading_tag": "h2",
-        "eyebrow": "Kontakt",
-        "heading": "Fortæl os, hvad du har brug for",
-        "text": "<p>Vælg en løsning, og skriv et par linjer om virksomheden. Har du en hjemmeside i dag, så send gerne linket. Det er uforpligtende, og vi svarer inden for 24–48 timer.</p>",
-        "form_name": "Forside – løsninger",
-        "services": "Pakke: Basis\nPakke: Booking\nWebshop\nBook en demo\nAlmindelig hjemmeside eller landingsside\nOptimering, fejlfinding eller vedligeholdelse\nAndet / ved ikke endnu",
-        "submit_label": "Send henvendelse",
-        "success_heading": "Tak, vi har modtaget din henvendelse",
-        "success_text": "<p>Vi kigger på din besked og svarer på e-mail inden for 24-48 timer for at aftale næste skridt.</p>",
-        "steps_heading": "Det skal du skrive",
-        "direct_heading": "Foretrækker du at ringe eller skrive direkte?"
-      }
+        "step_1",
+        "step_2",
+        "step_3"
+      ]
     }
   },
   "order": [
     "hero",
-    "benefits",
-    "products",
+    "eksempler",
     "priser",
-    "drift",
-    "fortrolighed",
     "proces",
-    "trustpilot",
+    "paa_vej",
     "faq",
     "contact"
   ]

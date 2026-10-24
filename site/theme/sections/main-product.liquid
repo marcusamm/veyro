@@ -18,15 +18,13 @@
     assign quote_url = kontakt | append: '?ydelse=abonnement-' | append: product.handle | append: '#formular'
   endif
 -%}
-<section class="section section--light product">
+<section class="section product{% unless product.featured_media %} product--no-media{% endunless %}">
   <div class="container product__inner">
-    <div class="product__media">
-      {%- if product.featured_media -%}
+    {%- if product.featured_media -%}
+      <div class="product__media">
         {{ product.featured_media | image_url: width: 1400 | image_tag: widths: '500, 800, 1100, 1400', sizes: '(min-width: 990px) 50vw, 100vw', loading: 'eager', fetchpriority: 'high', class: 'product__image' }}
-      {%- else -%}
-        <div class="product__placeholder" aria-hidden="true">{% render 'icon', name: 'layers', size: 56 %}</div>
-      {%- endif -%}
-    </div>
+      </div>
+    {%- endif -%}
 
     <div class="product__info">
       <nav class="breadcrumbs" aria-label="{{ 'general.breadcrumbs' | t }}">

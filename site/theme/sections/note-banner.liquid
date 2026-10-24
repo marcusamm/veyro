@@ -1,17 +1,14 @@
-{%- comment -%}
-  Mindre, tydelig besked med op til to knapper. Bruges til supplerende tilbud.
-{%- endcomment -%}
-<section class="section section--{{ section.settings.scheme }} note-banner" id="{{ section.settings.anchor | default: section.id | handle }}">
+{%- comment -%} Kort besked i en ramme med op til to links. Bruges fx til fortrolighedsaftalen. {%- endcomment -%}
+<section class="section section--tight note" id="{{ section.settings.anchor | default: section.id | handle }}">
   <div class="container">
-    <div class="note-banner__box">
-      {%- if section.settings.icon != 'none' -%}<span class="note-banner__icon">{% render 'icon', name: section.settings.icon, size: 24 %}</span>{%- endif -%}
-      <div class="note-banner__content">
-        <h2 class="h3 note-banner__title">{{ section.settings.heading }}</h2>
-        {%- if section.settings.text != blank -%}<div class="rte note-banner__text">{{ section.settings.text }}</div>{%- endif -%}
+    <div class="note__box">
+      <div class="note__content">
+        <h2 class="t-sm note__title">{{ section.settings.heading }}</h2>
+        {%- if section.settings.text != blank -%}<div class="rte">{{ section.settings.text }}</div>{%- endif -%}
       </div>
-      <div class="note-banner__actions">
+      <div class="note__actions">
         {% render 'button', label: section.settings.primary_label, url: section.settings.primary_link, style: 'secondary' %}
-        {% render 'button', label: section.settings.secondary_label, url: section.settings.secondary_link, style: 'link' %}
+        {%- if section.settings.secondary_label != blank -%}<a class="arrow-link" href="{{ section.settings.secondary_link }}">{{ section.settings.secondary_label | escape }}</a>{%- endif -%}
       </div>
     </div>
   </div>
@@ -22,14 +19,8 @@
   "name": "Kort besked",
   "tag": "div",
   "settings": [
-    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
-      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
-    ], "default": "light" },
-    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "hjemmesider" },
-    { "type": "select", "id": "icon", "label": "Ikon", "options": [
-      { "value": "none", "label": "Intet" }, { "value": "design", "label": "Hjemmeside" }, { "value": "chat", "label": "Dialog" }, { "value": "layers", "label": "Lag" }, { "value": "shield", "label": "Skjold" }
-    ], "default": "design" },
-    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Har du blot brug for en hjemmeside? Det laver vi også." },
+    { "type": "text", "id": "anchor", "label": "Anker-id" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Kort besked" },
     { "type": "richtext", "id": "text", "label": "Tekst" },
     { "type": "text", "id": "primary_label", "label": "Knaptekst" },
     { "type": "url", "id": "primary_link", "label": "Knaplink" },

@@ -1,15 +1,23 @@
-<section class="section section--light not-found">
-  <div class="hero__grid-bg" aria-hidden="true"></div>
+<section class="section not-found">
   <div class="container not-found__inner">
-    <p class="eyebrow">404</p>
-    <h1 class="h-display">{{ 'not_found.title' | t }}</h1>
+    <p class="label">Fejl 404</p>
+    <h1 class="t-xl">{{ 'not_found.title' | t }}</h1>
     <p class="lead">{{ 'not_found.text' | t }}</p>
-    <div class="hero__actions">
+    <div class="actions">
       {%- assign home_label = 'not_found.cta' | t -%}
-      {% render 'button', label: home_label, url: routes.root_url, style: 'primary', arrow: settings.button_arrow %}
+      {% render 'button', label: home_label, url: routes.root_url, style: 'primary' %}
       {%- assign contact_label = 'footer.contact' | t -%}
       {% render 'button', label: contact_label, url: pages['kontakt'].url, style: 'secondary' %}
     </div>
+    <nav class="not-found__links" aria-label="Populære sider">
+      <h2 class="t-sm">Måske leder du efter</h2>
+      <ul role="list">
+        <li><a href="/pages/ydelser">Løsninger</a></li>
+        <li><a href="/pages/eksempler">Eksempler</a></li>
+        <li><a href="/pages/priser">Priser</a></li>
+        <li><a href="https://kunde.veyro.dk/login">Kundelogin</a></li>
+      </ul>
+    </nav>
   </div>
 </section>
 

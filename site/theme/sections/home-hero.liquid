@@ -1,62 +1,43 @@
 {%- comment -%}
-  Forsidens hero: stor venstrestillet overskrift med bevidste linjeskift (én linje pr. række i feltet),
-  kort tekst, én primær knap og ét konkret eksempel på en hjemmeside med booking, forskudt fra teksten.
-  Alt er synligt fra start: ingen animation, ingen billedfiler (eksemplet er HTML/CSS med fast højde).
+  Forsidens top: én H1, en kort tekst, én primær og én sekundær knap og ét stort designkoncept.
+  Konceptet er en fiktiv virksomhed og er mærket "Designkoncept".
 {%- endcomment -%}
-{%- assign lines = section.settings.heading | newline_to_br | split: '<br />' -%}
-<section class="hh" aria-labelledby="HeroTitle-{{ section.id }}">
-  <div class="container hh__grid">
-    <div class="hh__content">
-      {%- if section.settings.eyebrow != blank -%}<p class="hh__eyebrow">{{ section.settings.eyebrow | escape }}</p>{%- endif -%}
-      <h1 class="hh__title" id="HeroTitle-{{ section.id }}">
-        {%- for l in lines -%}{%- assign line = l | strip -%}{%- if line != blank -%}<span>{{ line | escape }}</span> {% endif -%}{%- endfor -%}
-      </h1>
-      {%- if section.settings.text != blank -%}<div class="hh__text">{{ section.settings.text }}</div>{%- endif -%}
-      <div class="hh__actions">
-        {% render 'button', label: section.settings.primary_label, url: section.settings.primary_link, fallback: '#priser', style: 'primary', arrow: settings.button_arrow, class: 'btn--lg' %}
-        {%- if section.settings.secondary_label != blank -%}
-          <a class="hh__link" href="{{ section.settings.secondary_link | default: '#kontakt' }}">{{ section.settings.secondary_label | escape }}</a>
-        {%- endif -%}
+<section class="home-hero">
+  <div class="container home-hero__grid">
+    <div class="home-hero__text">
+      <h1 class="t-xl home-hero__title">{{ section.settings.heading }}</h1>
+      {%- if section.settings.text != blank -%}<div class="lead rte">{{ section.settings.text }}</div>{%- endif -%}
+      <div class="actions">
+        {% render 'button', label: section.settings.primary_label, url: section.settings.primary_link, style: 'primary' %}
+        {% render 'button', label: section.settings.secondary_label, url: section.settings.secondary_link, style: 'secondary' %}
       </div>
-      {%- if section.settings.facts != blank -%}<p class="hh__facts">{{ section.settings.facts | escape }}</p>{%- endif -%}
+      {%- if section.settings.facts != blank -%}<p class="home-hero__facts">{{ section.settings.facts | escape }}</p>{%- endif -%}
     </div>
-
-    <figure class="hh__example">
-      <div class="ex-site" role="img" aria-label="Eksempel med en fiktiv frisør: forside med behandlinger og en bookingboks, hvor herreklip torsdag kl. 10.30 er valgt">
-        <div class="ex-bar" aria-hidden="true"><span class="ex-bar__url">salon-nord.eksempel</span><span class="ex-bar__tag">Eksempel</span></div>
-        <div class="ex-site__page" aria-hidden="true">
-          <div class="ex-site__nav"><b>Salon Nord</b><span>Behandlinger</span><span>Priser</span><span>Kontakt</span></div>
-          <p class="ex-site__h">Klip og farve<br>midt i byen</p>
-          <p class="ex-site__p">Åbent tirsdag til lørdag. Book din tid online.</p>
-          <div class="ex-book">
-            <p class="ex-book__label">Book tid</p>
-            <div class="ex-book__service"><span>Herreklip</span><span>30 min · 320 kr.</span></div>
-            <p class="ex-book__day">Torsdag 6. november</p>
-            <div class="ex-book__times"><span>09.00</span><span class="is-on">10.30</span><span class="is-off">12.00</span><span>13.30</span><span>15.00</span><span>16.30</span></div>
-            <span class="ex-book__btn">Book kl. 10.30</span>
-          </div>
-        </div>
-      </div>
-      {%- if section.settings.caption != blank -%}<figcaption class="hh__caption">{{ section.settings.caption | escape }}</figcaption>{%- endif -%}
+    <figure class="concept home-hero__concept">
+      {% render 'concept', name: section.settings.concept, uid: 'hero', photo: section.settings.photo, alt: section.settings.photo_alt, eager: true %}
+      <figcaption class="concept__cap"><span class="badge">Designkoncept</span>{{ section.settings.caption | escape }}</figcaption>
     </figure>
   </div>
 </section>
 
 {% schema %}
 {
-  "name": "Forside: hero",
+  "name": "Forside: top",
   "tag": "div",
   "settings": [
-    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Veyro · webbureau" },
-    { "type": "textarea", "id": "heading", "label": "Overskrift (én linje pr. række)", "default": "Hjemmeside,\nbooking\nog webshop." },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift (H1)", "default": "En hjemmeside, der passer til din forretning." },
     { "type": "richtext", "id": "text", "label": "Tekst" },
-    { "type": "text", "id": "primary_label", "label": "Knaptekst", "default": "Se priser" },
-    { "type": "url", "id": "primary_link", "label": "Knaplink" },
-    { "type": "text", "id": "secondary_label", "label": "Linktekst", "default": "Skriv til os" },
-    { "type": "url", "id": "secondary_link", "label": "Link" },
-    { "type": "text", "id": "facts", "label": "Kort prislinje" },
-    { "type": "text", "id": "caption", "label": "Billedtekst under eksemplet", "default": "Eksempel på en hjemmeside med booking. Virksomheden er fiktiv." }
-  ],
-  "presets": [{ "name": "Forside: hero" }]
+    { "type": "text", "id": "primary_label", "label": "Primær knap – tekst", "default": "Se priser" },
+    { "type": "url", "id": "primary_link", "label": "Primær knap – link", "default": "/pages/priser" },
+    { "type": "text", "id": "secondary_label", "label": "Sekundær knap – tekst", "default": "Se eksempler" },
+    { "type": "url", "id": "secondary_link", "label": "Sekundær knap – link", "default": "/pages/eksempler" },
+    { "type": "text", "id": "facts", "label": "Kort linje under knapperne" },
+    { "type": "select", "id": "concept", "label": "Designkoncept", "options": [
+      { "value": "craft", "label": "Hjemmeside (tømrer)" }, { "value": "salon", "label": "Booking (frisør)" }, { "value": "shop", "label": "Webshop (keramik)" }
+    ], "default": "craft" },
+    { "type": "image_picker", "id": "photo", "label": "Foto i designkonceptet", "info": "Brug kun fotos, I har ret til at bruge." },
+    { "type": "text", "id": "photo_alt", "label": "Alt-tekst til fotoet" },
+    { "type": "text", "id": "caption", "label": "Tekst under konceptet", "default": "Holm Tømrer er en fiktiv virksomhed. Udsnittet viser pakken Hjemmeside." }
+  ]
 }
 {% endschema %}

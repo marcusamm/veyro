@@ -1,0 +1,162 @@
+{
+  "sections": {
+    "hero": {
+      "type": "page-hero",
+      "settings": {
+        "show_breadcrumbs": true,
+        "parent_label": "Løsninger",
+        "parent_link": "/pages/ydelser",
+        "heading": "En hjemmeside, der passer til din forretning",
+        "text": "<p>Op til 5 sider med design tilpasset jer, kontaktformular, hosting og vedligeholdelse. Vi sætter siden op, og vi holder den ved lige.</p>",
+        "primary_label": "Aftal en demo",
+        "primary_link": "/pages/kontakt?ydelse=pakke-hjemmeside#formular",
+        "secondary_label": "Se priser",
+        "secondary_link": "/pages/priser#pakke-hjemmeside",
+        "note": "199 kr./md. ekskl. moms · Gratis oprettelse · Første måned gratis · Ingen binding",
+        "concept": "craft",
+        "concept_caption": "Holm Tømrer er en fiktiv virksomhed."
+      }
+    },
+    "indhold": {
+      "type": "service",
+      "settings": {
+        "anchor": "indhold",
+        "layout": "split",
+        "label": "Hjemmeside · 199 kr./md. ekskl. moms",
+        "title": "Det får I",
+        "intro": "<p>En professionel hjemmeside til virksomheder, der vil være nemme at finde og kontakte.</p>",
+        "audience": "<p>Til virksomheder, der vil være nemme at finde og kontakte: håndværkere, konsulenter, klinikker, butikker og andre mindre virksomheder.</p>",
+        "helps": "Struktur og tekster, så det er tydeligt, hvad I tilbyder\nDesign i jeres farver og med jeres logo\nOpsætning af kontaktformular og kontaktoplysninger\nKobling til jeres domæne",
+        "included": "Op til 5 sider\nDesign tilpasset jeres virksomhed\nVirker på mobil, tablet og computer\nPræsentation af virksomheden og jeres ydelser\nKontaktformular og kontaktoplysninger\nHosting og teknisk vedligeholdelse\n3 korrekturrunder under opsætningen\nMindre løbende justeringer",
+        "separate": "Flere end 5 sider\nNye funktioner, fx booking eller webshop\nStørre designændringer efter opstart\nIntegrationer med andre systemer",
+        "next": "<p>Aftal en demo. Du får et udkast inden for 24–48 timer, og en almindelig hjemmeside er klar inden for op til otte hverdage efter modtagelse af nødvendigt materiale og aftalt omfang.</p>",
+        "button_label": "Aftal en demo",
+        "button_link": "/pages/kontakt?ydelse=pakke-hjemmeside#formular",
+        "secondary_label": "Se alle priser og vilkår",
+        "secondary_link": "/pages/priser"
+      }
+    },
+    "forklaring": {
+      "type": "info-grid",
+      "settings": {
+        "anchor": "rammer",
+        "layout": "rows",
+        "heading": "Sider og korrekturrunder",
+        "text": ""
+      },
+      "blocks": {
+        "item_1": {
+          "type": "item",
+          "settings": {
+            "title": "Op til 5 sider",
+            "text": "<p>Fx forside, ydelser, om os, galleri og kontakt. Flere afsnit på samme side tæller som én side.</p>"
+          }
+        },
+        "item_2": {
+          "type": "item",
+          "settings": {
+            "title": "3 korrekturrunder",
+            "text": "<p>En korrekturrunde er én samlet tilbagemelding fra jer på det aftalte design og indhold. Nye funktioner eller et større omfang er ikke en korrekturrunde.</p>"
+          }
+        },
+        "item_3": {
+          "type": "item",
+          "settings": {
+            "title": "Små justeringer bagefter",
+            "text": "<p>Fx nye åbningstider, ændrede kontaktoplysninger, mindre tekstrettelser og udskiftning af enkelte billeder. Det er med i prisen.</p>"
+          }
+        },
+        "item_4": {
+          "type": "item",
+          "settings": {
+            "title": "Det leverer I",
+            "text": "<p>Tekster eller stikord, logo og de billeder, I vil bruge. Vi hjælper med at sætte det op, så det hænger sammen.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "item_1",
+        "item_2",
+        "item_3",
+        "item_4"
+      ]
+    },
+    "faq": {
+      "type": "faq",
+      "settings": {
+        "anchor": "faq",
+        "eyebrow": "",
+        "heading": "Spørgsmål om Hjemmeside",
+        "text": "",
+        "link_label": "",
+        "link": "",
+        "schema": true
+      },
+      "blocks": {
+        "question_1": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad betyder 5 sider og 3 korrekturrunder?",
+            "answer": "<p>5 sider kan fx være forside, ydelser, om os, galleri og kontakt. Flere afsnit på samme side tæller som én side.</p><p>En korrekturrunde er én samlet tilbagemelding fra jer på det aftalte design og indhold. Nye funktioner eller et større omfang er ikke en korrekturrunde og aftales særskilt.</p>"
+          }
+        },
+        "question_2": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad tæller som en lille justering?",
+            "answer": "<p>Små justeringer er fx nye åbningstider, ændrede kontaktoplysninger, mindre rettelser i tekst og udskiftning af enkelte billeder. De er med i alle pakker.</p><p>Nye sider, større designændringer, nye funktioner, integrationer og arbejde med produktkataloget kræver et tilbud. <a href=\"/pages/kontakt?ydelse=tilkoeb-eller-stoerre-aendring#formular\">Kontakt os om tilkøb</a>.</p>"
+          }
+        },
+        "question_3": {
+          "type": "question",
+          "settings": {
+            "question": "Hvor hurtigt kan vi komme i gang?",
+            "answer": "<p>Du får en demo inden for 24–48 timer. En almindelig hjemmeside er klar inden for op til otte hverdage efter modtagelse af nødvendigt materiale og aftalt omfang. Til større eller mere komplekse løsninger aftaler vi en tidsplan.</p>"
+          }
+        },
+        "question_4": {
+          "type": "question",
+          "settings": {
+            "question": "Får vi et domæne med?",
+            "answer": "<p>Et domæne og mail på domænet er ikke en del af pakkerne. I kan bruge jeres eget domæne, købe et gennem os mod betaling, eller bruge en gratis adresse som jeresnavn.veyro.dk.</p>"
+          }
+        },
+        "question_5": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad sker der, hvis vi opsiger?",
+            "answer": "<p>I kan opsige når som helst i kundepanelet eller på mail. Opsigelsen gælder fra udgangen af den periode, I har betalt for. I ejer jeres eget indhold og jeres data og kan inden for 30 dage efter ophøret få dem udleveret. Veyro beholder rettighederne til software, skabeloner og kode, og domæner, der tilhører jer, overføres efter aftale. <a href=\"/pages/handelsbetingelser\">Læs handelsbetingelserne</a>.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "question_1",
+        "question_2",
+        "question_3",
+        "question_4",
+        "question_5"
+      ]
+    },
+    "cta": {
+      "type": "cta-banner",
+      "settings": {
+        "anchor": "kom-i-gang",
+        "heading": "Vil du se, hvordan det kan se ud hos jer?",
+        "text": "<p>Vi viser en demo inden for 24–48 timer. Det er uforpligtende.</p>",
+        "label": "Aftal en demo",
+        "link": "/pages/kontakt?ydelse=pakke-hjemmeside#formular",
+        "secondary_label": "Se eksempler",
+        "secondary_link": "/pages/eksempler",
+        "show_email": true,
+        "email_prefix": "Eller skriv til"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "indhold",
+    "forklaring",
+    "faq",
+    "cta"
+  ]
+}

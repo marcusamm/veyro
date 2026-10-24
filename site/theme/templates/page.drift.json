@@ -1,0 +1,349 @@
+{
+  "sections": {
+    "hero": {
+      "type": "page-hero",
+      "settings": {
+        "show_breadcrumbs": true,
+        "parent_label": "Løsninger",
+        "parent_link": "/pages/ydelser",
+        "badge": "På vej",
+        "badge_text": "Under udvikling",
+        "heading": "Drift og Alt inkl.",
+        "text": "<p>To kommende løsninger til virksomheder, der vil have jobs, timer, materialer og lager samlet ét sted. Vi udvikler dem nu og søger testkunder.</p>",
+        "primary_label": "Bliv testkunde",
+        "primary_link": "#testkunde",
+        "secondary_label": "Se priser",
+        "secondary_link": "/pages/priser",
+        "facts": "Drift | Forventet 599 kr./md. ekskl. moms\nAlt inkl. | Forventet 1.099 kr./md. ekskl. moms\nMedarbejdere | Planlagt 3, ekstra forventet 99 kr./md.\nStatus | På vej. Kan ikke bestilles endnu"
+      },
+      "blocks": {
+        "anchor_1": {
+          "type": "anchor",
+          "settings": {
+            "label": "Pakker",
+            "target": "pakker"
+          }
+        },
+        "anchor_2": {
+          "type": "anchor",
+          "settings": {
+            "label": "Lagerdemo",
+            "target": "lager"
+          }
+        },
+        "anchor_3": {
+          "type": "anchor",
+          "settings": {
+            "label": "Funktioner",
+            "target": "funktioner"
+          }
+        },
+        "anchor_4": {
+          "type": "anchor",
+          "settings": {
+            "label": "Alt inkl.",
+            "target": "alt-inkl"
+          }
+        },
+        "anchor_5": {
+          "type": "anchor",
+          "settings": {
+            "label": "Bliv testkunde",
+            "target": "testkunde"
+          }
+        }
+      },
+      "block_order": [
+        "anchor_1",
+        "anchor_2",
+        "anchor_3",
+        "anchor_4",
+        "anchor_5"
+      ]
+    },
+    "pakker": {
+      "type": "packages",
+      "settings": {
+        "anchor": "pakker",
+        "layout": "detail",
+        "heading": "Planlagt indhold og forventede priser",
+        "terms": "",
+        "text": "<p>Priserne er forventede priser ved lancering og kan ændre sig, før løsningerne er færdige.</p>"
+      },
+      "blocks": {
+        "package_1": {
+          "type": "package",
+          "settings": {
+            "handle": "drift",
+            "title": "Drift",
+            "status": "coming",
+            "text": "Jobs, timer, materialer og lager samlet ét sted.",
+            "price": "599 kr.",
+            "interval": "/md.",
+            "vat": "ekskl. moms",
+            "price_label": "Forventet pris",
+            "badge": "På vej",
+            "features": "En lagerportal med overblik over varer og lagerantal\nEn jobportal til opgaver, timer og materialeforbrug\nLageret trækkes, når materialeforbrug registreres\nGenbestillingspunkter og advarsel ved lav beholdning\nIndkøbslister til de enkelte jobs\nFakturagrundlag med materialer og timer\nPlanlagt: op til 3 medarbejdere\nEkstra medarbejdere til forventet 99 kr./md. pr. medarbejder ekskl. moms",
+            "features_label": "Planlagt indhold",
+            "limits": "",
+            "limits_label": "Rammer",
+            "note": "",
+            "button_label": "Bliv testkunde",
+            "button_link": "/pages/drift?pakke=drift#testkunde",
+            "button_style": "secondary"
+          }
+        },
+        "package_2": {
+          "type": "package",
+          "settings": {
+            "handle": "alt-inkl",
+            "title": "Alt inkl.",
+            "status": "coming",
+            "text": "Hjemmeside, booking, Drift og bilag samlet hos Veyro.",
+            "price": "1.099 kr.",
+            "interval": "/md.",
+            "vat": "ekskl. moms",
+            "price_label": "Forventet pris",
+            "badge": "På vej",
+            "features": "Alt i Hjemmeside, Booking og Drift\nUpload af kvitteringer og bilag\nAflæsning af bilagsoplysninger, som I kan kontrollere og rette\nBilag kan knyttes til jobs\nEksport af bilag og oplysninger\nPrioriteret support: svar inden for 24 timer\nPlanlagt: op til 3 medarbejdere\nEkstra medarbejdere til forventet 99 kr./md. pr. medarbejder ekskl. moms",
+            "features_label": "Planlagt indhold",
+            "limits": "",
+            "limits_label": "Rammer",
+            "note": "",
+            "button_label": "Bliv testkunde",
+            "button_link": "/pages/drift?pakke=alt-inkl#testkunde",
+            "button_style": "secondary"
+          }
+        }
+      },
+      "block_order": [
+        "package_1",
+        "package_2"
+      ]
+    },
+    "lager": {
+      "type": "drift-demo",
+      "settings": {
+        "anchor": "lager",
+        "heading": "Lageret opdateres, når forbrug registreres",
+        "text": "<p>Når en medarbejder registrerer materialer på et job, trækkes de fra lageret. Prøv det i eksemplet. Intet gemmes eller sendes.</p>",
+        "demo_badge": "Fiktive data",
+        "rules": "Lageret trækkes kun én gang | Hver ordre reducerer lageret én gang, også hvis den gemmes eller bekræftes igen\nIngen oversalg | Kommer to bestillinger på samme tid, kan den samme vare ikke sælges to gange\nAnnullering frigiver varer | Annulleres en ordre, bliver de reserverede varer disponible igen"
+      }
+    },
+    "funktioner": {
+      "type": "info-grid",
+      "settings": {
+        "anchor": "funktioner",
+        "layout": "grid",
+        "heading": "Det er planlagt"
+      },
+      "blocks": {
+        "item_1": {
+          "type": "item",
+          "settings": {
+            "title": "Lagerportal",
+            "text": "<p>Varer, varenumre og lagerantal med fysisk, reserveret og disponibel beholdning. Advarsel ved lav beholdning.</p>"
+          }
+        },
+        "item_2": {
+          "type": "item",
+          "settings": {
+            "title": "Jobportal",
+            "text": "<p>Jobs og ordrer samlet ét sted, uanset om de kommer fra hjemmesiden, telefonen eller e-mailen.</p>"
+          }
+        },
+        "item_3": {
+          "type": "item",
+          "settings": {
+            "title": "Timer",
+            "text": "<p>Medarbejderne registrerer timer på det job, de arbejder på.</p>"
+          }
+        },
+        "item_4": {
+          "type": "item",
+          "settings": {
+            "title": "Materialer",
+            "text": "<p>Materialeforbrug registreres på jobbet og trækkes fra lageret.</p>"
+          }
+        },
+        "item_5": {
+          "type": "item",
+          "settings": {
+            "title": "Indkøbslister",
+            "text": "<p>Lister over det, der skal købes ind til de enkelte jobs.</p>"
+          }
+        },
+        "item_6": {
+          "type": "item",
+          "settings": {
+            "title": "Kvitteringer og bilag",
+            "text": "<p>Upload og aflæsning af kvitteringer og regninger, som kan knyttes til jobs. Kun i Alt inkl.</p>",
+            "tag": "Alt inkl."
+          }
+        },
+        "item_7": {
+          "type": "item",
+          "settings": {
+            "title": "Fakturagrundlag",
+            "text": "<p>Materialer og timer samlet, så det er klar til fakturering.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "item_1",
+        "item_2",
+        "item_3",
+        "item_4",
+        "item_5",
+        "item_6",
+        "item_7"
+      ]
+    },
+    "alt": {
+      "type": "info-grid",
+      "settings": {
+        "anchor": "alt-inkl",
+        "layout": "split",
+        "heading": "Det er Alt inkl. ikke",
+        "text": "<p>Alt inkl. samler hjemmeside, booking, Drift og bilag. Navnet betyder ikke, at alt er med.</p>"
+      },
+      "blocks": {
+        "item_1": {
+          "type": "item",
+          "settings": {
+            "title": "Ikke ubegrænset udvikling",
+            "text": "<p>Nye funktioner og større ændringer aftales og prissættes særskilt.</p>"
+          }
+        },
+        "item_2": {
+          "type": "item",
+          "settings": {
+            "title": "Ikke alle integrationer",
+            "text": "<p>Kobling til andre systemer afhænger af systemet og aftales særskilt.</p>"
+          }
+        },
+        "item_3": {
+          "type": "item",
+          "settings": {
+            "title": "Ikke alle eksterne omkostninger",
+            "text": "<p>Abonnementer, gebyrer og licenser hos tredjepart betaler I selv.</p>"
+          }
+        },
+        "item_4": {
+          "type": "item",
+          "settings": {
+            "title": "Webshop er ikke automatisk med",
+            "text": "<p>Har I brug for en webshop, aftaler vi det særskilt.</p>"
+          }
+        },
+        "item_5": {
+          "type": "item",
+          "settings": {
+            "title": "Prioriteret support er en svartid",
+            "text": "<p>Vi svarer inden for 24 timer. Det er ikke en garanti for, at problemet er løst inden for 24 timer.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "item_1",
+        "item_2",
+        "item_3",
+        "item_4",
+        "item_5"
+      ]
+    },
+    "lagerforskel": {
+      "type": "note-banner",
+      "settings": {
+        "anchor": "lager-webshop",
+        "heading": "Lager i Drift og lager i en webshop",
+        "text": "<p>Drift samler jobs, timer, materialer og lager for jer selv. Lageret i pakken Webshop handler om de varer, I sælger online. De to er ikke det samme.</p>",
+        "primary_label": "Læs om Webshop",
+        "primary_link": "/pages/webshop"
+      }
+    },
+    "testkunde": {
+      "type": "pilot-form",
+      "settings": {
+        "anchor": "testkunde",
+        "eyebrow": "",
+        "heading": "Bliv testkunde",
+        "text": "<p>Fortæl kort om jer, så kontakter vi jer og aftaler, om et testforløb passer.</p><p>En tilmelding er uforpligtende. Pris, varighed, funktioner og support i testforløbet aftales individuelt, og et testforløb bliver aldrig automatisk til et betalt abonnement.</p>",
+        "form_name": "Testkunde",
+        "options": "Drift\nAlt inkl.",
+        "sizes": "1\n2-3\n4-10\n11-25\nFlere end 25",
+        "submit_label": "Send tilmelding",
+        "note": "En tilmelding er en henvendelse og starter ikke et abonnement.",
+        "success_heading": "Tak for din interesse",
+        "success_text": "<p>Tak for din interesse. Vi kontakter dig for at høre om din virksomhed og aftale, om et testforløb passer til jer.</p>"
+      }
+    },
+    "faq": {
+      "type": "faq",
+      "settings": {
+        "anchor": "faq",
+        "eyebrow": "",
+        "heading": "Spørgsmål om Drift",
+        "text": "",
+        "link_label": "",
+        "link": "",
+        "schema": true
+      },
+      "blocks": {
+        "question_1": {
+          "type": "question",
+          "settings": {
+            "question": "Skal vi have en webshop for at bruge Drift?",
+            "answer": "<p>Nej. Drift kræver hverken en offentlig webshop, et produktkatalog til kunder eller onlinebetaling.</p>"
+          }
+        },
+        "question_2": {
+          "type": "question",
+          "settings": {
+            "question": "Hvordan undgår systemet, at vi sælger varer, vi ikke har?",
+            "answer": "<p>Systemet skelner mellem fysisk beholdning, reserverede varer og disponibel beholdning. Når en ordre bekræftes, reserveres varerne, så de ikke kan sælges igen. Lageret trækkes kun én gang pr. ordre, og to samtidige bestillinger kan ikke købe den samme vare.</p>"
+          }
+        },
+        "question_3": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad sker der med lageret, hvis en ordre annulleres?",
+            "answer": "<p>De reserverede varer frigives og bliver disponible igen. Ændringen kan ses i historikken.</p>"
+          }
+        },
+        "question_4": {
+          "type": "question",
+          "settings": {
+            "question": "Kan vi bruge det på telefon og tablet?",
+            "answer": "<p>Ja. Det er planlagt til at virke på computer, tablet og mobil.</p>"
+          }
+        },
+        "question_5": {
+          "type": "question",
+          "settings": {
+            "question": "Bliver et testforløb til et betalt abonnement?",
+            "answer": "<p>Nej, ikke automatisk. Vilkårene for testforløbet aftales individuelt, og et betalt abonnement kræver jeres udtrykkelige accept.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "question_1",
+        "question_2",
+        "question_3",
+        "question_4",
+        "question_5"
+      ]
+    }
+  },
+  "order": [
+    "hero",
+    "pakker",
+    "lager",
+    "funktioner",
+    "alt",
+    "lagerforskel",
+    "testkunde",
+    "faq"
+  ]
+}

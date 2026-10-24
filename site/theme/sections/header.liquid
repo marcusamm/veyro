@@ -1,3 +1,8 @@
+{%- comment -%}
+  Header: logo, få menupunkter, kundelogin og én knap ("Aftal en demo").
+  Der er intet fast kurvikon. Har en besøgende lagt noget i kurven, indsætter serveren et lille
+  kurvlink (<!--cart-count--> i src/site/app.ts › personalize), så kurven stadig kan findes.
+{%- endcomment -%}
 {%- liquid
   assign company = settings.company_name | default: shop.name
   assign cta_url = section.settings.cta_link | default: pages['kontakt'].url | default: '/pages/kontakt'
@@ -9,18 +14,10 @@
     <a class="logo" href="{{ routes.root_url }}" aria-label="{{ company | escape }} – {{ 'general.home' | t }}">
       {%- if settings.logo != blank -%}
         {%- assign logo_height = settings.logo_width | divided_by: settings.logo.aspect_ratio | round -%}
-        {%- assign logo_sizes = settings.logo_width | append: 'px' -%}
         {{
           settings.logo
           | image_url: width: 520
-          | image_tag:
-            class: 'logo__image',
-            width: settings.logo_width,
-            height: logo_height,
-            widths: '160, 260, 400, 520',
-            sizes: logo_sizes,
-            alt: company,
-            loading: 'eager'
+          | image_tag: class: 'logo__image', width: settings.logo_width, height: logo_height, alt: company, loading: 'eager'
         }}
       {%- else -%}
         <span class="logo__text">{{ company | escape }}</span><span class="logo__dot" aria-hidden="true">.</span>
@@ -31,22 +28,14 @@
       <nav class="nav" aria-label="{{ 'general.main_navigation' | t }}">
         <ul class="nav__list" role="list">
           {%- for link in menu.links -%}
-            <li>
-              <a class="nav__link" href="{{ link.url }}"{% if link.current %} aria-current="page"{% elsif link.child_active %} data-active{% endif %}>{{ link.title | escape }}</a>
-            </li>
+            <li><a class="nav__link" href="{{ link.url }}"{% if link.current %} aria-current="page"{% elsif link.child_active %} data-active{% endif %}>{{ link.title | escape }}</a></li>
           {%- endfor -%}
         </ul>
       </nav>
     {%- endif -%}
 
     <div class="site-header__actions">
-      {%- if section.settings.show_cart -%}
-        <a class="site-header__cart" href="{{ routes.cart_url }}">
-          {% render 'icon', name: 'cart', size: 22 %}
-          <span class="visually-hidden">{{ 'cart.title' | t }}</span>
-          {%- comment -%} Antal i kurven indsættes af serveren pr. besøgende (siden caches uden kurv) {%- endcomment -%}<!--cart-count-->
-        </a>
-      {%- endif -%}
+      <!--cart-count-->
       {%- if section.settings.login_label != blank -%}
         <a class="nav__link site-header__login" href="{{ login_url }}">{{ section.settings.login_label | escape }}</a>
       {%- endif -%}
@@ -55,7 +44,7 @@
       {%- endif -%}
       {%- if menu.links.size > 0 -%}
         <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="MobileNav" data-nav-toggle>
-          <span class="visually-hidden" data-nav-toggle-label>{{ 'general.open_menu' | t }}</span>
+          <span class="nav-toggle__label" data-nav-toggle-label>{{ 'general.menu' | t }}</span>
           <span class="nav-toggle__bars" aria-hidden="true"><span></span><span></span></span>
         </button>
       {%- endif -%}
@@ -67,23 +56,19 @@
       <nav class="container" aria-label="{{ 'general.main_navigation' | t }}">
         <ul class="mobile-nav__list" role="list">
           {%- for link in menu.links -%}
-            <li>
-              <a class="mobile-nav__link" href="{{ link.url }}"{% if link.current %} aria-current="page"{% endif %}>
-                <span>{{ link.title | escape }}</span>
-                {% render 'icon', name: 'arrow-right', size: 20 %}
-              </a>
-            </li>
+            <li><a class="mobile-nav__link" href="{{ link.url }}"{% if link.current %} aria-current="page"{% endif %}>{{ link.title | escape }}</a></li>
           {%- endfor -%}
+          {%- if section.settings.login_label != blank -%}
+            <li><a class="mobile-nav__link" href="{{ login_url }}">{{ section.settings.login_label | escape }}</a></li>
+          {%- endif -%}
         </ul>
         {%- if section.settings.cta_label != blank -%}
           <a class="btn btn--primary btn--block" href="{{ cta_url }}">{{ section.settings.cta_label | escape }}</a>
         {%- endif -%}
-        {%- if section.settings.login_label != blank -%}
-          <a class="btn btn--secondary btn--block mobile-nav__login" href="{{ login_url }}">{{ section.settings.login_label | escape }}</a>
-        {%- endif -%}
-        {%- unless settings.company_email contains '[' -%}
-          <p class="mobile-nav__meta"><a href="mailto:{{ settings.company_email }}">{{ settings.company_email }}</a></p>
-        {%- endunless -%}
+        <p class="mobile-nav__meta">
+          {%- unless settings.company_email contains '[' -%}<a href="mailto:{{ settings.company_email }}">{{ settings.company_email }}</a>{%- endunless -%}
+          {%- if settings.company_phone != blank -%}<a href="tel:{{ settings.company_phone | remove: ' ' }}">{{ settings.company_phone }}</a>{%- endif -%}
+        </p>
       </nav>
     </div>
   {%- endif -%}
@@ -95,10 +80,9 @@
   "class": "section-header",
   "enabled_on": { "groups": ["header"] },
   "settings": [
-    { "type": "link_list", "id": "menu", "label": "Menu", "default": "main-menu", "info": "Anbefalet: Forside, Ydelser, Om os, Kontakt." },
-    { "type": "checkbox", "id": "show_cart", "label": "Vis kurv", "default": true },
+    { "type": "link_list", "id": "menu", "label": "Menu", "default": "main-menu", "info": "Hold menuen kort: Løsninger, Eksempler, Priser, Om os og Kontakt." },
     { "type": "checkbox", "id": "sticky", "label": "Fastgør header ved scroll", "default": true },
-    { "type": "text", "id": "cta_label", "label": "Knaptekst", "default": "Få en gratis vurdering" },
+    { "type": "text", "id": "cta_label", "label": "Knaptekst", "default": "Aftal en demo" },
     { "type": "url", "id": "cta_link", "label": "Knaplink", "info": "Tomt felt linker til siden med håndtaget „kontakt“." },
     { "type": "text", "id": "login_label", "label": "Tekst for kundelogin", "default": "Kundelogin", "info": "Tomt felt skjuler linket." },
     { "type": "url", "id": "login_link", "label": "Link til kundelogin", "info": "Tomt felt linker til https://kunde.veyro.dk/login." }

@@ -1,0 +1,512 @@
+{
+  "sections": {
+    "hero": {
+      "type": "page-hero",
+      "settings": {
+        "show_breadcrumbs": true,
+        "heading": "Priser",
+        "text": "<p>Tre pakker med fast månedspris ekskl. moms. Oprettelsen er gratis inden for det aftalte indhold, den første måned er gratis fra den dag, løsningen går live, og der er ingen binding.</p>",
+        "primary_label": "Aftal en demo",
+        "primary_link": "/pages/kontakt?ydelse=aftal-en-demo#formular",
+        "secondary_label": "Se eksempler",
+        "secondary_link": "/pages/eksempler",
+        "facts": "Hjemmeside | 199 kr./md. ekskl. moms\nBooking | 299 kr./md. ekskl. moms\nWebshop | 499 kr./md. ekskl. moms\nDrift og Alt inkl. | På vej",
+        "nav_label": "Indhold på siden"
+      },
+      "blocks": {
+        "anchor_1": {
+          "type": "anchor",
+          "settings": {
+            "label": "Pakker",
+            "target": "pakker"
+          }
+        },
+        "anchor_2": {
+          "type": "anchor",
+          "settings": {
+            "label": "Det gælder for alle",
+            "target": "vilkaar"
+          }
+        },
+        "anchor_3": {
+          "type": "anchor",
+          "settings": {
+            "label": "Brugere",
+            "target": "brugere"
+          }
+        },
+        "anchor_4": {
+          "type": "anchor",
+          "settings": {
+            "label": "Justeringer og tilkøb",
+            "target": "tilkoeb"
+          }
+        },
+        "anchor_5": {
+          "type": "anchor",
+          "settings": {
+            "label": "Domæne og andre omkostninger",
+            "target": "domaene"
+          }
+        },
+        "anchor_6": {
+          "type": "anchor",
+          "settings": {
+            "label": "Bestilling og betaling",
+            "target": "betaling"
+          }
+        },
+        "anchor_7": {
+          "type": "anchor",
+          "settings": {
+            "label": "Spørgsmål",
+            "target": "faq"
+          }
+        }
+      },
+      "block_order": [
+        "anchor_1",
+        "anchor_2",
+        "anchor_3",
+        "anchor_4",
+        "anchor_5",
+        "anchor_6",
+        "anchor_7"
+      ]
+    },
+    "pakker": {
+      "type": "packages",
+      "settings": {
+        "anchor": "pakker",
+        "layout": "detail",
+        "heading": "Det er med i pakkerne",
+        "terms": "Gratis oprettelse · Første måned gratis · Ingen binding",
+        "note": "<p>Du betaler ikke her. Vi sender et tilbud med et personligt betalingslink. Vilkårene står i vores <a href=\"/pages/handelsbetingelser\">handelsbetingelser</a>, og I ser dem, før I accepterer abonnementet.</p>"
+      },
+      "blocks": {
+        "package_1": {
+          "type": "package",
+          "settings": {
+            "handle": "hjemmeside",
+            "title": "Hjemmeside",
+            "status": "available",
+            "text": "En professionel hjemmeside til virksomheder, der vil være nemme at finde og kontakte.",
+            "price": "199 kr.",
+            "interval": "/md.",
+            "vat": "ekskl. moms",
+            "price_label": "",
+            "badge": "",
+            "features": "Op til 5 sider\nDesign tilpasset jeres virksomhed\nVirker på mobil, tablet og computer\nPræsentation af virksomheden og jeres ydelser\nKontaktformular og kontaktoplysninger\nHosting og teknisk vedligeholdelse\n3 korrekturrunder under opsætningen\nMindre løbende justeringer",
+            "features_label": "Det er med",
+            "limits": "5 sider kan fx være forside, ydelser, om os, galleri og kontakt. Flere afsnit på samme side tæller som én side.\nEn korrekturrunde er én samlet tilbagemelding på det aftalte design og indhold.",
+            "limits_label": "Rammer",
+            "note": "<p>Nye funktioner eller et større omfang er ikke en korrekturrunde. Det aftaler vi særskilt, og I får et tilbud først.</p>",
+            "button_label": "Aftal en demo",
+            "button_link": "/pages/kontakt?ydelse=pakke-hjemmeside#formular",
+            "button_style": "primary",
+            "details_label": "Læs om Hjemmeside",
+            "details_link": "/pages/hjemmeside"
+          }
+        },
+        "package_2": {
+          "type": "package",
+          "settings": {
+            "handle": "booking",
+            "title": "Booking",
+            "status": "available",
+            "text": "En hjemmeside med online booking, så kunderne selv kan finde og booke en ledig tid.",
+            "price": "299 kr.",
+            "interval": "/md.",
+            "vat": "ekskl. moms",
+            "price_label": "",
+            "badge": "",
+            "features": "Alt i Hjemmeside\nOnline booking\nOverblik over aftaler og ledige tider\nOpsætning af jeres ydelser\nKunden kan selv booke, flytte og aflyse\nBekræftelse og besked om ændring eller aflysning på mail til både jer og kunden\nEjer og medarbejdere kan koble bookingkalenderen til kalenderen på deres mobil\nOp til 3 medarbejdere med egen bruger eller bookingkalender",
+            "features_label": "Det er med",
+            "limits": "Ekstra medarbejdere: 99 kr./md. pr. medarbejder ekskl. moms.\nSMS, påmindelser og onlinebetaling er ikke en del af pakken.",
+            "limits_label": "Rammer",
+            "note": "<p>Aftaler oprettes, flyttes og aflyses i bookingsystemet. Kalenderen på mobilen viser aftalerne.</p>",
+            "button_label": "Aftal en demo",
+            "button_link": "/pages/kontakt?ydelse=pakke-booking#formular",
+            "button_style": "primary",
+            "details_label": "Læs om Booking",
+            "details_link": "/pages/booking"
+          }
+        },
+        "package_3": {
+          "type": "package",
+          "settings": {
+            "handle": "webshop",
+            "title": "Webshop",
+            "status": "available",
+            "text": "En webshop til jeres varer, som vi sætter op og holder ved lige.",
+            "price": "499 kr.",
+            "interval": "/md.",
+            "vat": "ekskl. moms",
+            "price_label": "",
+            "badge": "",
+            "features": "Webshop tilpasset jeres virksomhed\nVirker på mobil, tablet og computer\nOp til 50 aktive produkter og op til 200 varianter i alt\nVi opretter de første 10 produkter, eller vi laver én standardimport af op til 50 produkter\nI kan selv rette og oprette produkter inden for rammerne\nOp til 3 administratorbrugere\nHosting og teknisk vedligeholdelse\nMindre løbende justeringer",
+            "features_label": "Det er med",
+            "limits": "Et produkt med varianter tæller som ét produkt. En T-shirt i 3 størrelser og 2 farver er 1 produkt med 6 varianter.\nOpstarten er enten manuel oprettelse af 10 produkter eller én import af op til 50 produkter fra en korrekt udfyldt CSV- eller Excel-skabelon. Ikke begge dele.\nI leverer billeder og produktdata. Produktkataloget tæller ikke som indholdssider.",
+            "limits_label": "Rammer",
+            "note": "<p>Gebyrer til betalingsudbyderen, fragt og eventuelle abonnementer hos tredjepart betaler I selv. Ekstra brugere: 99 kr./md. pr. bruger ekskl. moms.</p>",
+            "button_label": "Aftal en demo",
+            "button_link": "/pages/kontakt?ydelse=pakke-webshop#formular",
+            "button_style": "primary",
+            "details_label": "Læs om Webshop",
+            "details_link": "/pages/webshop"
+          }
+        }
+      },
+      "block_order": [
+        "package_1",
+        "package_2",
+        "package_3"
+      ]
+    },
+    "vilkaar": {
+      "type": "info-grid",
+      "settings": {
+        "anchor": "vilkaar",
+        "layout": "rows",
+        "heading": "Det gælder for alle pakker"
+      },
+      "blocks": {
+        "item_1": {
+          "type": "item",
+          "settings": {
+            "title": "Gratis oprettelse",
+            "text": "<p>Vi sætter løsningen op uden beregning inden for det aftalte indhold.</p>"
+          }
+        },
+        "item_2": {
+          "type": "item",
+          "settings": {
+            "title": "Første måned gratis",
+            "text": "<p>Måneden regnes fra den dag, løsningen går live og er klar til brug. Herefter betaler I den faste månedspris.</p>"
+          }
+        },
+        "item_3": {
+          "type": "item",
+          "settings": {
+            "title": "Ingen binding",
+            "text": "<p>I kan opsige når som helst i kundepanelet eller på mail. Opsigelsen gælder fra udgangen af den periode, der er betalt for.</p>"
+          }
+        },
+        "item_4": {
+          "type": "item",
+          "settings": {
+            "title": "Større ændringer og tilkøb",
+            "text": "<p>Nye sider, større designændringer, nye funktioner, integrationer og arbejde med produktkataloget aftales særskilt. I får et tilbud, før vi går i gang.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "item_1",
+        "item_2",
+        "item_3",
+        "item_4"
+      ]
+    },
+    "brugere": {
+      "type": "staff-table",
+      "settings": {
+        "anchor": "brugere",
+        "heading": "Brugere i Booking og Webshop",
+        "text": "<p>Booking og Webshop har 3 brugere med. En ekstra bruger koster 99 kr./md. ekskl. moms, og I tilføjer brugere ved at kontakte os.</p><p>I Booking tæller en person med egen bruger eller bookingkalender. Har personen begge dele, tæller vedkommende kun én gang. Ejeren tæller med, hvis ejeren har adgang. Medarbejdere, der kun vises på hjemmesiden med navn eller billede, er gratis.</p>",
+        "caption": "Samlet månedspris ekskl. moms efter antal brugere",
+        "included": 3,
+        "extra_price": 99,
+        "a_label": "Booking",
+        "a_price": 299,
+        "b_label": "Webshop",
+        "b_price": 499,
+        "table_note": "Eksempel: Booking med 5 medarbejdere koster 497 kr./md. ekskl. moms."
+      }
+    },
+    "tilkoeb": {
+      "type": "info-grid",
+      "settings": {
+        "anchor": "tilkoeb",
+        "layout": "split",
+        "heading": "Små justeringer og tilkøb",
+        "text": "<p>Mindre løbende justeringer er med i alle pakker. Alt, der er større, aftaler vi på forhånd.</p>",
+        "button_label": "Kontakt os om tilkøb",
+        "button_link": "/pages/kontakt?ydelse=tilkoeb-eller-stoerre-aendring#formular",
+        "button_style": "secondary"
+      },
+      "blocks": {
+        "item_1": {
+          "type": "item",
+          "settings": {
+            "title": "Små justeringer",
+            "text": "<p>Fx nye åbningstider, ændrede kontaktoplysninger, mindre rettelser i tekst og udskiftning af enkelte billeder. Skriv til os, så klarer vi det.</p>",
+            "tag": "Med i pakken"
+          }
+        },
+        "item_2": {
+          "type": "item",
+          "settings": {
+            "title": "Kræver et tilbud",
+            "text": "<p>Nye sider, større designændringer, nye funktioner, integrationer og arbejde med produktkataloget. Vi sender et tilbud, før vi går i gang.</p>",
+            "tag": "Aftales særskilt"
+          }
+        }
+      },
+      "block_order": [
+        "item_1",
+        "item_2"
+      ]
+    },
+    "domaene": {
+      "type": "info-grid",
+      "settings": {
+        "anchor": "domaene",
+        "layout": "grid",
+        "heading": "Domæne og andre omkostninger",
+        "note": "<p>Mail på jeres domæne er ikke en del af pakkerne.</p>"
+      },
+      "blocks": {
+        "item_1": {
+          "type": "item",
+          "settings": {
+            "title": "Jeres eget domæne",
+            "text": "<p>Har I allerede et domæne, kobler vi løsningen til det.</p>"
+          }
+        },
+        "item_2": {
+          "type": "item",
+          "settings": {
+            "title": "Køb gennem os",
+            "text": "<p>Vi kan købe et domæne til jer. Det koster ekstra, og prisen aftales på forhånd.</p>"
+          }
+        },
+        "item_3": {
+          "type": "item",
+          "settings": {
+            "title": "Gratis underdomæne",
+            "text": "<p>I kan også bruge en gratis adresse som jeresnavn.veyro.dk.</p>"
+          }
+        },
+        "item_4": {
+          "type": "item",
+          "settings": {
+            "title": "Betaling og fragt i en webshop",
+            "text": "<p>Gebyrer til betalingsudbyderen og fragt betaler I selv. Satserne afhænger af jeres egne aftaler.</p>"
+          }
+        },
+        "item_5": {
+          "type": "item",
+          "settings": {
+            "title": "Tredjepart",
+            "text": "<p>Abonnementer hos andre leverandører, fx et regnskabsprogram eller et nyhedsbrevssystem, er ikke en del af pakkerne.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "item_1",
+        "item_2",
+        "item_3",
+        "item_4",
+        "item_5"
+      ]
+    },
+    "betaling": {
+      "type": "steps",
+      "settings": {
+        "anchor": "betaling",
+        "heading": "Sådan bestiller og betaler du",
+        "note": "<p>Du betaler ikke på hjemmesiden, og vi gemmer aldrig dine kortoplysninger. Er du allerede kunde, kan du <a href=\"https://kunde.veyro.dk/login\">logge ind i kundepanelet</a> og se dine betalinger.</p>",
+        "link_label": "Aftal en demo",
+        "link": "/pages/kontakt?ydelse=aftal-en-demo#formular",
+        "link_style": "primary"
+      },
+      "blocks": {
+        "step_1": {
+          "type": "step",
+          "settings": {
+            "title": "Aftal en demo",
+            "text": "<p>Send en kort henvendelse. Det er gratis og uforpligtende, og du får en demo inden for 24–48 timer.</p>"
+          }
+        },
+        "step_2": {
+          "type": "step",
+          "settings": {
+            "title": "Få et tilbud på e-mail",
+            "text": "<p>Du får pris og vilkår samt et personligt betalingslink fra os.</p>"
+          }
+        },
+        "step_3": {
+          "type": "step",
+          "settings": {
+            "title": "Betal sikkert med kort",
+            "text": "<p>Linket åbner Stripes sikre betalingsside, hvor du tilmelder kortet. Første betaling trækkes, når den gratis måned er gået.</p>"
+          }
+        },
+        "step_4": {
+          "type": "step",
+          "settings": {
+            "title": "Styr det i kundepanelet",
+            "text": "<p>På kunde.veyro.dk ser du fakturaer, skifter betalingskort og opsiger, når du vil.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "step_1",
+        "step_2",
+        "step_3",
+        "step_4"
+      ]
+    },
+    "paa_vej": {
+      "type": "coming",
+      "settings": {
+        "anchor": "paa-vej",
+        "id_suffix": "-kort",
+        "badge": "På vej",
+        "status_text": "Under udvikling",
+        "heading": "Drift og Alt inkl.",
+        "text": "<p>Kommende løsninger med forventede priser ved lancering. De kan ikke bestilles endnu, men I kan blive testkunde.</p>",
+        "primary_label": "Bliv testkunde",
+        "primary_link": "/pages/drift?pakke=drift#testkunde",
+        "secondary_label": "Læs om Drift og Alt inkl.",
+        "secondary_link": "/pages/drift"
+      },
+      "blocks": {
+        "package_1": {
+          "type": "package",
+          "settings": {
+            "handle": "drift",
+            "title": "Drift",
+            "status": "coming",
+            "badge": "På vej",
+            "text": "Jobs, timer, materialer og lager samlet ét sted.",
+            "price_label": "Forventet pris",
+            "price": "599 kr.",
+            "interval": "/md.",
+            "vat": "ekskl. moms",
+            "features": "Lagerportal og jobportal\nTimer og materialer på hvert job\nLageret opdateres ved registreret forbrug\nPlanlagt: 3 medarbejdere, ekstra forventet 99 kr./md.",
+            "button_label": "Bliv testkunde",
+            "button_link": "/pages/drift?pakke=drift#testkunde",
+            "button_style": "secondary",
+            "details_label": "Se planlagt indhold",
+            "details_link": "/pages/drift#pakke-drift"
+          }
+        },
+        "package_2": {
+          "type": "package",
+          "settings": {
+            "handle": "alt-inkl",
+            "title": "Alt inkl.",
+            "status": "coming",
+            "badge": "På vej",
+            "text": "Hjemmeside, booking, Drift og bilag samlet hos Veyro.",
+            "price_label": "Forventet pris",
+            "price": "1.099 kr.",
+            "interval": "/md.",
+            "vat": "ekskl. moms",
+            "features": "Alt i Hjemmeside, Booking og Drift\nUpload og aflæsning af kvitteringer og bilag\nPrioriteret support med svar inden for 24 timer\nWebshop er ikke automatisk med",
+            "button_label": "Bliv testkunde",
+            "button_link": "/pages/drift?pakke=alt-inkl#testkunde",
+            "button_style": "secondary",
+            "details_label": "Se planlagt indhold",
+            "details_link": "/pages/drift#pakke-alt-inkl"
+          }
+        }
+      },
+      "block_order": [
+        "package_1",
+        "package_2"
+      ]
+    },
+    "faq": {
+      "type": "faq",
+      "settings": {
+        "anchor": "faq",
+        "eyebrow": "",
+        "heading": "Spørgsmål om priser",
+        "text": "",
+        "link_label": "",
+        "link": "",
+        "schema": true
+      },
+      "blocks": {
+        "question_1": {
+          "type": "question",
+          "settings": {
+            "question": "Er den første måned gratis?",
+            "answer": "<p>Ja. Oprettelsen er gratis inden for det aftalte indhold, og den første måned er gratis fra den dag, løsningen går live og er klar til brug. Derefter betaler I den faste månedspris. Der er ingen binding.</p>"
+          }
+        },
+        "question_2": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad tæller som en lille justering?",
+            "answer": "<p>Små justeringer er fx nye åbningstider, ændrede kontaktoplysninger, mindre rettelser i tekst og udskiftning af enkelte billeder. De er med i alle pakker.</p><p>Nye sider, større designændringer, nye funktioner, integrationer og arbejde med produktkataloget kræver et tilbud. <a href=\"/pages/kontakt?ydelse=tilkoeb-eller-stoerre-aendring#formular\">Kontakt os om tilkøb</a>.</p>"
+          }
+        },
+        "question_3": {
+          "type": "question",
+          "settings": {
+            "question": "Hvordan får vi flere brugere?",
+            "answer": "<p>Kontakt os, så tilføjer vi dem. Booking og Webshop har 3 brugere med, og hver ekstra bruger koster 99 kr./md. ekskl. moms. I Booking tæller en person med egen bruger eller bookingkalender, og en person med begge dele tæller kun én gang. Ejeren tæller med, hvis ejeren har adgang. Medarbejdere, der kun vises på hjemmesiden med navn eller billede, er gratis.</p>"
+          }
+        },
+        "question_4": {
+          "type": "question",
+          "settings": {
+            "question": "Får vi et domæne med?",
+            "answer": "<p>Et domæne og mail på domænet er ikke en del af pakkerne. I kan bruge jeres eget domæne, købe et gennem os mod betaling, eller bruge en gratis adresse som jeresnavn.veyro.dk.</p>"
+          }
+        },
+        "question_5": {
+          "type": "question",
+          "settings": {
+            "question": "Hvornår betaler vi første gang?",
+            "answer": "<p>Når den gratis måned er gået. Måneden regnes fra den dag, løsningen går live. Du får et tilbud med et personligt betalingslink, og kortet tilmeldes på Stripes sikre betalingsside. Du betaler ikke på hjemmesiden.</p>"
+          }
+        },
+        "question_6": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad sker der, hvis vi opsiger?",
+            "answer": "<p>I kan opsige når som helst i kundepanelet eller på mail. Opsigelsen gælder fra udgangen af den periode, I har betalt for. I ejer jeres eget indhold og jeres data og kan inden for 30 dage efter ophøret få dem udleveret. Veyro beholder rettighederne til software, skabeloner og kode, og domæner, der tilhører jer, overføres efter aftale. <a href=\"/pages/handelsbetingelser\">Læs handelsbetingelserne</a>.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "question_1",
+        "question_2",
+        "question_3",
+        "question_4",
+        "question_5",
+        "question_6"
+      ]
+    },
+    "cta": {
+      "type": "cta-banner",
+      "settings": {
+        "anchor": "kom-i-gang",
+        "heading": "Vil du se, hvordan det kan se ud hos jer?",
+        "text": "<p>Fortæl kort om virksomheden, så viser vi en demo inden for 24–48 timer.</p>",
+        "label": "Aftal en demo",
+        "link": "/pages/kontakt?ydelse=aftal-en-demo#formular",
+        "secondary_label": "",
+        "secondary_link": "",
+        "show_email": true,
+        "email_prefix": "Eller skriv til"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "pakker",
+    "vilkaar",
+    "brugere",
+    "tilkoeb",
+    "domaene",
+    "betaling",
+    "paa_vej",
+    "faq",
+    "cta"
+  ]
+}

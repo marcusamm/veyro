@@ -2,87 +2,96 @@
   "sections": {
     "form": {
       "type": "contact-form",
+      "settings": {
+        "anchor": "formular",
+        "heading_tag": "h1",
+        "eyebrow": "",
+        "heading": "Kontakt",
+        "text": "<p>Fortæl kort, hvad du har brug for. Vi svarer inden for 24–48 timer og aftaler næste skridt, fx en demo eller et tilbud.</p>",
+        "form_name": "Kontakt / tilbud",
+        "services": "Aftal en demo\nPakke: Hjemmeside\nPakke: Booking\nPakke: Webshop\nTilkøb eller større ændring\nWebsite-optimering\nKonverteringsoptimering (CRO)\nShopify-specialudvikling\nFejlfinding og teknisk hjælp\nIntegrationer og automatisering\nHosting og vedligeholdelse\nAndet / ved ikke endnu",
+        "submit_label": "Send henvendelse",
+        "success_heading": "Tak, vi har modtaget din henvendelse",
+        "success_text": "<p>Vi læser din besked og svarer på e-mail inden for 24–48 timer. Har du flere oplysninger i mellemtiden, er du velkommen til at svare på vores mail.</p>",
+        "steps_heading": "Det sker der, når du skriver",
+        "direct_heading": "Vil du hellere ringe eller skrive direkte?"
+      },
       "blocks": {
-        "s1": {
+        "step_1": {
           "type": "step",
           "settings": {
             "title": "Vi læser din henvendelse",
             "text": "og kigger på din hjemmeside, hvis du har sendt et link."
           }
         },
-        "s2": {
+        "step_2": {
           "type": "step",
           "settings": {
-            "title": "Vi svarer inden for 24-48 timer",
-            "text": "på e-mail med vores første vurdering og eventuelle spørgsmål."
+            "title": "Vi svarer inden for 24–48 timer",
+            "text": "på e-mail, med spørgsmål eller et forslag til en demo."
           }
         },
-        "s3": {
+        "step_3": {
           "type": "step",
           "settings": {
-            "title": "Du får et konkret forslag",
-            "text": "med indhold, tidsplan og pris, uden forpligtelser."
+            "title": "Du får en demo eller et tilbud",
+            "text": "med indhold, tidsplan og pris. Det er uforpligtende."
           }
         }
       },
       "block_order": [
-        "s1",
-        "s2",
-        "s3"
-      ],
-      "settings": {
-        "scheme": "light",
-        "anchor": "formular",
-        "heading_tag": "h1",
-        "eyebrow": "Kontakt",
-        "heading": "Kontakt os",
-        "text": "<p>Fortæl kort, hvad du har brug for: en af vores pakker, en løsning til ordrer og lager eller en almindelig hjemmeside. Vi svarer inden for 24-48 timer og aftaler næste skridt, fx en demo eller en gratis vurdering af din nuværende hjemmeside.</p>",
-        "form_name": "Kontakt / tilbud",
-        "services": "Pakke: Basis\nPakke: Booking\nBook en demo\nAlmindelig hjemmeside eller landingsside\nGratis vurdering af min hjemmeside\nWebsite-optimering\nKonverteringsoptimering (CRO)\nCustom Shopify-løsning\nWeb- og webshopdesign\nFejlfinding og teknisk hjælp\nIntegrationer og automatisering\nVedligeholdelse af eksisterende hjemmeside\nAndet / ved ikke endnu",
-        "submit_label": "Send henvendelse",
-        "success_heading": "Tak, vi har modtaget din henvendelse",
-        "success_text": "<p>Vi kigger på din besked og svarer på e-mail inden for 24-48 timer. Har du flere oplysninger i mellemtiden, er du velkommen til at svare på vores mail.</p>",
-        "steps_heading": "Det sker der, når du skriver",
-        "direct_heading": "Foretrækker du at skrive direkte?"
-      }
+        "step_1",
+        "step_2",
+        "step_3"
+      ]
     },
     "faq": {
       "type": "faq",
+      "settings": {
+        "anchor": "faq",
+        "eyebrow": "",
+        "heading": "Før du skriver",
+        "text": "",
+        "link_label": "",
+        "link": "",
+        "schema": true
+      },
       "blocks": {
-        "q1": {
+        "question_1": {
           "type": "question",
           "settings": {
             "question": "Hvad sker der med mine oplysninger?",
-            "answer": "<p>Vi bruger kun oplysningerne til at besvare din henvendelse. Læs mere i vores privatlivspolitik.</p>"
+            "answer": "<p>Vi bruger kun oplysningerne til at besvare din henvendelse. Læs mere i vores <a href=\"/pages/privatlivspolitik\">privatlivspolitik</a>.</p>"
           }
         },
-        "q2": {
+        "question_2": {
           "type": "question",
           "settings": {
-            "question": "Er den første vurdering virkelig gratis?",
-            "answer": "<p>Ja. Den første vurdering er gratis og uforpligtende. Ønsker du, at vi går videre, får du et konkret tilbud først.</p>"
+            "question": "Er en demo gratis?",
+            "answer": "<p>Ja. En demo er gratis og uforpligtende. Vil I gå videre, får I et konkret tilbud først.</p>"
           }
         },
-        "q3": {
+        "question_3": {
           "type": "question",
           "settings": {
             "question": "Skal jeg give jer adgang til min hjemmeside?",
-            "answer": "<p>Ikke for den første vurdering. Den laver vi ud fra den offentlige side. Går vi i gang med en opgave, beder vi om en separat brugeradgang med de nødvendige rettigheder (på Shopify en samarbejdspartneradgang).</p>"
+            "answer": "<p>Ikke for den første vurdering. Den laver vi ud fra den offentlige side. Går vi i gang med en opgave, beder vi om en separat brugeradgang med de nødvendige rettigheder.</p>"
+          }
+        },
+        "question_4": {
+          "type": "question",
+          "settings": {
+            "question": "Er jeg allerede kunde?",
+            "answer": "<p>Så kan du <a href=\"https://kunde.veyro.dk/login\">logge ind i kundepanelet</a> og se dine betalinger, aftaler og dokumenter.</p>"
           }
         }
       },
       "block_order": [
-        "q1",
-        "q2",
-        "q3"
-      ],
-      "settings": {
-        "scheme": "surface",
-        "anchor": "faq",
-        "eyebrow": "Spørgsmål og svar",
-        "heading": "Før du sender",
-        "schema": true
-      }
+        "question_1",
+        "question_2",
+        "question_3",
+        "question_4"
+      ]
     }
   },
   "order": [
