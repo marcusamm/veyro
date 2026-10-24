@@ -501,7 +501,7 @@ code, pre { font-family: var(--font-mono); font-size: .9em; }
 .cx-craft__cta { background: var(--pine); color: var(--sand); min-height: 32px; font-size: .85em; }
 .cx-craft__hero { display: grid; background: var(--pine); color: var(--sand); }
 .cx-craft__intro { display: grid; gap: .8em; align-content: center; padding: clamp(20px, 7cqi, 64px) var(--cx-pad); }
-.cx-craft__kicker { font-size: .8em; text-transform: uppercase; letter-spacing: .12em; color: var(--wood); font-weight: var(--fw-medium); }
+.cx-craft__kicker { font-size: .8em; text-transform: uppercase; letter-spacing: .12em; color: #D9A97C; font-weight: var(--fw-medium); }
 .cx-craft__h { display: block; font-size: clamp(22px, 5.6cqi, 44px); line-height: 1.06; letter-spacing: -.025em; font-weight: var(--fw-bold); max-width: 15ch; text-wrap: balance; }
 .cx-craft__p { max-width: 38ch; color: rgba(242, 237, 227, .82); }
 .cx-craft__actions { display: flex; flex-wrap: wrap; align-items: center; gap: .9em 1.4em; margin-top: .4em; }
