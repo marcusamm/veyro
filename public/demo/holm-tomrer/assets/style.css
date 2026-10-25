@@ -161,7 +161,7 @@ ul, ol { margin: 0; padding: 0; }
 .steps { list-style: none; display: grid; gap: 2rem; counter-reset: step; }
 @media (min-width: 44em) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 64em) { .steps { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.steps li { counter-increment: step; display: grid; gap: .6rem; padding-top: 1.25rem; border-top: 1px solid var(--line-dark); }
+.steps li { counter-increment: step; display: grid; align-content: start; gap: .6rem; padding-top: 1.25rem; border-top: 1px solid var(--line-dark); }
 .steps li::before { content: counter(step, decimal-leading-zero); font: 700 2.5rem/1 var(--head); color: #d9b48c; }
 .steps h3 { color: var(--on-spruce); }
 

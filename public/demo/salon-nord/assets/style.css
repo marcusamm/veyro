@@ -148,7 +148,7 @@ ul, ol { margin: 0; padding: 0; }
 /* Booking sådan */
 .howto { list-style: none; display: grid; gap: 2rem; counter-reset: s; }
 @media (min-width: 48em) { .howto { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3rem; } }
-.howto li { counter-increment: s; display: grid; gap: .5rem; padding-top: 1.25rem; border-top: 1px solid var(--ink); }
+.howto li { counter-increment: s; display: grid; align-content: start; gap: .5rem; padding-top: 1.25rem; border-top: 1px solid var(--ink); }
 .howto li::before { content: counter(s); font: italic 500 2.5rem/1 var(--head); color: var(--berry); }
 .howto p { color: var(--muted); }
 
