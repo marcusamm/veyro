@@ -71,7 +71,7 @@
       "description": {{ settings.company_tagline | json }},
       "areaServed": "DK",
       "knowsLanguage": "da"
-      {%- if settings.logo -%},"logo": {{ settings.logo | image_url: width: 600 | prepend: 'https:' | json }}{%- endif -%}
+      {%- if settings.logo -%},"logo": {{ settings.logo | image_url: width: 600 | prepend: 'https:' | json }}{%- else -%},"logo": {{ shop.url | append: '/assets/favicon-192.png' | json }}{%- endif -%}
       {%- if has_email -%},"email": {{ settings.company_email | json }}{%- endif -%}
       {%- if has_phone -%},"telephone": {{ settings.company_phone | json }}{%- endif -%}
       {%- if has_address -%},"address": { "@type": "PostalAddress", "streetAddress": {{ settings.company_address | json }}, "addressCountry": "DK" }{%- endif -%}

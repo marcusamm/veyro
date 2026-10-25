@@ -115,6 +115,18 @@ describe('Hjemmesiden vises uden Shopify', () => {
     expect((await site.get('/assets/inter-tight-latin-wght-normal.woff2')).headers.get('content-type')).toBe('font/woff2');
   });
 
+  it('ikonet til søgeresultater ligger på faste adresser og står som logo i de strukturerede data', async () => {
+    const home = await site.get('/');
+    expect(home.html).toContain('<link rel="icon" href="/favicon.ico" sizes="48x48">');
+    expect(home.html).toContain('href="/assets/favicon-192.png"');
+    expect(home.html).not.toMatch(/favicon[^"]*\?v=/);
+    expect(home.html).toMatch(/"logo": "http:\/\/localhost:\d+\/assets\/favicon-192\.png"/);
+    const ico = await site.get('/favicon.ico');
+    expect(ico.status).toBe(200);
+    expect(ico.headers.get('content-type')).toBe('image/x-icon');
+    expect((await site.get('/assets/favicon-192.png')).status).toBe(200);
+  });
+
   it('kundepanelet på sit eget domæne er uændret', async () => {
     const r = await new Client(stack.base).get('/login');
     expect(r.status).toBe(200);

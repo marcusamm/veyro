@@ -10,10 +10,12 @@
     {%- if settings.favicon != blank -%}
       <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 96, height: 96 }}">
     {%- else -%}
-      <link rel="icon" type="image/svg+xml" href="{{ 'favicon.svg' | asset_url }}">
-      <link rel="icon" type="image/png" sizes="96x96" href="{{ 'favicon-96.png' | asset_url }}">
+      {%- comment -%} Faste adresser uden ?v=: Google viser ikonet i søgeresultaterne og vil ikke have, at adressen skifter {%- endcomment -%}
+      <link rel="icon" href="/favicon.ico" sizes="48x48">
+      <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+      <link rel="icon" type="image/png" sizes="192x192" href="/assets/favicon-192.png">
     {%- endif -%}
-    <link rel="apple-touch-icon" href="{{ 'apple-touch-icon.png' | asset_url }}">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
     {%- liquid
       assign company = settings.company_name | default: shop.name
