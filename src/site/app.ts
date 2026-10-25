@@ -123,6 +123,17 @@ site.get('/files/:id', async (c) => {
   return c.body(body as any, 200, { 'Content-Type': row.type, 'Cache-Control': 'public, max-age=86400', 'Content-Security-Policy': "default-src 'none'; sandbox" });
 });
 
+// Demoer: fiktive designkoncepter i public/demo, fx /demo/holm-tomrer/. Må ikke indekseres.
+site.get('/demo', (c) => c.redirect('/pages/eksempler', 302));
+site.get('/demo/*', async (c) => {
+  if (!c.env.ASSETS) return c.text('Ikke fundet', 404);
+  const res = await c.env.ASSETS.fetch(c.req.raw);
+  const out = new Response(res.body, res);
+  out.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  if (res.status === 404) return c.text('Ikke fundet', 404, { 'X-Robots-Tag': 'noindex, nofollow' });
+  return out;
+});
+
 site.get('/favicon.ico', (c) => c.redirect(`/assets/favicon-96.png?v=${THEME_VERSION}`, 301));
 
 site.get('/robots.txt', (c) => {
@@ -333,7 +344,11 @@ async function pageHtml(c: Context<SiteEnv>, data: SiteData, path: string, r: Re
 /** Ting, der er forskellige for hver besøgende, sættes ind efter cachen */
 function personalize(c: Context<SiteEnv>, data: SiteData, html: string): string {
   const count = cartDrop(data, readCart(c)).item_count;
-  const badge = count > 0 ? `<span class="site-header__count" aria-label="${translate('cart.count', { count })}">${count}</span>` : '';
+  // Kurven vises kun i headeren, når der ligger noget i den
+  const badge =
+    count > 0
+      ? `<a class="site-header__cart" href="/cart">Kurv <span class="site-header__count" aria-label="${translate('cart.count', { count })}">${count}</span></a>`
+      : '';
   const nonce = c.get('nonce');
   return html.replace('<!--cart-count-->', badge).replace(/<script(?=[\s>])/g, `<script nonce="${nonce}"`);
 }

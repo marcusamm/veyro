@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560" width="800" height="560" font-family="Jost, Futura, 'Century Gothic', system-ui, sans-serif">
+  <title>Kortskitse over Eksempelgade og Hjørnevej (fiktiv)</title>
+  <rect width="800" height="560" fill="#f3ece3"/>
+  <!-- Karréer -->
+  <g fill="#e4d9cd" stroke="#c7b9ab" stroke-width="1.5">
+    <rect x="-10" y="-10" width="420" height="292"/>
+    <rect x="510" y="-10" width="300" height="292"/>
+    <rect x="-10" y="378" width="420" height="200"/>
+    <rect x="510" y="378" width="300" height="200"/>
+  </g>
+  <!-- Grønt område -->
+  <rect x="540" y="400" width="240" height="140" fill="#d9ddc9" stroke="#bfc4ab" stroke-width="1.5"/>
+  <g fill="#c4cbb0"><circle cx="580" cy="440" r="14"/><circle cx="624" cy="492" r="18"/><circle cx="690" cy="436" r="16"/><circle cx="742" cy="500" r="13"/></g>
+  <text x="660" y="528" font-size="15" fill="#6f7560" text-anchor="middle">Anlæg</text>
+  <!-- Bygninger langs gaderne -->
+  <g fill="none" stroke="#cdbfb1" stroke-width="1.2">
+    <path d="M0 210H410M90 210V282M180 210V282M260 210V282M330 210V282"/>
+    <path d="M330 0V210M330 60H410M330 130H410"/>
+    <path d="M510 210H800M600 210V282M690 210V282M580 0V210M510 90H580"/>
+    <path d="M0 450H410M100 378V450M200 378V450M300 378V450M330 450V560"/>
+  </g>
+  <!-- Fortov -->
+  <g fill="none" stroke="#d8ccbf" stroke-width="1.2" stroke-dasharray="2 5">
+    <path d="M0 296H410M510 296H800M0 364H410M510 364H800M424 0V282M496 0V282M424 378V560M496 378V560"/>
+  </g>
+  <!-- Parkering langs begge gader -->
+  <g fill="none" stroke="#8b7f77" stroke-width="1.2">
+    <path d="M20 300H400M20 300V312M70 300V312M120 300V312M170 300V312M220 300V312M270 300V312M320 300V312M370 300V312"/>
+    <path d="M492 20V270M480 20H492M480 70H492M480 120H492M480 170H492M480 220H492M480 270H492"/>
+  </g>
+  <g font-size="14" font-weight="600" fill="#5c5350">
+    <rect x="40" y="316" width="22" height="22" rx="3" fill="#fbf8f3" stroke="#8b7f77"/><text x="51" y="332" text-anchor="middle">P</text>
+    <rect x="452" y="120" width="22" height="22" rx="3" fill="#fbf8f3" stroke="#8b7f77"/><text x="463" y="136" text-anchor="middle">P</text>
+  </g>
+  <!-- Gadenavne -->
+  <g font-size="16" fill="#7a6d66" letter-spacing="1.5">
+    <text x="250" y="352" text-anchor="middle">EKSEMPELGADE</text>
+    <text x="780" y="337" text-anchor="end">EKSEMPELGADE</text>
+    <text transform="translate(466 470) rotate(-90)" text-anchor="middle">HJØRNEVEJ</text>
+  </g>
+  <!-- Salonen -->
+  <rect x="330" y="210" width="80" height="72" fill="#5c1f2d"/>
+    <!-- Cykelstativ -->
+  <g stroke="#5c5350" stroke-width="2" stroke-linecap="round"><path d="M346 288V294M356 288V294M366 288V294M376 288V294"/></g>
+  <text x="300" y="280" font-size="12" fill="#5c5350" text-anchor="end">cykelstativ</text>
+  <path d="M304 276 L340 291" stroke="#8b7f77" stroke-width="1" fill="none"/>
+  <!-- Mærkat -->
+  <path d="M370 210 V160 H 232" stroke="#5c1f2d" stroke-width="1.5" fill="none"/>
+  <rect x="96" y="132" width="136" height="54" fill="#5c1f2d"/>
+  <text x="164" y="157" font-size="18" font-weight="600" fill="#fff" text-anchor="middle">Salon Nord</text>
+  <text x="164" y="176" font-size="12" fill="#f0e2da" text-anchor="middle">Indgang på hjørnet</text>
+  <!-- Nordpil -->
+  <g transform="translate(740 60)">
+    <circle r="24" fill="#fbf8f3" stroke="#a3968c"/>
+    <path d="M0 -16 L7 8 L0 3 L-7 8 Z" fill="#221a1b"/>
+    <text y="40" font-size="13" text-anchor="middle" fill="#5c5350">N</text>
+  </g>
+</svg>

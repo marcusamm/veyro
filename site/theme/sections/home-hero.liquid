@@ -1,0 +1,40 @@
+{%- comment -%}
+  Forsidens top: én H1, en kort tekst, én primær og én sekundær knap og ét stort designkoncept.
+  Konceptet er et skærmbillede af en fiktiv demo og er mærket "Fiktivt designkoncept — lavet af Veyro".
+{%- endcomment -%}
+<section class="home-hero">
+  <div class="container home-hero__grid">
+    <div class="home-hero__text">
+      <h1 class="t-xl home-hero__title">{{ section.settings.heading }}</h1>
+      {%- if section.settings.text != blank -%}<div class="lead rte">{{ section.settings.text }}</div>{%- endif -%}
+      <div class="actions">
+        {% render 'button', label: section.settings.primary_label, url: section.settings.primary_link, style: 'primary' %}
+        {% render 'button', label: section.settings.secondary_label, url: section.settings.secondary_link, style: 'secondary' %}
+      </div>
+      {%- if section.settings.facts != blank -%}<p class="home-hero__facts">{{ section.settings.facts | escape }}</p>{%- endif -%}
+    </div>
+    <figure class="concept home-hero__concept">
+      {% render 'concept', name: section.settings.concept, caption: section.settings.caption, eager: true %}
+    </figure>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Forside: top",
+  "tag": "div",
+  "settings": [
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift (H1)", "default": "En hjemmeside, der passer til din forretning." },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "primary_label", "label": "Primær knap – tekst", "default": "Se priser" },
+    { "type": "url", "id": "primary_link", "label": "Primær knap – link", "default": "/pages/priser" },
+    { "type": "text", "id": "secondary_label", "label": "Sekundær knap – tekst", "default": "Se eksempler" },
+    { "type": "url", "id": "secondary_link", "label": "Sekundær knap – link", "default": "/pages/eksempler" },
+    { "type": "text", "id": "facts", "label": "Kort linje under knapperne" },
+    { "type": "select", "id": "concept", "label": "Designkoncept", "options": [
+      { "value": "craft", "label": "Hjemmeside (tømrer)" }, { "value": "salon", "label": "Booking (frisør)" }, { "value": "shop", "label": "Webshop (keramik)" }
+    ], "default": "craft" },
+    { "type": "text", "id": "caption", "label": "Tekst under konceptet", "default": "Forsiden hos Holm Tømrer. Udsnittet viser, hvordan pakken Hjemmeside kan se ud." }
+  ]
+}
+{% endschema %}

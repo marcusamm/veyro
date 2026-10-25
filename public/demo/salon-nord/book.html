@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Book tid – Salon Nord (fiktivt designkoncept)</title>
+<meta name="description" content="Fiktivt designkoncept lavet af Veyro: bookingforløb for en frisørsalon. Intet bliver booket eller sendt.">
+<link rel="preload" href="assets/fonts/jost-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/jost-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#indhold">Gå til indhold</a>
+<div class="demo-bar" role="note"><div class="wrap"><span>Fiktivt designkoncept — lavet af Veyro. Bookingen er en demonstration: der oprettes ingen tid, og der sendes ingen mails.</span><a href="/pages/eksempler">Tilbage til Veyro</a></div></div>
+
+<header class="header">
+  <div class="wrap header__inner">
+    <a class="logo" href="./" aria-label="Salon Nord, forside"><span class="logo__name">Salon Nord</span><span class="logo__sub">Frisør på Trøjborg, Aarhus</span></a>
+    <nav class="nav" id="menu" aria-label="Hovedmenu">
+      <ul>
+        <li><a href="behandlinger">Behandlinger og priser</a></li>
+        <li><a href="./#salonen">Om salonen</a></li>
+        <li><a href="./#find-os">Find os</a></li>
+      </ul>
+    </nav>
+    <a class="btn btn--small header__book" href="book" aria-current="page">Book tid</a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu"><span class="menu-btn__bars" aria-hidden="true"></span><span>Menu</span></button>
+  </div>
+</header>
+
+<main id="indhold">
+  <div class="page-head page-head--slim">
+    <div class="wrap">
+      <p class="crumbs"><a href="./">Forside</a> / Book tid</p>
+      <h1>Book tid</h1>
+      <p class="lead">Vælg behandling, frisør og tid. Du kan gå tilbage og rette undervejs.</p>
+    </div>
+  </div>
+
+  <div class="wrap booking">
+    <div>
+      <noscript><p class="alert">Bookingdemoen kræver JavaScript. Behandlinger og priser kan du se på <a href="behandlinger">siden med behandlinger</a>.</p></noscript>
+      <form class="booking__form" data-booking novalidate>
+        <ol class="progress" data-progress aria-label="Trin i bookingen">
+          <li data-progress-item="1"><span class="step" aria-current="step"><span class="progress__n" aria-hidden="true"></span><span class="progress__label">Behandling</span></span></li>
+          <li data-progress-item="2"><span class="step"><span class="progress__n" aria-hidden="true"></span><span class="progress__label">Frisør</span></span></li>
+          <li data-progress-item="3"><span class="step"><span class="progress__n" aria-hidden="true"></span><span class="progress__label">Dato og tid</span></span></li>
+          <li data-progress-item="4"><span class="step"><span class="progress__n" aria-hidden="true"></span><span class="progress__label">Oplysninger</span></span></li>
+          <li data-progress-item="5"><span class="step"><span class="progress__n" aria-hidden="true"></span><span class="progress__label">Bekræftelse</span></span></li>
+        </ol>
+
+        <section class="step-panel" data-step="1" aria-labelledby="s1-title">
+          <h2 id="s1-title" tabindex="-1">Vælg behandling</h2>
+          <div class="alert" role="alert" data-alert hidden></div>
+          <fieldset>
+            <legend class="visually-hidden">Behandling</legend>
+            <div>
+              <p class="group-title" id="grp-klip">Klip</p>
+              <ul class="opts" aria-labelledby="grp-klip">
+                <li><label class="opt"><input type="radio" name="behandling" value="dameklip" data-name="Dameklip" data-min="45" data-price="545" data-from="0"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Dameklip</span><span class="opt__meta">545 kr.</span><span class="opt__desc">Vask, klip og føn. Til kort og mellemlangt hår.</span><span class="opt__sub">45 min.</span></label></li>
+                <li><label class="opt"><input type="radio" name="behandling" value="langt-haar" data-name="Klip af langt hår" data-min="60" data-price="645" data-from="0"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Klip af langt hår</span><span class="opt__meta">645 kr.</span><span class="opt__desc">Vask, klip og føn til hår under skuldrene.</span><span class="opt__sub">60 min.</span></label></li>
+                <li><label class="opt"><input type="radio" name="behandling" value="herreklip" data-name="Herreklip" data-min="30" data-price="395" data-from="0"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Herreklip</span><span class="opt__meta">395 kr.</span><span class="opt__desc">Klip med saks og maskine, vask og styling.</span><span class="opt__sub">30 min.</span></label></li>
+                <li><label class="opt"><input type="radio" name="behandling" value="boerneklip" data-name="Børneklip" data-min="30" data-price="295" data-from="0"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Børneklip</span><span class="opt__meta">295 kr.</span><span class="opt__desc">For børn under 12 år. Tag gerne en voksen med.</span><span class="opt__sub">30 min.</span></label></li>
+                <li><label class="opt"><input type="radio" name="behandling" value="pandehaar" data-name="Pandehår" data-min="15" data-price="150" data-from="0"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Pandehår</span><span class="opt__meta">150 kr.</span><span class="opt__desc">Kun pandehår, uden vask.</span><span class="opt__sub">15 min.</span></label></li>
+              </ul>
+              <p class="group-title" id="grp-farve">Farve</p>
+              <ul class="opts" aria-labelledby="grp-farve">
+                <li><label class="opt"><input type="radio" name="behandling" value="hel-farve" data-name="Hel farve" data-min="90" data-price="945" data-from="1"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Hel farve</span><span class="opt__meta">fra 945 kr.</span><span class="opt__desc">Én farve fra bund til spids. Prisen afhænger af hårets længde.</span><span class="opt__sub">90 min.</span></label></li>
+                <li><label class="opt"><input type="radio" name="behandling" value="bundfarve" data-name="Bundfarve" data-min="75" data-price="745" data-from="0"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Bundfarve</span><span class="opt__meta">745 kr.</span><span class="opt__desc">Farve i udgroningen op til 3 cm.</span><span class="opt__sub">75 min.</span></label></li>
+                <li><label class="opt"><input type="radio" name="behandling" value="striber" data-name="Striber, halvt hoved" data-min="120" data-price="1195" data-from="1"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Striber, halvt hoved</span><span class="opt__meta">fra 1.195 kr.</span><span class="opt__desc">Folie-striber i den øverste del af håret.</span><span class="opt__sub">120 min.</span></label></li>
+                <li><label class="opt"><input type="radio" name="behandling" value="toning" data-name="Toning" data-min="45" data-price="445" data-from="0"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Toning</span><span class="opt__meta">445 kr.</span><span class="opt__desc">Frisker farven op og tager gyldne toner.</span><span class="opt__sub">45 min.</span></label></li>
+              </ul>
+              <p class="group-title" id="grp-styling">Styling og bryn</p>
+              <ul class="opts" aria-labelledby="grp-styling">
+                <li><label class="opt"><input type="radio" name="behandling" value="vask-foen" data-name="Vask og føn" data-min="30" data-price="325" data-from="0"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Vask og føn</span><span class="opt__meta">325 kr.</span><span class="opt__desc">Vask, kur og føn med glat eller bølget finish.</span><span class="opt__sub">30 min.</span></label></li>
+                <li><label class="opt"><input type="radio" name="behandling" value="opsaetning" data-name="Opsætning" data-min="60" data-price="595" data-from="1"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Opsætning</span><span class="opt__meta">fra 595 kr.</span><span class="opt__desc">Til fest og bryllup. Tag gerne et billede med af det, du ønsker.</span><span class="opt__sub">60 min.</span></label></li>
+                <li><label class="opt"><input type="radio" name="behandling" value="bryn" data-name="Bryn og vipper" data-min="30" data-price="275" data-from="0"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Bryn og vipper</span><span class="opt__meta">275 kr.</span><span class="opt__desc">Farve og formning af bryn og farve af vipper.</span><span class="opt__sub">30 min.</span></label></li>
+              </ul>
+            </div>
+          </fieldset>
+          <div class="step-nav"><button class="btn" type="button" data-next>Fortsæt</button></div>
+        </section>
+
+        <section class="step-panel" data-step="2" aria-labelledby="s2-title" hidden>
+          <h2 id="s2-title" tabindex="-1">Vælg frisør</h2>
+          <p class="chosen" data-chosen></p>
+          <p>Har du ingen bestemt frisør, ser du flest ledige tider med „Første ledige“.</p>
+          <div class="alert" role="alert" data-alert hidden></div>
+          <fieldset>
+            <legend class="visually-hidden">Frisør</legend>
+            <ul class="opts">
+              <li><label class="opt"><input type="radio" name="frisoer" value="foerste" data-name="Første ledige" checked><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Første ledige</span><span class="opt__desc">Vi finder den første frisør, der har tid.</span></label></li>
+              <li><label class="opt"><input type="radio" name="frisoer" value="ida" data-name="Ida"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Ida</span><span class="opt__desc">Klip og farve</span></label></li>
+              <li><label class="opt"><input type="radio" name="frisoer" value="sofie" data-name="Sofie"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Sofie</span><span class="opt__desc">Farve, striber og opsætning</span></label></li>
+              <li><label class="opt"><input type="radio" name="frisoer" value="jonas" data-name="Jonas"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Jonas</span><span class="opt__desc">Herreklip og korte frisurer</span></label></li>
+            </ul>
+          </fieldset>
+          <div class="step-nav"><button class="btn" type="button" data-next>Fortsæt</button><button class="back" type="button" data-back>Tilbage</button></div>
+        </section>
+
+        <section class="step-panel" data-step="3" aria-labelledby="s3-title" hidden>
+          <h2 id="s3-title" tabindex="-1">Vælg dato og tid</h2>
+          <p class="chosen" data-chosen></p>
+          <div class="alert" role="alert" data-alert hidden></div>
+          <fieldset class="cal">
+            <legend class="visually-hidden">Dato</legend>
+            <div class="cal__head"><p class="cal__month" data-cal-title></p><p class="cal__legend">Søndag og mandag er lukket</p></div>
+            <div class="cal__grid" data-cal></div>
+          </fieldset>
+          <fieldset class="slots-wrap">
+            <legend class="slots-title" data-slots-title>Vælg først en dato</legend>
+            <ul class="slots" data-slots></ul>
+            <p class="empty" data-slots-empty hidden>Der er ingen ledige tider den dag. Prøv en anden dato, eller vælg „Første ledige“ frisør.</p>
+          </fieldset>
+          <div class="step-nav"><button class="btn" type="button" data-next>Fortsæt</button><button class="back" type="button" data-back>Tilbage</button></div>
+        </section>
+
+        <section class="step-panel" data-step="4" aria-labelledby="s4-title" hidden>
+          <h2 id="s4-title" tabindex="-1">Dine oplysninger</h2>
+          <p class="chosen" data-chosen></p>
+          <div class="alert" role="alert" data-alert hidden></div>
+          <div class="fields">
+            <div class="field">
+              <label for="navn">Navn <span class="req" aria-hidden="true">*</span></label>
+              <input id="navn" name="navn" type="text" autocomplete="name" required aria-describedby="navn-error">
+              <p class="error" id="navn-error" data-error-for="navn"></p>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label for="telefon">Telefon <span class="req" aria-hidden="true">*</span></label>
+                <input id="telefon" name="telefon" type="tel" inputmode="tel" autocomplete="tel" required aria-describedby="telefon-error">
+                <p class="error" id="telefon-error" data-error-for="telefon"></p>
+              </div>
+              <div class="field">
+                <label for="email">E-mail <span class="req" aria-hidden="true">*</span></label>
+                <input id="email" name="email" type="email" autocomplete="email" required aria-describedby="email-hint email-error">
+                <p class="field__hint" id="email-hint">Her ville bekræftelsen blive sendt til.</p>
+                <p class="error" id="email-error" data-error-for="email"></p>
+              </div>
+            </div>
+            <div class="field">
+              <label for="besked">Besked til frisøren <span class="field__hint">(valgfri)</span></label>
+              <textarea id="besked" name="besked" maxlength="300" aria-describedby="besked-hint"></textarea>
+              <p class="field__hint" id="besked-hint">Fx hvis du er ny, eller vil prøve en anden farve.</p>
+            </div>
+            <p class="field__hint">Felter med <span class="req">*</span> skal udfyldes. Dette er en demo: intet bliver gemt eller sendt.</p>
+          </div>
+          <div class="step-nav"><button class="btn" type="submit">Bekræft demobooking</button><button class="back" type="button" data-back>Tilbage</button></div>
+        </section>
+
+        <section class="step-panel confirm" data-step="5" aria-labelledby="s5-title" hidden>
+          <p class="kind">Demo: ingen tid er booket</p>
+          <h2 id="s5-title" tabindex="-1">Tak, <span data-confirm-name></span>. Sådan ser en bekræftelse ud</h2>
+          <dl data-confirm-list></dl>
+          <div>
+            <h3>I en rigtig booking</h3>
+            <ul class="confirm__next">
+              <li>Du får en bekræftelse på mail med et link, hvor du selv kan flytte eller aflyse tiden.</li>
+              <li>Salonen får også en mail, og tiden står i frisørens bookingkalender.</li>
+              <li>Flytter eller aflyser du, får både du og salonen besked på mail.</li>
+            </ul>
+          </div>
+          <p class="alert alert--info">Her i demoen er ingen mail sendt, og ingen tid er reserveret.</p>
+          <div class="step-nav"><button class="btn btn--ghost" type="button" data-restart>Lav en ny demobooking</button><a href="./">Til forsiden</a></div>
+        </section>
+      </form>
+    </div>
+
+    <aside class="basket" aria-labelledby="basket-title" data-basket>
+      <h2 id="basket-title">Din booking</h2>
+      <dl>
+        <div><dt>Behandling</dt><dd data-sum="behandling" class="is-empty">Ikke valgt</dd></div>
+        <div><dt>Frisør</dt><dd data-sum="frisoer">Første ledige</dd></div>
+        <div><dt>Tid</dt><dd data-sum="tid" class="is-empty">Ikke valgt</dd></div>
+        <div><dt>Pris</dt><dd data-sum="pris" class="is-empty">–</dd></div>
+      </dl>
+      <p>Du betaler i salonen. Demo: der bliver ikke booket eller sendt noget.</p>
+    </aside>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer__grid">
+    <div>
+      <p class="footer__name">Salon Nord</p>
+      <p>Eksempelgade 12, 8000 Aarhus C<br>Telefon 00 00 00 00</p>
+    </div>
+    <ul class="footer__links">
+      <li><a href="behandlinger">Behandlinger og priser</a></li>
+      <li><a href="book">Book tid</a></li>
+      <li><a href="./#find-os">Find os</a></li>
+    </ul>
+    <p class="footer__note">Salon Nord findes ikke. Siden er et designkoncept fra <a href="/">Veyro</a>. Adresse, telefonnummer, priser og frisører er opdigtede.</p>
+  </div>
+</footer>
+</body>
+</html>

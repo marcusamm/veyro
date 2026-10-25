@@ -1,0 +1,170 @@
+{
+  "sections": {
+    "hero": {
+      "type": "page-hero",
+      "settings": {
+        "show_breadcrumbs": true,
+        "parent_label": "Løsninger",
+        "parent_link": "/pages/ydelser",
+        "heading": "En webshop til jeres varer",
+        "text": "<p>Vi sætter webshoppen op, opretter de første produkter og holder den ved lige. I kan selv rette og oprette produkter bagefter.</p>",
+        "primary_label": "Aftal en demo",
+        "primary_link": "/pages/kontakt?ydelse=pakke-webshop#formular",
+        "secondary_label": "Se priser",
+        "secondary_link": "/pages/priser#pakke-webshop",
+        "note": "499 kr./md. ekskl. moms · Gratis oprettelse · Første måned gratis · Ingen binding",
+        "concept": "shop",
+        "concept_caption": "Produktside hos Lerværk med varianter, lager og antal."
+      }
+    },
+    "indhold": {
+      "type": "service",
+      "settings": {
+        "anchor": "indhold",
+        "layout": "split",
+        "label": "Webshop · 499 kr./md. ekskl. moms",
+        "title": "Det får I",
+        "intro": "<p>En webshop til jeres varer, som vi sætter op og holder ved lige.</p>",
+        "audience": "<p>Til mindre virksomheder, der vil sælge et overskueligt sortiment online, fx et værksted, en specialbutik eller en producent.</p>",
+        "helps": "Opsætning af webshop i jeres udtryk\nProduktsider, kurv og bestilling\nOprettelse af de første 10 produkter eller én import af op til 50\nAfklaring af betaling og levering med jer før opstart",
+        "included": "Webshop tilpasset jeres virksomhed\nVirker på mobil, tablet og computer\nOp til 50 aktive produkter og op til 200 varianter i alt\nVi opretter de første 10 produkter, eller vi laver én standardimport af op til 50 produkter\nI kan selv rette og oprette produkter inden for rammerne\nOp til 3 administratorbrugere\nHosting og teknisk vedligeholdelse\nMindre løbende justeringer",
+        "separate": "Flere end 50 aktive produkter eller 200 varianter\nImport ud over den ene standardimport\nIntegrationer, fx til lager eller bogføring\nNye funktioner og større ændringer",
+        "next": "<p>Aftal en demo. Fortæl, hvor mange produkter I har, og hvordan I sender varer i dag. Så afklarer vi betaling og levering, før vi går i gang.</p>",
+        "button_label": "Aftal en demo",
+        "button_link": "/pages/kontakt?ydelse=pakke-webshop#formular",
+        "secondary_label": "Se alle priser og vilkår",
+        "secondary_link": "/pages/priser"
+      }
+    },
+    "forklaring": {
+      "type": "info-grid",
+      "settings": {
+        "anchor": "rammer",
+        "layout": "rows",
+        "heading": "Produkter, varianter og import",
+        "text": ""
+      },
+      "blocks": {
+        "item_1": {
+          "type": "item",
+          "settings": {
+            "title": "Produkter og varianter",
+            "text": "<p>Et produkt med varianter tæller som ét produkt. En T-shirt i 3 størrelser og 2 farver er 1 produkt med 6 varianter. Pakken har op til 50 aktive produkter og op til 200 varianter i alt.</p>"
+          }
+        },
+        "item_2": {
+          "type": "item",
+          "settings": {
+            "title": "Oprettelse eller import",
+            "text": "<p>Vi opretter de første 10 produkter i hånden, eller vi laver én standardimport af op til 50 produkter fra en korrekt udfyldt CSV- eller Excel-skabelon. Det er enten det ene eller det andet.</p>"
+          }
+        },
+        "item_3": {
+          "type": "item",
+          "settings": {
+            "title": "Det leverer I",
+            "text": "<p>Billeder og produktdata. I kan selv rette og oprette produkter inden for rammerne. Produktkataloget tæller ikke som indholdssider.</p>"
+          }
+        },
+        "item_4": {
+          "type": "item",
+          "settings": {
+            "title": "Lager i webshoppen",
+            "text": "<p>Webshoppens lager handler om de varer, I sælger. Det er ikke det samme som Drift, der er på vej og samler jobs, timer, materialer og lager i en portal.</p>"
+          }
+        },
+        "item_5": {
+          "type": "item",
+          "settings": {
+            "title": "Betaling, fragt og tredjepart",
+            "text": "<p>Gebyrer til betalingsudbyderen, fragt og eventuelle abonnementer hos tredjepart betaler I selv.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "item_1",
+        "item_2",
+        "item_3",
+        "item_4",
+        "item_5"
+      ]
+    },
+    "faq": {
+      "type": "faq",
+      "settings": {
+        "anchor": "faq",
+        "eyebrow": "",
+        "heading": "Spørgsmål om Webshop",
+        "text": "",
+        "link_label": "",
+        "link": "",
+        "schema": true
+      },
+      "blocks": {
+        "question_1": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad er forskellen på et produkt og en variant?",
+            "answer": "<p>En variant er en udgave af samme produkt, fx en størrelse eller en farve. En T-shirt i 3 størrelser og 2 farver er 1 produkt med 6 varianter.</p>"
+          }
+        },
+        "question_2": {
+          "type": "question",
+          "settings": {
+            "question": "Hvordan kommer vores produkter ind i webshoppen?",
+            "answer": "<p>Vi opretter de første 10 produkter, eller vi importerer op til 50 produkter én gang fra vores skabelon. I leverer billeder og produktdata.</p>"
+          }
+        },
+        "question_3": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad hvis vi har flere end 50 produkter?",
+            "answer": "<p>Så aftaler vi det særskilt, og I får et tilbud først.</p>"
+          }
+        },
+        "question_4": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad koster betaling og fragt?",
+            "answer": "<p>Det afhænger af jeres aftaler med betalingsudbyder og fragtfirma. De gebyrer betaler I selv.</p>"
+          }
+        },
+        "question_5": {
+          "type": "question",
+          "settings": {
+            "question": "Hvordan får vi flere brugere?",
+            "answer": "<p>Kontakt os, så tilføjer vi dem. Booking og Webshop har 3 brugere med, og hver ekstra bruger koster 99 kr./md. ekskl. moms. I Booking tæller en person med egen bruger eller bookingkalender, og en person med begge dele tæller kun én gang. Ejeren tæller med, hvis ejeren har adgang. Medarbejdere, der kun vises på hjemmesiden med navn eller billede, er gratis.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "question_1",
+        "question_2",
+        "question_3",
+        "question_4",
+        "question_5"
+      ]
+    },
+    "cta": {
+      "type": "cta-banner",
+      "settings": {
+        "anchor": "kom-i-gang",
+        "heading": "Vil du se, hvordan det kan se ud hos jer?",
+        "text": "<p>Vi viser en demo inden for 24–48 timer. Det er uforpligtende.</p>",
+        "label": "Aftal en demo",
+        "link": "/pages/kontakt?ydelse=pakke-webshop#formular",
+        "secondary_label": "Se eksempler",
+        "secondary_link": "/pages/eksempler",
+        "show_email": true,
+        "email_prefix": "Eller skriv til"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "indhold",
+    "forklaring",
+    "faq",
+    "cta"
+  ]
+}

@@ -69,7 +69,7 @@ afterAll(async () => {
 
 describe('Hjemmesiden vises uden Shopify', () => {
   it('alle sider findes, med tema, menu og egne sikkerhedsheaders', async () => {
-    for (const p of ['/', '/pages/ydelser', '/pages/website-optimering', '/pages/custom-losninger', '/pages/om-os', '/pages/kontakt', '/pages/privatlivspolitik', '/pages/cookiepolitik', '/pages/handelsbetingelser', '/pages/databehandleraftale', '/pages/sla', '/cart']) {
+    for (const p of ['/', '/pages/priser', '/pages/eksempler', '/pages/hjemmeside', '/pages/booking', '/pages/webshop', '/pages/drift', '/pages/ydelser', '/pages/website-optimering', '/pages/custom-losninger', '/pages/om-os', '/pages/kontakt', '/pages/privatlivspolitik', '/pages/cookiepolitik', '/pages/handelsbetingelser', '/pages/databehandleraftale', '/pages/sla', '/cart']) {
       const r = await site.get(p);
       expect(r.status, p).toBe(200);
       expect(r.html, p).toContain('<link rel="stylesheet" href="//localhost:');
@@ -84,9 +84,12 @@ describe('Hjemmesiden vises uden Shopify', () => {
     const home = await site.get('/');
     expect(home.html).toContain('<title>Veyro');
     expect(home.html).toContain('Kundelogin');
-    // Sådan arbejder vi ligger under Information i bunden og peger på afsnittet på forsiden
+    // Sådan arbejder vi ligger under Veyro i bunden og peger på afsnittet på forsiden
     expect(home.html).toContain('id="proces"');
-    expect(home.html).toMatch(/Information<\/h2>\s*<ul role="list">\s*<li><a href="\/#proces">Sådan arbejder vi<\/a>/);
+    expect(home.html).toMatch(/Veyro<\/h2><ul role="list">(?:(?!<\/ul>).)*<a href="\/#proces">Sådan arbejder vi<\/a>/s);
+    // Menuen: løsninger, eksempler, priser, om os, kontakt og kundelogin, men intet kurv-ikon, når kurven er tom
+    for (const href of ['/pages/ydelser', '/pages/eksempler', '/pages/priser', '/pages/om-os', '/pages/kontakt']) expect(home.html).toContain(`href="${href}"`);
+    expect(home.html).not.toContain('site-header__cart');
     expect(home.html).toContain('CVR: 46857569');
   });
 
@@ -143,106 +146,168 @@ describe('Hjemmesiden vises uden Shopify', () => {
 });
 
 describe('Pakker og priser', () => {
-  it('viser fire pakker med priser ekskl. moms; Basis og Booking kan bestilles, Drift og Alt inkl. er "På vej"', async () => {
-    const r = await site.get('/pages/ydelser');
-    expect(r.html).toContain('id="priser"');
-    expect(r.html).toContain('En løsning, der passer til din virksomhed');
-    expect(r.html).toContain('Første måned gratis · Gratis oprettelse · Ingen binding');
-    // Det fremgår tydeligt, hvor og hvordan man betaler
-    expect(r.html).toContain('Sådan bestiller og betaler du');
-    expect(r.html).toContain('Betal sikkert med kort');
-    expect(r.html).toContain('href="https://kunde.veyro.dk/login"');
-    expect(r.html).toContain('Du betaler ikke her. Vi sender et tilbud med et personligt betalingslink.');
-    const grid = r.html.slice(r.html.indexOf('class="packages__grid"'), r.html.indexOf('class="packages__staff'));
-    const cards = grid.split('<li class="plan pricing-card card').slice(1);
-    expect(cards.map((c) => c.match(/<h3[^>]*>([^<]+)</)[1])).toEqual(['Basis', 'Booking', 'Drift', 'Alt inkl.']);
-    const [basis, booking, drift, alt] = cards;
-    expect(basis).toContain('199 kr.<span>/md. ekskl. moms</span>');
-    expect(basis).toContain('0 kr. den første måned. Herefter 199 kr./md. ekskl. moms.');
-    expect(basis).toContain('href="/pages/kontakt?ydelse=pakke-basis#formular"');
-    expect(basis).not.toContain('pricing-card--coming');
-    expect(booking).toContain('299 kr.<span>/md. ekskl. moms</span>');
-    expect(booking).toContain('Ekstra medarbejdere til 99 kr./md. pr. medarbejder ekskl. moms');
-    expect(booking).toContain('href="/pages/kontakt?ydelse=pakke-booking#formular"');
-    expect(booking).toContain('0 kr. den første måned. Herefter 299 kr./md. ekskl. moms');
-    expect(booking).toContain('Gratis oprettelse og ingen binding.');
-    expect(r.html).toContain('Gælder Basis og Booking.');
-    expect(booking).not.toContain('pricing-card--coming');
-    expect(booking).not.toMatch(/På vej|Forventet|testkunde/);
-    for (const [card, key] of [[drift, 'drift'], [alt, 'alt-inkl']]) {
-      expect(card).toContain('pricing-card--coming');
-      expect(card).toContain('På vej');
-      expect(card).toContain('Forventet abonnementspris');
-      expect(card).toContain(`href="/pages/ydelser?pakke=${key}#testkunde"`);
-      expect(card).not.toContain('/pages/kontakt');
-      expect(card).not.toContain('Vælg ');
+  // Kortene i en pakkeliste: [id, html] for hvert <li class="pc ...">
+  const cards = (html) => {
+    const parts = html.split('<li class="pc ').slice(1);
+    return parts.map((p) => [p.match(/id="([^"]+)"/)[1], p.slice(0, p.indexOf('class="pc__actions"') + 600)]);
+  };
+  const names = (html) => [...html.matchAll(/class="pc__name">([^<]+)</g)].map((m) => m[1]);
+  const amounts = (html) => [...html.matchAll(/class="pc__amount"><strong>([^<]+)<\/strong>/g)].map((m) => m[1]);
+
+  it('prissiden viser Hjemmeside, Booking og Webshop med priser ekskl. moms; Drift og Alt inkl. er "På vej"', async () => {
+    const r = await site.get('/pages/priser');
+    expect(r.status).toBe(200);
+    const all = cards(r.html);
+    expect(all.map(([id]) => id)).toEqual(['pakke-hjemmeside', 'pakke-booking', 'pakke-webshop', 'pakke-drift-kort', 'pakke-alt-inkl-kort']);
+    expect(names(r.html).slice(0, 5)).toEqual(['Hjemmeside', 'Booking', 'Webshop', 'Drift', 'Alt inkl.']);
+    expect(amounts(r.html).slice(0, 5)).toEqual(['199 kr.', '299 kr.', '499 kr.', '599 kr.', '1.099 kr.']);
+    const [hjemmeside, booking, webshop, drift, alt] = all.map(([, html]) => html);
+    for (const [card, key] of [[hjemmeside, 'pakke-hjemmeside'], [booking, 'pakke-booking'], [webshop, 'pakke-webshop']]) {
+      expect(card).toContain('pc--available');
+      expect(card).toContain('class="pc__vat">ekskl. moms<');
+      expect(card).toContain(`href="/pages/kontakt?ydelse=${key}#formular"`);
+      expect(card).not.toMatch(/På vej|Forventet|testkunde|Pris følger/);
     }
-    expect(alt).toContain('1.099 kr.<span>/md. ekskl. moms</span>');
-    expect(r.html).not.toMatch(/Mest populær|Komplet|All in|Starter|Premium/);
+    // Pakkernes indhold og rammer
+    for (const t of ['Op til 5 sider', '3 korrekturrunder', 'En korrekturrunde er én samlet tilbagemelding på det aftalte design og indhold']) expect(hjemmeside).toContain(t);
+    for (const t of ['Alt i Hjemmeside', 'Kunden kan selv booke, flytte og aflyse', 'Op til 3 medarbejdere med egen bruger eller bookingkalender', 'SMS, påmindelser og onlinebetaling er ikke en del af pakken']) expect(booking).toContain(t);
+    for (const t of ['Op til 50 aktive produkter og op til 200 varianter', 'Op til 3 administratorbrugere', 'En T-shirt i 3 størrelser og 2 farver er 1 produkt med 6 varianter', 'Ikke begge dele']) expect(webshop).toContain(t);
+    for (const [card, key] of [[drift, 'drift'], [alt, 'alt-inkl']]) {
+      expect(card).toContain('pc--coming');
+      expect(card).toContain('På vej');
+      expect(card).toContain('Forventet pris');
+      expect(card).toContain(`href="/pages/drift?pakke=${key}#testkunde"`);
+      expect(card).not.toContain('/pages/kontakt');
+    }
+    // Fælles vilkår, betaling og brugere
+    for (const t of ['Gratis oprettelse', 'Første måned gratis', 'Ingen binding', 'Sådan bestiller og betaler du', 'Betal sikkert med kort', 'Du betaler ikke her. Vi sender et tilbud med et personligt betalingslink.', 'Kontakt os om tilkøb', 'jeresnavn.veyro.dk']) {
+      expect(r.html).toContain(t);
+    }
+    expect(r.html).toContain('href="https://kunde.veyro.dk/login"');
+    expect(r.html).not.toMatch(/Mest populær|Komplet|All in|Starter|Premium|Pris følger|gratis domæne/i);
     expect(r.html).not.toContain('action="/cart/add"');
-    // Ekstra medarbejdere: 299 + (n - 3) × 99
-    const rows = Object.fromEntries([...r.html.matchAll(/<tr><th scope="row">(\d+)<\/th><td>([^<]+)<\/td><\/tr>/g)].map((m) => [m[1], m[2]]));
-    expect(rows).toEqual({ 3: '299 kr.', 4: '398 kr.', 5: '497 kr.', 6: '596 kr.' });
-    expect(r.html).toContain('Booking med 5 medarbejdere koster 497 kr./md. ekskl. moms.');
-    // De to gamle løsningskort er væk fra Ydelser
-    expect(r.html).not.toContain('Hovedløsninger');
-    expect(r.html).not.toContain('Internt system til ordrer og varekontrol');
-    expect(r.html).not.toContain('href="#losninger"');
+    // Ekstra brugere: pakkepris + (n - 3) × 99
+    const rows = [...r.html.matchAll(/<tr><th scope="row">(\d+)[^<]*<\/th><td class="num">([^<]+)<\/td><td class="num">([^<]+)<\/td><\/tr>/g)].map((m) => [m[1], m[2], m[3]]);
+    expect(rows).toEqual([['3', '299 kr.', '499 kr.'], ['4', '398 kr.', '598 kr.'], ['5', '497 kr.', '697 kr.'], ['6', '596 kr.', '796 kr.']]);
+    expect(r.html).toContain('Booking med 5 medarbejdere koster 497 kr./md. ekskl. moms');
     // De gamle planer kan ikke købes
     for (const h of ['starter', 'business', 'premium']) expect((await site.get('/products/' + h)).status).toBe(404);
-    const kontakt = await site.get('/pages/kontakt');
-    expect(kontakt.html).toContain('data-key="pakke-basis"');
-    expect(kontakt.html).toContain('data-key="pakke-booking"');
-    expect(kontakt.html).not.toContain('Internt system til ordrer og varekontrol');
   });
 
-  it('forsiden viser pakkernes priser i en bar, der sender videre til prissiden', async () => {
+  it('forsiden: hero, eksempler, pakker, samarbejde, "På vej", FAQ og kontakt i den rækkefølge', async () => {
     const r = await site.get('/');
-    expect(r.html).not.toContain('To måder at få styr på ordrer og lager');
-    const bar = r.html.slice(r.html.indexOf('class="section section--surface price-banner"'), r.html.indexOf('</section>', r.html.indexOf('price-banner')));
-    expect(bar).toContain('id="priser"');
-    expect(bar).toContain('href="/pages/ydelser#priser"');
-    expect([...bar.matchAll(/class="price-banner__name">([^<]+)</g)].map((m) => m[1])).toEqual(['Basis', 'Booking', 'Drift', 'Alt inkl.']);
-    expect([...bar.matchAll(/<strong>([^<]+)<\/strong>/g)].map((m) => m[1])).toEqual(['199 kr.', '299 kr.', '599 kr.', '1.099 kr.']);
-    expect(bar).toContain('Alle priser er ekskl. moms.');
-    expect([...bar.matchAll(/price-banner__badge--now">([^<]+)</g)].length).toBe(2);
-    expect(r.html).not.toContain('Hjemmeside med bestilling og lagerstyring');
-    // Indholdet af pakkerne står kun på prissiden
-    expect(bar).not.toContain('Planlagt indhold');
-    expect(r.html).toContain('href="#priser"');
+    const at = (cls) => r.html.indexOf(`<section class="${cls}"`);
+    const section = (cls) => r.html.slice(at(cls), r.html.indexOf('</section>', at(cls)));
+    const order = ['home-hero', 'section concepts', 'section packages packages--summary', 'section steps', 'section coming', 'section faq', 'section contact'];
+    for (const cls of order) expect(at(cls), cls).toBeGreaterThan(-1);
+    expect(order.map(at)).toEqual([...order.map(at)].sort((a, b) => a - b));
+    // Hero: én H1, én primær og én sekundær knap, og eksemplet er mærket som designkoncept
+    const hero = section('home-hero');
+    expect(r.html.match(/<h1/g)).toHaveLength(1);
+    expect(hero).toContain('En hjemmeside, der passer til din forretning.');
+    expect(hero).toContain('<a class="btn btn--primary" href="/pages/priser">Se priser</a>');
+    expect(hero).toContain('<a class="btn btn--secondary" href="/pages/eksempler">Se eksempler</a>');
+    expect(hero).toContain('Fiktivt designkoncept — lavet af Veyro');
+    expect(hero).toContain('<a class="arrow-link" href="/demo/holm-tomrer/">Åbn demoen');
+    // Pakkerne: tre kan bestilles, to er på vej
+    const prices = section('section packages packages--summary');
+    expect(names(prices)).toEqual(['Hjemmeside', 'Booking', 'Webshop']);
+    expect(amounts(prices)).toEqual(['199 kr.', '299 kr.', '499 kr.']);
+    expect(prices.match(/class="pc__vat">ekskl. moms</g)).toHaveLength(3);
+    expect(prices).not.toContain('På vej');
+    const coming = section('section coming');
+    expect(names(coming)).toEqual(['Drift', 'Alt inkl.']);
+    expect(amounts(coming)).toEqual(['599 kr.', '1.099 kr.']);
+    expect(coming.match(/badge badge--coming">På vej</g).length).toBeGreaterThanOrEqual(3);
+    expect(coming).toContain('aldrig automatisk til et betalt abonnement');
+    expect(r.html).not.toMatch(/Mest populær|Pris følger/);
+    // Kontaktformularen kender pakkerne
+    for (const k of ['aftal-en-demo', 'pakke-hjemmeside', 'pakke-booking', 'pakke-webshop', 'tilkoeb-eller-stoerre-aendring']) expect(r.html).toContain(`data-key="${k}"`);
   });
 
-  it('hvert pakkekort på forsiden går direkte til samme pakke på prissiden', async () => {
-    const [home, prices] = await Promise.all([site.get('/'), site.get('/pages/ydelser')]);
-    const links = [...home.html.matchAll(/class="price-banner__item[^"]*" href="([^"]+)"/g)].map((m) => m[1]);
-    expect(links).toEqual(['/pages/ydelser#pakke-basis', '/pages/ydelser#pakke-booking', '/pages/ydelser#pakke-drift', '/pages/ydelser#pakke-alt-inkl']);
-    for (const l of links) expect(prices.html).toContain(`id="${l.split('#')[1]}"`);
-  });
-
-  it('lagerdemoen er mærket som eksempel på Drift, og tallene hænger sammen', async () => {
-    const r = await site.get('/');
-    const demo = r.html.slice(r.html.indexOf('data-demo-try'), r.html.indexOf('</figure>', r.html.indexOf('data-demo-try')));
-    expect(demo).toContain('Eksempel – Drift er på vej');
-    expect(demo).toContain('Prøv et eksempel');
-    // Uden JavaScript vises knappen ikke
-    expect(r.html).toMatch(/data-demo-try data-qty="3" hidden>/);
-    const n = (k) => Number(demo.match(new RegExp(`data-demo-${k}>(\\d+)<`))[1]);
-    expect([n('physical'), n('reserved'), n('available')]).toEqual([120, 24, 96]);
-    expect(n('physical') - n('reserved')).toBe(n('available'));
-  });
-
-  it('de gamle "Løsning 1/Løsning 2"-sektioner findes ingen steder på hjemmesiden', async () => {
-    for (const p of ['/', '/pages/ydelser', '/pages/website-optimering', '/pages/custom-losninger', '/pages/om-os', '/pages/kontakt', '/cart']) {
+  it('demoerne er statiske sider med noindex og mærkning, og skærmbillederne findes', async () => {
+    const pages = ['/demo/holm-tomrer/', '/demo/holm-tomrer/ydelser', '/demo/holm-tomrer/projekter', '/demo/holm-tomrer/kontakt',
+      '/demo/salon-nord/', '/demo/salon-nord/behandlinger', '/demo/salon-nord/book',
+      '/demo/lervaerk/', '/demo/lervaerk/produkter/krus', '/demo/lervaerk/produkter/kande', '/demo/lervaerk/kurv', '/demo/lervaerk/kasse'];
+    for (const p of pages) {
       const r = await site.get(p);
       expect(r.status, p).toBe(200);
-      for (const t of ['Løsning 1', 'Løsning 2', 'To måder at få styr på ordrer og lager', 'Fra første bestilling til opdateret lager', 'Hovedløsninger', 'de to løsninger', 'begge løsninger', 'Internt system til ordrer og varekontrol']) {
+      expect(r.headers.get('x-robots-tag'), p).toBe('noindex, nofollow');
+      expect(r.headers.get('content-security-policy'), p).toContain("frame-ancestors 'none'");
+      expect(r.html, p).toContain('Fiktivt designkoncept — lavet af Veyro');
+      expect(r.html, p).toContain('<meta name="robots" content="noindex, nofollow">');
+      // Intet sendes: ingen POST-formularer og ingen adresser uden for siden
+      expect(r.html, p).not.toMatch(/method="post"|action="|https?:\/\/(?!localhost)/i);
+    }
+    for (const f of ['holm-tomrer', 'salon-nord-booking', 'lervaerk-produkt'].flatMap((n) => [`${n}-960.jpg`, `${n}-1920.jpg`, `${n}-mobil.jpg`])) {
+      const r = await site.get('/demo/_previews/' + f);
+      expect(r.status, f).toBe(200);
+      expect(r.headers.get('content-type'), f).toBe('image/jpeg');
+    }
+    expect((await site.get('/demo/findes-ikke/')).status).toBe(404);
+    const root = await site.get('/demo');
+    expect(root.status).toBe(302);
+    expect(root.headers.get('location')).toBe('/pages/eksempler');
+  });
+
+  it('detaljelinks går til pakkens egen side eller til Drift-siden', async () => {
+    const home = await site.get('/');
+    const links = [...home.html.matchAll(/class="pc__details" href="([^"]+)"/g)].map((m) => m[1]);
+    expect(links).toEqual(['/pages/hjemmeside', '/pages/booking', '/pages/webshop', '/pages/drift#pakke-drift', '/pages/drift#pakke-alt-inkl']);
+    const drift = await site.get('/pages/drift');
+    for (const id of ['pakke-drift', 'pakke-alt-inkl']) expect(drift.html).toContain(`id="${id}"`);
+    for (const p of ['/pages/hjemmeside', '/pages/booking', '/pages/webshop']) {
+      const r = await site.get(p);
+      expect(r.status, p).toBe(200);
+      expect(r.html.match(/<h1/g), p).toHaveLength(1);
+      for (const t of ['Hvem er det til?', 'Det er med', 'Kræver en særskilt aftale', 'Sådan kommer du videre']) expect(r.html, `${p}: ${t}`).toContain(t);
+    }
+  });
+
+  it('eksemplerne er mærkede skærmbilleder af demoerne; lagerforklaringerne står ved demoen', async () => {
+    const r = await site.get('/pages/eksempler');
+    const at = r.html.indexOf('<section class="section concepts"');
+    const examples = r.html.slice(at, r.html.indexOf('</section>', at));
+    expect(examples.match(/class="badge">Fiktivt designkoncept — lavet af Veyro</g)).toHaveLength(3);
+    // Skærmbilleder og links til de rigtige demoer, ingen formularer og ingen opdigtede domæner
+    for (const [shot, demo] of [['holm-tomrer', '/demo/holm-tomrer/'], ['salon-nord-booking', '/demo/salon-nord/book'], ['lervaerk-produkt', '/demo/lervaerk/produkter/krus']]) {
+      expect(examples).toContain(`src="/demo/_previews/${shot}-960.jpg"`);
+      expect(examples).toContain(`<span class="browser__url">veyro.dk${demo}</span>`);
+      expect(examples).toContain(`<a class="arrow-link" href="${demo}">Åbn demoen`);
+    }
+    expect(examples).not.toContain('<form');
+    expect(r.html).not.toMatch(/holm-toemrer\.dk|salon-nord\.dk|lervaerk\.dk/);
+    const page = await site.get('/pages/drift');
+    const d = page.html.indexOf('<section class="section drift"');
+    const drift = page.html.slice(d, page.html.indexOf('</section>', d));
+    expect(drift).toContain('Eksempel – Drift er på vej');
+    expect(drift).toContain('Registrér forbrug');
+    // Uden JavaScript vises knappen ikke, men forklaringen gør
+    expect(drift).toMatch(/data-demo-try data-qty="3" hidden>/);
+    expect(drift).toContain('Registreret forbrug trækker fra fysisk og disponibel');
+    for (const t of ['på lageret', 'på bekræftede ordrer', 'Lav beholdning', 'Disponibel</strong> er fysisk minus reserveret']) expect(drift).toContain(t);
+    const n = (k) => Number(drift.match(new RegExp(`data-demo-${k}>(\\d+)<`))[1]);
+    expect([n('physical'), n('reserved'), n('available')]).toEqual([120, 24, 96]);
+    expect(n('physical') - n('reserved')).toBe(n('available'));
+    // Forløb og kontakt med de aftalte tider
+    const home = await site.get('/');
+    expect(home.html).toContain('inden for 24–48 timer');
+    expect(home.html).toContain('inden for op til otte hverdage efter modtagelse af nødvendigt materiale og aftalt omfang');
+    expect(home.html).toContain('uforpligtende');
+  });
+
+  it('de gamle "Løsning 1/Løsning 2"-sektioner og Basis-navnet findes ingen steder på hjemmesiden', async () => {
+    for (const p of ['/', '/pages/priser', '/pages/eksempler', '/pages/ydelser', '/pages/drift', '/pages/website-optimering', '/pages/custom-losninger', '/pages/om-os', '/pages/kontakt', '/cart']) {
+      const r = await site.get(p);
+      expect(r.status, p).toBe(200);
+      for (const t of ['Løsning 1', 'Løsning 2', 'To måder at få styr på ordrer og lager', 'Hovedløsninger', 'Internt system til ordrer og varekontrol', 'class="pc__name">Basis<', 'Pris følger']) {
         expect(r.html, `${p}: ${t}`).not.toContain(t);
       }
     }
   });
 
   it('"Bliv testkunde" gemmer en forespørgsel med pakken og starter intet abonnement', async () => {
-    const page = await site.get('/pages/ydelser?pakke=drift');
+    const page = await site.get('/pages/drift?pakke=drift');
     const id = page.html.match(/id="(Pilot-[^"]+)"/)[1];
     expect(page.html).toContain('data-preselect="pakke"');
     expect(page.html).toContain('data-key="alt-inkl"');
@@ -256,7 +321,7 @@ describe('Pakker og priser', () => {
     const done = await site.get(r.headers.get('location').split('#')[0]);
     expect(done.html).toContain('Vi kontakter dig for at høre om din virksomhed og aftale, om et testforløb passer til jer.');
     const [lead] = sql("SELECT * FROM leads WHERE email = 'tina@toemrer.dk'");
-    expect(lead).toMatchObject({ kind: 'kontakt', form_name: 'Testkunde', service: 'Testkunde: Drift', company: 'Tømrer ApS', name: 'Tina Test', page: '/pages/ydelser' });
+    expect(lead).toMatchObject({ kind: 'kontakt', form_name: 'Testkunde', service: 'Testkunde: Drift', company: 'Tømrer ApS', name: 'Tina Test', page: '/pages/drift' });
     expect(JSON.parse(lead.fields)).toMatchObject({ Branche: 'Tømrer', 'Antal medarbejdere': '4-10' });
     const mail = await waitFor(async () => (await emails()).find((e) => e.text.includes('tina@toemrer.dk')));
     expect(mail.text).toContain('Branche: Tømrer');

@@ -14,13 +14,6 @@
     font-style: normal;
     font-display: swap;
   }
-  @font-face {
-    font-family: "JetBrains Mono";
-    src: url("{{ 'jetbrains-mono-latin-wght-normal.woff2' | asset_url }}") format("woff2");
-    font-weight: 100 800;
-    font-style: normal;
-    font-display: swap;
-  }
 
   :root {
     --color-bg: {{ settings.color_bg }};
@@ -41,7 +34,7 @@
 
     --font-heading: {{ font_heading_family }};
     --font-body: {{ font_body_family }};
-    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --heading-weight: {{ settings.heading_weight }};
     --heading-scale: {{ settings.heading_scale | divided_by: 100.0 }};
     --body-scale: {{ settings.body_scale | divided_by: 100.0 }};

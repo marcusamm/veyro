@@ -1,0 +1,93 @@
+{
+  "sections": {
+    "hero": {
+      "type": "page-hero",
+      "settings": {
+        "show_breadcrumbs": true,
+        "heading": "Eksempler",
+        "text": "<p>Tre designkoncepter, der viser, hvordan pakkerne kan se ud: en hjemmeside til en håndværker, booking til en frisør og en lille webshop. Virksomhederne er fiktive, og eksemplerne er ikke kundeopgaver.</p>",
+        "primary_label": "Se priser",
+        "primary_link": "/pages/priser",
+        "secondary_label": "Aftal en demo",
+        "secondary_link": "/pages/kontakt?ydelse=aftal-en-demo#formular"
+      }
+    },
+    "koncepter": {
+      "type": "concepts",
+      "settings": {
+        "anchor": "koncepter",
+        "heading_tag": "h2",
+        "heading": "Tre designkoncepter",
+        "text": "<p>Tre fiktive virksomheder med hver sit udtryk. Åbn demoerne og klik rundt: kontaktformular, booking og kurv virker, men intet bliver sendt, booket eller betalt. Jeres side bliver tilpasset jeres virksomhed, farver og indhold.</p>"
+      },
+      "blocks": {
+        "concept_1": {
+          "type": "concept",
+          "settings": {
+            "concept": "craft",
+            "anchor": "hjemmeside",
+            "package": "Hjemmeside · 199 kr./md. ekskl. moms",
+            "title": "Hjemmeside til en tømrer",
+            "text": "<p>Et kontant udtryk med smal, kraftig skrift og arbejdstegninger af typiske opgaver. Forsiden fortæller med det samme, hvad virksomheden laver, og hvordan man beskriver sin opgave.</p>",
+            "points": "Tydelig overskrift og én hovedknap\nYdelser på forsiden\nPlads til fotos af egne opgaver\nOp til 5 sider, fx forside, ydelser, opgaver, om os og kontakt",
+            "link_label": "Se hvad Hjemmeside indeholder",
+            "link": "/pages/hjemmeside",
+            "caption": "Forsiden hos Holm Tømrer."
+          }
+        },
+        "concept_2": {
+          "type": "concept",
+          "settings": {
+            "concept": "salon",
+            "anchor": "booking",
+            "package": "Booking · 299 kr./md. ekskl. moms",
+            "title": "Booking til en frisørsalon",
+            "text": "<p>En enkel side bygget op om prislisten og åbningstiderne. Kunden vælger behandling, frisør, dato og tid og får en bekræftelse.</p>",
+            "points": "Ydelser med varighed og pris\nValg af frisør eller første ledige\nOptagne tider kan ikke vælges\nBekræftelse på mail til både salon og kunde\nKunden kan selv flytte eller aflyse",
+            "link_label": "Se hvad Booking indeholder",
+            "link": "/pages/booking",
+            "caption": "Bookingen hos Salon Nord: valg af dato og tid."
+          }
+        },
+        "concept_3": {
+          "type": "concept",
+          "settings": {
+            "concept": "shop",
+            "anchor": "webshop",
+            "package": "Webshop · 499 kr./md. ekskl. moms",
+            "title": "Lille webshop til et keramikværksted",
+            "text": "<p>Et enkelt og køligt udtryk, hvor varerne er i fokus. Produktsiden viser varianter, lagerstatus og kurv.</p>",
+            "points": "Tre glasurer er ét produkt med tre varianter\nKurven opdateres med det samme\nOp til 50 aktive produkter og 200 varianter\nI kan selv rette produkter bagefter",
+            "link_label": "Se hvad Webshop indeholder",
+            "link": "/pages/webshop",
+            "caption": "Produktside hos Lerværk."
+          }
+        }
+      },
+      "block_order": [
+        "concept_1",
+        "concept_2",
+        "concept_3"
+      ]
+    },
+    "cta": {
+      "type": "cta-banner",
+      "settings": {
+        "anchor": "kom-i-gang",
+        "heading": "Skal vi lave et udkast til jer?",
+        "text": "<p>Fortæl kort om virksomheden, så viser vi en demo inden for 24–48 timer. Det er uforpligtende.</p>",
+        "label": "Aftal en demo",
+        "link": "/pages/kontakt?ydelse=aftal-en-demo#formular",
+        "secondary_label": "Se priser",
+        "secondary_link": "/pages/priser",
+        "show_email": true,
+        "email_prefix": "Eller skriv til"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "koncepter",
+    "cta"
+  ]
+}

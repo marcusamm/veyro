@@ -14,7 +14,7 @@
         "content": "Oplysningerne bruges i header, footer, kontaktsider og strukturerede data (SEO). Tomme felter vises ikke."
       },
       { "type": "text", "id": "company_name", "label": "Virksomhedsnavn", "default": "Veyro" },
-      { "type": "text", "id": "company_tagline", "label": "Kort beskrivelse", "default": "Ordrestyring og varekontrol: hjemmesider med kundebestilling og interne systemer til ordrer og lager. Vi laver også almindelige hjemmesider." },
+      { "type": "text", "id": "company_tagline", "label": "Kort beskrivelse", "default": "Hjemmeside, booking og webshop til mindre virksomheder. Vi sætter det op og holder det ved lige for en fast månedspris." },
       { "type": "text", "id": "company_email", "label": "E-mail", "default": "kontakt@veyro.dk" },
       { "type": "text", "id": "company_phone", "label": "Telefon", "info": "Lad feltet stå tomt for at skjule det.", "default": "+45 61 66 39 31" },
       { "type": "text", "id": "company_cvr", "label": "CVR-nummer", "info": "Skal vises på siden, når virksomheden har et CVR-nummer." },

@@ -15,6 +15,16 @@ routes = [
   { pattern = "www.veyro.dk", custom_domain = true }
 ]
 
+# Demoer (fiktive designkoncepter) på veyro.dk/demo/…: statiske filer i public/demo.
+# Alle forespørgsler går først gennem Workeren, så kun /demo/ på salgshjemmesiden henter filerne
+# (med samme sikkerhedsheaders og noindex).
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "auto-trailing-slash"
+not_found_handling = "none"
+
 # Ingen persondata i logs ud over det nødvendige
 [observability]
 enabled = true

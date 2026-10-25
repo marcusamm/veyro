@@ -5,18 +5,25 @@
     "footer": {
       "type": "footer",
       "blocks": {
-        "menu_main": {
-          "type": "menu",
-          "settings": {
-            "heading": "Navigation",
-            "menu": "main-menu"
-          }
-        },
         "menu_services": {
           "type": "menu",
           "settings": {
-            "heading": "Ydelser",
+            "heading": "Løsninger",
             "menu": "footer"
+          }
+        },
+        "menu_info": {
+          "type": "menu",
+          "settings": {
+            "heading": "Veyro",
+            "menu": "information"
+          }
+        },
+        "menu_legal": {
+          "type": "menu",
+          "settings": {
+            "heading": "Dokumenter",
+            "menu": "juridisk"
           }
         },
         "contact": {
@@ -24,33 +31,15 @@
           "settings": {
             "heading": "Kontakt"
           }
-        },
-        "company": {
-          "type": "company",
-          "settings": {
-            "heading": "Virksomhed"
-          }
-        },
-        "menu_info": {
-          "type": "menu",
-          "settings": {
-            "heading": "Information",
-            "menu": "information"
-          }
         }
       },
       "block_order": [
-        "menu_main",
         "menu_services",
         "menu_info",
-        "contact",
-        "company"
+        "menu_legal",
+        "contact"
       ],
-      "settings": {
-        "cta_label": "Book en demo",
-        "cta_link": "/pages/kontakt?ydelse=book-en-demo#formular",
-        "legal_menu": "juridisk"
-      }
+      "settings": {}
     }
   },
   "order": [

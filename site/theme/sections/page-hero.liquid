@@ -1,39 +1,78 @@
+{%- comment -%}
+  Sidetop til undersider: brødkrummer, sidens eneste H1, kort tekst og højst to knapper.
+  Højre side kan vise et designkoncept ('craft', 'salon', 'shop') eller en kort faktaliste (Titel | Tekst pr. linje).
+  Mærkat (fx "På vej") vises over overskriften. En streg afslutter toppen.
+{%- endcomment -%}
 {%- liquid
   assign heading = section.settings.heading
   if heading == blank
     assign heading = page.title | default: page_title | escape
   endif
+  assign facts = section.settings.facts | newline_to_br | split: '<br />'
+  assign crumb = page.title | default: page_title
+  assign has_aside = false
+  if section.settings.concept != 'none' and section.settings.concept != blank
+    assign has_aside = true
+  elsif section.settings.facts != blank
+    assign has_aside = true
+  endif
 -%}
-<section class="section section--{{ section.settings.scheme }} page-hero{% if section.settings.style == 'technical' %} page-hero--technical{% endif %}">
-  <div class="hero__grid-bg" aria-hidden="true"></div>
-  <div class="container page-hero__inner">
+<section class="page-hero{% if has_aside %} page-hero--split{% endif %}">
+  <div class="container">
     {%- if section.settings.show_breadcrumbs and request.page_type != 'index' -%}
       <nav class="breadcrumbs" aria-label="{{ 'general.breadcrumbs' | t }}">
         <ol role="list">
           <li><a href="{{ routes.root_url }}">{{ 'general.home' | t }}</a></li>
-          <li><span aria-current="page">{{ page.title | default: page_title | escape }}</span></li>
+          {%- if section.settings.parent_label != blank -%}<li><a href="{{ section.settings.parent_link }}">{{ section.settings.parent_label | escape }}</a></li>{%- endif -%}
+          <li><span aria-current="page">{{ crumb | escape }}</span></li>
         </ol>
       </nav>
+      <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": {{ 'general.home' | t | json }}, "item": {{ shop.url | append: '/' | json }} }
+            {%- if section.settings.parent_label != blank -%},{ "@type": "ListItem", "position": 2, "name": {{ section.settings.parent_label | json }}, "item": {{ shop.url | append: section.settings.parent_link | json }} },{ "@type": "ListItem", "position": 3, "name": {{ crumb | json }} }{%- else -%},{ "@type": "ListItem", "position": 2, "name": {{ crumb | json }} }{%- endif %}
+          ]
+        }
+      </script>
     {%- endif -%}
-    {%- if section.settings.eyebrow != blank -%}<p class="eyebrow">{{ section.settings.eyebrow | escape }}</p>{%- endif -%}
-    <h1 class="h-display page-hero__title">{{ heading }}</h1>
-    {%- if section.settings.text != blank -%}<div class="lead page-hero__text rte">{{ section.settings.text }}</div>{%- endif -%}
-    {%- if section.settings.primary_label != blank or section.settings.secondary_label != blank -%}
-      <div class="hero__actions">
-        {% render 'button', label: section.settings.primary_label, url: section.settings.primary_link, fallback: pages['kontakt'].url, style: 'primary', arrow: settings.button_arrow %}
-        {% render 'button', label: section.settings.secondary_label, url: section.settings.secondary_link, style: 'secondary' %}
+
+    <div class="page-hero__grid">
+      <div class="page-hero__main">
+        {%- if section.settings.badge != blank -%}<p class="page-hero__status"><span class="badge badge--coming">{{ section.settings.badge | escape }}</span>{%- if section.settings.badge_text != blank -%}<span>{{ section.settings.badge_text | escape }}</span>{%- endif -%}</p>{%- endif -%}
+        <h1 class="t-xl page-hero__title">{{ heading }}</h1>
+        {%- if section.settings.text != blank -%}<div class="lead page-hero__text rte">{{ section.settings.text }}</div>{%- endif -%}
+        {%- if section.settings.primary_label != blank or section.settings.secondary_label != blank -%}
+          <div class="actions">
+            {% render 'button', label: section.settings.primary_label, url: section.settings.primary_link, fallback: pages['kontakt'].url, style: 'primary' %}
+            {% render 'button', label: section.settings.secondary_label, url: section.settings.secondary_link, style: 'secondary' %}
+          </div>
+        {%- endif -%}
+        {%- if section.settings.note != blank -%}<p class="page-hero__note">{{ section.settings.note | escape }}</p>{%- endif -%}
       </div>
-    {%- endif -%}
-    {%- if section.blocks.size > 0 -%}
-      <nav class="anchor-nav" aria-label="{{ section.settings.nav_label | escape }}">
-        <p class="anchor-nav__label">{{ section.settings.nav_label | escape }}</p>
-        <ul role="list">
-          {%- for block in section.blocks -%}
-            <li {{ block.shopify_attributes }}><a href="#{{ block.settings.target | handle }}">{{ block.settings.label | escape }}</a></li>
-          {%- endfor -%}
-        </ul>
-      </nav>
-    {%- endif -%}
+
+      {%- if has_aside -%}
+        <div class="page-hero__aside">
+          {%- if section.settings.concept != 'none' and section.settings.concept != blank -%}
+            <figure class="concept">
+              {% render 'concept', name: section.settings.concept, caption: section.settings.concept_caption, eager: true %}
+            </figure>
+          {%- else -%}
+            <dl class="facts">
+              {%- for f in facts -%}
+                {%- assign line = f | strip -%}
+                {%- if line != blank -%}{%- assign parts = line | split: '|' -%}
+                  <div><dt>{{ parts[0] | strip | escape }}</dt><dd>{{ parts[1] | strip | escape }}</dd></div>
+                {%- endif -%}
+              {%- endfor -%}
+            </dl>
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+    </div>
+    <hr class="page-hero__rule">
   </div>
 </section>
 
@@ -42,27 +81,23 @@
   "name": "Sidetop",
   "tag": "div",
   "settings": [
-    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
-      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
-    ], "default": "light" },
-    { "type": "select", "id": "style", "label": "Baggrund", "options": [
-      { "value": "plain", "label": "Ren" }, { "value": "technical", "label": "Teknisk gitter" }
-    ], "default": "technical" },
     { "type": "checkbox", "id": "show_breadcrumbs", "label": "Vis brødkrummer", "default": true },
-    { "type": "text", "id": "eyebrow", "label": "Lille overskrift" },
-    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "info": "Tomt felt bruger sidens titel." },
+    { "type": "text", "id": "parent_label", "label": "Overordnet side i brødkrummer", "info": "Fx Løsninger. Tomt felt viser kun Forside › denne side." },
+    { "type": "url", "id": "parent_link", "label": "Link til overordnet side" },
+    { "type": "text", "id": "badge", "label": "Mærkat over overskriften", "info": "Fx På vej. Tomt felt skjuler mærkatet." },
+    { "type": "text", "id": "badge_text", "label": "Tekst ved mærkatet" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift (H1)", "info": "Tomt felt bruger sidens titel." },
     { "type": "richtext", "id": "text", "label": "Tekst" },
-    { "type": "text", "id": "primary_label", "label": "Primær knap" },
-    { "type": "url", "id": "primary_link", "label": "Primært link", "info": "Tomt felt linker til siden „kontakt“." },
-    { "type": "text", "id": "secondary_label", "label": "Sekundær knap" },
-    { "type": "url", "id": "secondary_link", "label": "Sekundært link" },
-    { "type": "text", "id": "nav_label", "label": "Overskrift over genveje", "default": "Gå til" }
-  ],
-  "blocks": [
-    { "type": "anchor", "name": "Genvej", "settings": [
-      { "type": "text", "id": "label", "label": "Tekst", "default": "Ydelse" },
-      { "type": "text", "id": "target", "label": "Anker-id på sektionen", "default": "ydelse" }
-    ] }
+    { "type": "text", "id": "primary_label", "label": "Primær knap – tekst" },
+    { "type": "url", "id": "primary_link", "label": "Primær knap – link" },
+    { "type": "text", "id": "secondary_label", "label": "Sekundær knap – tekst" },
+    { "type": "url", "id": "secondary_link", "label": "Sekundær knap – link" },
+    { "type": "text", "id": "note", "label": "Kort note under knapperne" },
+    { "type": "select", "id": "concept", "label": "Designkoncept i højre side", "options": [
+      { "value": "none", "label": "Intet" }, { "value": "craft", "label": "Hjemmeside (tømrer)" }, { "value": "salon", "label": "Booking (frisør)" }, { "value": "shop", "label": "Webshop (keramik)" }
+    ], "default": "none" },
+    { "type": "text", "id": "concept_caption", "label": "Tekst under designkonceptet", "default": "" },
+    { "type": "textarea", "id": "facts", "label": "Faktaliste i højre side (Titel | Tekst pr. linje)", "info": "Vises, når der ikke er valgt et designkoncept." }
   ],
   "presets": [{ "name": "Sidetop" }]
 }

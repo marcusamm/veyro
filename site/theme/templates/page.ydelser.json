@@ -2,368 +2,297 @@
   "sections": {
     "hero": {
       "type": "page-hero",
+      "settings": {
+        "show_breadcrumbs": true,
+        "heading": "Løsninger",
+        "text": "<p>Vi laver hjemmesider, booking og webshops til mindre virksomheder for en fast månedspris. Vi hjælper også med hjemmesider, I allerede har: optimering, fejlfinding, integrationer, hosting og specialudvikling.</p>",
+        "primary_label": "Se priser",
+        "primary_link": "/pages/priser",
+        "secondary_label": "Aftal en demo",
+        "secondary_link": "/pages/kontakt?ydelse=aftal-en-demo#formular"
+      }
+    },
+    "pakker": {
+      "type": "packages",
+      "settings": {
+        "anchor": "priser",
+        "layout": "summary",
+        "heading": "Hjemmeside, booking og webshop",
+        "text": "<p>Vi sætter det op, og vi holder det ved lige. Fast månedspris ekskl. moms.</p>",
+        "terms": "Gratis oprettelse · Første måned gratis · Ingen binding"
+      },
       "blocks": {
-        "a1": {
-          "type": "anchor",
+        "package_1": {
+          "type": "package",
           "settings": {
-            "label": "Website-optimering",
-            "target": "website-optimering"
+            "handle": "hjemmeside",
+            "title": "Hjemmeside",
+            "status": "available",
+            "text": "En professionel hjemmeside til virksomheder, der vil være nemme at finde og kontakte.",
+            "price": "199 kr.",
+            "interval": "/md.",
+            "vat": "ekskl. moms",
+            "price_label": "",
+            "badge": "",
+            "features": "Op til 5 sider med design tilpasset jer\nVirker på mobil, tablet og computer\nKontaktformular og kontaktoplysninger\nHosting og teknisk vedligeholdelse\n3 korrekturrunder under opsætningen\nMindre løbende justeringer",
+            "features_label": "Det er med",
+            "button_label": "Aftal en demo",
+            "button_link": "/pages/kontakt?ydelse=pakke-hjemmeside#formular",
+            "button_style": "primary",
+            "details_label": "Læs om Hjemmeside",
+            "details_link": "/pages/hjemmeside"
           }
         },
-        "a2": {
-          "type": "anchor",
+        "package_2": {
+          "type": "package",
           "settings": {
-            "label": "Konverteringsoptimering",
-            "target": "konverteringsoptimering"
+            "handle": "booking",
+            "title": "Booking",
+            "status": "available",
+            "text": "En hjemmeside med online booking, så kunderne selv kan finde og booke en ledig tid.",
+            "price": "299 kr.",
+            "interval": "/md.",
+            "vat": "ekskl. moms",
+            "price_label": "",
+            "badge": "",
+            "features": "Alt i Hjemmeside\nOnline booking af jeres ydelser\nKunden kan selv booke, flytte og aflyse\nBekræftelser på mail til jer og kunden\nOp til 3 medarbejdere med egen bruger eller kalender",
+            "features_label": "Det er med",
+            "button_label": "Aftal en demo",
+            "button_link": "/pages/kontakt?ydelse=pakke-booking#formular",
+            "button_style": "primary",
+            "details_label": "Læs om Booking",
+            "details_link": "/pages/booking"
           }
         },
-        "a3": {
-          "type": "anchor",
+        "package_3": {
+          "type": "package",
           "settings": {
-            "label": "Custom løsninger",
-            "target": "custom-losninger"
-          }
-        },
-        "a4": {
-          "type": "anchor",
-          "settings": {
-            "label": "Webdesign",
-            "target": "webdesign"
-          }
-        },
-        "a5": {
-          "type": "anchor",
-          "settings": {
-            "label": "Fejlfinding",
-            "target": "fejlfinding"
-          }
-        },
-        "a6": {
-          "type": "anchor",
-          "settings": {
-            "label": "Integrationer",
-            "target": "integrationer"
-          }
-        },
-        "a7": {
-          "type": "anchor",
-          "settings": {
-            "label": "Vedligeholdelse og hosting",
-            "target": "vedligeholdelse"
-          }
-        },
-        "a8": {
-          "type": "anchor",
-          "settings": {
-            "label": "Priser",
-            "target": "priser"
+            "handle": "webshop",
+            "title": "Webshop",
+            "status": "available",
+            "text": "En webshop til jeres varer, som vi sætter op og holder ved lige.",
+            "price": "499 kr.",
+            "interval": "/md.",
+            "vat": "ekskl. moms",
+            "price_label": "",
+            "badge": "",
+            "features": "Webshop tilpasset jeres virksomhed\nOp til 50 aktive produkter og 200 varianter\nVi opretter de første 10 produkter eller importerer op til 50\nOp til 3 administratorbrugere\nHosting og teknisk vedligeholdelse",
+            "features_label": "Det er med",
+            "button_label": "Aftal en demo",
+            "button_link": "/pages/kontakt?ydelse=pakke-webshop#formular",
+            "button_style": "primary",
+            "details_label": "Læs om Webshop",
+            "details_link": "/pages/webshop"
           }
         }
       },
       "block_order": [
-        "a8",
-        "a1",
-        "a2",
-        "a3",
-        "a4",
-        "a5",
-        "a6",
-        "a7"
-      ],
-      "settings": {
-        "scheme": "light",
-        "style": "technical",
-        "show_breadcrumbs": true,
-        "eyebrow": "Ydelser",
-        "heading": "Vores ydelser",
-        "text": "<p>Vi laver hjemmesider som abonnement med fast månedspris, med eller uden online booking, og udvikler løsninger til opgaver, ordrer og lager. Vi hjælper også med optimering, fejlfinding og integrationer på Shopify, WordPress, WooCommerce og specialudviklede sider.</p>",
-        "primary_label": "Book en demo",
-        "primary_link": "/pages/kontakt?ydelse=book-en-demo#formular",
-        "nav_label": "Gå til ydelse"
-      }
+        "package_1",
+        "package_2",
+        "package_3"
+      ]
     },
     "s1": {
-      "type": "service-detail",
+      "type": "service",
       "settings": {
-        "scheme": "light",
         "anchor": "website-optimering",
-        "number": "",
-        "icon": "speed",
+        "layout": "split",
+        "label": "Efter tilbud",
         "title": "Website-optimering",
-        "intro": "<p>Hurtigere indlæsning, bedre mobiloplevelse og højere teknisk kvalitet, på Shopify, WordPress, WooCommerce og andre platforme.</p>",
-        "problem": "<p>Med tiden samler de fleste hjemmesider plugins, apps, scripts og store billeder op. Resultatet er sider, der indlæser langsomt, hopper rundt under indlæsning og føles tunge på mobilen.</p>",
-        "includes": "Måling af hastighed og Core Web Vitals på vigtige sidetyper\nGennemgang af tema, plugins, apps og tredjepartsscripts\nOptimering af billeder, skrifttyper og indlæsningsrækkefølge\nCaching og serveropsætning, hvor platform og hosting tillader det\nForbedringer af mobiloplevelsen\nTeknisk SEO-grundlag: titler, overskrifter og strukturerede data",
-        "audience": "<p>har en hjemmeside eller webshop, der føles langsom, har mange plugins eller apps installeret eller har fået at vide, at siden scorer dårligt i Googles målinger.</p>",
-        "deliverables": "Rapport med målinger før og efter\nGennemførte optimeringer, testet før udgivelse\nListe over forhold, der kræver beslutninger, hosting eller tredjepart\nAnbefalinger til at holde siden hurtig",
-        "cta_label": "Få en gratis vurdering",
-        "form_key": "website-optimering",
-        "secondary_label": "Sådan optimerer vi",
+        "intro": "<p>Hurtigere indlæsning og en bedre oplevelse på mobilen, uanset om siden kører på Shopify, WordPress, WooCommerce eller noget andet.</p>",
+        "audience": "<p>Til jer, der har en hjemmeside eller webshop, som føles langsom, har mange plugins eller apps, eller som scorer dårligt i Googles målinger.</p>",
+        "helps": "Måling af hastighed og Core Web Vitals på de vigtigste sider\nGennemgang af tema, plugins, apps og scripts\nBilleder, skrifttyper og rækkefølgen, siden indlæses i\nDet tekniske SEO-grundlag",
+        "included": "Måling før og efter\nGennemførte og testede forbedringer\nListe over det, der kræver en beslutning eller en anden leverandør",
+        "separate": "Ombygning af tema eller platform\nÆndringer hos hosting- eller app-udbydere\nLøbende optimering efter første forløb",
+        "next": "<p>Send os et link. Vi kigger på siden og vender tilbage inden for 24–48 timer med et forslag og en pris.</p>",
+        "button_label": "Få et tilbud",
+        "button_link": "/pages/kontakt?ydelse=website-optimering#formular",
+        "secondary_label": "Læs om website-optimering",
         "secondary_link": "/pages/website-optimering"
       }
     },
     "s2": {
-      "type": "service-detail",
+      "type": "service",
       "settings": {
-        "scheme": "light",
         "anchor": "konverteringsoptimering",
-        "number": "",
-        "icon": "conversion",
-        "title": "Konverteringsoptimering (CRO)",
-        "intro": "<p>Færre forhindringer mellem besøgende og køb eller henvendelse, baseret på data og på, hvordan de besøgende faktisk bruger siden.</p>",
-        "problem": "<p>Trafikken kommer, men for få køber eller tager kontakt. Typisk skyldes det uklar navigation, sider uden de vigtigste svar, manglende tryghed eller små irritationer i formularer, kurv og checkout.</p>",
-        "includes": "Gennemgang af brugerrejsen fra første besøg til køb eller henvendelse\nAnalyse af data fra f.eks. GA4 eller platformens egne rapporter\nForbedring af produkt-, landings- og kontaktsider samt navigation\nTryghedsskabende elementer: levering, retur, betaling og kontakt\nForslag til A/B-tests, hvor trafikken gør det meningsfuldt",
-        "audience": "<p>har en stabil strøm af besøgende, men oplever, at for få bliver til kunder, eller vil sikre, at ny trafik ikke spildes.</p>",
-        "deliverables": "Prioriteret liste over forbedringer (effekt og indsats)\nImplementerede ændringer\nOpsætning af målepunkter, så effekten kan følges\nOpfølgning og justering",
-        "cta_label": "Få en gratis vurdering",
-        "form_key": "konverteringsoptimering-cro"
+        "layout": "columns",
+        "label": "Efter tilbud",
+        "title": "Konverteringsoptimering",
+        "intro": "<p>Færre forhindringer mellem de besøgende og en henvendelse eller et køb.</p>",
+        "audience": "<p>Til jer, der har besøgende nok, men for få, der tager kontakt eller køber.</p>",
+        "helps": "Vejen fra første besøg til køb eller henvendelse\nData fra fx GA4 eller platformens egne rapporter\nProdukt-, landings- og kontaktsider\nInformation om levering, retur, betaling og kontakt",
+        "included": "Prioriteret liste med forbedringer\nDe ændringer, vi aftaler\nMålepunkter, så I kan følge effekten",
+        "separate": "A/B-tests, hvor trafikken er stor nok\nNye funktioner eller integrationer\nLøbende opfølgning",
+        "next": "<p>Fortæl, hvad siden skal få flere til at gøre. Så foreslår vi, hvor vi vil starte.</p>",
+        "button_label": "Få et tilbud",
+        "button_link": "/pages/kontakt?ydelse=konverteringsoptimering-cro#formular",
+        "secondary_label": "",
+        "secondary_link": ""
       }
     },
     "s3": {
-      "type": "service-detail",
+      "type": "service",
       "settings": {
-        "scheme": "light",
         "anchor": "custom-losninger",
-        "number": "",
-        "icon": "code",
-        "title": "Custom Shopify-løsninger",
-        "intro": "<p>Funktioner, sektioner og integrationer bygget til netop din Shopify-webshop, som du selv kan redigere i Shopify. Custom-udvikling er vores særlige speciale på Shopify. Bruger du en anden platform, hjælper vi med tilpasninger under Fejlfinding og Integrationer.</p>",
-        "problem": "<p>Dit tema eller dine apps kan ikke det, du har brug for. Eller du betaler for flere apps, der tilsammen gør noget, som kunne løses enklere og hurtigere direkte i temaet.</p>",
-        "includes": "Egne sektioner og blokke til Shopifys temaeditor\nLiquid-komponenter og temaændringer\nFunktionalitet på produktsiden, f.eks. konfiguratorer og bundles\nStorefront-funktioner med JavaScript\nIntegrationer via Shopifys API'er",
-        "audience": "<p>har en konkret idé eller et behov, som standardtemaer og apps ikke dækker, eller vil erstatte tunge apps med en lettere løsning.</p>",
-        "deliverables": "Specifikation, du godkender før udvikling\nFærdig og testet løsning i dit tema\nRedigerbare indstillinger i temaeditoren\nKort dokumentation af løsningen",
-        "cta_label": "Fortæl os om din idé",
-        "form_key": "custom-shopify-loesning",
-        "secondary_label": "Se hvad vi kan bygge",
+        "layout": "compact",
+        "label": "Efter tilbud",
+        "title": "Specialudvikling og Shopify",
+        "intro": "<p>Funktioner, sektioner og integrationer, der ikke findes som standard.</p>",
+        "audience": "<p>Til jer, der har et konkret behov, som jeres tema, plugins eller apps ikke dækker. Vi arbejder også i jeres egen Shopify-butik. Det arbejde er adskilt fra Veyros egen platform, som vi bruger til Hjemmeside, Booking og Webshop.</p>",
+        "helps": "Egne sektioner og blokke til Shopifys temaeditor\nFunktioner på produktsiden, fx konfiguratorer og bundles\nTilpasning af jeres eksisterende tema\nSmå værktøjer, der sparer manuelt arbejde",
+        "included": "Beskrivelse af løsningen, som I godkender før udvikling\nFærdig og testet løsning\nKort dokumentation",
+        "separate": "Al specialudvikling prissættes særskilt\nVedligeholdelse efter overdragelse",
+        "next": "<p>Beskriv kort, hvad løsningen skal kunne. Vi svarer med vores bud på, hvordan den kan bygges, og hvad det koster.</p>",
+        "button_label": "Få et tilbud",
+        "button_link": "/pages/kontakt?ydelse=shopify-specialudvikling#formular",
+        "secondary_label": "Læs om Shopify-specialudvikling",
         "secondary_link": "/pages/custom-losninger"
       }
     },
     "s4": {
-      "type": "service-detail",
+      "type": "service",
       "settings": {
-        "scheme": "light",
-        "anchor": "webdesign",
-        "number": "",
-        "icon": "design",
-        "title": "Web- og webshopdesign",
-        "intro": "<p>Redesign og et layout, der gør det let at finde, forstå og handle, implementeret på din nuværende platform.</p>",
-        "problem": "<p>Siden ser ikke ud, som brandet fortjener, eller den er vokset i forskellige retninger, så sider og elementer ikke længere hænger sammen.</p>",
-        "includes": "Gennemgang af visuel identitet og layout\nDesign af nøglesider: forside, produkt-, service- og kontaktsider\nEnsartede komponenter: knapper, kort, typografi og farver\nMobil først og med fokus på tilgængelighed\nImplementering på din nuværende platform",
-        "audience": "<p>vil løfte det visuelle udtryk, står foran et rebrand eller har et tema, der er blevet uoverskueligt at vedligeholde.</p>",
-        "deliverables": "Designforslag til godkendelse\nImplementeret design\nGenbrugelige komponenter og skabeloner\nOverdragelse med gennemgang af, hvordan du redigerer",
-        "cta_label": "Få en gratis vurdering",
-        "form_key": "web-og-webshopdesign"
+        "anchor": "fejlfinding",
+        "layout": "split",
+        "label": "Efter tilbud",
+        "title": "Fejlfinding og teknisk hjælp",
+        "intro": "<p>Når noget på siden ikke virker, finder vi årsagen og retter den.</p>",
+        "audience": "<p>Til jer, der har et konkret problem: et layout, der er gået i stykker, knapper, der ikke virker på mobilen, eller et plugin, der driller. På Shopify, WordPress, WooCommerce og specialudviklede sider.</p>",
+        "helps": "Fejl i tema, skabeloner, CSS, JavaScript og PHP\nKonflikter mellem plugins eller apps\nVisningsfejl på mobil\nOpdatering af ældre temaer og plugins",
+        "included": "Rettelse, testet på de relevante enheder\nEn forklaring på, hvad der var galt\nForslag til, hvordan fejlen undgås",
+        "separate": "Større ombygninger\nFast teknisk hjælp som abonnement",
+        "next": "<p>Beskriv fejlen, og send et link. Skriv gerne, hvornår den opstod.</p>",
+        "button_label": "Få et tilbud",
+        "button_link": "/pages/kontakt?ydelse=fejlfinding-og-teknisk-hjaelp#formular",
+        "secondary_label": "",
+        "secondary_link": ""
       }
     },
     "s5": {
-      "type": "service-detail",
+      "type": "service",
       "settings": {
-        "scheme": "light",
-        "anchor": "fejlfinding",
-        "number": "",
-        "icon": "wrench",
-        "title": "Fejlfinding og teknisk hjælp",
-        "intro": "<p>Når noget ikke virker, som det skal, finder vi årsagen og løser den ordentligt, på Shopify, WordPress, WooCommerce og specialudviklede sider.</p>",
-        "problem": "<p>Layoutet er gået i stykker efter en opdatering, knapper virker ikke på mobilen, eller et plugin eller en app opfører sig mærkeligt.</p>",
-        "includes": "Fejlsøgning i tema, skabeloner, CSS, JavaScript og PHP\nPlugin- og app-konflikter og rester efter afinstallationer\nØdelagte layouts og visningsfejl på mobil\nOpdatering af ældre temaer og plugins\nLøbende teknisk hjælp, også som abonnement",
-        "audience": "<p>har brug for hurtig og kompetent hjælp til et konkret problem, eller ønsker en fast teknisk sparringspartner.</p>",
-        "deliverables": "Rettet fejl, testet på relevante enheder\nForklaring af årsagen\nForslag til, hvordan lignende fejl undgås",
-        "cta_label": "Beskriv problemet",
-        "form_key": "fejlfinding-og-teknisk-hjaelp"
+        "anchor": "integrationer",
+        "layout": "columns",
+        "label": "Efter tilbud",
+        "title": "Integrationer og automatisering",
+        "intro": "<p>Jeres hjemmeside eller webshop forbundet med de systemer, I bruger, så færre opgaver skal klares i hånden.</p>",
+        "audience": "<p>Til jer, der flytter data i hånden mellem fx webshop, lager, fragt, bogføring eller nyhedsbrev.</p>",
+        "helps": "Kortlægning af systemer og arbejdsgange\nOpsætning af eksisterende plugins, apps og integrationer\nAutomatisering med fx Shopify Flow, Zapier eller Make\nIntegrationer via API og webhooks",
+        "included": "Forslag til, hvad der kan automatiseres\nOpsatte og testede integrationer\nDokumentation",
+        "separate": "Abonnementer hos tredjepart\nTilpasning, når et andet system ændrer sig",
+        "next": "<p>Fortæl, hvilke systemer I bruger, og hvad der tager tid i dag. Så undersøger vi mulighederne, før I får et tilbud.</p>",
+        "button_label": "Få et tilbud",
+        "button_link": "/pages/kontakt?ydelse=integrationer-og-automatisering#formular",
+        "secondary_label": "",
+        "secondary_link": ""
       }
     },
     "s6": {
-      "type": "service-detail",
+      "type": "service",
       "settings": {
-        "scheme": "light",
-        "anchor": "integrationer",
-        "number": "",
-        "icon": "integration",
-        "title": "Integrationer og automatisering",
-        "intro": "<p>Din hjemmeside eller webshop forbundet med dine øvrige systemer, så færre opgaver skal klares i hånden.</p>",
-        "problem": "<p>Data flyttes manuelt mellem hjemmeside, webshop, lager, fragt, bogføring, CRM og marketing. Det tager tid og giver fejl.</p>",
-        "includes": "Kortlægning af systemer og arbejdsgange\nOpsætning af eksisterende plugins, apps og integrationer\nAutomatisering med f.eks. Shopify Flow, Zapier eller Make\nWebhooks og skræddersyede integrationer via API\nSikker håndtering af adgangsnøgler på serversiden",
-        "audience": "<p>bruger meget tid på gentagne opgaver eller har systemer, der ikke taler sammen.</p>",
-        "deliverables": "Overblik over arbejdsgange og forslag til automatisering\nOpsatte og testede integrationer\nDokumentation og overvågning af fejl",
-        "cta_label": "Få en gratis vurdering",
-        "form_key": "integrationer-og-automatisering"
-      }
-    },
-    "cta": {
-      "type": "cta-banner",
-      "settings": {
-        "scheme": "light",
-        "eyebrow": "Usikker på, hvor du skal starte?",
-        "heading": "Skal din løsning tilpasses?",
-        "text": "<p>Fortæl kort, hvad du har brug for, og send gerne et link til din nuværende hjemmeside. Så giver vi dig et konkret tilbud.</p>",
-        "label": "Hent tilbud",
-        "link": "/pages/kontakt?ydelse=andet-ved-ikke-endnu#formular",
-        "show_email": true,
-        "email_prefix": "Eller skriv direkte til"
-      }
-    },
-    "s7": {
-      "type": "service-detail",
-      "settings": {
-        "scheme": "light",
         "anchor": "vedligeholdelse",
-        "number": "",
-        "icon": "shield",
-        "title": "Vedligeholdelse og hosting",
-        "intro": "<p>Løbende pasning af din hjemmeside som abonnement, hos din nuværende hostingudbyder eller hos os.</p>",
-        "problem": "<p>Opdateringer bliver udskudt, fejl opdages først, når en kunde klager, og ingen har ansvaret for, at siden bliver ved med at være hurtig og sikker.</p>",
-        "includes": "Hjemmeside, hosting, SSL og domæne samlet i én aftale\nOpdateringer og sikkerhedskopier\nIndholdsændringer hver måned\nVedligeholdelse af eksisterende sider, hvor de ligger i dag",
-        "audience": "<p>vil have en fast teknisk partner til sin hjemmeside eller webshop, uanset om den kører på Shopify, WordPress, WooCommerce eller noget andet, og uanset hvor den er hostet.</p>",
-        "deliverables": "Fast månedlig pris efter tilbud\nOvervågning og opdateringer\nSupport ved fejl\nStatusrapport",
-        "cta_label": "Få et tilbud",
-        "form_key": "vedligeholdelse-af-eksisterende-hjemmeside"
+        "layout": "compact",
+        "label": "Efter tilbud",
+        "title": "Hosting og vedligeholdelse",
+        "intro": "<p>Løbende pasning af en hjemmeside, I allerede har, hos jeres nuværende udbyder eller hos os.</p>",
+        "audience": "<p>Til jer, der har en hjemmeside eller webshop uden for vores pakker og vil have en fast teknisk partner. Hosting og vedligeholdelse er allerede med i Hjemmeside, Booking og Webshop.</p>",
+        "helps": "Opdateringer og sikkerhedskopier\nOvervågning og hjælp ved fejl\nHosting og SSL, hvis siden skal ligge hos os\nMindre rettelser",
+        "included": "Fast månedspris efter tilbud\nSvar på henvendelser inden for 24–48 timer på hverdage",
+        "separate": "Ny funktionalitet og større ændringer\nLicenser og abonnementer hos tredjepart",
+        "next": "<p>Fortæl, hvor siden ligger i dag, og hvad den kører på. Så får I et tilbud.</p>",
+        "button_label": "Få et tilbud",
+        "button_link": "/pages/kontakt?ydelse=hosting-og-vedligeholdelse#formular",
+        "secondary_label": "Læs vores serviceniveau (SLA)",
+        "secondary_link": "/pages/sla"
       }
     },
-    "web_intro": {
-      "type": "note-banner",
+    "paa_vej": {
+      "type": "coming",
       "settings": {
-        "scheme": "light",
-        "anchor": "webloesninger",
-        "icon": "design",
-        "heading": "Hjemmesider og øvrige webløsninger",
-        "text": "<p>Har du blot brug for en hjemmeside, eller skal din nuværende side forbedres? Her er de ydelser, vi også tilbyder, uden ordre- og lagerstyring. Hjemmesider laver vi som abonnement fra 199 kr./md. ekskl. moms.</p>",
-        "primary_label": "Se priser",
-        "primary_link": "#priser",
-        "secondary_label": "Få et tilbud",
-        "secondary_link": "/pages/kontakt?ydelse=almindelig-hjemmeside-eller-landingsside#formular"
-      }
-    },
-    "packages": {
-      "type": "packages",
+        "anchor": "paa-vej",
+        "id_suffix": "-kort",
+        "badge": "På vej",
+        "status_text": "Under udvikling",
+        "heading": "Ordrer, jobs og lager: Drift og Alt inkl.",
+        "text": "<p>Vi udvikler en løsning til jobs, timer, materialer, lager og bilag. Vi søger virksomheder, der vil teste den i hverdagen.</p>",
+        "primary_label": "Bliv testkunde",
+        "primary_link": "/pages/drift?pakke=drift#testkunde",
+        "secondary_label": "Læs om Drift og Alt inkl.",
+        "secondary_link": "/pages/drift",
+        "note": "<p>Priserne er forventede priser ved lancering. En tilmelding som testkunde er uforpligtende.</p>"
+      },
       "blocks": {
-        "basis": {
+        "package_1": {
           "type": "package",
           "settings": {
-            "title": "Basis",
-            "status": "available",
-            "badge": "Kan bestilles nu",
-            "text": "<p>En professionel hjemmeside til virksomheder, der vil være nemme at finde og kontakte.</p>",
-            "price_label": "",
-            "price": "199 kr.",
-            "price_note": "/md. ekskl. moms",
-            "terms": "0 kr. den første måned. Herefter 199 kr./md. ekskl. moms.\nGratis oprettelse og ingen binding.",
-            "features_label": "Indhold",
-            "features": "Hjemmeside tilpasset virksomhedens udtryk\nDesign til mobil, tablet og computer\nPræsentation af ydelser og kontaktoplysninger\nKontaktformular\nHosting og teknisk vedligeholdelse",
-            "button_label": "Vælg Basis",
-            "button_link": "/pages/kontakt?ydelse=pakke-basis#formular",
-            "button_note": "Du betaler ikke her. Vi sender et tilbud med et personligt betalingslink."
-          }
-        },
-        "booking": {
-          "type": "package",
-          "settings": {
-            "title": "Booking",
-            "status": "available",
-            "badge": "Kan bestilles nu",
-            "text": "<p>En hjemmeside med booking, så kunderne nemt kan finde og bestille en ledig tid.</p>",
-            "price_label": "",
-            "price": "299 kr.",
-            "price_note": "/md. ekskl. moms",
-            "terms": "0 kr. den første måned. Herefter 299 kr./md. ekskl. moms med op til 3 medarbejdere.\nGratis oprettelse og ingen binding. Ekstra medarbejdere: 99 kr./md. pr. medarbejder ekskl. moms.",
-            "features_label": "Indhold",
-            "features": "Alt fra Basis\nOnline booking\nKalender med overblik over aftaler\nOpsætning af ydelser og tilgængelige tider\nOp til 3 medarbejdere med egen bruger eller bookingkalender\nEkstra medarbejdere til 99 kr./md. pr. medarbejder ekskl. moms",
-            "button_label": "Vælg Booking",
-            "button_link": "/pages/kontakt?ydelse=pakke-booking#formular",
-            "button_note": "Du betaler ikke her. Vi sender et tilbud med et personligt betalingslink."
-          }
-        },
-        "drift": {
-          "type": "package",
-          "settings": {
+            "handle": "drift",
             "title": "Drift",
             "status": "coming",
             "badge": "På vej",
-            "text": "<p>Få overblik over opgaver, materialeforbrug og lager i én samlet løsning. Vi udvikler lige nu Drift og søger virksomheder, der vil teste systemet i deres hverdag.</p>",
-            "price_label": "Forventet abonnementspris",
+            "text": "Jobs, timer, materialer og lager samlet ét sted.",
+            "price_label": "Forventet pris",
             "price": "599 kr.",
-            "price_note": "/md. ekskl. moms",
-            "terms": "",
-            "features_label": "Planlagt indhold",
-            "features": "Alt fra Basis\nEn lagerportal med overblik over varer og lagermængder\nEn jobportal til opgaver, timer og materialeforbrug\nAutomatisk lagertræk ved registreret materialeforbrug\nGenbestillingspunkter og sikkerhedslager med notifikationer\nIndkøbslister til de enkelte jobs\nFakturagrundlag med materialer og arbejdstimer\nOp til 3 medarbejdere\nEkstra medarbejdere til forventet 99 kr./md. pr. medarbejder ekskl. moms",
+            "interval": "/md.",
+            "vat": "ekskl. moms",
+            "features": "Lagerportal og jobportal\nTimer og materialer på hvert job\nLageret opdateres ved registreret forbrug\nPlanlagt: 3 medarbejdere, ekstra forventet 99 kr./md.",
             "button_label": "Bliv testkunde",
-            "button_link": "/pages/ydelser?pakke=drift#testkunde",
-            "button_note": "Løsningen er under udvikling. Kontakt os om et testforløb – vilkår aftales individuelt."
+            "button_link": "/pages/drift?pakke=drift#testkunde",
+            "button_style": "secondary",
+            "details_label": "Se planlagt indhold",
+            "details_link": "/pages/drift#pakke-drift"
           }
         },
-        "alt_inkl": {
+        "package_2": {
           "type": "package",
           "settings": {
+            "handle": "alt-inkl",
             "title": "Alt inkl.",
             "status": "coming",
             "badge": "På vej",
-            "text": "<p>Saml hjemmeside, booking, opgaver, lager og bilag hos Veyro. Vi søger testkunder, der vil hjælpe os med at afprøve den samlede løsning.</p>",
-            "price_label": "Forventet abonnementspris",
+            "text": "Hjemmeside, booking, Drift og bilag samlet hos Veyro.",
+            "price_label": "Forventet pris",
             "price": "1.099 kr.",
-            "price_note": "/md. ekskl. moms",
-            "terms": "",
-            "features_label": "Planlagt indhold",
-            "features": "Alt fra Basis, Booking og Drift\nUpload af kvitteringer og bilag\nAflæsning af bilagsoplysninger med mulighed for at kontrollere og rette dem\nDigital oversigt over bilaget, hvor originalen bevares\nTilknytning af bilag til jobs\nEksport af bilag og oplysninger\nOp til 3 medarbejdere\nEkstra medarbejdere til forventet 99 kr./md. pr. medarbejder ekskl. moms\nPrioriteret support med svar inden for 24 timer",
+            "interval": "/md.",
+            "vat": "ekskl. moms",
+            "features": "Alt i Hjemmeside, Booking og Drift\nUpload og aflæsning af kvitteringer og bilag\nPrioriteret support med svar inden for 24 timer\nWebshop er ikke automatisk med",
             "button_label": "Bliv testkunde",
-            "button_link": "/pages/ydelser?pakke=alt-inkl#testkunde",
-            "button_note": "Løsningen er under udvikling. Kontakt os om et testforløb – vilkår aftales individuelt."
+            "button_link": "/pages/drift?pakke=alt-inkl#testkunde",
+            "button_style": "secondary",
+            "details_label": "Se planlagt indhold",
+            "details_link": "/pages/drift#pakke-alt-inkl"
           }
         }
       },
       "block_order": [
-        "basis",
-        "booking",
-        "drift",
-        "alt_inkl"
-      ],
-      "settings": {
-        "scheme": "surface",
-        "anchor": "priser",
-        "eyebrow": "Priser",
-        "heading": "En løsning, der passer til din virksomhed",
-        "text": "<p>Vælg en professionel hjemmeside, med eller uden online booking – eller bliv testkunde på vores kommende løsninger til opgaver og lager.</p>",
-        "offer": "Første måned gratis · Gratis oprettelse · Ingen binding",
-        "offer_note": "Gælder Basis og Booking. Testforløb på Drift og Alt inkl. aftales særskilt.",
-        "staff_heading": "Ekstra medarbejdere",
-        "staff_text": "<p>Booking har op til 3 medarbejdere inkluderet, og en ekstra medarbejder koster 99 kr./md. ekskl. moms. Drift og Alt inkl. er planlagt på samme måde. Som medarbejder tæller en person med egen bruger eller bookingkalender. En person med både bruger og kalender tæller kun én gang, og virksomhedens ejer tæller med, hvis vedkommende har en sådan adgang.</p><p>Medarbejdere, der kun vises på hjemmesiden med navn, billede eller beskrivelse, koster ikke ekstra. Det gælder også i Basis.</p><p>Eksempel: Booking med 5 medarbejdere koster 497 kr./md. ekskl. moms.</p>",
-        "staff_table_caption": "Booking: samlet månedspris efter antal medarbejdere",
-        "staff_base_price": 299,
-        "staff_included": 3,
-        "staff_extra_price": 99,
-        "footnote": "<p>Alle priser er månedlige priser ekskl. moms. For Basis og Booking er oprettelsen gratis, og den første måned er gratis fra den dag, løsningen går live og er klar til brug. Herefter betales den oplyste månedspris. Der er ingen binding, og I kan opsige inden næste betalingsperiode. I ser vilkårene, før I accepterer abonnementet, og de fremgår også af vores <a href=\"/pages/handelsbetingelser\">handelsbetingelser</a>. Særlige udviklingsønsker uden for pakkens indhold aftales og prissættes særskilt på forhånd.</p><p>Drift og Alt inkl. er under udvikling, og priserne er forventede priser ved lancering. En tilmelding som testkunde er en henvendelse og starter ikke et abonnement. Pris, varighed, funktioner og support under testforløbet aftales individuelt, og et testforløb bliver ikke til et betalt abonnement uden jeres udtrykkelige accept. Prioriteret support betyder, at vi svarer inden for 24 timer. Det er en svartid, ikke en garanti for, at problemet er løst inden for 24 timer.</p>",
-        "pay_heading": "Sådan bestiller og betaler du",
-        "pay_steps": "Vælg en pakke | Send os en kort henvendelse via knappen. Det er gratis og uforpligtende.\nFå et tilbud på e-mail | Du får pris og vilkår samt et personligt betalingslink fra os.\nBetal sikkert med kort | Linket åbner Stripes sikre betalingsside, hvor du tilmelder kortet. Første betaling trækkes, når den gratis måned er gået.\nStyr det i kundepanelet | På kunde.veyro.dk ser du fakturaer, skifter betalingskort og opsiger, når du vil.",
-        "pay_note": "Du betaler ikke på hjemmesiden, og vi gemmer aldrig dine kortoplysninger. Er du allerede kunde, kan du <a href=\"https://kunde.veyro.dk/login\">logge ind i kundepanelet</a> og se dine betalinger."
-      }
+        "package_1",
+        "package_2"
+      ]
     },
-    "pilot": {
-      "type": "pilot-form",
+    "cta": {
+      "type": "cta-banner",
       "settings": {
-        "scheme": "light",
-        "anchor": "testkunde",
-        "eyebrow": "Bliv testkunde",
-        "heading": "Vil I teste Drift eller Alt inkl.?",
-        "text": "<p>Drift og Alt inkl. er under udvikling, og vi søger virksomheder, der vil teste løsningerne i deres hverdag. Fortæl kort om jer, så kontakter vi jer og aftaler, om et testforløb passer. Pris, varighed og vilkår for testforløbet aftales individuelt.</p>",
-        "form_name": "Testkunde",
-        "options": "Drift\nAlt inkl.",
-        "sizes": "1\n2-3\n4-10\n11-25\nFlere end 25",
-        "submit_label": "Send tilmelding",
-        "note": "En tilmelding er en henvendelse og starter ikke et abonnement.",
-        "success_heading": "Tak for din interesse",
-        "success_text": "<p>Tak for din interesse. Vi kontakter dig for at høre om din virksomhed og aftale, om et testforløb passer til jer.</p>"
+        "anchor": "kom-i-gang",
+        "heading": "Ved du ikke helt, hvad du har brug for?",
+        "text": "<p>Fortæl kort, hvad der skal løses, og send gerne et link til jeres nuværende side. Så foreslår vi næste skridt.</p>",
+        "label": "Skriv til os",
+        "link": "/pages/kontakt?ydelse=andet-ved-ikke-endnu#formular",
+        "secondary_label": "",
+        "secondary_link": "",
+        "show_email": true,
+        "email_prefix": "Eller skriv til"
       }
     }
   },
   "order": [
     "hero",
-    "web_intro",
+    "pakker",
     "s1",
     "s2",
     "s3",
     "s4",
     "s5",
     "s6",
-    "s7",
-    "packages",
-    "pilot",
+    "paa_vej",
     "cta"
   ]
 }

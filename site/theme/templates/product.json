@@ -9,12 +9,12 @@
     "cta": {
       "type": "cta-banner",
       "settings": {
-        "scheme": "light",
-        "eyebrow": "Spørgsmål?",
         "heading": "Vil du hellere tale med os først?",
-        "text": "<p>Vi hjælper gerne med at finde ud af, hvilken løsning der passer til din webshop.</p>",
+        "text": "<p>Skriv, hvad I har brug for, så svarer vi inden for 24–48 timer på hverdage.</p>",
         "label": "Kontakt os",
         "link": "/pages/kontakt",
+        "secondary_label": "Se priser",
+        "secondary_link": "/pages/priser",
         "show_email": true,
         "email_prefix": "Eller skriv direkte til"
       }

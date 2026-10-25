@@ -1,19 +1,19 @@
+{%- comment -%} Afslutning på en side: kort overskrift, én knap og direkte kontakt. {%- endcomment -%}
 {%- liquid
   assign cta_url = section.settings.link | default: pages['kontakt'].url | default: '/pages/kontakt'
 -%}
-<section class="section section--{{ section.settings.scheme }} cta-banner" id="{{ section.settings.anchor | default: section.id | handle }}">
+<section class="section cta" id="{{ section.settings.anchor | default: section.id | handle }}">
   <div class="container">
-    <div class="cta-banner__box">
-      <div class="cta-banner__glow" aria-hidden="true"></div>
-      <div class="cta-banner__content">
-        {%- if section.settings.eyebrow != blank -%}<p class="eyebrow">{{ section.settings.eyebrow | escape }}</p>{%- endif -%}
-        <h2 class="h1 cta-banner__title">{{ section.settings.heading }}</h2>
-        {%- if section.settings.text != blank -%}<div class="lead rte">{{ section.settings.text }}</div>{%- endif -%}
+    <div class="cta__box">
+      <div class="cta__content">
+        <h2 class="t-lg cta__title">{{ section.settings.heading }}</h2>
+        {%- if section.settings.text != blank -%}<div class="rte">{{ section.settings.text }}</div>{%- endif -%}
       </div>
-      <div class="cta-banner__actions">
-        {% render 'button', label: section.settings.label, url: cta_url, style: 'primary', arrow: settings.button_arrow, class: 'btn--lg' %}
+      <div class="cta__actions">
+        {% render 'button', label: section.settings.label, url: cta_url, style: 'primary' %}
+        {% render 'button', label: section.settings.secondary_label, url: section.settings.secondary_link, style: 'secondary' %}
         {%- if section.settings.show_email and settings.company_email != blank -%}
-          <p class="cta-banner__alt">{{ section.settings.email_prefix | escape }} <a href="mailto:{{ settings.company_email | escape }}">{{ settings.company_email | escape }}</a></p>
+          <p class="cta__alt">{{ section.settings.email_prefix | escape }} <a href="mailto:{{ settings.company_email | escape }}">{{ settings.company_email | escape }}</a>{% if settings.company_phone != blank %} eller ring på <a href="tel:{{ settings.company_phone | remove: ' ' | escape }}">{{ settings.company_phone | escape }}</a>{% endif %}.</p>
         {%- endif -%}
       </div>
     </div>
@@ -22,21 +22,19 @@
 
 {% schema %}
 {
-  "name": "Call to action",
+  "name": "Afslutning med knap",
   "tag": "div",
   "settings": [
-    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
-      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
-    ], "default": "light" },
     { "type": "text", "id": "anchor", "label": "Anker-id", "default": "kom-i-gang" },
-    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Næste skridt" },
-    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Er der mere potentiale i din hjemmeside?" },
-    { "type": "richtext", "id": "text", "label": "Tekst", "default": "<p>Lad os tage et kig på din hjemmeside eller webshop og finde de forbedringer, der giver bedst mening for din forretning.</p>" },
-    { "type": "text", "id": "label", "label": "Knaptekst", "default": "Få en gratis vurdering" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Vil du se, hvordan det kan se ud hos jer?" },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "label", "label": "Knaptekst", "default": "Aftal en demo" },
     { "type": "url", "id": "link", "label": "Knaplink" },
-    { "type": "checkbox", "id": "show_email", "label": "Vis e-mail som alternativ", "default": true },
-    { "type": "text", "id": "email_prefix", "label": "Tekst før e-mail", "default": "Eller skriv direkte til" }
+    { "type": "text", "id": "secondary_label", "label": "Sekundær knap – tekst" },
+    { "type": "url", "id": "secondary_link", "label": "Sekundær knap – link" },
+    { "type": "checkbox", "id": "show_email", "label": "Vis e-mail og telefon som alternativ", "default": true },
+    { "type": "text", "id": "email_prefix", "label": "Tekst før e-mail", "default": "Eller skriv til" }
   ],
-  "presets": [{ "name": "Call to action" }]
+  "presets": [{ "name": "Afslutning med knap" }]
 }
 {% endschema %}

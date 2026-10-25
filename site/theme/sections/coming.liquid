@@ -1,0 +1,71 @@
+{%- comment -%}
+  Kompakt afsnit om kommende løsninger. Mærkatet "På vej" styres af "Mærkat" og pakkernes status
+  og må kun fjernes efter udtrykkelig godkendelse fra Veyro.
+{%- endcomment -%}
+<section class="section coming" id="{{ section.settings.anchor | default: section.id | handle }}">
+  <div class="container">
+  <div class="coming__inner coming__box">
+    <div class="coming__head">
+      {%- if section.settings.badge != blank -%}<p class="coming__status"><span class="badge badge--coming">{{ section.settings.badge | escape }}</span>{{ section.settings.status_text | escape }}</p>{%- endif -%}
+      <h2 class="t-lg">{{ section.settings.heading }}</h2>
+      {%- if section.settings.text != blank -%}<div class="rte">{{ section.settings.text }}</div>{%- endif -%}
+      <div class="actions">
+        {% render 'button', label: section.settings.primary_label, url: section.settings.primary_link, style: 'secondary' %}
+        {%- if section.settings.secondary_label != blank -%}<a class="arrow-link" href="{{ section.settings.secondary_link }}">{{ section.settings.secondary_label | escape }}</a>{%- endif -%}
+      </div>
+    </div>
+    {%- if section.blocks.size > 0 -%}
+      <ul class="pc-grid pc-grid--coming" role="list">
+        {%- for block in section.blocks -%}
+          {% render 'package-card', block: block, layout: 'summary', id_suffix: section.settings.id_suffix %}
+        {%- endfor -%}
+      </ul>
+    {%- endif -%}
+    {%- if section.settings.note != blank -%}<div class="coming__note rte">{{ section.settings.note }}</div>{%- endif -%}
+  </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Kommende løsninger",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "paa-vej" },
+    { "type": "text", "id": "id_suffix", "label": "Tillæg til kortenes id", "default": "-kort" },
+    { "type": "text", "id": "badge", "label": "Mærkat", "default": "På vej", "info": "Fjern ikke mærkatet uden godkendelse." },
+    { "type": "text", "id": "status_text", "label": "Tekst ved mærkat", "default": "Under udvikling" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Drift og Alt inkl." },
+    { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "primary_label", "label": "Knap – tekst", "default": "Bliv testkunde" },
+    { "type": "url", "id": "primary_link", "label": "Knap – link" },
+    { "type": "text", "id": "secondary_label", "label": "Link – tekst" },
+    { "type": "url", "id": "secondary_link", "label": "Link" },
+    { "type": "richtext", "id": "note", "label": "Note" }
+  ],
+  "blocks": [
+    { "type": "package", "name": "Pakke", "limit": 3, "settings": [
+      { "type": "text", "id": "handle", "label": "Id (bruges i links)" },
+      { "type": "text", "id": "title", "label": "Navn", "default": "Drift" },
+      { "type": "select", "id": "status", "label": "Status", "options": [
+        { "value": "available", "label": "Kan bestilles nu" }, { "value": "coming", "label": "På vej" }
+      ], "default": "coming" },
+      { "type": "text", "id": "badge", "label": "Mærkat", "default": "På vej" },
+      { "type": "text", "id": "text", "label": "Kort beskrivelse" },
+      { "type": "text", "id": "price_label", "label": "Tekst over prisen", "default": "Forventet pris" },
+      { "type": "text", "id": "price", "label": "Pris", "default": "599 kr." },
+      { "type": "text", "id": "interval", "label": "Interval", "default": "/md." },
+      { "type": "text", "id": "vat", "label": "Momsnote", "default": "ekskl. moms" },
+      { "type": "textarea", "id": "features", "label": "Planlagt indhold (én pr. linje)" },
+      { "type": "text", "id": "button_label", "label": "Knaptekst", "default": "Bliv testkunde" },
+      { "type": "url", "id": "button_link", "label": "Knaplink" },
+      { "type": "select", "id": "button_style", "label": "Knaptype", "options": [
+        { "value": "primary", "label": "Primær" }, { "value": "secondary", "label": "Sekundær" }
+      ], "default": "secondary" },
+      { "type": "text", "id": "details_label", "label": "Link til detaljer – tekst" },
+      { "type": "url", "id": "details_link", "label": "Link til detaljer" }
+    ] }
+  ],
+  "presets": [{ "name": "Kommende løsninger" }]
+}
+{% endschema %}

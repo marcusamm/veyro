@@ -9,13 +9,13 @@
   assign options = section.settings.options | newline_to_br | split: '<br />'
   assign sizes = section.settings.sizes | newline_to_br | split: '<br />'
 -%}
-<section class="section section--{{ section.settings.scheme }} assessment pilot" id="{{ section.settings.anchor | default: section.id | handle }}">
+<section class="section assessment pilot" id="{{ section.settings.anchor | default: section.id | handle }}">
   <div class="container assessment__inner">
     <div class="assessment__intro">
       {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
     </div>
 
-    <div class="assessment__card card">
+    <div class="assessment__card">
       {%- form 'contact', id: fid, class: 'form js-validate', novalidate: 'novalidate' -%}
         {% render 'form-status', form: form, success_heading: section.settings.success_heading, success_text: section.settings.success_text %}
         {%- unless form.posted_successfully? -%}
@@ -87,7 +87,6 @@
 
           <button class="btn btn--primary btn--lg btn--block" type="submit" data-submit>
             <span>{{ section.settings.submit_label | escape }}</span>
-            {% render 'icon', name: 'arrow-right', size: 18 %}
           </button>
           {%- if section.settings.note != blank -%}<p class="small muted form__note">{{ section.settings.note | escape }}</p>{%- endif -%}
         {%- endunless -%}
@@ -101,9 +100,6 @@
   "name": "Testkundeformular",
   "tag": "div",
   "settings": [
-    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
-      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
-    ], "default": "light" },
     { "type": "text", "id": "anchor", "label": "Anker-id", "default": "testkunde" },
     { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Bliv testkunde" },
     { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Vil I teste Drift eller Alt inkl.?" },

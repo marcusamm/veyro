@@ -1,15 +1,16 @@
 {%- comment -%}
   Ofte stillede spørgsmål med <details> (virker uden JavaScript) og FAQPage-data til søgemaskiner.
 {%- endcomment -%}
-<section class="section section--{{ section.settings.scheme }} faq" id="{{ section.settings.anchor | default: section.id | handle }}">
+<section class="section faq" id="{{ section.settings.anchor | default: section.id | handle }}">
   <div class="container faq__inner">
     <div class="faq__intro">
       {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
+      {%- if section.settings.link_label != blank -%}<a class="arrow-link" href="{{ section.settings.link }}">{{ section.settings.link_label | escape }}</a>{%- endif -%}
     </div>
     <div class="faq__list">
       {%- for block in section.blocks -%}
         <details class="faq__item" {{ block.shopify_attributes }}>
-          <summary><span>{{ block.settings.question | escape }}</span><span class="faq__icon" aria-hidden="true">{% render 'icon', name: 'plus', size: 20 %}</span></summary>
+          <summary><span>{{ block.settings.question | escape }}</span><span class="faq__icon" aria-hidden="true"></span></summary>
           <div class="rte faq__answer">{{ block.settings.answer }}</div>
         </details>
       {%- endfor -%}
@@ -35,13 +36,12 @@
   "name": "Spørgsmål og svar",
   "tag": "div",
   "settings": [
-    { "type": "select", "id": "scheme", "label": "Farvetema", "options": [
-      { "value": "light", "label": "Lyst" }, { "value": "surface", "label": "Lys flade" }, { "value": "dark", "label": "Mørkt" }
-    ], "default": "light" },
     { "type": "text", "id": "anchor", "label": "Anker-id", "default": "faq" },
-    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Spørgsmål og svar" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "" },
     { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Godt at vide" },
     { "type": "richtext", "id": "text", "label": "Tekst" },
+    { "type": "text", "id": "link_label", "label": "Link – tekst" },
+    { "type": "url", "id": "link", "label": "Link" },
     { "type": "checkbox", "id": "schema", "label": "Tilføj FAQ-data til søgemaskiner", "default": true }
   ],
   "blocks": [
