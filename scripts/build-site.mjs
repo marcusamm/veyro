@@ -8,7 +8,7 @@ import path from 'node:path';
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const THEME = path.join(ROOT, 'site/theme');
 const OUT = path.join(ROOT, 'src/site/theme.generated.ts');
-const TYPES = { css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8', svg: 'image/svg+xml', png: 'image/png', woff2: 'font/woff2', jpg: 'image/jpeg', webp: 'image/webp' };
+const TYPES = { css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8', svg: 'image/svg+xml', png: 'image/png', woff2: 'font/woff2', jpg: 'image/jpeg', webp: 'image/webp', ico: 'image/x-icon' };
 
 export function build() {
   const files = {};

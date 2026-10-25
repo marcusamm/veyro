@@ -134,7 +134,11 @@ site.get('/demo/*', async (c) => {
   return out;
 });
 
-site.get('/favicon.ico', (c) => c.redirect(`/assets/favicon-96.png?v=${THEME_VERSION}`, 301));
+// Fast adresse uden ?v=, så Google kan finde ikonet til søgeresultaterne
+site.get('/favicon.ico', (c) => {
+  const a = asset('favicon.ico')!;
+  return c.body(a.body as any, 200, { 'Content-Type': a.type, 'Cache-Control': 'public, max-age=86400' });
+});
 
 site.get('/robots.txt', (c) => {
   if (!isCanonicalHost(c)) return c.text('User-agent: *\nDisallow: /\n');
