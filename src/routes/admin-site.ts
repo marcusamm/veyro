@@ -21,7 +21,7 @@ import {
   type TemplateData,
 } from '../site/content';
 import { handleize, sectionSchema, sectionTypes, themeSettingsSchema, type SettingDef } from '../site/engine';
-import { deleteLead, getLead, leadCounts, listLeads, LEAD_STATUSES, updateLead, viewStats, type LeadCartLine, type LeadRow, type LeadStatus } from '../site/leads';
+import { deleteLead, getLead, leadCounts, leadEvents, listLeads, LEAD_STATUSES, updateLead, viewStats, type LeadCartLine, type LeadRow, type LeadStatus } from '../site/leads';
 import { siteHosts } from '../site/app';
 import {
   filesPage,
@@ -584,8 +584,8 @@ adminSite.get('/forespoergsler', async (c) => {
 adminSite.get('/forespoergsler/:id', async (c) => {
   const lead = await getLead(c.env.DB, Number(c.req.param('id')));
   if (!lead) return render(c, 'Findes ikke', errorPage('Forespørgslen findes ikke', '', { href: '/admin/forespoergsler', label: 'Til forespørgsler' }), { status: 404, admin: true });
-  const prospects = await prospectsForLead(c.env.DB, lead);
-  return render(c, `Forespørgsel #${lead.id}`, leadDetailPage({ csrf: c.get('csrf'), lead, flash: c.req.query('besked') ?? null, offerUrl: null, prospects }), { nav: 'admin-forespoergsler', admin: true });
+  const [prospects, events] = await Promise.all([prospectsForLead(c.env.DB, lead), leadEvents(c.env.DB, lead.id)]);
+  return render(c, `Forespørgsel #${lead.id}`, leadDetailPage({ csrf: c.get('csrf'), lead, flash: c.req.query('besked') ?? null, offerUrl: null, prospects, events }), { nav: 'admin-forespoergsler', admin: true });
 });
 
 adminSite.post('/forespoergsler/:id', async (c) => {
@@ -593,7 +593,7 @@ adminSite.post('/forespoergsler/:id', async (c) => {
   const body = await c.req.parseBody();
   const status = String(body['status'] ?? '');
   if (!(LEAD_STATUSES as readonly string[]).includes(status)) return c.text('Ugyldig status', 400);
-  await updateLead(c.env.DB, id, { status: status as LeadStatus, note: String(body['note'] ?? '').trim().slice(0, 2000) || null });
+  await updateLead(c.env.DB, id, { status: status as LeadStatus, note: String(body['note'] ?? '').trim().slice(0, 2000) || null }, who(c));
   return c.redirect(`/admin/forespoergsler/${id}?besked=gemt`, 303);
 });
 

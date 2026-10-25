@@ -20,6 +20,7 @@ import adminProspects from './routes/admin-prospects';
 import adminCosts from './routes/admin-costs';
 import adminMail from './routes/admin-mail';
 import adminProspectTools from './routes/admin-prospect-tools';
+import adminProspectImport from './routes/admin-prospect-import';
 import { runMailSync } from './lib/gmail-sync';
 import { runJobs } from './lib/prospect-jobs';
 import { reconcilePending } from './lib/pos/sales';
@@ -102,9 +103,10 @@ app.route('/konto', account);
 app.get('/fuldmagter/opbevaring', policyPage);
 // Kassen før resten af admin: medarbejdere med en rolle i kassen skal kunne bruge den uden ADMIN_EMAILS
 app.route('/admin/kasse', kasse);
-// Faste undersider (mail, link, find) før /kundeemner/:id
+// Faste undersider (mail, link, find, import) før /kundeemner/:id
 app.route('/admin', adminMail);
 app.route('/admin', adminProspectTools);
+app.route('/admin', adminProspectImport);
 app.route('/admin', adminProspects);
 app.route('/admin', adminCosts);
 app.route('/admin', adminSite);

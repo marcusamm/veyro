@@ -123,14 +123,17 @@ export function prospectsListPage(args: {
     <a class="btn btn-accent" href="/admin/kundeemner/ny">Nyt kundeemne</a>
     <a class="btn btn-secondary" href="/admin/kundeemner/link">Tilføj via link</a>
     <a class="btn btn-secondary" href="/admin/kundeemner/find">Find nye kundeemner</a>
+    <a class="btn btn-secondary" href="/admin/kundeemner/import">Importér fra Excel/CSV</a>
     <a class="btn btn-secondary" href="/admin/kundeemner/mail">Mailkonti</a>
     <a class="btn btn-secondary" href="/admin/kundeemner/blokeringer">Blokeringer</a>
   </div>
   <nav class="row tabs" aria-label="Arbejdsfiltre">${VIEWS.filter((v) => v !== 'alle').map(
     (v) => html`<a class="btn btn-small ${f.view === v ? 'btn-primary' : 'btn-secondary'}" href="${qs({ visning: v === 'aktive' ? null : v, side: null })}"${f.view === v ? html` aria-current="page"` : ''}>${VIEW_LABEL[v]}${args.counts[v] ? ` (${args.counts[v]})` : ''}</a>`,
   )}</nav>
+  ${f.importId ? alert('info', html`Viser kundeemner fra <a href="/admin/kundeemner/import/${f.importId}">import #${f.importId}</a>. <a href="${qs({ import: null, side: null })}">Vis alle</a>`) : ''}
   <form method="get" action="/admin/kundeemner" class="card stack" role="search">
     ${f.view !== 'aktive' ? html`<input type="hidden" name="visning" value="${f.view}">` : ''}
+    ${f.importId ? html`<input type="hidden" name="import" value="${f.importId}">` : ''}
     <div class="field"><label for="f-q">Søg</label><input id="f-q" name="q" type="search" value="${f.q}" maxlength="100" placeholder="Virksomhed, by, kontaktperson, mail, domæne eller CVR"></div>
     <div class="grid grid-3">
       ${sel('status', 'Status', PROSPECT_STATUSES.map((s) => [s, STATUS_LABEL[s]]), f.status)}
