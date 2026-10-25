@@ -285,7 +285,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--berry); o
 .basket div { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 1rem; padding-block: .55rem; border-bottom: 1px solid var(--line); }
 .basket dt { color: var(--muted); font-size: .9375rem; }
 .basket dd { margin: 0; }
-.basket dd.is-empty { color: #8a7f78; }
+.basket dd.is-empty { color: var(--muted); }
 .basket p { font-size: .875rem; color: var(--muted); }
 
 /* Bekræftelse */
