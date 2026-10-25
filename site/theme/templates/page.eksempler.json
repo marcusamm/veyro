@@ -18,7 +18,7 @@
         "anchor": "koncepter",
         "heading_tag": "h2",
         "heading": "Tre designkoncepter",
-        "text": "<p>Hvert koncept har sit eget udtryk. Jeres side bliver tilpasset jeres virksomhed, farver og indhold. Du kan klikke i booking og webshop: intet bliver sendt, booket eller betalt.</p>"
+        "text": "<p>Tre fiktive virksomheder med hver sit udtryk. Åbn demoerne og klik rundt: kontaktformular, booking og kurv virker, men intet bliver sendt, booket eller betalt. Jeres side bliver tilpasset jeres virksomhed, farver og indhold.</p>"
       },
       "blocks": {
         "concept_1": {
@@ -28,11 +28,11 @@
             "anchor": "hjemmeside",
             "package": "Hjemmeside · 199 kr./md. ekskl. moms",
             "title": "Hjemmeside til en tømrer",
-            "text": "<p>Et roligt og solidt udtryk med mørkegrøn og træ. Forsiden fortæller med det samme, hvad virksomheden laver, og hvordan man får et tilbud.</p>",
+            "text": "<p>Et roligt og solidt udtryk med mørkegrøn og træ. Forsiden fortæller med det samme, hvad virksomheden laver, og hvordan man beskriver sin opgave.</p>",
             "points": "Tydelig overskrift og én hovedknap\nYdelser på forsiden\nPlads til fotos af egne opgaver\nOp til 5 sider, fx forside, ydelser, opgaver, om os og kontakt",
             "link_label": "Se hvad Hjemmeside indeholder",
             "link": "/pages/hjemmeside",
-            "caption": "Holm Tømrer er en fiktiv virksomhed."
+            "caption": "Forsiden hos Holm Tømrer."
           }
         },
         "concept_2": {
@@ -42,11 +42,11 @@
             "anchor": "booking",
             "package": "Booking · 299 kr./md. ekskl. moms",
             "title": "Booking til en frisørsalon",
-            "text": "<p>Et lyst og blødt udtryk med serif-overskrifter. Kunden vælger behandling og tid i tre trin.</p>",
-            "points": "Ydelser med varighed og pris\nOptagne tider kan ikke vælges\nBekræftelse på mail til både salon og kunde\nKunden kan selv flytte eller aflyse",
+            "text": "<p>Et lyst og blødt udtryk med serif-overskrifter og buede billedrammer. Kunden vælger behandling, frisør, dato og tid og får en bekræftelse.</p>",
+            "points": "Ydelser med varighed og pris\nValg af frisør eller første ledige\nOptagne tider kan ikke vælges\nBekræftelse på mail til både salon og kunde\nKunden kan selv flytte eller aflyse",
             "link_label": "Se hvad Booking indeholder",
             "link": "/pages/booking",
-            "caption": "Salon Nord er en fiktiv virksomhed med fiktive priser."
+            "caption": "Bookingen hos Salon Nord: valg af dato og tid."
           }
         },
         "concept_3": {
@@ -60,7 +60,7 @@
             "points": "Tre glasurer er ét produkt med tre varianter\nKurven opdateres med det samme\nOp til 50 aktive produkter og 200 varianter\nI kan selv rette produkter bagefter",
             "link_label": "Se hvad Webshop indeholder",
             "link": "/pages/webshop",
-            "caption": "Lerværk er en fiktiv virksomhed med fiktive priser."
+            "caption": "Produktside hos Lerværk."
           }
         }
       },

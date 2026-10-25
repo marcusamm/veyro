@@ -11,7 +11,7 @@
         "secondary_link": "/pages/eksempler",
         "facts": "Fra 199 kr./md. ekskl. moms · Første måned gratis · Ingen binding",
         "concept": "craft",
-        "caption": "Holm Tømrer er en fiktiv virksomhed. Udsnittet viser, hvordan pakken Hjemmeside kan se ud."
+        "caption": "Forsiden hos Holm Tømrer. Sådan kan pakken Hjemmeside se ud."
       }
     },
     "eksempler": {
@@ -20,7 +20,7 @@
         "anchor": "eksempler",
         "heading_tag": "h2",
         "heading": "Udvalgte eksempler",
-        "text": "<p>Booking og webshop i rigtig størrelse. Du kan klikke i dem: intet bliver sendt, booket eller betalt.</p>",
+        "text": "<p>Skærmbilleder fra vores demoer. Åbn dem, og prøv bookingen og kurven: intet bliver sendt, booket eller betalt.</p>",
         "link_label": "Se eksempler",
         "link": "/pages/eksempler"
       },
@@ -35,7 +35,7 @@
             "points": "Ydelser med varighed og pris\nOptagne tider kan ikke vælges\nBekræftelse til både salon og kunde",
             "link_label": "Se hvad Booking indeholder",
             "link": "/pages/booking",
-            "caption": "Salon Nord er en fiktiv virksomhed med fiktive priser."
+            "caption": "Bookingen hos Salon Nord: valg af dato og tid."
           }
         },
         "concept_2": {
@@ -48,7 +48,7 @@
             "points": "Tre glasurer er ét produkt med tre varianter\nOp til 50 aktive produkter og 200 varianter\nI kan selv rette produkter bagefter",
             "link_label": "Se hvad Webshop indeholder",
             "link": "/pages/webshop",
-            "caption": "Lerværk er en fiktiv virksomhed med fiktive priser."
+            "caption": "Produktside hos Lerværk med glasur, lager og antal."
           }
         }
       },

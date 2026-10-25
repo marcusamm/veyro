@@ -57,8 +57,7 @@
         <div class="page-hero__aside">
           {%- if section.settings.concept != 'none' and section.settings.concept != blank -%}
             <figure class="concept">
-              {% render 'concept', name: section.settings.concept, uid: section.id, photo: section.settings.photo, alt: section.settings.photo_alt, eager: true %}
-              <figcaption class="concept__cap"><span class="badge">Designkoncept</span>{{ section.settings.concept_caption | escape }}</figcaption>
+              {% render 'concept', name: section.settings.concept, caption: section.settings.concept_caption, eager: true %}
             </figure>
           {%- else -%}
             <dl class="facts">
@@ -97,9 +96,7 @@
     { "type": "select", "id": "concept", "label": "Designkoncept i højre side", "options": [
       { "value": "none", "label": "Intet" }, { "value": "craft", "label": "Hjemmeside (tømrer)" }, { "value": "salon", "label": "Booking (frisør)" }, { "value": "shop", "label": "Webshop (keramik)" }
     ], "default": "none" },
-    { "type": "image_picker", "id": "photo", "label": "Foto i designkonceptet" },
-    { "type": "text", "id": "photo_alt", "label": "Alt-tekst til fotoet" },
-    { "type": "text", "id": "concept_caption", "label": "Tekst under designkonceptet", "default": "Fiktiv virksomhed." },
+    { "type": "text", "id": "concept_caption", "label": "Tekst under designkonceptet", "default": "" },
     { "type": "textarea", "id": "facts", "label": "Faktaliste i højre side (Titel | Tekst pr. linje)", "info": "Vises, når der ikke er valgt et designkoncept." }
   ],
   "presets": [{ "name": "Sidetop" }]

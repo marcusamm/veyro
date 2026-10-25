@@ -1,6 +1,6 @@
 {%- comment -%}
   Forsidens top: én H1, en kort tekst, én primær og én sekundær knap og ét stort designkoncept.
-  Konceptet er en fiktiv virksomhed og er mærket "Designkoncept".
+  Konceptet er et skærmbillede af en fiktiv demo og er mærket "Fiktivt designkoncept — lavet af Veyro".
 {%- endcomment -%}
 <section class="home-hero">
   <div class="container home-hero__grid">
@@ -14,8 +14,7 @@
       {%- if section.settings.facts != blank -%}<p class="home-hero__facts">{{ section.settings.facts | escape }}</p>{%- endif -%}
     </div>
     <figure class="concept home-hero__concept">
-      {% render 'concept', name: section.settings.concept, uid: 'hero', photo: section.settings.photo, alt: section.settings.photo_alt, eager: true %}
-      <figcaption class="concept__cap"><span class="badge">Designkoncept</span>{{ section.settings.caption | escape }}</figcaption>
+      {% render 'concept', name: section.settings.concept, caption: section.settings.caption, eager: true %}
     </figure>
   </div>
 </section>
@@ -35,9 +34,7 @@
     { "type": "select", "id": "concept", "label": "Designkoncept", "options": [
       { "value": "craft", "label": "Hjemmeside (tømrer)" }, { "value": "salon", "label": "Booking (frisør)" }, { "value": "shop", "label": "Webshop (keramik)" }
     ], "default": "craft" },
-    { "type": "image_picker", "id": "photo", "label": "Foto i designkonceptet", "info": "Brug kun fotos, I har ret til at bruge." },
-    { "type": "text", "id": "photo_alt", "label": "Alt-tekst til fotoet" },
-    { "type": "text", "id": "caption", "label": "Tekst under konceptet", "default": "Holm Tømrer er en fiktiv virksomhed. Udsnittet viser pakken Hjemmeside." }
+    { "type": "text", "id": "caption", "label": "Tekst under konceptet", "default": "Forsiden hos Holm Tømrer. Udsnittet viser, hvordan pakken Hjemmeside kan se ud." }
   ]
 }
 {% endschema %}

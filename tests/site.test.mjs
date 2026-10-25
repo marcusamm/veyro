@@ -207,7 +207,8 @@ describe('Pakker og priser', () => {
     expect(hero).toContain('En hjemmeside, der passer til din forretning.');
     expect(hero).toContain('<a class="btn btn--primary" href="/pages/priser">Se priser</a>');
     expect(hero).toContain('<a class="btn btn--secondary" href="/pages/eksempler">Se eksempler</a>');
-    expect(hero).toContain('Designkoncept');
+    expect(hero).toContain('Fiktivt designkoncept — lavet af Veyro');
+    expect(hero).toContain('<a class="arrow-link" href="/demo/holm-tomrer/">Åbn demoen');
     // Pakkerne: tre kan bestilles, to er på vej
     const prices = section('section packages packages--summary');
     expect(names(prices)).toEqual(['Hjemmeside', 'Booking', 'Webshop']);
@@ -224,6 +225,31 @@ describe('Pakker og priser', () => {
     for (const k of ['aftal-en-demo', 'pakke-hjemmeside', 'pakke-booking', 'pakke-webshop', 'tilkoeb-eller-stoerre-aendring']) expect(r.html).toContain(`data-key="${k}"`);
   });
 
+  it('demoerne er statiske sider med noindex og mærkning, og skærmbillederne findes', async () => {
+    const pages = ['/demo/holm-tomrer/', '/demo/holm-tomrer/ydelser', '/demo/holm-tomrer/projekter', '/demo/holm-tomrer/kontakt',
+      '/demo/salon-nord/', '/demo/salon-nord/behandlinger', '/demo/salon-nord/book',
+      '/demo/lervaerk/', '/demo/lervaerk/produkter/krus', '/demo/lervaerk/produkter/kande', '/demo/lervaerk/kurv', '/demo/lervaerk/kasse'];
+    for (const p of pages) {
+      const r = await site.get(p);
+      expect(r.status, p).toBe(200);
+      expect(r.headers.get('x-robots-tag'), p).toBe('noindex, nofollow');
+      expect(r.headers.get('content-security-policy'), p).toContain("frame-ancestors 'none'");
+      expect(r.html, p).toContain('Fiktivt designkoncept — lavet af Veyro');
+      expect(r.html, p).toContain('<meta name="robots" content="noindex, nofollow">');
+      // Intet sendes: ingen POST-formularer og ingen adresser uden for siden
+      expect(r.html, p).not.toMatch(/method="post"|action="|https?:\/\/(?!localhost)/i);
+    }
+    for (const f of ['holm-tomrer', 'salon-nord-booking', 'lervaerk-produkt'].flatMap((n) => [`${n}-960.jpg`, `${n}-1920.jpg`, `${n}-mobil.jpg`])) {
+      const r = await site.get('/demo/_previews/' + f);
+      expect(r.status, f).toBe(200);
+      expect(r.headers.get('content-type'), f).toBe('image/jpeg');
+    }
+    expect((await site.get('/demo/findes-ikke/')).status).toBe(404);
+    const root = await site.get('/demo');
+    expect(root.status).toBe(302);
+    expect(root.headers.get('location')).toBe('/pages/eksempler');
+  });
+
   it('detaljelinks går til pakkens egen side eller til Drift-siden', async () => {
     const home = await site.get('/');
     const links = [...home.html.matchAll(/class="pc__details" href="([^"]+)"/g)].map((m) => m[1]);
@@ -238,16 +264,19 @@ describe('Pakker og priser', () => {
     }
   });
 
-  it('eksemplerne er mærket som designkoncepter og sender intet; lagerforklaringerne står ved demoen', async () => {
+  it('eksemplerne er mærkede skærmbilleder af demoerne; lagerforklaringerne står ved demoen', async () => {
     const r = await site.get('/pages/eksempler');
     const at = r.html.indexOf('<section class="section concepts"');
     const examples = r.html.slice(at, r.html.indexOf('</section>', at));
-    expect(examples.match(/class="badge">Designkoncept</g)).toHaveLength(3);
-    expect(examples).toContain('fiktiv virksomhed');
-    // Ingen formularer, der kan sendes: kun lokale knapper, skjult uden JavaScript
+    expect(examples.match(/class="badge">Fiktivt designkoncept — lavet af Veyro</g)).toHaveLength(3);
+    // Skærmbilleder og links til de rigtige demoer, ingen formularer og ingen opdigtede domæner
+    for (const [shot, demo] of [['holm-tomrer', '/demo/holm-tomrer/'], ['salon-nord-booking', '/demo/salon-nord/book'], ['lervaerk-produkt', '/demo/lervaerk/produkter/krus']]) {
+      expect(examples).toContain(`src="/demo/_previews/${shot}-960.jpg"`);
+      expect(examples).toContain(`<span class="browser__url">veyro.dk${demo}</span>`);
+      expect(examples).toContain(`<a class="arrow-link" href="${demo}">Åbn demoen`);
+    }
     expect(examples).not.toContain('<form');
-    expect(examples).toMatch(/data-example-book hidden/);
-    expect(examples).toMatch(/data-example-add hidden/);
+    expect(r.html).not.toMatch(/holm-toemrer\.dk|salon-nord\.dk|lervaerk\.dk/);
     const page = await site.get('/pages/drift');
     const d = page.html.indexOf('<section class="section drift"');
     const drift = page.html.slice(d, page.html.indexOf('</section>', d));

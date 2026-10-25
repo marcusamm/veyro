@@ -184,74 +184,6 @@
     });
   }
 
-  /* ---------- Designkoncepter: booking og webshop ----------
-   * Kun lokalt på siden: der sendes ingen mails, oprettes ingen bookinger og betales intet.
-   * Uden JS står eksemplerne i en udfyldt standardtilstand, og knapperne er skjulte. */
-  function initExamples(root = document) {
-    root.querySelectorAll('[data-example="booking"]').forEach((box) => {
-      if (box.dataset.exampleReady) return;
-      box.dataset.exampleReady = 'true';
-      const confirm = box.querySelector('[data-example-confirm]');
-      const status = box.querySelector('[data-example-status]');
-      const btn = box.querySelector('[data-example-book]');
-      if (!confirm || !status || !btn) return;
-      const summary = () => {
-        const svc = box.querySelector('input[name$="-svc"]:checked');
-        const time = box.querySelector('input[name$="-time"]:checked');
-        return `${svc?.dataset.label || svc?.value || ''}, torsdag 6. november kl. ${time?.value || ''}.`;
-      };
-      box.addEventListener('change', () => {
-        confirm.classList.remove('is-booked');
-        status.textContent = summary();
-        btn.hidden = false;
-      });
-      btn.addEventListener('click', () => {
-        confirm.classList.add('is-booked');
-        status.textContent = `Booket i eksemplet: ${summary()} Intet er sendt.`;
-        btn.hidden = true;
-      });
-      btn.hidden = false;
-    });
-
-    root.querySelectorAll('[data-example="shop"]').forEach((box) => {
-      if (box.dataset.exampleReady) return;
-      box.dataset.exampleReady = 'true';
-      const btn = box.querySelector('[data-example-add]');
-      const lines = box.querySelector('[data-example-lines]');
-      const count = box.querySelector('[data-example-count]');
-      const total = box.querySelector('[data-example-total]');
-      const status = box.querySelector('[data-example-status]');
-      if (!btn || !lines || !count || !total) return;
-      const price = parseInt(box.dataset.price, 10) || 0;
-      // Kurven starter med ét krus i farven Sand (samme som uden JS)
-      const cart = new Map([['Sand', 1]]);
-      const render = () => {
-        lines.replaceChildren(
-          ...[...cart].map(([color, qty]) => {
-            const li = document.createElement('li');
-            const a = document.createElement('span');
-            const b = document.createElement('span');
-            a.textContent = `Håndlavet krus, ${color}`;
-            b.textContent = `${qty} × ${price} kr.`;
-            li.append(a, b);
-            return li;
-          })
-        );
-        const n = [...cart.values()].reduce((s, q) => s + q, 0);
-        count.textContent = `${n} ${n === 1 ? 'vare' : 'varer'}`;
-        total.textContent = `${(n * price).toLocaleString('da-DK')} kr.`;
-        return n;
-      };
-      btn.addEventListener('click', () => {
-        const color = box.querySelector('input[name$="-color"]:checked')?.value || 'Sand';
-        cart.set(color, (cart.get(color) || 0) + 1);
-        const n = render();
-        if (status) status.textContent = `Lagt i kurven i eksemplet: krus i ${color}. ${n} varer i alt. Intet er købt.`;
-      });
-      btn.hidden = false;
-    });
-  }
-
   /* ---------- FAQ: svar åbner og lukker blødt ----------
    * <details> virker uden JS; her animeres kun højden. Åben/lukket status følger altid elementet. */
   function initFaq(root = document) {
@@ -554,7 +486,6 @@
   /* ---------- Init ---------- */
   function initSection(root) {
     initDemo(root);
-    initExamples(root);
     initFaq(root);
     initForms(root);
   }
