@@ -1,7 +1,7 @@
 {%- comment -%}
   Sidetop til undersider: brødkrummer, sidens eneste H1, kort tekst og højst to knapper.
   Højre side kan vise et designkoncept ('craft', 'salon', 'shop') eller en kort faktaliste (Titel | Tekst pr. linje).
-  Mærkat (fx "På vej") vises over overskriften. Genvejslinks tilføjes som blokke.
+  Mærkat (fx "På vej") vises over overskriften. En streg afslutter toppen.
 {%- endcomment -%}
 {%- liquid
   assign heading = section.settings.heading
@@ -73,7 +73,7 @@
         </div>
       {%- endif -%}
     </div>
-
+    <hr class="page-hero__rule">
   </div>
 </section>
 

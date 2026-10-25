@@ -275,6 +275,7 @@ code, pre { font-family: var(--font-mono); font-size: .9em; }
 .page-hero__title { max-width: 18ch; }
 .page-hero__text { margin-top: var(--sp-5); max-width: 40rem; color: var(--muted); }
 .page-hero__status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); font-size: var(--fs-small); color: var(--muted); }
+.page-hero__rule { margin: clamp(2rem, 1.5rem + 2vw, 3.5rem) 0 0; border: 0; border-top: var(--border); }
 .page-hero__note { margin-top: var(--sp-4); font-size: var(--fs-small); color: var(--muted); }
 @media (min-width: 990px) { .page-hero--split .page-hero__grid { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } .page-hero--split .page-hero__aside:has(.facts) { padding-left: var(--sp-6); } }
 
