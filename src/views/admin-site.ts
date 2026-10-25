@@ -3,7 +3,7 @@ import { formatDateShort, formatDateTime, formatKr } from '../lib/format';
 import type { HistoryRow, SiteData, SitePage, SiteProduct, TemplateData } from '../site/content';
 import { keyLabel } from '../site/content';
 import { sectionSchema, type SettingDef } from '../site/engine';
-import { LEAD_KIND_LABEL, LEAD_STATUS_LABEL, LEAD_STATUSES, type LeadCartLine, type LeadRow, type LeadStatus } from '../site/leads';
+import { LEAD_KIND_LABEL, LEAD_STATUS_LABEL, LEAD_STATUSES, OPEN_LEAD_STATUSES, type LeadCartLine, type LeadEventRow, type LeadRow, type LeadStatus } from '../site/leads';
 import { alert, csrfField, type H } from './layout';
 
 export interface SiteFile {
@@ -51,7 +51,7 @@ export function siteOverviewPage(args: {
   flash: string | null;
 }): H {
   const s = args.site;
-  const open = (args.leadCounts['ny'] ?? 0) + (args.leadCounts['besvaret'] ?? 0) + (args.leadCounts['tilbud'] ?? 0);
+  const open = OPEN_LEAD_STATUSES.reduce((n, st) => n + (args.leadCounts[st] ?? 0), 0);
   const max = Math.max(1, ...args.stats.byDay.map((d) => d.views));
   const textPages = s.pages.filter((p) => !p.template);
   const sectionPages = s.pages.filter((p) => p.template);
@@ -487,8 +487,8 @@ export function historyPage(args: { csrf: string; site: SiteData; rows: HistoryR
 // ---------- Forespørgsler ----------
 
 function leadBadge(s: LeadStatus): H {
-  const tone = s === 'ny' ? 'b-accent' : s === 'kunde' ? 'b-ok' : s === 'spam' || s === 'lukket' ? 'b-neutral' : 'b-warn';
-  return html`<span class="badge ${tone}">${LEAD_STATUS_LABEL[s]}</span>`;
+  const tone = s === 'ny' ? 'b-accent' : s === 'kunde' || s === 'proeve' ? 'b-ok' : s === 'spam' || s === 'lukket' ? 'b-neutral' : 'b-warn';
+  return html`<span class="badge ${tone}">${LEAD_STATUS_LABEL[s] ?? s}</span>`;
 }
 
 function leadSummary(l: LeadRow): string {
@@ -516,18 +516,11 @@ function leadList(rows: LeadRow[]): H {
 }
 
 export function leadsPage(args: { rows: LeadRow[]; filter: string; counts: Record<string, number> }): H {
-  const tabs: [string, string][] = [
-    ['aabne', 'Åbne'],
-    ['ny', 'Nye'],
-    ['alle', 'Alle'],
-    ['kunde', 'Blev kunder'],
-    ['lukket', 'Lukkede'],
-    ['spam', 'Spam'],
-  ];
+  const tabs: [string, string][] = [['aabne', 'Åbne'], ['alle', 'Alle'], ...LEAD_STATUSES.map((st): [string, string] => [st, LEAD_STATUS_LABEL[st]])];
   return html`<div class="stack-lg">
   <div>${crumbs(['Admin', '/admin'])}<h1>Forespørgsler</h1>
     <p class="lead">Alt, der sendes fra hjemmesiden: kontaktformularen, gratis vurdering og kurven. Du får også en mail ved hver ny.</p></div>
-  <nav class="row tabs" aria-label="Filter">${tabs.map(
+  <nav class="row tabs" aria-label="Filtrér efter status">${tabs.map(
     ([k, label]) => html`<a class="btn btn-small ${args.filter === k ? 'btn-primary' : 'btn-secondary'}" href="/admin/forespoergsler?status=${k}"${args.filter === k ? raw(' aria-current="page"') : ''}>${label}${k !== 'alle' && k !== 'aabne' && args.counts[k] ? ` (${args.counts[k]})` : ''}</a>`,
   )}</nav>
   <section class="card">${args.rows.length ? leadList(args.rows) : html`<p class="empty">Ingen forespørgsler her.</p>`}</section>
@@ -536,7 +529,18 @@ export function leadsPage(args: { rows: LeadRow[]; filter: string; counts: Recor
 
 const FIELD_SKIP = new Set(['name', 'email', 'body', 'Formular', 'Kurv', 'Samtykke']);
 
-export function leadDetailPage(args: { csrf: string; lead: LeadRow; flash: string | null; offerUrl: string | null; prospects?: { id: number; name: string; signals: string[]; linked: boolean }[] }): H {
+function leadHistory(l: LeadRow, events: LeadEventRow[]): H {
+  const label = (v: string | null) => (v ? (LEAD_STATUS_LABEL[v as LeadStatus] ?? v) : '–');
+  return html`<section class="card stack" aria-labelledby="lh-h"><h2 id="lh-h" class="h-small" style="margin:0">Historik</h2>
+    <ul class="list">${events.map(
+      (e) => html`<li class="small">${e.kind === 'status' ? html`Status ændret fra <strong>${label(e.old_value)}</strong> til <strong>${label(e.new_value)}</strong>` : e.new_value ?? ''}
+        <div class="meta">${formatDateTime(e.at)}${e.actor ? ` · ${e.actor}` : ''}</div></li>`,
+    )}
+    <li class="small">Modtaget fra hjemmesiden<div class="meta">${formatDateTime(l.created_at)}</div></li></ul>
+    <p class="hint" style="margin:0">Statusændringer før historikken blev indført, er ikke registreret.</p></section>`;
+}
+
+export function leadDetailPage(args: { csrf: string; lead: LeadRow; flash: string | null; offerUrl: string | null; events?: LeadEventRow[]; prospects?: { id: number; name: string; signals: string[]; linked: boolean }[] }): H {
   const l = args.lead;
   let fields: Record<string, string> = {};
   let cart: LeadCartLine[] = [];
@@ -554,7 +558,8 @@ export function leadDetailPage(args: { csrf: string; lead: LeadRow; flash: strin
   const total = cart.reduce((s, x) => s + x.price * x.quantity, 0);
   return html`<div class="stack-lg">
   <div>${crumbs(['Admin', '/admin'], ['Forespørgsler', '/admin/forespoergsler'], [`#${l.id}`, null])}<h1>${l.name || l.email}</h1>
-    <p class="lead">${LEAD_KIND_LABEL[l.kind]}${l.form_name ? ` · ${l.form_name}` : ''} · ${formatDateTime(l.created_at)} ${leadBadge(l.status)}</p></div>
+    <p class="lead">${LEAD_KIND_LABEL[l.kind]}${l.form_name ? ` · ${l.form_name}` : ''} · ${formatDateTime(l.created_at)}</p>
+    <p style="margin:0">Status: ${leadBadge(l.status)}</p></div>
   ${args.flash === 'gemt' ? alert('ok', 'Gemt.') : ''}
   <div class="row">
     ${l.offer_id
@@ -601,11 +606,13 @@ export function leadDetailPage(args: { csrf: string; lead: LeadRow; flash: strin
     ${csrfField(args.csrf)}
     <h2 class="h-small" style="margin:0">Opfølgning</h2>
     <div class="grid grid-2">
-      <div class="field"><label for="l-status">Status</label><select id="l-status" name="status">${LEAD_STATUSES.map((s) => opt(s, LEAD_STATUS_LABEL[s], s === l.status))}</select></div>
+      <div class="field"><label for="l-status">Status</label><select id="l-status" name="status">${LEAD_STATUSES.map((s) => opt(s, LEAD_STATUS_LABEL[s], s === l.status))}</select>
+        <p class="hint">Sæt status manuelt, også når dialogen er foregået i telefon. Status er kun en markering: der sendes ingen mails, og der oprettes ingen abonnementer, betalinger eller kunder.</p></div>
     </div>
     <div class="field"><label for="l-note">Intern note</label><textarea id="l-note" name="note" rows="3" maxlength="2000">${l.note ?? ''}</textarea></div>
     <div class="row"><button class="btn btn-primary" type="submit">Gem</button></div>
   </form>
+  ${leadHistory(l, args.events ?? [])}
   <form method="post" action="/admin/forespoergsler/${l.id}/slet" class="card stack">
     ${csrfField(args.csrf)}
     <h2 class="h-small" style="margin:0">Slet forespørgslen</h2>

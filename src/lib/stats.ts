@@ -1,6 +1,7 @@
 // Statistik til admin: besøg, forespørgsler, tilbud, kunder og omsætning for en periode,
 // sammenlignet med perioden før. Bruges af /admin/statistik og Excel-udtrækket.
 import type { Env } from '../env';
+import { OPEN_LEAD_SQL } from '../site/leads';
 import { stripeRequest } from './stripe';
 
 export interface Period {
@@ -285,7 +286,7 @@ export function monthly(amount: number | null, interval: string | null): number 
 export async function snapshot(db: D1Database): Promise<Snapshot> {
   const [subs, open] = await db.batch([
     db.prepare("SELECT amount, interval FROM subscriptions WHERE status IN ('active', 'trialing', 'past_due')"),
-    db.prepare("SELECT COUNT(*) AS n FROM leads WHERE status IN ('ny', 'besvaret', 'tilbud')"),
+    db.prepare(`SELECT COUNT(*) AS n FROM leads WHERE ${OPEN_LEAD_SQL}`),
   ]);
   const rows = (subs?.results ?? []) as { amount: number | null; interval: string | null }[];
   return {

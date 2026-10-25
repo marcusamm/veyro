@@ -2,11 +2,17 @@
 import { nowSec } from '../lib/crypto';
 
 export type LeadKind = 'kontakt' | 'vurdering' | 'kurv';
-export const LEAD_STATUSES = ['ny', 'besvaret', 'tilbud', 'kunde', 'lukket', 'spam'] as const;
+export const LEAD_STATUSES = ['ny', 'besvaret', 'dialog', 'demo', 'proeve', 'tilbud', 'kunde', 'lukket', 'spam'] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
+/** Forespørgsler, der stadig er i gang (fanen "Åbne") */
+export const OPEN_LEAD_STATUSES: LeadStatus[] = ['ny', 'besvaret', 'dialog', 'demo', 'proeve', 'tilbud'];
+export const OPEN_LEAD_SQL = `status IN (${OPEN_LEAD_STATUSES.map((s) => `'${s}'`).join(', ')})`;
 export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
   ny: 'Ny',
   besvaret: 'Besvaret',
+  dialog: 'I dialog',
+  demo: 'Demo oprettet',
+  proeve: 'I prøveperiode',
   tilbud: 'Tilbud sendt',
   kunde: 'Blev kunde',
   lukket: 'Lukket',
@@ -80,7 +86,7 @@ export async function listLeads(db: D1Database, status: string | null): Promise<
     status && (LEAD_STATUSES as readonly string[]).includes(status)
       ? db.prepare('SELECT * FROM leads WHERE status = ? ORDER BY created_at DESC LIMIT 500').bind(status)
       : status === 'aabne'
-        ? db.prepare("SELECT * FROM leads WHERE status IN ('ny', 'besvaret', 'tilbud') ORDER BY created_at DESC LIMIT 500")
+        ? db.prepare(`SELECT * FROM leads WHERE ${OPEN_LEAD_SQL} ORDER BY created_at DESC LIMIT 500`)
         : db.prepare("SELECT * FROM leads WHERE status != 'spam' ORDER BY created_at DESC LIMIT 500");
   return (await q.all<LeadRow>()).results ?? [];
 }
@@ -94,12 +100,28 @@ export async function leadCounts(db: D1Database): Promise<Record<string, number>
   return Object.fromEntries((results ?? []).map((r) => [r.status, r.n]));
 }
 
-export async function updateLead(db: D1Database, id: number, patch: { status?: LeadStatus; note?: string | null; offer_id?: number | null }): Promise<boolean> {
+/**
+ * Opdaterer en forespørgsel. En statusændring registreres i historikken med tidspunkt og bruger.
+ * Status er kun en markering: der sendes ingen mails, og der oprettes ingen abonnementer, betalinger eller kunder.
+ */
+export async function updateLead(
+  db: D1Database,
+  id: number,
+  patch: { status?: LeadStatus; note?: string | null; offer_id?: number | null },
+  actor: string | null = null,
+): Promise<boolean> {
   const sets: string[] = [];
   const args: unknown[] = [];
+  const pre: D1PreparedStatement[] = [];
   if (patch.status) {
     sets.push('status = ?');
     args.push(patch.status);
+    // Historik før selve ændringen, så den gamle status kan læses i samme transaktion
+    pre.push(
+      db
+        .prepare("INSERT INTO lead_events (lead_id, at, kind, actor, old_value, new_value) SELECT id, ?, 'status', ?, status, ? FROM leads WHERE id = ? AND status != ?")
+        .bind(nowSec(), actor, patch.status, id, patch.status),
+    );
   }
   if (patch.note !== undefined) {
     sets.push('note = ?');
@@ -112,8 +134,22 @@ export async function updateLead(db: D1Database, id: number, patch: { status?: L
   if (!sets.length) return false;
   sets.push('updated_at = ?');
   args.push(nowSec(), id);
-  const r = await db.prepare(`UPDATE leads SET ${sets.join(', ')} WHERE id = ?`).bind(...args).run();
-  return (r.meta.changes ?? 0) > 0;
+  const res = await db.batch([...pre, db.prepare(`UPDATE leads SET ${sets.join(', ')} WHERE id = ?`).bind(...args)]);
+  return (res[res.length - 1]!.meta.changes ?? 0) > 0;
+}
+
+export interface LeadEventRow {
+  id: number;
+  lead_id: number;
+  at: number;
+  kind: string;
+  actor: string | null;
+  old_value: string | null;
+  new_value: string | null;
+}
+
+export async function leadEvents(db: D1Database, id: number): Promise<LeadEventRow[]> {
+  return (await db.prepare('SELECT * FROM lead_events WHERE lead_id = ? ORDER BY at DESC, id DESC LIMIT 200').bind(id).all<LeadEventRow>()).results ?? [];
 }
 
 /** Sletter en forespørgsel helt (fx på anmodning efter GDPR) */

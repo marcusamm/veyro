@@ -418,7 +418,7 @@ admin.post('/tilbud', async (c) => {
     }
     const customerId = await ensureStripeCustomer(c.env, v.draft, `admin-offer-${key}`);
     const offer = await createOffer(c.env, v.draft, { key, createdBy: c.get('session')!.email, stripeCustomerId: customerId });
-    if (lead) await updateLead(c.env.DB, lead.id, { offer_id: offer.id, status: 'tilbud' });
+    if (lead) await updateLead(c.env.DB, lead.id, { offer_id: offer.id, status: 'tilbud' }, c.get('session')!.email.toLowerCase());
     if (prospect) {
       await c.env.DB.batch([
         c.env.DB.prepare('UPDATE offers SET prospect_id = ? WHERE id = ?').bind(prospect.id, offer.id),

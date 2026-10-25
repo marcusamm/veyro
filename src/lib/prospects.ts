@@ -97,6 +97,8 @@ export interface ProspectRow {
   notes: string | null;
   last_contact_at: number | null;
   archived_at: number | null;
+  import_id?: number | null;
+  import_row?: number | null;
   archived_by: string | null;
   blacklisted: number;
   customer_id: number | null;
@@ -283,6 +285,7 @@ export interface ListFilter {
   priority: Priority | null;
   industry: string | null;
   area: string | null;
+  importId: number | null; // kun kundeemner fra én import
   page: number;
 }
 
@@ -291,6 +294,7 @@ export function readFilter(query: (k: string) => string | undefined): ListFilter
   const s = query('status');
   const p = query('prioritet');
   const page = Number.parseInt(query('side') ?? '1', 10);
+  const imp = Number.parseInt(query('import') ?? '', 10);
   const str = (k: string) => (query(k) ?? '').trim().slice(0, 100) || null;
   return {
     view: (VIEWS as readonly string[]).includes(v ?? '') ? (v as ProspectView) : 'aktive',
@@ -300,6 +304,7 @@ export function readFilter(query: (k: string) => string | undefined): ListFilter
     priority: (PRIORITIES as readonly string[]).includes(p ?? '') ? (p as Priority) : null,
     industry: str('branche'),
     area: str('omraade'),
+    importId: Number.isSafeInteger(imp) && imp > 0 ? imp : null,
     page: Number.isSafeInteger(page) && page > 0 && page < 10000 ? page : 1,
   };
 }
@@ -329,6 +334,7 @@ function where(f: ListFilter, me: string, todayStr: string): { sql: string; args
   if (f.priority) add('p.priority = ?', f.priority);
   if (f.industry) add('p.industry = ? COLLATE NOCASE', f.industry);
   if (f.area) add('(p.area = ? COLLATE NOCASE OR p.city = ? COLLATE NOCASE)', f.area, f.area);
+  if (f.importId) add('p.import_id = ?', f.importId);
   if (f.q) {
     const like = `%${f.q.replace(/[\\%_]/g, (m) => '\\' + m)}%`;
     const cols = ['p.company', 'p.city', 'p.contact_name', 'p.domain', 'p.cvr', 'p.industry'];
