@@ -44,7 +44,7 @@
           if (hit) n++;
         });
         buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-type') === type)); });
-        if (status) status.textContent = n === 1 ? 'Viser 1 projekt' : 'Viser ' + n + ' projekter';
+        if (status) status.textContent = n === 1 ? 'Viser 1 opgave' : 'Viser ' + n + ' opgaver';
       };
       buttons.forEach(function (b) {
         b.addEventListener('click', function () { show(b.getAttribute('data-type')); });

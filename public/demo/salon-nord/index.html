@@ -5,179 +5,166 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Salon Nord – frisør på Trøjborg (fiktivt designkoncept)</title>
-<meta name="description" content="Fiktivt designkoncept lavet af Veyro: hjemmeside med online booking for en frisørsalon.">
-<link rel="preload" href="assets/fonts/cormorant-garamond-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<meta name="description" content="Fiktivt designkoncept lavet af Veyro: forside for en frisørsalon med prisliste og online booking.">
 <link rel="preload" href="assets/fonts/jost-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/jost-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/site.js" defer></script>
 </head>
 <body>
 <a class="skip" href="#indhold">Gå til indhold</a>
-<div class="demo-bar" role="note"><div class="wrap"><span>Fiktivt designkoncept — lavet af Veyro. Salon, priser og billeder er eksempler.</span><a href="/pages/eksempler">Tilbage til Veyro</a></div></div>
+<div class="demo-bar" role="note"><div class="wrap"><span>Fiktivt designkoncept — lavet af Veyro. Salonen, priserne og adressen er eksempler.</span><a href="/pages/eksempler">Tilbage til Veyro</a></div></div>
 
 <header class="header">
   <div class="wrap header__inner">
-    <a class="logo" href="./" aria-label="Salon Nord, forside"><span class="logo__name">Salon Nord</span><span class="logo__sub">Frisør · Aarhus</span></a>
-    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu"><span class="menu-btn__bars" aria-hidden="true"></span><span>Menu</span></button>
+    <a class="logo" href="./" aria-label="Salon Nord, forside"><span class="logo__name">Salon Nord</span><span class="logo__sub">Frisør på Trøjborg, Aarhus</span></a>
     <nav class="nav" id="menu" aria-label="Hovedmenu">
       <ul>
         <li><a href="behandlinger">Behandlinger og priser</a></li>
-        <li><a href="./#salonen">Salonen</a></li>
+        <li><a href="./#salonen">Om salonen</a></li>
         <li><a href="./#find-os">Find os</a></li>
-        <li class="nav__cta"><a href="book">Book tid</a></li>
       </ul>
     </nav>
-    <a class="btn btn--small header__cta" href="book">Book tid</a>
+    <a class="btn btn--small header__book" href="book">Book tid</a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu"><span class="menu-btn__bars" aria-hidden="true"></span><span>Menu</span></button>
   </div>
 </header>
 
 <main id="indhold">
-  <section class="hero" aria-labelledby="hero-title">
-    <div class="wrap hero__grid">
-      <div>
-        <p class="eyebrow">Frisør på Trøjborg i Aarhus</p>
-        <h1 id="hero-title">Klip og farve <em>med god tid</em></h1>
-        <p class="lead">En lille salon med tre stole og plads til en snak, før vi går i gang. Book online, se prisen på forhånd, og flyt selv tiden, hvis noget kommer i vejen.</p>
+  <section class="top" aria-labelledby="top-title">
+    <div class="wrap top__grid">
+      <div class="top__main">
+        <h1 id="top-title">Frisør på Trøjborg</h1>
+        <p>Klip, farve og styling til kvinder, mænd og børn. Vi er tre frisører på hjørnet af Eksempelgade. Prisen står herunder, og du kan booke tiden direkte på siden.</p>
         <div class="actions">
-          <a class="btn" href="book">Book tid</a>
-          <a class="link" href="behandlinger">Se behandlinger og priser</a>
+          <a class="btn btn--light" href="book">Book tid</a>
+          <p class="top__phone">eller ring 00 00 00 00</p>
         </div>
-        <p class="hours-line"><span><strong>Tirsdag–fredag</strong> 9–18</span><span><strong>Lørdag</strong> 9–14</span><span>Søndag og mandag lukket</span></p>
       </div>
-      <div class="hero__media">
-        <div class="arch"><img src="assets/img/hero-salon-1200.webp" srcset="assets/img/hero-salon-800.webp 800w, assets/img/hero-salon-1200.webp 1200w" sizes="(min-width: 52em) 45vw, 100vw" width="1200" height="1500" alt="Lys frisørsalon med salonstole foran buede spejle og et stort vindue mod gaden" fetchpriority="high"></div>
-        <span class="credit">Illustrativt billede</span>
+      <div class="top__info">
+        <h2>Åbent</h2>
+        <table class="hours">
+          <tbody>
+            <tr><th scope="row">Tirsdag–fredag</th><td>9.00–18.00</td></tr>
+            <tr><th scope="row">Lørdag</th><td>9.00–14.00</td></tr>
+            <tr><th scope="row">Søndag og mandag</th><td>Lukket</td></tr>
+          </tbody>
+        </table>
+        <p class="top__addr">Eksempelgade 12, 8000 Aarhus C</p>
       </div>
     </div>
   </section>
 
-  <section class="section section--line" aria-labelledby="priser-title">
-    <div class="wrap">
-      <div class="section__head section__head--row">
-        <div>
-          <p class="eyebrow">Behandlinger</p>
-          <h2 id="priser-title">Det mest bookede</h2>
-        </div>
-        <p>Prisen er med vask og styling. Farve aftaler vi altid kort med dig, før vi blander.</p>
+  <section class="section" id="priser" aria-labelledby="priser-title">
+    <div class="wrap prices">
+      <div class="prices__intro">
+        <h2 id="priser-title">Priser</h2>
+        <p>Priserne er med vask og føn. „Fra“ betyder, at prisen afhænger af hårets længde, og den aftaler vi med dig, før vi går i gang.</p>
+        <p><a href="behandlinger">Se hvad hver behandling indeholder</a></p>
+        <p class="note">Priser og tider er eksempler i et fiktivt designkoncept.</p>
       </div>
-      <div class="menu menu--cols">
-        <div class="menu__group">
-          <h3>Klip <small>Med vask og føn</small></h3>
-          <ul class="price-list">
-            <li><span class="name">Dameklip</span><span class="price">545 kr.</span><span class="desc">Til kort og mellemlangt hår</span><span class="dur">45 min.</span></li>
-            <li><span class="name">Klip af langt hår</span><span class="price">645 kr.</span><span class="desc">Hår under skuldrene</span><span class="dur">60 min.</span></li>
-            <li><span class="name">Herreklip</span><span class="price">395 kr.</span><span class="desc">Saks og maskine</span><span class="dur">30 min.</span></li>
-            <li><span class="name">Børneklip</span><span class="price">295 kr.</span><span class="desc">Børn under 12 år</span><span class="dur">30 min.</span></li>
-          </ul>
-        </div>
-        <div class="menu__group">
-          <h3>Farve <small>Med vask og føn</small></h3>
-          <ul class="price-list">
-            <li><span class="name">Hel farve</span><span class="price">fra 945 kr.</span><span class="desc">Én farve fra bund til spids</span><span class="dur">90 min.</span></li>
-            <li><span class="name">Bundfarve</span><span class="price">745 kr.</span><span class="desc">Udgroning op til 3 cm</span><span class="dur">75 min.</span></li>
-            <li><span class="name">Striber, halvt hoved</span><span class="price">fra 1.195 kr.</span><span class="desc">Folie i den øverste del af håret</span><span class="dur">120 min.</span></li>
-            <li><span class="name">Toning</span><span class="price">445 kr.</span><span class="desc">Frisker farven op</span><span class="dur">45 min.</span></li>
-          </ul>
-        </div>
-      </div>
-      <p class="price-note">Priser og varigheder er illustrative eksempler i et fiktivt designkoncept.</p>
-      <div class="actions" style="margin-top:2rem"><a class="btn btn--ghost" href="behandlinger">Alle behandlinger</a><a class="link" href="book">Book tid</a></div>
-    </div>
-  </section>
-
-  <section class="section section--paper" id="salonen" aria-labelledby="salon-title">
-    <div class="wrap salon">
-      <div class="salon__images">
-        <div class="arch"><img src="assets/img/klip-800.webp" width="800" height="1000" alt="Saks, kam og hårklemmer på et foldet håndklæde" loading="lazy"></div>
-        <div class="frame"><img src="assets/img/detalje-800.webp" width="800" height="1000" alt="Hylde med glasflasker, keramikkrukker og sammenrullede håndklæder" loading="lazy"></div>
-      </div>
-      <div class="salon__text">
-        <p class="eyebrow">Salonen</p>
-        <h2 id="salon-title">Tre stole og <em>et stort vindue</em></h2>
-        <p>Salon Nord ligger i stueetagen på et hjørne, hvor lyset kommer ind fra gaden hele dagen. Vi er tre frisører, og vi tager én kunde ad gangen.</p>
-        <p>Er du ny, eller vil du prøve noget andet, så skriv det i bookingen. Så sætter vi lidt ekstra tid af til at tale om det.</p>
-        <ul class="plain-list">
-          <li><span>Farvekonsultation</span><span>Ti minutter før første farve</span></li>
-          <li><span>Betaling</span><span>I salonen med kort eller MobilePay</span></li>
-          <li><span>Afbud</span><span>Flyt eller aflys via linket i din bekræftelse</span></li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <section class="section" aria-labelledby="book-title">
-    <div class="wrap">
-      <div class="section__head">
-        <p class="eyebrow">Online booking</p>
-        <h2 id="book-title">Sådan booker du</h2>
-      </div>
-      <ol class="howto">
-        <li><h3>Vælg behandling</h3><p>Se pris og varighed, og vælg en bestemt frisør eller den første ledige.</p></li>
-        <li><h3>Find en ledig tid</h3><p>Du ser de ledige tider de næste to uger og vælger den, der passer dig.</p></li>
-        <li><h3>Få en bekræftelse</h3><p>Du får en mail med tid og adresse og et link, hvor du selv kan flytte eller aflyse.</p></li>
-      </ol>
-    </div>
-  </section>
-
-  <section class="section section--line" id="find-os" aria-labelledby="find-title">
-    <div class="wrap">
-      <div class="section__head">
-        <p class="eyebrow">Find os</p>
-        <h2 id="find-title">På hjørnet ved Trøjborg</h2>
-      </div>
-      <div class="visit">
-        <div>
-          <h3>Adresse</h3>
-          <address>Eksempelgade 12<br>8000 Aarhus C</address>
-          <p class="muted">Fiktiv adresse i demoen. Cykelstativ ved døren og gadeparkering med p-skive.</p>
-        </div>
-        <div>
-          <h3>Åbningstider</h3>
-          <table class="hours">
+      <div class="prices__groups">
+        <div class="pgroup">
+          <h3 id="p-klip">Klip <span>med vask og føn</span></h3>
+          <table class="ptable" aria-labelledby="p-klip">
+            <thead><tr><th scope="col">Behandling</th><th scope="col">Tid</th><th scope="col">Pris</th><th scope="col">Booking</th></tr></thead>
             <tbody>
-              <tr><th scope="row">Tirsdag–fredag</th><td>9.00–18.00</td></tr>
-              <tr><th scope="row">Lørdag</th><td>9.00–14.00</td></tr>
-              <tr><th scope="row">Søndag og mandag</th><td>Lukket</td></tr>
+            <tr><th scope="row">Dameklip<span class="ptable__sub">45 min.</span></th><td class="ptable__dur">45 min.</td><td class="ptable__price">545 kr.</td><td class="ptable__book"><a href="book?behandling=dameklip" aria-label="Book dameklip">Book</a></td></tr>
+            <tr><th scope="row">Klip af langt hår<span class="ptable__sub">60 min.</span></th><td class="ptable__dur">60 min.</td><td class="ptable__price">645 kr.</td><td class="ptable__book"><a href="book?behandling=langt-haar" aria-label="Book klip af langt hår">Book</a></td></tr>
+            <tr><th scope="row">Herreklip<span class="ptable__sub">30 min.</span></th><td class="ptable__dur">30 min.</td><td class="ptable__price">395 kr.</td><td class="ptable__book"><a href="book?behandling=herreklip" aria-label="Book herreklip">Book</a></td></tr>
+            <tr><th scope="row">Børneklip<span class="ptable__sub">30 min.</span></th><td class="ptable__dur">30 min.</td><td class="ptable__price">295 kr.</td><td class="ptable__book"><a href="book?behandling=boerneklip" aria-label="Book børneklip">Book</a></td></tr>
+            <tr><th scope="row">Pandehår<span class="ptable__sub">15 min.</span></th><td class="ptable__dur">15 min.</td><td class="ptable__price">150 kr.</td><td class="ptable__book"><a href="book?behandling=pandehaar" aria-label="Book pandehår">Book</a></td></tr>
             </tbody>
           </table>
         </div>
-        <div>
-          <h3>Kontakt</h3>
-          <p>Telefon 00 00 00 00<br><span class="muted">Fiktivt nummer i demoen</span></p>
-          <p>Vi tager telefonen mellem kunderne. Det er hurtigst at booke online.</p>
+        <div class="pgroup">
+          <h3 id="p-farve">Farve <span>med vask og føn</span></h3>
+          <table class="ptable" aria-labelledby="p-farve">
+            <thead><tr><th scope="col">Behandling</th><th scope="col">Tid</th><th scope="col">Pris</th><th scope="col">Booking</th></tr></thead>
+            <tbody>
+            <tr><th scope="row">Hel farve<span class="ptable__sub">90 min.</span></th><td class="ptable__dur">90 min.</td><td class="ptable__price">fra 945 kr.</td><td class="ptable__book"><a href="book?behandling=hel-farve" aria-label="Book hel farve">Book</a></td></tr>
+            <tr><th scope="row">Bundfarve<span class="ptable__sub">75 min.</span></th><td class="ptable__dur">75 min.</td><td class="ptable__price">745 kr.</td><td class="ptable__book"><a href="book?behandling=bundfarve" aria-label="Book bundfarve">Book</a></td></tr>
+            <tr><th scope="row">Striber, halvt hoved<span class="ptable__sub">120 min.</span></th><td class="ptable__dur">120 min.</td><td class="ptable__price">fra 1.195 kr.</td><td class="ptable__book"><a href="book?behandling=striber" aria-label="Book striber, halvt hoved">Book</a></td></tr>
+            <tr><th scope="row">Toning<span class="ptable__sub">45 min.</span></th><td class="ptable__dur">45 min.</td><td class="ptable__price">445 kr.</td><td class="ptable__book"><a href="book?behandling=toning" aria-label="Book toning">Book</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pgroup">
+          <h3 id="p-styling">Styling og bryn <span>uden klip</span></h3>
+          <table class="ptable" aria-labelledby="p-styling">
+            <thead><tr><th scope="col">Behandling</th><th scope="col">Tid</th><th scope="col">Pris</th><th scope="col">Booking</th></tr></thead>
+            <tbody>
+            <tr><th scope="row">Vask og føn<span class="ptable__sub">30 min.</span></th><td class="ptable__dur">30 min.</td><td class="ptable__price">325 kr.</td><td class="ptable__book"><a href="book?behandling=vask-foen" aria-label="Book vask og føn">Book</a></td></tr>
+            <tr><th scope="row">Opsætning<span class="ptable__sub">60 min.</span></th><td class="ptable__dur">60 min.</td><td class="ptable__price">fra 595 kr.</td><td class="ptable__book"><a href="book?behandling=opsaetning" aria-label="Book opsætning">Book</a></td></tr>
+            <tr><th scope="row">Bryn og vipper<span class="ptable__sub">30 min.</span></th><td class="ptable__dur">30 min.</td><td class="ptable__price">275 kr.</td><td class="ptable__book"><a href="book?behandling=bryn" aria-label="Book bryn og vipper">Book</a></td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="cta-band" aria-labelledby="cta-title">
-    <div class="wrap">
-      <div>
-        <h2 id="cta-title">Find en tid, <em>der passer dig</em></h2>
-        <p>Vælg behandling og frisør, og se de ledige tider de næste to uger.</p>
+  <section class="section section--line" id="salonen" aria-labelledby="salon-title">
+    <div class="wrap about">
+      <div class="about__text">
+        <h2 id="salon-title">Om salonen</h2>
+        <p>Salon Nord ligger i stueetagen på et hjørne med store vinduer ud mod gaden. Der er tre stole, og hver frisør har én kunde ad gangen.</p>
+        <p>Er du ny, eller vil du prøve noget andet, så skriv det i bookingen. Så sætter vi lidt ekstra tid af til at tale om det, før vi går i gang.</p>
       </div>
-      <a class="btn btn--light" href="book">Book tid</a>
+      <div>
+        <h3>Frisørerne</h3>
+        <dl class="facts">
+          <div><dt>Ida</dt><dd>Klip og farve</dd></div>
+          <div><dt>Sofie</dt><dd>Farve, striber og opsætning</dd></div>
+          <div><dt>Jonas</dt><dd>Herreklip og korte frisurer</dd></div>
+        </dl>
+      </div>
+      <div>
+        <h3>Godt at vide</h3>
+        <dl class="facts">
+          <div><dt>Første farve</dt><dd>Vi tager ti minutter til at se på håret og tale om farven. Det er med i tiden.</dd></div>
+          <div><dt>Betaling</dt><dd>I salonen med kort eller MobilePay.</dd></div>
+          <div><dt>Flyt eller aflys</dt><dd>Brug linket i din bekræftelse på mail.</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--tint" id="find-os" aria-labelledby="find-title">
+    <div class="wrap visit">
+      <div class="visit__text">
+        <h2 id="find-title">Find os</h2>
+        <address>Eksempelgade 12<br>8000 Aarhus C</address>
+        <p>Indgangen er på hjørnet. Der er cykelstativ ved døren og gadeparkering med p-skive i begge gader.</p>
+        <p>Telefon 00 00 00 00. Vi tager telefonen mellem kunderne, så det er hurtigst at booke her på siden.</p>
+        <table class="hours">
+          <tbody>
+            <tr><th scope="row">Tirsdag–fredag</th><td>9.00–18.00</td></tr>
+            <tr><th scope="row">Lørdag</th><td>9.00–14.00</td></tr>
+            <tr><th scope="row">Søndag og mandag</th><td>Lukket</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figure class="visit__map">
+        <img src="assets/img/kortskitse.svg" width="800" height="560" alt="Kortskitse: salonen ligger på hjørnet af Eksempelgade og Hjørnevej med cykelstativ ved indgangen og parkering langs begge gader">
+        <figcaption>Kortskitse. Gaderne er opdigtede.</figcaption>
+      </figure>
     </div>
   </section>
 </main>
 
 <footer class="footer">
-  <div class="wrap">
-    <div class="footer__grid">
-      <div>
-        <p class="logo"><span class="logo__name">Salon Nord</span><span class="logo__sub">Frisør · Aarhus</span></p>
-        <p style="margin-top:1rem;max-width:22rem">Klip, farve og styling for kvinder, mænd og børn.</p>
-      </div>
-      <div>
-        <h2>Sider</h2>
-        <ul><li><a href="behandlinger">Behandlinger og priser</a></li><li><a href="book">Book tid</a></li><li><a href="./#find-os">Find os</a></li></ul>
-      </div>
-      <div>
-        <h2>Åbent</h2>
-        <ul><li>Tirsdag–fredag 9–18</li><li>Lørdag 9–14</li><li>Søndag og mandag lukket</li></ul>
-      </div>
+  <div class="wrap footer__grid">
+    <div>
+      <p class="footer__name">Salon Nord</p>
+      <p>Eksempelgade 12, 8000 Aarhus C<br>Telefon 00 00 00 00</p>
     </div>
-    <p class="footer__bottom">Salon Nord er en fiktiv virksomhed. Siden er et designkoncept lavet af <a href="/">Veyro</a>, og billederne er illustrative.</p>
+    <ul class="footer__links">
+      <li><a href="behandlinger">Behandlinger og priser</a></li>
+      <li><a href="book">Book tid</a></li>
+      <li><a href="./#find-os">Find os</a></li>
+    </ul>
+    <p class="footer__note">Salon Nord findes ikke. Siden er et designkoncept fra <a href="/">Veyro</a>. Adresse, telefonnummer, priser og frisører er opdigtede.</p>
   </div>
 </footer>
 </body>

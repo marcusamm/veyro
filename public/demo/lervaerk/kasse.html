@@ -13,18 +13,18 @@
 <body data-root="">
 <a class="skip" href="#indhold">Gå til indhold</a>
 <div class="demo-bar" role="note"><div class="wrap"><span>Fiktivt designkoncept — lavet af Veyro. Ingen varer sælges, og der betales ikke.</span><a href="/pages/eksempler">Tilbage til Veyro</a></div></div>
+<div class="announce"><div class="wrap">Fri fragt til pakkeshop ved køb over 800 kr.</div></div>
 
 <header class="header">
   <div class="wrap header__inner">
-    <a class="logo" href="./" aria-label="Lerværk, forside"><span class="logo__name">Lerværk</span><span class="logo__sub">Stentøj fra Odder</span></a>
+    <a class="logo" href="./" aria-label="Lerværk, forside">Lerværk</a>
     <nav class="nav" id="menu" aria-label="Hovedmenu">
       <ul>
-        <li><a href="./#sortiment">Sortiment</a></li>
-        <li><a href="./#vaerkstedet">Værkstedet</a></li>
-        <li><a href="./#levering">Levering</a></li>
+        <li><a href="./?kategori=kopper#sortiment">Kopper</a></li><li><a href="./?kategori=skaale#sortiment">Skåle</a></li><li><a href="./?kategori=tallerkener#sortiment">Tallerkener</a></li><li><a href="./?kategori=servering#sortiment">Servering</a></li>
+        <li><a href="./#vaerkstedet">Om værkstedet</a></li>
       </ul>
     </nav>
-    <a class="cart-link" href="kurv"><span>Kurv</span><span class="cart-link__count" data-cart-count aria-label="0 varer">0</span></a>
+    <a class="cart-link" href="kurv">Kurv <span class="cart-link__count" data-cart-count aria-label="0 varer">0</span></a>
     <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu">Menu</button>
   </div>
 </header>
@@ -76,7 +76,7 @@
       </aside>
     </div>
     <div class="done" data-done tabindex="-1" hidden>
-      <p class="badge">Demo · ingen ordre oprettet</p>
+      <p class="kind">Demo: ingen ordre oprettet</p>
       <h1 style="font-size:clamp(2.25rem,1.9rem + 1.6vw,3.25rem)">Tak, <span data-done-name></span></h1>
       <p class="muted">Sådan kunne en kvittering se ud. Intet er betalt, ingen ordre er sendt til værkstedet, og ingen mail er sendt.</p>
       <ul class="mini" data-done-mini></ul>
@@ -88,22 +88,17 @@
 </main>
 
 <footer class="footer">
-  <div class="wrap">
-    <div class="footer__grid">
-      <div>
-        <p class="logo"><span class="logo__name">Lerværk</span></p>
-        <p class="muted" style="margin-top:.75rem;max-width:24rem">Krus, skåle og tallerkener i stentøj, drejet og glaseret i små serier.</p>
-      </div>
-      <div>
-        <h2>Sortiment</h2>
-        <ul><li><a href="./?kategori=kopper#sortiment">Kopper</a></li><li><a href="./?kategori=skaale#sortiment">Skåle</a></li><li><a href="./?kategori=tallerkener#sortiment">Tallerkener</a></li><li><a href="./?kategori=servering#sortiment">Servering</a></li></ul>
-      </div>
-      <div>
-        <h2>Butikken</h2>
-        <ul><li><a href="kurv">Kurv</a></li><li><a href="./#levering">Levering og retur</a></li><li><a href="./#vaerkstedet">Værkstedet</a></li></ul>
-      </div>
+  <div class="wrap footer__grid">
+    <div>
+      <p class="footer__name">Lerværk</p>
+      <p class="muted">Stentøj fra et lille værksted i Odder.</p>
     </div>
-    <p class="footer__bottom">Lerværk er en fiktiv virksomhed. Siden er et designkoncept lavet af <a href="/">Veyro</a>. Priser, lager og levering er eksempler, og billederne er illustrative.</p>
+    <ul class="footer__links">
+      <li><a href="./#sortiment">Alle varer</a></li>
+      <li><a href="./#levering">Levering og retur</a></li>
+      <li><a href="kurv">Kurv</a></li>
+    </ul>
+    <p class="footer__note">Lerværk findes ikke. Siden er et designkoncept fra <a href="/">Veyro</a>. Priser, lager og levering er eksempler, og produktbillederne er 3D-visualiseringer, ikke fotos.</p>
   </div>
 </footer>
 </body>

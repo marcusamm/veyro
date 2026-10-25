@@ -13,18 +13,18 @@
 <body data-root="../">
 <a class="skip" href="#indhold">Gå til indhold</a>
 <div class="demo-bar" role="note"><div class="wrap"><span>Fiktivt designkoncept — lavet af Veyro. Ingen varer sælges, og der betales ikke.</span><a href="/pages/eksempler">Tilbage til Veyro</a></div></div>
+<div class="announce"><div class="wrap">Fri fragt til pakkeshop ved køb over 800 kr.</div></div>
 
 <header class="header">
   <div class="wrap header__inner">
-    <a class="logo" href="../" aria-label="Lerværk, forside"><span class="logo__name">Lerværk</span><span class="logo__sub">Stentøj fra Odder</span></a>
+    <a class="logo" href="../" aria-label="Lerværk, forside">Lerværk</a>
     <nav class="nav" id="menu" aria-label="Hovedmenu">
       <ul>
-        <li><a href="../#sortiment">Sortiment</a></li>
-        <li><a href="../#vaerkstedet">Værkstedet</a></li>
-        <li><a href="../#levering">Levering</a></li>
+        <li><a href="../?kategori=kopper#sortiment">Kopper</a></li><li><a href="../?kategori=skaale#sortiment">Skåle</a></li><li><a href="../?kategori=tallerkener#sortiment">Tallerkener</a></li><li><a href="../?kategori=servering#sortiment">Servering</a></li>
+        <li><a href="../#vaerkstedet">Om værkstedet</a></li>
       </ul>
     </nav>
-    <a class="cart-link" href="../kurv"><span>Kurv</span><span class="cart-link__count" data-cart-count aria-label="0 varer">0</span></a>
+    <a class="cart-link" href="../kurv">Kurv <span class="cart-link__count" data-cart-count aria-label="0 varer">0</span></a>
     <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu">Menu</button>
   </div>
 </header>
@@ -33,15 +33,12 @@
   <div class="wrap">
     <p class="crumbs"><a href="../">Forside</a> / <a href="../?kategori=servering#sortiment">Servering</a> / Kande</p>
     <div class="product" data-product="kande">
-      <div class="product__media">
+      <figure class="product__media">
         <img data-product-img src="../assets/img/kande-1200.webp" srcset="../assets/img/kande-800.webp 800w, ../assets/img/kande-1200.webp 1200w" sizes="(min-width: 56em) 52vw, 100vw" width="1200" height="1500" alt="Kande i blågrå glasur på lys baggrund" data-alt="Kande i blågrå glasur på lys baggrund">
-        <span class="credit">Illustrativt billede</span>
-      </div>
+        <figcaption>3D-visualisering, ikke et foto.</figcaption>
+      </figure>
       <form class="product__info" data-buy novalidate>
-        <div>
-          <p class="item__no">Nr. 07 · Servering</p>
-          <h1>Kande</h1>
-        </div>
+        <h1>Kande</h1>
         <p class="product__price num" data-price>595 kr.</p>
         <p class="product__desc">Kande med bred tud til vand, mælk eller blomster. Drejet i ét stykke med påsat hank.</p>
         <input type="hidden" name="variant" value="std">
@@ -62,29 +59,24 @@
   </div>
   <section class="section section--line" aria-labelledby="rel-title">
     <div class="wrap">
-      <h2 id="rel-title" style="font-size:clamp(1.75rem,1.5rem + 1vw,2.25rem)">Passer til</h2>
-      <ul class="grid grid--3"><li><article class="item"><div class="item__img"><img src="../assets/img/frokosttallerken-800.webp" srcset="../assets/img/frokosttallerken-400.webp 400w, ../assets/img/frokosttallerken-800.webp 800w, ../assets/img/frokosttallerken-1200.webp 1200w" sizes="(min-width: 48em) 31vw, 48vw" width="800" height="1000" alt="Frokosttallerken i sand glasur med rå kant på lys baggrund" loading="lazy"></div><div class="item__body"><p class="item__no">Nr. 05</p><h3 class="item__name"><a href="frokosttallerken">Frokosttallerken</a></h3><p class="item__price"><span class="num">235 kr.</span></p></div></article></li><li><article class="item"><div class="item__img"><img src="../assets/img/middagstallerken-800.webp" srcset="../assets/img/middagstallerken-400.webp 400w, ../assets/img/middagstallerken-800.webp 800w, ../assets/img/middagstallerken-1200.webp 1200w" sizes="(min-width: 48em) 31vw, 48vw" width="800" height="1000" alt="Middagstallerken i sand glasur på lys baggrund" loading="lazy"></div><div class="item__body"><p class="item__no">Nr. 06</p><h3 class="item__name"><a href="middagstallerken">Middagstallerken</a></h3><p class="item__price"><span class="num">295 kr.</span></p></div></article></li><li><article class="item"><div class="item__img"><img src="../assets/img/fad-800.webp" srcset="../assets/img/fad-400.webp 400w, ../assets/img/fad-800.webp 800w, ../assets/img/fad-1200.webp 1200w" sizes="(min-width: 48em) 31vw, 48vw" width="800" height="1000" alt="Ovalt serveringsfad i sand glasur på lys baggrund" loading="lazy"></div><div class="item__body"><p class="item__no">Nr. 08</p><h3 class="item__name"><a href="serveringsfad">Serveringsfad</a></h3><p class="item__price"><span class="num">495 kr.</span></p></div></article></li></ul>
+      <h2 id="rel-title">Passer til</h2>
+      <ul class="grid grid--3"><li><article class="item"><div class="item__img"><img src="../assets/img/frokosttallerken-800.webp" srcset="../assets/img/frokosttallerken-400.webp 400w, ../assets/img/frokosttallerken-800.webp 800w, ../assets/img/frokosttallerken-1200.webp 1200w" sizes="(min-width: 48em) 31vw, 48vw" width="800" height="1000" alt="Frokosttallerken i sand glasur med rå kant på lys baggrund" loading="lazy"></div><div class="item__body"><h3 class="item__name"><a href="frokosttallerken">Frokosttallerken</a></h3><p class="item__price"><span class="num">235 kr.</span></p></div></article></li><li><article class="item"><div class="item__img"><img src="../assets/img/middagstallerken-800.webp" srcset="../assets/img/middagstallerken-400.webp 400w, ../assets/img/middagstallerken-800.webp 800w, ../assets/img/middagstallerken-1200.webp 1200w" sizes="(min-width: 48em) 31vw, 48vw" width="800" height="1000" alt="Middagstallerken i sand glasur på lys baggrund" loading="lazy"></div><div class="item__body"><h3 class="item__name"><a href="middagstallerken">Middagstallerken</a></h3><p class="item__price"><span class="num">295 kr.</span></p></div></article></li><li><article class="item"><div class="item__img"><img src="../assets/img/fad-800.webp" srcset="../assets/img/fad-400.webp 400w, ../assets/img/fad-800.webp 800w, ../assets/img/fad-1200.webp 1200w" sizes="(min-width: 48em) 31vw, 48vw" width="800" height="1000" alt="Ovalt serveringsfad i sand glasur på lys baggrund" loading="lazy"></div><div class="item__body"><h3 class="item__name"><a href="serveringsfad">Serveringsfad</a></h3><p class="item__price"><span class="num">495 kr.</span></p></div></article></li></ul>
     </div>
   </section>
 </main>
 
 <footer class="footer">
-  <div class="wrap">
-    <div class="footer__grid">
-      <div>
-        <p class="logo"><span class="logo__name">Lerværk</span></p>
-        <p class="muted" style="margin-top:.75rem;max-width:24rem">Krus, skåle og tallerkener i stentøj, drejet og glaseret i små serier.</p>
-      </div>
-      <div>
-        <h2>Sortiment</h2>
-        <ul><li><a href="../?kategori=kopper#sortiment">Kopper</a></li><li><a href="../?kategori=skaale#sortiment">Skåle</a></li><li><a href="../?kategori=tallerkener#sortiment">Tallerkener</a></li><li><a href="../?kategori=servering#sortiment">Servering</a></li></ul>
-      </div>
-      <div>
-        <h2>Butikken</h2>
-        <ul><li><a href="../kurv">Kurv</a></li><li><a href="../#levering">Levering og retur</a></li><li><a href="../#vaerkstedet">Værkstedet</a></li></ul>
-      </div>
+  <div class="wrap footer__grid">
+    <div>
+      <p class="footer__name">Lerværk</p>
+      <p class="muted">Stentøj fra et lille værksted i Odder.</p>
     </div>
-    <p class="footer__bottom">Lerværk er en fiktiv virksomhed. Siden er et designkoncept lavet af <a href="/">Veyro</a>. Priser, lager og levering er eksempler, og billederne er illustrative.</p>
+    <ul class="footer__links">
+      <li><a href="../#sortiment">Alle varer</a></li>
+      <li><a href="../#levering">Levering og retur</a></li>
+      <li><a href="../kurv">Kurv</a></li>
+    </ul>
+    <p class="footer__note">Lerværk findes ikke. Siden er et designkoncept fra <a href="/">Veyro</a>. Priser, lager og levering er eksempler, og produktbillederne er 3D-visualiseringer, ikke fotos.</p>
   </div>
 </footer>
 </body>

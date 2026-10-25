@@ -6,8 +6,8 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Lerværk – stentøj til hverdagsbordet (fiktivt designkoncept)</title>
 <meta name="description" content="Fiktivt designkoncept lavet af Veyro: webshop for et lille keramikværksted.">
-<link rel="preload" href="assets/fonts/instrument-serif-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/instrument-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/instrument-sans-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/products.js" defer></script>
 <script src="assets/shop.js" defer></script>
@@ -15,44 +15,28 @@
 <body data-root="">
 <a class="skip" href="#indhold">Gå til indhold</a>
 <div class="demo-bar" role="note"><div class="wrap"><span>Fiktivt designkoncept — lavet af Veyro. Ingen varer sælges, og der betales ikke.</span><a href="/pages/eksempler">Tilbage til Veyro</a></div></div>
+<div class="announce"><div class="wrap">Fri fragt til pakkeshop ved køb over 800 kr.</div></div>
 
 <header class="header">
   <div class="wrap header__inner">
-    <a class="logo" href="./" aria-label="Lerværk, forside"><span class="logo__name">Lerværk</span><span class="logo__sub">Stentøj fra Odder</span></a>
+    <a class="logo" href="./" aria-label="Lerværk, forside">Lerværk</a>
     <nav class="nav" id="menu" aria-label="Hovedmenu">
       <ul>
-        <li><a href="./#sortiment" aria-current="page">Sortiment</a></li>
-        <li><a href="./#vaerkstedet">Værkstedet</a></li>
-        <li><a href="./#levering">Levering</a></li>
+        <li><a href="./?kategori=kopper#sortiment">Kopper</a></li><li><a href="./?kategori=skaale#sortiment">Skåle</a></li><li><a href="./?kategori=tallerkener#sortiment">Tallerkener</a></li><li><a href="./?kategori=servering#sortiment">Servering</a></li>
+        <li><a href="./#vaerkstedet">Om værkstedet</a></li>
       </ul>
     </nav>
-    <a class="cart-link" href="kurv"><span>Kurv</span><span class="cart-link__count" data-cart-count aria-label="0 varer">0</span></a>
+    <a class="cart-link" href="kurv">Kurv <span class="cart-link__count" data-cart-count aria-label="0 varer">0</span></a>
     <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu">Menu</button>
   </div>
 </header>
 
 <main id="indhold">
-  <section class="hero" aria-labelledby="hero-title">
-    <div class="wrap hero__grid">
-      <div class="hero__text">
-        <p class="label">Keramikværksted i Odder</p>
-        <h1 id="hero-title">Stentøj til <em>hverdagsbordet</em></h1>
-        <p class="lead">Krus, skåle og tallerkener, drejet og glaseret i små serier på værkstedet. Alt tåler opvaskemaskine.</p>
-        <div class="actions"><a class="btn" href="#sortiment">Se sortimentet</a><a class="link" href="#vaerkstedet">Om værkstedet</a></div>
-        <p class="facts-line"><span>8 stykker i sortimentet</span><span>3 glasurer</span><span>Pakkes i genbrugspap</span></p>
-      </div>
-      <div class="hero__media">
-        <img src="assets/img/hero-bord-1600.webp" srcset="assets/img/hero-bord-800.webp 800w, assets/img/hero-bord-1600.webp 1600w" sizes="(min-width: 56em) 58vw, 100vw" width="1600" height="1067" alt="Dækket bord med krus, skåle og tallerkener i stentøj i sand, skovgrøn og blågrå glasur" fetchpriority="high">
-        <span class="credit">Illustrativt billede</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="section section--line" id="sortiment" aria-labelledby="sortiment-title">
+  <section class="shop" id="sortiment" aria-labelledby="shop-title">
     <div class="wrap">
-      <div class="section__head section__head--row">
-        <h2 id="sortiment-title">Sortiment</h2>
-        <p class="muted" style="max-width:30rem">Hvert stykke er drejet i hånden, så mål og glasur varierer en smule fra stykke til stykke.</p>
+      <div class="shop__head">
+        <h1 id="shop-title">Stentøj til hverdagsbrug</h1>
+        <p>Krus, skåle og tallerkener, drejet og glaseret i små serier på værkstedet i Odder. Alt tåler opvaskemaskine.</p>
       </div>
       <div class="filter" role="group" aria-label="Vis kategori" data-filter hidden>
         <button type="button" aria-pressed="true" data-cat="alle">Alle</button>
@@ -64,9 +48,8 @@
           <article class="item">
             <div class="item__img"><img src="assets/img/krus-sand-800.webp" srcset="assets/img/krus-sand-400.webp 400w, assets/img/krus-sand-800.webp 800w, assets/img/krus-sand-1200.webp 1200w" sizes="(min-width: 72em) 22vw, (min-width: 48em) 31vw, 48vw" width="800" height="1000" alt="Krus i stentøj med sand glasur på lys baggrund" loading="lazy"></div>
             <div class="item__body">
-              <p class="item__no">Nr. 01 · Kopper</p>
               <h3 class="item__name"><a href="produkter/krus">Krus</a></h3>
-              <p class="item__short">3 dl · tre glasurer</p>
+              <p class="item__short">3 dl, tre glasurer</p>
               <p class="item__price"><span class="num">245 kr.</span><span class="swatches" role="img" aria-label="3 glasurer"><i style="background:#d9cbb3"></i><i style="background:#3f5a47"></i><i style="background:#7a8a97"></i></span></p>
             </div>
           </article>
@@ -75,9 +58,8 @@
           <article class="item">
             <div class="item__img"><img src="assets/img/espressokop-800.webp" srcset="assets/img/espressokop-400.webp 400w, assets/img/espressokop-800.webp 800w, assets/img/espressokop-1200.webp 1200w" sizes="(min-width: 72em) 22vw, (min-width: 48em) 31vw, 48vw" width="800" height="1000" alt="Espressokop i blågrå glasur på lys baggrund" loading="lazy"></div>
             <div class="item__body">
-              <p class="item__no">Nr. 02 · Kopper</p>
               <h3 class="item__name"><a href="produkter/espressokop">Espressokop</a></h3>
-              <p class="item__short">1 dl · blågrå</p>
+              <p class="item__short">1 dl, blågrå</p>
               <p class="item__price"><span class="num">fra 165 kr.</span></p>
             </div>
           </article>
@@ -86,9 +68,8 @@
           <article class="item">
             <div class="item__img"><img src="assets/img/skal-800.webp" srcset="assets/img/skal-400.webp 400w, assets/img/skal-800.webp 800w, assets/img/skal-1200.webp 1200w" sizes="(min-width: 72em) 22vw, (min-width: 48em) 31vw, 48vw" width="800" height="1000" alt="Morgenmadsskål i sand glasur på lys baggrund" loading="lazy"></div>
             <div class="item__body">
-              <p class="item__no">Nr. 03 · Skåle</p>
               <h3 class="item__name"><a href="produkter/morgenmadsskaal">Morgenmadsskål</a></h3>
-              <p class="item__short">To størrelser · sand</p>
+              <p class="item__short">To størrelser, sand</p>
               <p class="item__price"><span class="num">fra 225 kr.</span></p>
             </div>
           </article>
@@ -97,9 +78,8 @@
           <article class="item">
             <div class="item__img"><img src="assets/img/serveringsskal-800.webp" srcset="assets/img/serveringsskal-400.webp 400w, assets/img/serveringsskal-800.webp 800w, assets/img/serveringsskal-1200.webp 1200w" sizes="(min-width: 72em) 22vw, (min-width: 48em) 31vw, 48vw" width="800" height="1000" alt="Bred serveringsskål i skovgrøn glasur på lys baggrund" loading="lazy"></div>
             <div class="item__body">
-              <p class="item__no">Nr. 04 · Skåle</p>
               <h3 class="item__name"><a href="produkter/serveringsskaal">Serveringsskål</a></h3>
-              <p class="item__short">Ø 26 cm · skovgrøn</p>
+              <p class="item__short">Ø 26 cm, skovgrøn</p>
               <p class="item__price"><span class="num">545 kr.</span></p>
             </div>
           </article>
@@ -108,9 +88,8 @@
           <article class="item">
             <div class="item__img"><img src="assets/img/frokosttallerken-800.webp" srcset="assets/img/frokosttallerken-400.webp 400w, assets/img/frokosttallerken-800.webp 800w, assets/img/frokosttallerken-1200.webp 1200w" sizes="(min-width: 72em) 22vw, (min-width: 48em) 31vw, 48vw" width="800" height="1000" alt="Frokosttallerken i sand glasur med rå kant på lys baggrund" loading="lazy"></div>
             <div class="item__body">
-              <p class="item__no">Nr. 05 · Tallerkener</p>
               <h3 class="item__name"><a href="produkter/frokosttallerken">Frokosttallerken</a></h3>
-              <p class="item__short">Ø 21 cm · sand</p>
+              <p class="item__short">Ø 21 cm, sand</p>
               <p class="item__price"><span class="num">235 kr.</span></p>
             </div>
           </article>
@@ -119,9 +98,8 @@
           <article class="item">
             <div class="item__img"><img src="assets/img/middagstallerken-800.webp" srcset="assets/img/middagstallerken-400.webp 400w, assets/img/middagstallerken-800.webp 800w, assets/img/middagstallerken-1200.webp 1200w" sizes="(min-width: 72em) 22vw, (min-width: 48em) 31vw, 48vw" width="800" height="1000" alt="Middagstallerken i sand glasur på lys baggrund" loading="lazy"></div>
             <div class="item__body">
-              <p class="item__no">Nr. 06 · Tallerkener</p>
               <h3 class="item__name"><a href="produkter/middagstallerken">Middagstallerken</a></h3>
-              <p class="item__short">Ø 27 cm · sand</p>
+              <p class="item__short">Ø 27 cm, sand</p>
               <p class="item__price"><span class="num">295 kr.</span></p>
             </div>
           </article>
@@ -130,9 +108,8 @@
           <article class="item">
             <div class="item__img"><img src="assets/img/kande-800.webp" srcset="assets/img/kande-400.webp 400w, assets/img/kande-800.webp 800w, assets/img/kande-1200.webp 1200w" sizes="(min-width: 72em) 22vw, (min-width: 48em) 31vw, 48vw" width="800" height="1000" alt="Kande i blågrå glasur på lys baggrund" loading="lazy"><span class="tag">Udsolgt</span></div>
             <div class="item__body">
-              <p class="item__no">Nr. 07 · Servering</p>
               <h3 class="item__name"><a href="produkter/kande">Kande</a></h3>
-              <p class="item__short">1 liter · blågrå</p>
+              <p class="item__short">1 liter, blågrå</p>
               <p class="item__price"><span class="num">595 kr.</span></p>
             </div>
           </article>
@@ -141,23 +118,25 @@
           <article class="item">
             <div class="item__img"><img src="assets/img/fad-800.webp" srcset="assets/img/fad-400.webp 400w, assets/img/fad-800.webp 800w, assets/img/fad-1200.webp 1200w" sizes="(min-width: 72em) 22vw, (min-width: 48em) 31vw, 48vw" width="800" height="1000" alt="Ovalt serveringsfad i sand glasur på lys baggrund" loading="lazy"></div>
             <div class="item__body">
-              <p class="item__no">Nr. 08 · Servering</p>
               <h3 class="item__name"><a href="produkter/serveringsfad">Serveringsfad</a></h3>
-              <p class="item__short">34 × 22 cm · sand</p>
+              <p class="item__short">34 × 22 cm, sand</p>
               <p class="item__price"><span class="num">495 kr.</span></p>
             </div>
           </article>
         </li>
       </ul>
+      <p class="img-note">Produktbillederne er 3D-visualiseringer, som Veyro har lavet til demoen. De er ikke fotos af rigtige varer.</p>
     </div>
   </section>
 
   <section class="section section--white" id="vaerkstedet" aria-labelledby="studio-title">
     <div class="wrap studio">
-      <div class="studio__img"><img src="assets/img/vaerksted-800.webp" srcset="assets/img/vaerksted-400.webp 400w, assets/img/vaerksted-800.webp 800w, assets/img/vaerksted-1200.webp 1200w" sizes="(min-width: 56em) 45vw, 100vw" width="800" height="1000" alt="Hylder med ubrændte skåle og krus, der tørrer på værkstedet" loading="lazy"><span class="credit">Illustrativt billede</span></div>
+      <figure class="studio__img">
+        <img src="assets/img/hero-bord-1600.webp" srcset="assets/img/hero-bord-800.webp 800w, assets/img/hero-bord-1600.webp 1600w" sizes="(min-width: 56em) 55vw, 100vw" width="1600" height="1067" alt="Krus, espressokop, skål og tallerkener i sand, skovgrøn og blågrå glasur stillet sammen" loading="lazy">
+        <figcaption>3D-visualisering af sortimentet, ikke et foto.</figcaption>
+      </figure>
       <div class="studio__text">
-        <p class="label">Værkstedet</p>
-        <h2 id="studio-title">Drejet, tørret og <em>brændt to gange</em></h2>
+        <h2 id="studio-title">Om værkstedet</h2>
         <p>Alt bliver drejet på værkstedet i Odder. Når tingene er tørre, bliver de skrøjtbrændt, glaseret i hånden og brændt igen ved 1.240 grader. Så bliver stentøjet tæt og tåler daglig brug.</p>
         <p>Vi brænder ovnen cirka hver tredje uge. Er noget udsolgt, kommer det typisk igen ved næste brænding.</p>
         <dl class="specs">
@@ -170,37 +149,32 @@
   </section>
 
   <section class="section" id="levering" aria-labelledby="levering-title">
-    <div class="wrap">
-      <div class="section__head">
-        <h2 id="levering-title">Levering og retur <span class="example">Eksempeltekst</span></h2>
-        <p class="muted" style="max-width:36rem">I en rigtig webshop står butikkens egne betingelser her. Teksterne nedenfor viser, hvad den slags information typisk dækker.</p>
+    <div class="wrap terms">
+      <div>
+        <h2 id="levering-title">Levering og retur</h2>
+        <p class="muted">Eksempeltekst. I en rigtig webshop står butikkens egne betingelser her.</p>
       </div>
-      <div class="cols3">
-        <div><h3>Levering</h3><p>Til pakkeshop for 49 kr. Fri fragt ved køb over 800 kr. Afsendes inden for 2–3 hverdage.</p></div>
-        <div><h3>Afhentning</h3><p>Hent gratis på værkstedet efter aftale. Du får besked, når pakken er klar.</p></div>
-        <div><h3>Retur</h3><p>Her ville butikkens returregler stå, fx hvordan man returnerer, og hvem der betaler fragten.</p></div>
-      </div>
+      <dl class="specs">
+        <div><dt>Levering</dt><dd>Til pakkeshop for 49 kr. Fri fragt ved køb over 800 kr. Afsendes inden for 2–3 hverdage.</dd></div>
+        <div><dt>Afhentning</dt><dd>Hent gratis på værkstedet efter aftale. Du får besked, når pakken er klar.</dd></div>
+        <div><dt>Retur</dt><dd>Her ville butikkens returregler stå, fx hvordan man returnerer, og hvem der betaler fragten.</dd></div>
+      </dl>
     </div>
   </section>
 </main>
 
 <footer class="footer">
-  <div class="wrap">
-    <div class="footer__grid">
-      <div>
-        <p class="logo"><span class="logo__name">Lerværk</span></p>
-        <p class="muted" style="margin-top:.75rem;max-width:24rem">Krus, skåle og tallerkener i stentøj, drejet og glaseret i små serier.</p>
-      </div>
-      <div>
-        <h2>Sortiment</h2>
-        <ul><li><a href="./?kategori=kopper#sortiment">Kopper</a></li><li><a href="./?kategori=skaale#sortiment">Skåle</a></li><li><a href="./?kategori=tallerkener#sortiment">Tallerkener</a></li><li><a href="./?kategori=servering#sortiment">Servering</a></li></ul>
-      </div>
-      <div>
-        <h2>Butikken</h2>
-        <ul><li><a href="kurv">Kurv</a></li><li><a href="./#levering">Levering og retur</a></li><li><a href="./#vaerkstedet">Værkstedet</a></li></ul>
-      </div>
+  <div class="wrap footer__grid">
+    <div>
+      <p class="footer__name">Lerværk</p>
+      <p class="muted">Stentøj fra et lille værksted i Odder.</p>
     </div>
-    <p class="footer__bottom">Lerværk er en fiktiv virksomhed. Siden er et designkoncept lavet af <a href="/">Veyro</a>. Priser, lager og levering er eksempler, og billederne er illustrative.</p>
+    <ul class="footer__links">
+      <li><a href="./#sortiment">Alle varer</a></li>
+      <li><a href="./#levering">Levering og retur</a></li>
+      <li><a href="kurv">Kurv</a></li>
+    </ul>
+    <p class="footer__note">Lerværk findes ikke. Siden er et designkoncept fra <a href="/">Veyro</a>. Priser, lager og levering er eksempler, og produktbillederne er 3D-visualiseringer, ikke fotos.</p>
   </div>
 </footer>
 </body>

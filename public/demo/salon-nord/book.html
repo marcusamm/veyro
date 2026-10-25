@@ -6,8 +6,8 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Book tid – Salon Nord (fiktivt designkoncept)</title>
 <meta name="description" content="Fiktivt designkoncept lavet af Veyro: bookingforløb for en frisørsalon. Intet bliver booket eller sendt.">
-<link rel="preload" href="assets/fonts/cormorant-garamond-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/jost-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/jost-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/site.js" defer></script>
 </head>
@@ -17,25 +17,25 @@
 
 <header class="header">
   <div class="wrap header__inner">
-    <a class="logo" href="./" aria-label="Salon Nord, forside"><span class="logo__name">Salon Nord</span><span class="logo__sub">Frisør · Aarhus</span></a>
-    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu"><span class="menu-btn__bars" aria-hidden="true"></span><span>Menu</span></button>
+    <a class="logo" href="./" aria-label="Salon Nord, forside"><span class="logo__name">Salon Nord</span><span class="logo__sub">Frisør på Trøjborg, Aarhus</span></a>
     <nav class="nav" id="menu" aria-label="Hovedmenu">
       <ul>
         <li><a href="behandlinger">Behandlinger og priser</a></li>
-        <li><a href="./#salonen">Salonen</a></li>
+        <li><a href="./#salonen">Om salonen</a></li>
         <li><a href="./#find-os">Find os</a></li>
-        <li class="nav__cta"><a href="book" aria-current="page">Book tid</a></li>
       </ul>
     </nav>
+    <a class="btn btn--small header__book" href="book" aria-current="page">Book tid</a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu"><span class="menu-btn__bars" aria-hidden="true"></span><span>Menu</span></button>
   </div>
 </header>
 
 <main id="indhold">
-  <div class="page-head">
+  <div class="page-head page-head--slim">
     <div class="wrap">
       <p class="crumbs"><a href="./">Forside</a> / Book tid</p>
       <h1>Book tid</h1>
-      <p class="lead">Vælg behandling, frisør og tid. Det tager et par minutter, og du kan gå tilbage og rette undervejs.</p>
+      <p class="lead">Vælg behandling, frisør og tid. Du kan gå tilbage og rette undervejs.</p>
     </div>
   </div>
 
@@ -52,7 +52,6 @@
         </ol>
 
         <section class="step-panel" data-step="1" aria-labelledby="s1-title">
-          <p class="eyebrow">Trin 1 af 5</p>
           <h2 id="s1-title" tabindex="-1">Vælg behandling</h2>
           <div class="alert" role="alert" data-alert hidden></div>
           <fieldset>
@@ -85,25 +84,23 @@
         </section>
 
         <section class="step-panel" data-step="2" aria-labelledby="s2-title" hidden>
-          <p class="eyebrow">Trin 2 af 5</p>
           <h2 id="s2-title" tabindex="-1">Vælg frisør</h2>
           <p class="chosen" data-chosen></p>
           <p>Har du ingen bestemt frisør, ser du flest ledige tider med „Første ledige“.</p>
           <div class="alert" role="alert" data-alert hidden></div>
           <fieldset>
             <legend class="visually-hidden">Frisør</legend>
-              <ul class="opts">
-                <li><label class="opt"><input type="radio" name="frisoer" value="foerste" data-name="Første ledige" checked><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Første ledige</span><span class="opt__desc">Vi finder den første frisør, der har tid.</span></label></li>
-                <li><label class="opt"><input type="radio" name="frisoer" value="ida" data-name="Ida"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Ida</span><span class="opt__desc">Klip og farve</span></label></li>
-                <li><label class="opt"><input type="radio" name="frisoer" value="sofie" data-name="Sofie"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Sofie</span><span class="opt__desc">Farve, striber og opsætning</span></label></li>
-                <li><label class="opt"><input type="radio" name="frisoer" value="jonas" data-name="Jonas"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Jonas</span><span class="opt__desc">Herreklip og korte frisurer</span></label></li>
-              </ul>
+            <ul class="opts">
+              <li><label class="opt"><input type="radio" name="frisoer" value="foerste" data-name="Første ledige" checked><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Første ledige</span><span class="opt__desc">Vi finder den første frisør, der har tid.</span></label></li>
+              <li><label class="opt"><input type="radio" name="frisoer" value="ida" data-name="Ida"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Ida</span><span class="opt__desc">Klip og farve</span></label></li>
+              <li><label class="opt"><input type="radio" name="frisoer" value="sofie" data-name="Sofie"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Sofie</span><span class="opt__desc">Farve, striber og opsætning</span></label></li>
+              <li><label class="opt"><input type="radio" name="frisoer" value="jonas" data-name="Jonas"><span class="opt__dot" aria-hidden="true"></span><span class="opt__name">Jonas</span><span class="opt__desc">Herreklip og korte frisurer</span></label></li>
+            </ul>
           </fieldset>
           <div class="step-nav"><button class="btn" type="button" data-next>Fortsæt</button><button class="back" type="button" data-back>Tilbage</button></div>
         </section>
 
         <section class="step-panel" data-step="3" aria-labelledby="s3-title" hidden>
-          <p class="eyebrow">Trin 3 af 5</p>
           <h2 id="s3-title" tabindex="-1">Vælg dato og tid</h2>
           <p class="chosen" data-chosen></p>
           <div class="alert" role="alert" data-alert hidden></div>
@@ -121,7 +118,6 @@
         </section>
 
         <section class="step-panel" data-step="4" aria-labelledby="s4-title" hidden>
-          <p class="eyebrow">Trin 4 af 5</p>
           <h2 id="s4-title" tabindex="-1">Dine oplysninger</h2>
           <p class="chosen" data-chosen></p>
           <div class="alert" role="alert" data-alert hidden></div>
@@ -155,11 +151,11 @@
         </section>
 
         <section class="step-panel confirm" data-step="5" aria-labelledby="s5-title" hidden>
-          <p class="confirm__badge">Demo · ingen tid er booket</p>
+          <p class="kind">Demo: ingen tid er booket</p>
           <h2 id="s5-title" tabindex="-1">Tak, <span data-confirm-name></span>. Sådan ser en bekræftelse ud</h2>
           <dl data-confirm-list></dl>
           <div>
-            <h3 style="margin-bottom:.75rem">I en rigtig booking</h3>
+            <h3>I en rigtig booking</h3>
             <ul class="confirm__next">
               <li>Du får en bekræftelse på mail med et link, hvor du selv kan flytte eller aflyse tiden.</li>
               <li>Salonen får også en mail, og tiden står i frisørens bookingkalender.</li>
@@ -167,7 +163,7 @@
             </ul>
           </div>
           <p class="alert alert--info">Her i demoen er ingen mail sendt, og ingen tid er reserveret.</p>
-          <div class="step-nav"><button class="btn btn--ghost" type="button" data-restart>Lav en ny demobooking</button><a class="link" href="./">Til forsiden</a></div>
+          <div class="step-nav"><button class="btn btn--ghost" type="button" data-restart>Lav en ny demobooking</button><a href="./">Til forsiden</a></div>
         </section>
       </form>
     </div>
@@ -186,22 +182,17 @@
 </main>
 
 <footer class="footer">
-  <div class="wrap">
-    <div class="footer__grid">
-      <div>
-        <p class="logo"><span class="logo__name">Salon Nord</span><span class="logo__sub">Frisør · Aarhus</span></p>
-        <p style="margin-top:1rem;max-width:22rem">Klip, farve og styling for kvinder, mænd og børn.</p>
-      </div>
-      <div>
-        <h2>Sider</h2>
-        <ul><li><a href="behandlinger">Behandlinger og priser</a></li><li><a href="book">Book tid</a></li><li><a href="./#find-os">Find os</a></li></ul>
-      </div>
-      <div>
-        <h2>Åbent</h2>
-        <ul><li>Tirsdag–fredag 9–18</li><li>Lørdag 9–14</li><li>Søndag og mandag lukket</li></ul>
-      </div>
+  <div class="wrap footer__grid">
+    <div>
+      <p class="footer__name">Salon Nord</p>
+      <p>Eksempelgade 12, 8000 Aarhus C<br>Telefon 00 00 00 00</p>
     </div>
-    <p class="footer__bottom">Salon Nord er en fiktiv virksomhed. Siden er et designkoncept lavet af <a href="/">Veyro</a>, og billederne er illustrative.</p>
+    <ul class="footer__links">
+      <li><a href="behandlinger">Behandlinger og priser</a></li>
+      <li><a href="book">Book tid</a></li>
+      <li><a href="./#find-os">Find os</a></li>
+    </ul>
+    <p class="footer__note">Salon Nord findes ikke. Siden er et designkoncept fra <a href="/">Veyro</a>. Adresse, telefonnummer, priser og frisører er opdigtede.</p>
   </div>
 </footer>
 </body>

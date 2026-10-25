@@ -217,7 +217,7 @@
           var info = el('div');
           var name = el('p', 'line__name'); var a = el('a', '', p.name); a.href = root + 'produkter/' + p.id; name.appendChild(a);
           info.appendChild(name);
-          info.appendChild(el('p', 'line__meta', (p.variants.length > 1 ? p.vlabel + ': ' + v.name + ' · ' : '') + kr(v.price) + ' pr. stk.'));
+          info.appendChild(el('p', 'line__meta', (p.variants.length > 1 ? p.vlabel + ': ' + v.name + ', ' : '') + kr(v.price) + ' pr. stk.'));
           var tot = el('p', 'line__total', kr(v.price * l.q));
           var ctrl = el('div', 'line__ctrl');
           var q = el('div', 'qty');
