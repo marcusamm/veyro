@@ -15,51 +15,7 @@
         "secondary_label": "Se priser",
         "secondary_link": "/pages/priser",
         "facts": "Drift | Forventet 599 kr./md. ekskl. moms\nAlt inkl. | Forventet 1.099 kr./md. ekskl. moms\nMedarbejdere | Planlagt 3, ekstra forventet 99 kr./md.\nStatus | På vej. Kan ikke bestilles endnu"
-      },
-      "blocks": {
-        "anchor_1": {
-          "type": "anchor",
-          "settings": {
-            "label": "Pakker",
-            "target": "pakker"
-          }
-        },
-        "anchor_2": {
-          "type": "anchor",
-          "settings": {
-            "label": "Lagerdemo",
-            "target": "lager"
-          }
-        },
-        "anchor_3": {
-          "type": "anchor",
-          "settings": {
-            "label": "Funktioner",
-            "target": "funktioner"
-          }
-        },
-        "anchor_4": {
-          "type": "anchor",
-          "settings": {
-            "label": "Alt inkl.",
-            "target": "alt-inkl"
-          }
-        },
-        "anchor_5": {
-          "type": "anchor",
-          "settings": {
-            "label": "Bliv testkunde",
-            "target": "testkunde"
-          }
-        }
-      },
-      "block_order": [
-        "anchor_1",
-        "anchor_2",
-        "anchor_3",
-        "anchor_4",
-        "anchor_5"
-      ]
+      }
     },
     "pakker": {
       "type": "packages",

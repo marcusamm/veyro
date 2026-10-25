@@ -74,15 +74,6 @@
       {%- endif -%}
     </div>
 
-    {%- if section.blocks.size > 0 -%}
-      <nav class="anchor-nav" aria-label="{{ section.settings.nav_label | default: 'Indhold på siden' | escape }}">
-        <ul role="list">
-          {%- for block in section.blocks -%}
-            <li {{ block.shopify_attributes }}><a href="#{{ block.settings.target | handle }}">{{ block.settings.label | escape }}</a></li>
-          {%- endfor -%}
-        </ul>
-      </nav>
-    {%- endif -%}
   </div>
 </section>
 
@@ -109,14 +100,7 @@
     { "type": "image_picker", "id": "photo", "label": "Foto i designkonceptet" },
     { "type": "text", "id": "photo_alt", "label": "Alt-tekst til fotoet" },
     { "type": "text", "id": "concept_caption", "label": "Tekst under designkonceptet", "default": "Fiktiv virksomhed." },
-    { "type": "textarea", "id": "facts", "label": "Faktaliste i højre side (Titel | Tekst pr. linje)", "info": "Vises, når der ikke er valgt et designkoncept." },
-    { "type": "text", "id": "nav_label", "label": "Navn på genvejslinks (skærmlæsere)", "default": "Indhold på siden" }
-  ],
-  "blocks": [
-    { "type": "anchor", "name": "Genvejslink", "settings": [
-      { "type": "text", "id": "label", "label": "Tekst", "default": "Afsnit" },
-      { "type": "text", "id": "target", "label": "Anker-id", "info": "Fx priser" }
-    ] }
+    { "type": "textarea", "id": "facts", "label": "Faktaliste i højre side (Titel | Tekst pr. linje)", "info": "Vises, når der ikke er valgt et designkoncept." }
   ],
   "presets": [{ "name": "Sidetop" }]
 }

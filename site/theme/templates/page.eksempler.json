@@ -10,35 +10,7 @@
         "primary_link": "/pages/priser",
         "secondary_label": "Aftal en demo",
         "secondary_link": "/pages/kontakt?ydelse=aftal-en-demo#formular"
-      },
-      "blocks": {
-        "anchor_1": {
-          "type": "anchor",
-          "settings": {
-            "label": "Hjemmeside",
-            "target": "hjemmeside"
-          }
-        },
-        "anchor_2": {
-          "type": "anchor",
-          "settings": {
-            "label": "Booking",
-            "target": "booking"
-          }
-        },
-        "anchor_3": {
-          "type": "anchor",
-          "settings": {
-            "label": "Webshop",
-            "target": "webshop"
-          }
-        }
-      },
-      "block_order": [
-        "anchor_1",
-        "anchor_2",
-        "anchor_3"
-      ]
+      }
     },
     "koncepter": {
       "type": "concepts",

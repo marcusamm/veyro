@@ -10,75 +10,7 @@
         "primary_link": "/pages/priser",
         "secondary_label": "Aftal en demo",
         "secondary_link": "/pages/kontakt?ydelse=aftal-en-demo#formular"
-      },
-      "blocks": {
-        "anchor_1": {
-          "type": "anchor",
-          "settings": {
-            "label": "Pakker",
-            "target": "priser"
-          }
-        },
-        "anchor_2": {
-          "type": "anchor",
-          "settings": {
-            "label": "Website-optimering",
-            "target": "website-optimering"
-          }
-        },
-        "anchor_3": {
-          "type": "anchor",
-          "settings": {
-            "label": "Konverteringsoptimering",
-            "target": "konverteringsoptimering"
-          }
-        },
-        "anchor_4": {
-          "type": "anchor",
-          "settings": {
-            "label": "Specialudvikling",
-            "target": "custom-losninger"
-          }
-        },
-        "anchor_5": {
-          "type": "anchor",
-          "settings": {
-            "label": "Fejlfinding",
-            "target": "fejlfinding"
-          }
-        },
-        "anchor_6": {
-          "type": "anchor",
-          "settings": {
-            "label": "Integrationer",
-            "target": "integrationer"
-          }
-        },
-        "anchor_7": {
-          "type": "anchor",
-          "settings": {
-            "label": "Hosting og vedligeholdelse",
-            "target": "vedligeholdelse"
-          }
-        },
-        "anchor_8": {
-          "type": "anchor",
-          "settings": {
-            "label": "På vej",
-            "target": "paa-vej"
-          }
-        }
-      },
-      "block_order": [
-        "anchor_1",
-        "anchor_2",
-        "anchor_3",
-        "anchor_4",
-        "anchor_5",
-        "anchor_6",
-        "anchor_7",
-        "anchor_8"
-      ]
+      }
     },
     "pakker": {
       "type": "packages",

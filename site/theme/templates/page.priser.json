@@ -10,69 +10,8 @@
         "primary_link": "/pages/kontakt?ydelse=aftal-en-demo#formular",
         "secondary_label": "Se eksempler",
         "secondary_link": "/pages/eksempler",
-        "facts": "Hjemmeside | 199 kr./md. ekskl. moms\nBooking | 299 kr./md. ekskl. moms\nWebshop | 499 kr./md. ekskl. moms\nDrift og Alt inkl. | På vej",
-        "nav_label": "Indhold på siden"
-      },
-      "blocks": {
-        "anchor_1": {
-          "type": "anchor",
-          "settings": {
-            "label": "Pakker",
-            "target": "pakker"
-          }
-        },
-        "anchor_2": {
-          "type": "anchor",
-          "settings": {
-            "label": "Det gælder for alle",
-            "target": "vilkaar"
-          }
-        },
-        "anchor_3": {
-          "type": "anchor",
-          "settings": {
-            "label": "Brugere",
-            "target": "brugere"
-          }
-        },
-        "anchor_4": {
-          "type": "anchor",
-          "settings": {
-            "label": "Justeringer og tilkøb",
-            "target": "tilkoeb"
-          }
-        },
-        "anchor_5": {
-          "type": "anchor",
-          "settings": {
-            "label": "Domæne og andre omkostninger",
-            "target": "domaene"
-          }
-        },
-        "anchor_6": {
-          "type": "anchor",
-          "settings": {
-            "label": "Bestilling og betaling",
-            "target": "betaling"
-          }
-        },
-        "anchor_7": {
-          "type": "anchor",
-          "settings": {
-            "label": "Spørgsmål",
-            "target": "faq"
-          }
-        }
-      },
-      "block_order": [
-        "anchor_1",
-        "anchor_2",
-        "anchor_3",
-        "anchor_4",
-        "anchor_5",
-        "anchor_6",
-        "anchor_7"
-      ]
+        "facts": "Hjemmeside | 199 kr./md. ekskl. moms\nBooking | 299 kr./md. ekskl. moms\nWebshop | 499 kr./md. ekskl. moms\nDrift og Alt inkl. | På vej"
+      }
     },
     "pakker": {
       "type": "packages",
