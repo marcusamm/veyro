@@ -1,4 +1,4 @@
-// Gennemklik i Chromium: booking fra start til slut, dobbeltbooking, flyt, aflys, admin og galleri.
+// Gennemklik i Chromium: booking fra start til slut, dobbeltbooking, flyt, aflys, admin og behandlingskort.
 // Brug: node stylebybrothers/scripts/e2e.mjs [url] [skærmbilledmappe]
 // Lokalt (npx wrangler dev med DEV_LOGIN=1) testes admin også. Live springes admin-login over, fordi linket sendes på e-mail.
 // Kundens e-mail er Resends testadresse, så der ikke sendes rigtige mails til kunder. Testbookinger aflyses til sidst.
@@ -22,7 +22,7 @@ async function run(name, viewport, isMobile) {
   const shot = async (file, full = false) => { if (shots) { await page.waitForTimeout(700); await page.screenshot({ path: `${shots}/${file}-${name}.png`, fullPage: full }); } };
 
   await page.goto(url);
-  await page.waitForSelector('.hero h1');
+  await page.waitForSelector('#main h1');
   await page.waitForTimeout(400);
   await shot('forside');
   await shot('forside-hel', true);
@@ -30,12 +30,10 @@ async function run(name, viewport, isMobile) {
   if (overflow > 0) errors.push(`${name}: vandret scroll på forsiden (${overflow}px)`);
   ok(`${name}: forside`);
 
-  // galleri
-  await page.locator('#klipninger').scrollIntoViewIfNeeded();
-  const pics = await page.locator('.g-item.has-img').count();
-  if (pics !== 4) errors.push(`${name}: forventede 4 billeder i galleriet, fik ${pics}`);
-  await shot('galleri');
-  ok(`${name}: galleri`);
+  // behandlingskort med billeder
+  const cards = await page.locator('.card img').count();
+  if (cards !== 4) errors.push(`${name}: forventede 4 behandlingskort med billede, fik ${cards}`);
+  ok(`${name}: behandlingskort`);
 
   // booking fra behandlingskort (behandling forudvalgt)
   await page.locator('#priser').scrollIntoViewIfNeeded();
@@ -141,7 +139,7 @@ async function run(name, viewport, isMobile) {
     await shot('admin-mails');
     await page.goto(`${url}#/`);
     await page.reload();
-    await page.waitForSelector('.price-list');
+    await page.waitForSelector('.cards');
     if (!(await page.locator('#priser').textContent()).includes('275')) errors.push(`${name}: ny pris vises ikke på siden efter genindlæsning`);
     // sæt prisen tilbage
     await page.goto(`${url}#/admin/behandlinger`);
