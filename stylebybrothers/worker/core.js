@@ -2,7 +2,7 @@
 // samme instans én ad gangen: to kunder kan ikke få samme tid, og bookingmotoren er den samme som i browseren.
 // Ingen afhængigheder af Cloudflare her, så logikken kan testes med vitest (se tests/server.test.mjs).
 import * as E from '../site/assets/booking-engine.js';
-import { SALON, defaultState, PHOTOS, GALLERY } from '../site/assets/data.js';
+import { SALON, defaultState, PHOTOS } from '../site/assets/data.js';
 
 const DAY_MS = 86400000;
 const SESSION_DAYS = 30;
@@ -143,7 +143,7 @@ export class SalonCore {
     const today = E.utcToZoned(this.now()).date;
     const { notifyEmails, ...settings } = state.settings;
     return {
-      settings, services: state.services, barbers: state.barbers, photos: PHOTOS, gallery: GALLERY,
+      settings, services: state.services, barbers: state.barbers, photos: PHOTOS,
       // Kun det, kalenderen skal bruge for at vise optagede tider. Ingen kundedata.
       bookings: state.bookings.filter((b) => b.status === 'confirmed' && b.date >= today)
         .map((b) => ({ id: b.pid, barberId: b.barberId, date: b.date, start: b.start, end: b.end, status: b.status })),
