@@ -22,7 +22,7 @@ async function run(name, viewport, isMobile) {
   const shot = async (file, full = false) => { if (shots) { await page.waitForTimeout(700); await page.screenshot({ path: `${shots}/${file}-${name}.png`, fullPage: full }); } };
 
   await page.goto(url);
-  await page.waitForSelector('.intro h1');
+  await page.waitForSelector('.hero h1');
   await page.waitForTimeout(400);
   await shot('forside');
   await shot('forside-hel', true);
