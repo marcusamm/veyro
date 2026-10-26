@@ -148,7 +148,7 @@ function header() {
       </ul>
       <button class="menu-btn" data-act="menu" aria-expanded="false" aria-controls="menu">Menu</button>
       <a class="wordmark" href="#/">StyleByBrothers</a>
-      <a class="btn btn-gold" ${bookAttrs()}>Book tid</a>
+      <a class="btn btn-light" ${bookAttrs()}>Book tid</a>
     </nav>
     <div class="mobile-menu wrap" id="menu" hidden>
       <ul>
@@ -189,7 +189,7 @@ function renderHome(scrollTo) {
       <div class="hero-text wrap">
         <p class="kicker">Herrefrisør i Slagelse</p>
         <h1 class="display">Klip, fades<br>og skæg</h1>
-        <div class="hero-actions"><a class="btn btn-gold btn-lg" ${bookAttrs()}>Book tid</a><a class="btn btn-ghost btn-lg" href="#/#priser">Se priser</a></div>
+        <div class="hero-actions"><a class="btn btn-light btn-lg" ${bookAttrs()}>Book tid</a><a class="btn btn-ghost btn-lg" href="#/#priser">Se priser</a></div>
         <p class="open-now ${open.open ? '' : 'closed'}"><i aria-hidden="true"></i>${esc(open.text)}</p>
       </div>
     </section>
@@ -233,7 +233,7 @@ function renderHome(scrollTo) {
       <div class="wrap visit">
         <div><p class="kicker">Find os</p><h2 class="display-l" id="find-titel">Kom forbi</h2>
           <p class="visit-addr">${SALON.street}<br>${SALON.city}</p>
-          <p class="row" style="margin-top:18px"><a class="btn btn-gold" href="${SALON.maps}" target="_blank" rel="noopener">Vis på kort</a><a class="btn btn-ghost" href="${SALON.phoneHref}">Ring ${SALON.phone.replace('+45 ', '')}</a></p>
+          <p class="row" style="margin-top:18px"><a class="btn btn-light" href="${SALON.maps}" target="_blank" rel="noopener">Vis på kort</a><a class="btn btn-ghost" href="${SALON.phoneHref}">Ring ${SALON.phone.replace('+45 ', '')}</a></p>
         </div>
         <div><h3 class="label">Åbningstider</h3><table class="hours"><tbody>${weekHours().map((h) => `<tr class="${h.today ? 'is-today' : ''}"><td>${esc(h.label)}</td><td>${esc(h.text)}</td></tr>`).join('')}</tbody></table>
           ${p.facade.src ? photo(p.facade.src, 'Facaden', p.facade.note) : ''}</div>
@@ -241,7 +241,7 @@ function renderHome(scrollTo) {
     </section>
 
     <section class="cta">
-      <div class="wrap"><h2 class="display-l">Klar til en frisk klipning?</h2><a class="btn btn-gold btn-lg" ${bookAttrs()}>Book tid</a></div>
+      <div class="wrap"><h2 class="display-l">Klar til en frisk klipning?</h2><a class="btn btn-light btn-lg" ${bookAttrs()}>Book tid</a></div>
     </section>
   </main>
   ${footer()}`;
