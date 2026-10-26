@@ -9,7 +9,7 @@ Hjemmeside til **StyleByBrothers**, herrefrisør og barbershop, Sct. Mikkelsgade
 | Del | Hvor | Hvad |
 |---|---|---|
 | Forside | `#/` | Kort introduktion med "åbent i dag", prisliste, fire billeder af salonens klipninger, salonen og holdet, find os med åbningstider |
-| Booking | `#/booking` | Én side med fire trin: behandling, frisør (bestemt eller første ledige), dato og tid, kundeoplysninger. Derefter bekræftelse med bookingnummer, Google Kalender og kalenderfil (.ics). `#/booking?behandling=skin-fade` forudvælger behandlingen, `?frisoer=b1` frisøren |
+| Booking | `#/booking` | Én side med fire trin: behandling, frisør (bestemt eller første ledige), dato og tid, kundeoplysninger. Derefter bekræftelse med bookingnummer, Google Kalender og kalenderfil (.ics). `#/booking?behandling=herreklip` forudvælger behandlingen, `?frisoer=b1` frisøren |
 | Min booking | `#/min-booking` | Kunden finder sin booking med bookingnummer + telefonnummer og kan flytte eller aflyse (inden for den frist, salonen sætter) |
 | Admin | `#/admin` | Bookinger pr. dag og barber (flyt/aflys), behandlinger (navn, beskrivelse, pris, varighed, rækkefølge, skjul), frisører (billede, behandlinger, arbejdstider, pauser, ferie), tider og regler (bookingvindue, varsel, interval, buffer, lukkedage, link til eksternt bookingsystem), billeder (forside, salonen, facaden og klipninger) og udsendelser (de e-mails og SMS'er, der ville blive sendt) |
 
@@ -29,11 +29,11 @@ Gennemklik i browser: start `npm start` her i mappen og kør `node scripts/e2e.m
 
 ## Skal bekræftes af ejeren før lancering
 
-- Prisliste, varigheder og behandlinger (alt er markeret som foreløbigt).
+- Varigheder på behandlingerne (priser og åbningstider er fra salonen; varighederne er et skøn).
 - Medarbejdere: navne, billeder, arbejdstider og hvem der laver hvad (demoen bruger "Frisør 1–3").
-- Åbningstider. De regnes ud fra frisørernes arbejdstider; demoen bruger Instagram-profilens tider (man–fre 11:30–17:30, lør 11:30–14:30, søn lukket).
+- Pauser og fridage pr. frisør. Åbningstiderne (man–ons 11–18, tor–fre 10–18, lør 9–15, søn lukket) er fra salonen og regnes ud fra frisørernes arbejdstider, så alle tre frisører står til hele åbningstiden.
 - Logo og farver. Accentfarven (`#7A5A34`) bruges kun til fokusmarkering og skal tilpasses salonens logo.
-- Billeder: siden har ingen stock- eller AI-billeder. Alle billedpladser er tomme og markeret "Billede kommer" med en note om, hvad der skal ind. Salonens egne billeder uploades under *Admin → Billeder*.
+- Billeder: siden bruger seks af salonens egne billeder fra Facebook (i `site/img/`). Ejeren skal godkende brugen. Der er ingen stock- eller AI-billeder, og facadebilledet mangler stadig.
 - Om salonen allerede bruger et bookingsystem. Ved research (okt. 2026) fandt vi intet offentligt bookinglink på nettet; Facebook og Instagram kunne ikke læses direkte. Bruger salonen fx Planway, Booksy eller Fresha, sættes linket under *Admin → Tider & regler → Eksisterende bookingsystem*, så alle "Book tid"-knapper går dertil i stedet for at oprette et konkurrerende system.
 
 ## Fra demo til drift

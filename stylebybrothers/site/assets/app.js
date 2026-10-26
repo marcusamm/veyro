@@ -3,7 +3,7 @@
 import * as E from './booking-engine.js';
 import { SALON, defaultState } from './data.js';
 
-const KEY = 'sbb-demo-v3';
+const KEY = 'sbb-demo-v4';
 const app = document.getElementById('app');
 
 // ---------- lager ----------
@@ -12,7 +12,7 @@ function load() {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw);
-      if (s && s.version === 3) return s;
+      if (s && s.version === 4) return s;
     }
   } catch { /* privat vindue eller blokeret lager: kør videre i hukommelsen */ }
   return defaultState();
@@ -193,7 +193,6 @@ function renderHome(scrollTo) {
         <div class="prices-head">
           <h2 class="t-l" id="priser-titel">Priser</h2>
           <p class="muted">Trænger du til en klipning? Tryk på en behandling, så ser du de ledige tider.</p>
-          <span class="note-flag">Foreløbige priser, ikke bekræftet af salonen</span>
         </div>
         <div>
           <ul class="price-list">
@@ -245,8 +244,7 @@ function renderHome(scrollTo) {
           </dl>
         </div>
         <dl>
-          <div><dt>Åbningstider</dt><dd><table class="hours"><tbody>${weekHours().map((h) => `<tr class="${h.today ? 'is-today' : ''}"><td>${esc(h.label)}</td><td>${esc(h.text)}</td></tr>`).join('')}</tbody></table>
-            <p class="note" style="margin-top:6px">Skal bekræftes af salonen.</p></dd></div>
+          <div><dt>Åbningstider</dt><dd><table class="hours"><tbody>${weekHours().map((h) => `<tr class="${h.today ? 'is-today' : ''}"><td>${esc(h.label)}</td><td>${esc(h.text)}</td></tr>`).join('')}</tbody></table></dd></div>
           <div><dt>Følg med</dt><dd><a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook</a> · <a href="${SALON.instagram}" target="_blank" rel="noopener">Instagram</a></dd></div>
         </dl>
         ${p.facade.src ? photo(p.facade.src, 'Facaden', p.facade.note) : ''}
@@ -378,7 +376,7 @@ function renderBooking() {
       <button type="button" class="choice" role="radio" aria-checked="${s.id === bk.serviceId}" data-act="pick-service" data-id="${s.id}">
         <span class="dot"></span><span><strong>${esc(s.name)}</strong><small>${esc(s.desc)}</small></span>
         <span class="right">${kr(s.price)}<small>${s.duration} min</small></span>
-      </button></li>`).join('')}</ul><p class="note" style="margin-top:10px">Priserne er foreløbige.</p>`;
+      </button></li>`).join('')}</ul>`;
   const s2 = () => {
     const list = E.barbersFor(state, bk.serviceId, 'any');
     return `<ul class="choices" role="radiogroup" aria-label="Frisør">

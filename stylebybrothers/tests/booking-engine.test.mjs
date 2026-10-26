@@ -3,7 +3,29 @@ import {
   zonedToUtc, utcToZoned, tzOffsetMinutes, availableSlots, createBooking, moveBooking, cancelBooking,
   findBooking, availabilityByDate, weekday,
 } from '../site/assets/booking-engine.js';
-import { defaultState } from '../site/assets/data.js';
+import { defaultState as salonDefaults } from '../site/assets/data.js';
+
+// Fast testopsætning, så testene ikke afhænger af salonens aktuelle priser og åbningstider.
+const day = (start, end, breakStart = '14:00', breakEnd = '14:30') => ({ start, end, breakStart, breakEnd });
+function hours(off = []) {
+  const h = { 0: null, 1: day('11:30', '17:30'), 2: day('11:30', '17:30'), 3: day('11:30', '17:30'), 4: day('11:30', '17:30'), 5: day('11:30', '17:30'), 6: day('11:30', '14:30', '', '') };
+  for (const d of off) h[d] = null;
+  return h;
+}
+function defaultState() {
+  const s = salonDefaults();
+  s.services = [
+    { id: 'herreklip', name: 'Herreklip', duration: 30, price: 250, active: true },
+    { id: 'skin-fade', name: 'Skin fade', duration: 45, price: 300, active: true },
+    { id: 'haar-skaeg', name: 'Hår og skæg', duration: 60, price: 380, active: true },
+  ];
+  s.barbers = [
+    { id: 'b1', name: 'A', active: true, serviceIds: ['herreklip', 'skin-fade', 'haar-skaeg'], hours: hours(), absences: [] },
+    { id: 'b2', name: 'B', active: true, serviceIds: ['herreklip', 'haar-skaeg'], hours: hours([1]), absences: [] },
+    { id: 'b3', name: 'C', active: true, serviceIds: ['herreklip', 'skin-fade', 'haar-skaeg'], hours: hours([3, 6]), absences: [] },
+  ];
+  return s;
+}
 
 const customer = { name: 'Test Kunde', phone: '+45 12 34 56 78', email: 'test@example.com' };
 // Mandag 2. november 2026 kl. 08:00 dansk tid (vintertid)
@@ -20,6 +42,13 @@ describe('dansk tid og sommertid', () => {
     expect(new Date(zonedToUtc('2026-10-26', 12 * 60)).toISOString()).toBe('2026-10-26T11:00:00.000Z');
     expect(new Date(zonedToUtc('2026-03-30', 11 * 60 + 30)).toISOString()).toBe('2026-03-30T09:30:00.000Z');
     expect(utcToZoned(Date.UTC(2026, 9, 25, 1, 30))).toEqual({ date: '2026-10-25', minutes: 150 });
+  });
+  it('salonens standarddata har åbent søndag lukket og lørdag 9-15', () => {
+    const s = salonDefaults();
+    expect(availableSlots(s, { serviceId: 'herreklip', date: '2026-11-08', now: NOW })).toEqual([]);
+    const sat = availableSlots(s, { serviceId: 'herreklip', date: '2026-11-07', now: NOW });
+    expect(sat[0].start).toBe(9 * 60);
+    expect(sat.at(-1).end).toBe(15 * 60);
   });
   it('ugedage', () => {
     expect(weekday(MON)).toBe(1);

@@ -37,7 +37,7 @@ async function run(name, viewport, isMobile) {
   // booking fra behandlingskort (behandling forudvalgt)
   await page.locator('#priser').scrollIntoViewIfNeeded();
   await shot('priser');
-  await page.click('a[href="#/booking?behandling=skin-fade"]');
+  await page.click('a[href="#/booking?behandling=herreklip"]');
   await page.waitForSelector('[data-act="pick-barber"]');
   if (!(await page.locator('.step.current h2').textContent()).includes('Frisør')) errors.push(`${name}: behandling blev ikke forudvalgt`);
   await shot('booking-frisoer');
