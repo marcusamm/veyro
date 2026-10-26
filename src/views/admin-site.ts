@@ -655,6 +655,10 @@ function leadBlockCard(csrf: string, l: LeadRow, blocks: LeadBlockRow[]): H {
       ${domainOk
         ? html`<label class="check"><input type="checkbox" name="domain" value="1"> Hele domænet ${domain} (alle mailadresser @${domain})</label>`
         : ''}
+      ${l.name && l.name.trim().length >= 2
+        ? html`<label class="check"><input type="checkbox" name="name" value="1"> Navnet „${l.name.trim()}" (alle henvendelser med præcis det navn)</label>
+          <p class="hint" style="margin:0">Godt mod spamrobotter, der skifter mailadresse men bruger samme navn. Brug det ikke ved almindelige navne.</p>`
+        : ''}
       <div><button class="btn btn-danger btn-small" type="submit">Bloker afsender</button></div>
     </form>
   </section>`;

@@ -172,8 +172,8 @@ export async function purgeOldLeads(db: D1Database): Promise<void> {
 
 // ---------- Blokerede afsendere ----------
 
-export type LeadBlockKind = 'email' | 'domain' | 'ip';
-export const LEAD_BLOCK_KIND_LABEL: Record<LeadBlockKind, string> = { email: 'Mailadresse', domain: 'Domæne', ip: 'IP-adresse' };
+export type LeadBlockKind = 'email' | 'domain' | 'ip' | 'name';
+export const LEAD_BLOCK_KIND_LABEL: Record<LeadBlockKind, string> = { email: 'Mailadresse', domain: 'Domæne', ip: 'IP-adresse', name: 'Navn' };
 
 export interface LeadBlockRow {
   id: number;
@@ -202,6 +202,12 @@ export function blockEmailKey(email: string): string {
   return `${local || e.slice(0, at)}@${domain}`;
 }
 
+/** Navnet i den form, der blokeres på: små bogstaver og enkelte mellemrum */
+export function blockNameKey(name: string | null | undefined): string | null {
+  const n = (name ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  return n.length >= 2 ? n : null;
+}
+
 export function emailDomain(email: string): string {
   return email.slice(email.lastIndexOf('@') + 1).trim().toLowerCase();
 }
@@ -214,9 +220,14 @@ export async function ipHash(ip: string): Promise<string> {
 /**
  * Er afsenderen blokeret? Rammer en blokering, tælles den med (så admin kan se, at den virker).
  */
-export async function isBlockedSender(db: D1Database, email: string | null, ip_hash: string | null): Promise<boolean> {
+export async function isBlockedSender(db: D1Database, email: string | null, ip_hash: string | null, name: string | null = null): Promise<boolean> {
   const conds: string[] = [];
   const args: string[] = [];
+  const nameKey = blockNameKey(name);
+  if (nameKey) {
+    conds.push("(kind = 'name' AND value = ?)");
+    args.push(nameKey);
+  }
   if (email) {
     conds.push("(kind = 'email' AND value = ?)", "(kind = 'domain' AND value = ?)");
     args.push(blockEmailKey(email), emailDomain(email));
@@ -240,7 +251,7 @@ export async function isBlockedSender(db: D1Database, email: string | null, ip_h
 export async function blockLeadSender(
   db: D1Database,
   lead: LeadRow,
-  opts: { email: boolean; domain: boolean; ip: boolean },
+  opts: { email: boolean; domain: boolean; ip: boolean; name?: boolean },
   actor: string | null,
 ): Promise<number> {
   const now = nowSec();
@@ -254,20 +265,23 @@ export async function blockLeadSender(
   if (opts.email) stmts.push(add('email', emailKey, lead.email));
   if (opts.domain && domain && !COMMON_MAIL_DOMAINS.has(domain)) stmts.push(add('domain', domain, domain));
   if (opts.ip && lead.ip_hash) stmts.push(add('ip', lead.ip_hash, `IP fra forespørgsel #${lead.id}`));
+  const nameKey = blockNameKey(lead.name);
+  if (opts.name && nameKey) stmts.push(add('name', nameKey, lead.name!.trim()));
   if (!stmts.length) return 0;
   const res = await db.batch(stmts);
   const added = res.reduce((n, r) => n + (r.meta.changes ?? 0), 0);
   // Alle forespørgsler fra den blokerede afsender flyttes til Spam (med historik)
   const ids = new Set<number>([lead.id]);
   const others = await db
-    .prepare(`SELECT id, email, ip_hash FROM leads WHERE status != 'spam' AND (email LIKE ? ${opts.ip && lead.ip_hash ? 'OR ip_hash = ?' : ''}) LIMIT 500`)
-    .bind(...(opts.ip && lead.ip_hash ? ['%@' + domain, lead.ip_hash] : ['%@' + domain]))
-    .all<{ id: number; email: string; ip_hash: string | null }>();
+    .prepare("SELECT id, email, ip_hash, name FROM leads WHERE status != 'spam' AND (email LIKE ?1 OR (?2 != '' AND ip_hash = ?2) OR (?3 != '' AND lower(trim(name)) = ?3)) LIMIT 500")
+    .bind('%@' + domain, opts.ip && lead.ip_hash ? lead.ip_hash : '', opts.name && nameKey ? nameKey : '')
+    .all<{ id: number; email: string; ip_hash: string | null; name: string | null }>();
   for (const o of others.results ?? []) {
     if (
       (opts.email && blockEmailKey(o.email) === emailKey) ||
       (opts.domain && !COMMON_MAIL_DOMAINS.has(domain) && emailDomain(o.email) === domain) ||
-      (opts.ip && lead.ip_hash && o.ip_hash === lead.ip_hash)
+      (opts.ip && lead.ip_hash && o.ip_hash === lead.ip_hash) ||
+      (opts.name && nameKey && blockNameKey(o.name) === nameKey)
     )
       ids.add(o.id);
   }
@@ -284,8 +298,8 @@ export async function blocksForLead(db: D1Database, lead: LeadRow): Promise<Lead
   return (
     (
       await db
-        .prepare("SELECT * FROM lead_blocks WHERE (kind = 'email' AND value = ?) OR (kind = 'domain' AND value = ?) OR (kind = 'ip' AND value = ?) ORDER BY id")
-        .bind(blockEmailKey(lead.email), emailDomain(lead.email), lead.ip_hash ?? '')
+        .prepare("SELECT * FROM lead_blocks WHERE (kind = 'email' AND value = ?) OR (kind = 'domain' AND value = ?) OR (kind = 'ip' AND value = ?) OR (kind = 'name' AND value = ?) ORDER BY id")
+        .bind(blockEmailKey(lead.email), emailDomain(lead.email), lead.ip_hash ?? '', blockNameKey(lead.name) ?? '')
         .all<LeadBlockRow>()
     ).results ?? []
   );

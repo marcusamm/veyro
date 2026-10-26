@@ -610,8 +610,8 @@ adminSite.post('/forespoergsler/:id/bloker', async (c) => {
   const lead = await getLead(c.env.DB, Number(c.req.param('id')));
   if (!lead) return c.text('Findes ikke', 404);
   const body = await c.req.parseBody();
-  const opts = { email: body['email'] === '1', domain: body['domain'] === '1', ip: body['ip'] === '1' };
-  if (!opts.email && !opts.domain && !opts.ip) return c.redirect(`/admin/forespoergsler/${lead.id}#bloker`, 303);
+  const opts = { email: body['email'] === '1', domain: body['domain'] === '1', ip: body['ip'] === '1', name: body['name'] === '1' };
+  if (!opts.email && !opts.domain && !opts.ip && !opts.name) return c.redirect(`/admin/forespoergsler/${lead.id}#bloker`, 303);
   await blockLeadSender(c.env.DB, lead, opts, who(c));
   return c.redirect(`/admin/forespoergsler/${lead.id}?besked=blokeret`, 303);
 });
