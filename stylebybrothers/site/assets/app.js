@@ -1,9 +1,9 @@
 // StyleByBrothers — hjemmeside, booking og adminpanel (demo).
 // Demoen gemmer alt i den besøgendes egen browser (localStorage). Intet sendes, og ingen tider reserveres hos salonen.
 import * as E from './booking-engine.js';
-import { SALON, defaultState, GALLERY_CATEGORIES } from './data.js';
+import { SALON, defaultState } from './data.js';
 
-const KEY = 'sbb-demo-v2';
+const KEY = 'sbb-demo-v3';
 const app = document.getElementById('app');
 
 // ---------- lager ----------
@@ -12,7 +12,7 @@ function load() {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw);
-      if (s && s.version === 2) return s;
+      if (s && s.version === 3) return s;
     }
   } catch { /* privat vindue eller blokeret lager: kør videre i hukommelsen */ }
   return defaultState();
@@ -209,14 +209,9 @@ function renderHome(scrollTo) {
 
     <section class="sec" id="klipninger" aria-labelledby="klip-titel">
       <div class="wrap">
-        <div class="gal-head">
-          <h2 class="t-l" id="klip-titel">Klipninger</h2>
-          <div class="tabs" role="group" aria-label="Vis klipninger">
-            ${GALLERY_CATEGORIES.map((c, i) => `<button data-act="filter" data-cat="${c.id}" aria-pressed="${i === 0}">${c.label}</button>`).join('')}
-          </div>
-        </div>
+        <h2 class="t-l sec-title" id="klip-titel">Klipninger</h2>
         <div class="gallery" id="gallery">${galleryItems()}</div>
-        <p class="note gallery-note">Her kommer billeder af salonens egne klipninger. Nyt arbejde lægges også op på <a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook</a>.</p>
+        <p class="note gallery-note">Klipninger fra stolen på Sct. Mikkelsgade. Nyt arbejde lægges også op på <a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook</a>.</p>
       </div>
     </section>
 
@@ -254,7 +249,7 @@ function renderHome(scrollTo) {
             <p class="note" style="margin-top:6px">Skal bekræftes af salonen.</p></dd></div>
           <div><dt>Følg med</dt><dd><a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook</a> · <a href="${SALON.instagram}" target="_blank" rel="noopener">Instagram</a></dd></div>
         </dl>
-        ${photo(p.facade.src, 'Facaden', p.facade.note)}
+        ${p.facade.src ? photo(p.facade.src, 'Facaden', p.facade.note) : ''}
       </div>
     </section>
   </main>
@@ -277,70 +272,11 @@ function workDays(b) {
 }
 
 function galleryItems() {
-  return state.gallery.map((g, i) => `<button class="g-item ${i === 0 ? 'big' : ''} ${g.src ? 'has-img' : ''}" data-act="lightbox" data-id="${g.id}" data-cat="${g.category}" aria-label="Vis ${esc(g.title)}">
+  return state.gallery.map((g) => `<figure class="g-item ${g.src ? 'has-img' : ''}">
       ${photo(g.src, g.title, g.title)}
-      <span class="g-cap">${esc(g.title)}</span>
-    </button>`).join('');
+      <figcaption class="g-cap">${esc(g.title)}</figcaption>
+    </figure>`).join('');
 }
-
-// ---------- lightbox ----------
-let lb = { list: [], i: 0 };
-function openLightbox(id) {
-  const active = document.querySelector('.tabs [aria-pressed="true"]')?.dataset.cat || 'alle';
-  lb.list = state.gallery.filter((g) => active === 'alle' || g.category === active);
-  lb.i = Math.max(0, lb.list.findIndex((g) => g.id === id));
-  let el = document.getElementById('lightbox');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'lightbox';
-    el.className = 'lightbox';
-    el.setAttribute('role', 'dialog');
-    el.setAttribute('aria-modal', 'true');
-    el.setAttribute('aria-label', 'Billede');
-    el.innerHTML = `<div class="lb-bar"><span id="lb-title"></span><button class="lb-btn" data-lb="close">Luk</button></div>
-      <div class="lb-stage" id="lb-stage"></div>
-      <div class="lb-bar"><span id="lb-count" class="num"></span><span class="row"><button class="lb-btn" data-lb="prev">Forrige</button><button class="lb-btn" data-lb="next">Næste</button></span></div>`;
-    document.body.append(el);
-    el.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-lb]');
-      if (b) lbAction(b.dataset.lb);
-      else if (e.target.id === 'lb-stage') lbAction('close');
-    });
-    let x0 = null;
-    el.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
-    el.addEventListener('touchend', (e) => {
-      if (x0 === null) return;
-      const dx = e.changedTouches[0].clientX - x0;
-      if (Math.abs(dx) > 50) lbAction(dx < 0 ? 'next' : 'prev');
-      x0 = null;
-    });
-  }
-  el.hidden = false;
-  lbShow();
-  document.body.style.overflow = 'hidden';
-  el.querySelector('[data-lb="close"]').focus();
-}
-function lbShow() {
-  const g = lb.list[lb.i];
-  if (!g) return;
-  document.getElementById('lb-stage').innerHTML = photo(g.src, g.title, g.title);
-  document.getElementById('lb-title').textContent = g.title;
-  document.getElementById('lb-count').textContent = `${lb.i + 1} af ${lb.list.length}`;
-}
-function lbAction(a) {
-  const el = document.getElementById('lightbox');
-  if (a === 'close') { el.hidden = true; document.body.style.overflow = ''; return; }
-  lb.i = (lb.i + (a === 'next' ? 1 : -1) + lb.list.length) % lb.list.length;
-  lbShow();
-}
-document.addEventListener('keydown', (e) => {
-  const el = document.getElementById('lightbox');
-  if (el && !el.hidden) {
-    if (e.key === 'Escape') lbAction('close');
-    if (e.key === 'ArrowRight') lbAction('next');
-    if (e.key === 'ArrowLeft') lbAction('prev');
-  }
-});
 
 function toggleMenu(open) {
   const m = document.getElementById('menu');
@@ -764,7 +700,6 @@ function adminPhotos() {
     <div class="thumb-grid">${state.gallery.map((g) => `<div class="thumb">${photo(g.src, g.title, g.title)}
       <div class="body">
         <div class="field"><label>Titel</label><input data-path="gallery:${g.id}:title" value="${esc(g.title)}"></div>
-        <div class="field"><label>Kategori</label><select data-path="gallery:${g.id}:category">${GALLERY_CATEGORIES.slice(1).map((c) => `<option value="${c.id}" ${g.category === c.id ? 'selected' : ''}>${c.label}</option>`).join('')}</select></div>
         <div class="row between"><span class="btn btn-line btn-sm file-btn">${g.src ? 'Udskift' : 'Upload'}<input type="file" accept="image/*" data-upload="gallery" data-id="${g.id}" aria-label="Upload ${esc(g.title)}"></span><button class="link small" data-act="gallery-del" data-id="${g.id}">Slet</button></div>
       </div></div>`).join('')}</div>`;
 }
@@ -818,15 +753,6 @@ function seedBookings() {
 const onManage = () => location.hash.startsWith('#/min-booking');
 const actions = {
   menu: () => toggleMenu(document.getElementById('menu')?.hidden),
-  filter: (el) => {
-    document.querySelectorAll('.tabs button').forEach((c) => c.setAttribute('aria-pressed', String(c === el)));
-    const cat = el.dataset.cat;
-    document.querySelectorAll('.g-item').forEach((g, i) => {
-      g.classList.toggle('hide', cat !== 'alle' && g.dataset.cat !== cat);
-      g.classList.toggle('big', cat === 'alle' && i === 0);
-    });
-  },
-  lightbox: (el) => openLightbox(el.dataset.id),
   'pick-service': (el) => {
     bk.serviceId = el.dataset.id; bk.date = null; bk.start = null;
     if (bk.barberId && bk.barberId !== 'any' && !barber(bk.barberId)?.serviceIds.includes(bk.serviceId)) bk.barberId = null;
@@ -966,7 +892,7 @@ app.addEventListener('change', async (e) => {
       if (kind === 'barber') barber(el.dataset.id).photo = src;
       else if (kind === 'photo') state.photos[el.dataset.id].src = src;
       else if (kind === 'gallery') state.gallery.find((g) => g.id === el.dataset.id).src = src;
-      else state.gallery.unshift({ id: uid('g'), category: 'fades', title: 'Nyt billede', src });
+      else state.gallery.unshift({ id: uid('g'), title: 'Nyt billede', src });
       if (save()) toast('Billedet er gemt');
     } catch { toast('Billedet kunne ikke læses'); }
     route();

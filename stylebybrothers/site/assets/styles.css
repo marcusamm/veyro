@@ -145,35 +145,17 @@ p { margin: 0; }
 @media (min-width: 860px) { .prices { grid-template-columns: 4fr 7fr; gap: 64px; } }
 
 /* galleri */
-.gal-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 14px 32px; margin-bottom: 24px; }
-.tabs { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 15px; }
-.tabs button { background: none; border: 0; padding: 4px 0; color: var(--mute); border-bottom: 1px solid transparent; }
-.tabs button[aria-pressed='true'] { color: var(--ink); border-color: var(--ink); font-weight: 600; }
+.sec-title { margin-bottom: 24px; }
 .gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-.g-item { position: relative; border: 0; padding: 0; background: none; aspect-ratio: 1; cursor: zoom-in; text-align: left; }
+.g-item { position: relative; margin: 0; aspect-ratio: 4 / 5; }
 .g-item .photo { position: absolute; inset: 0; }
-.g-item.big { grid-column: span 2; aspect-ratio: 4 / 3; }
-.g-item.hide { display: none; }
 .g-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px; font-size: 14px; font-weight: 600; color: #fff; background: linear-gradient(transparent, rgba(0, 0, 0, .55)); }
 .g-item:not(.has-img) .g-cap { display: none; }
 @media (min-width: 860px) {
   .gallery { grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .g-item { aspect-ratio: 4 / 5; }
-  .g-item.big { grid-column: span 2; grid-row: span 2; aspect-ratio: auto; }
 }
 .gallery-note { margin-top: 16px; }
 
-/* lightbox */
-.lightbox { position: fixed; inset: 0; z-index: 100; background: #0d0d0d; color: var(--paper); display: grid; grid-template-rows: auto 1fr auto; }
-.lightbox[hidden] { display: none; }
-.lb-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px var(--gutter); font-size: 15px; }
-.lb-stage { display: grid; place-items: center; padding: 0 var(--gutter); min-height: 0; }
-.lb-stage .photo { width: min(100%, 880px); height: 100%; max-height: calc(100vh - 140px); background: #1c1c1b; }
-.lb-stage .photo img { object-fit: contain; }
-.lb-stage .photo .ph { color: var(--mute-on-dark); }
-.lb-stage .photo .ph::before { color: var(--paper); }
-.lb-btn { background: none; border: 1px solid #45443f; color: var(--paper); min-height: 40px; padding: 0 14px; border-radius: 2px; font-size: 15px; }
-.lb-btn:hover { border-color: var(--paper); }
 
 /* om salonen og holdet */
 .about { display: grid; gap: 36px; }

@@ -8,7 +8,7 @@ Hjemmeside til **StyleByBrothers**, herrefrisør og barbershop, Sct. Mikkelsgade
 
 | Del | Hvor | Hvad |
 |---|---|---|
-| Forside | `#/` | Kort introduktion med "åbent i dag", prisliste, klipninger med filtre og lightbox, salonen og holdet, find os med åbningstider |
+| Forside | `#/` | Kort introduktion med "åbent i dag", prisliste, fire billeder af salonens klipninger, salonen og holdet, find os med åbningstider |
 | Booking | `#/booking` | Én side med fire trin: behandling, frisør (bestemt eller første ledige), dato og tid, kundeoplysninger. Derefter bekræftelse med bookingnummer, Google Kalender og kalenderfil (.ics). `#/booking?behandling=skin-fade` forudvælger behandlingen, `?frisoer=b1` frisøren |
 | Min booking | `#/min-booking` | Kunden finder sin booking med bookingnummer + telefonnummer og kan flytte eller aflyse (inden for den frist, salonen sætter) |
 | Admin | `#/admin` | Bookinger pr. dag og barber (flyt/aflys), behandlinger (navn, beskrivelse, pris, varighed, rækkefølge, skjul), frisører (billede, behandlinger, arbejdstider, pauser, ferie), tider og regler (bookingvindue, varsel, interval, buffer, lukkedage, link til eksternt bookingsystem), billeder (forside, salonen, facaden og klipninger) og udsendelser (de e-mails og SMS'er, der ville blive sendt) |

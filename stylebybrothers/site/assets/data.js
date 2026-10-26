@@ -33,7 +33,7 @@ function hours({ off = [] } = {}) {
 
 export function defaultState() {
   return {
-    version: 2,
+    version: 3,
     settings: {
       slotStep: 15,
       minNoticeMinutes: 60,
@@ -65,31 +65,18 @@ export function defaultState() {
     ],
     // Billedpladser. Salonen uploader sine egne billeder under Admin → Billeder.
     photos: {
-      hero: { src: '', note: 'Foto fra salonen: en frisør i gang ved stolen' },
-      salon: { src: '', note: 'Salonen indefra' },
+      hero: { src: 'img/kroeller-taper.jpg', note: 'Foto fra salonen: en frisør i gang ved stolen' },
+      salon: { src: 'img/salonen.jpg', note: 'Salonen indefra' },
       facade: { src: '', note: 'Facaden på Sct. Mikkelsgade 26A' },
     },
+    // Salonens egne billeder (fra Facebook). Ejeren skal godkende brugen, før siden går live.
     gallery: [
-      { id: 'g1', category: 'fades', title: 'Skin fade', src: '' },
-      { id: 'g2', category: 'klassisk', title: 'Klassisk herreklip', src: '' },
-      { id: 'g3', category: 'skaeg', title: 'Skæg med kontur', src: '' },
-      { id: 'g4', category: 'fades', title: 'Taper fade', src: '' },
-      { id: 'g5', category: 'styling', title: 'Styling med voks', src: '' },
-      { id: 'g6', category: 'foer-efter', title: 'Før og efter', src: '' },
-      { id: 'g7', category: 'klassisk', title: 'Sideskilning', src: '' },
-      { id: 'g8', category: 'skaeg', title: 'Fuldskæg trimmet', src: '' },
-      { id: 'g9', category: 'fades', title: 'Mid fade', src: '' },
+      { id: 'g1', title: 'High fade med skæg', src: 'img/high-fade-skaeg.jpg' },
+      { id: 'g2', title: 'Slick back med lav fade', src: 'img/slick-back.jpg' },
+      { id: 'g3', title: 'Mid fade med skæg', src: 'img/mid-fade-skaeg.jpg' },
+      { id: 'g4', title: 'Taper fade', src: 'img/taper-tekstur.jpg' },
     ],
     bookings: [],
     outbox: [],
   };
 }
-
-export const GALLERY_CATEGORIES = [
-  { id: 'alle', label: 'Alle' },
-  { id: 'fades', label: 'Fades' },
-  { id: 'klassisk', label: 'Klassisk' },
-  { id: 'skaeg', label: 'Skæg' },
-  { id: 'styling', label: 'Styling' },
-  { id: 'foer-efter', label: 'Før og efter' },
-];

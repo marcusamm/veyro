@@ -27,19 +27,12 @@ async function run(name, viewport, isMobile) {
   if (overflow > 0) errors.push(`${name}: vandret scroll på forsiden (${overflow}px)`);
   ok(`${name}: forside`);
 
-  // galleri + lightbox
+  // galleri
   await page.locator('#klipninger').scrollIntoViewIfNeeded();
-  await page.click('.tabs button[data-cat="fades"]');
-  const visible = await page.locator('.g-item:not(.hide)').count();
-  if (visible !== 3) errors.push(`${name}: forventede 3 fades, fik ${visible}`);
-  await page.click('.tabs button[data-cat="alle"]');
+  const pics = await page.locator('.g-item.has-img').count();
+  if (pics !== 4) errors.push(`${name}: forventede 4 billeder i galleriet, fik ${pics}`);
   await shot('galleri');
-  await page.locator('.g-item').first().click();
-  await page.waitForSelector('.lightbox:not([hidden])');
-  await page.click('[data-lb="next"]');
-  await shot('lightbox');
-  await page.click('[data-lb="close"]');
-  ok(`${name}: galleri og lightbox`);
+  ok(`${name}: galleri`);
 
   // booking fra behandlingskort (behandling forudvalgt)
   await page.locator('#priser').scrollIntoViewIfNeeded();
