@@ -32,16 +32,16 @@ function hours({ off = [] } = {}) {
 
 // Faste billeder fra salonen. De ændres i koden, ikke i admin.
 export const PHOTOS = {
-  hero: { src: 'img/kroeller-taper.jpg', note: 'Klipning med krøller og taper fade' },
-  salon: { src: 'img/salonen.jpg', note: 'Salonen indefra' },
-  facade: { src: '', note: '' },
+  hero: { src: 'img/salonen.jpg', note: 'Salonen indefra' },
+  salon: { src: 'img/kroeller-taper.jpg', note: 'Klipning med krøller og taper fade' },
 };
-export const GALLERY = [
-  { id: 'g1', title: 'High fade med skæg', src: 'img/high-fade-skaeg.jpg' },
-  { id: 'g2', title: 'Slick back med lav fade', src: 'img/slick-back.jpg' },
-  { id: 'g3', title: 'Mid fade med skæg', src: 'img/mid-fade-skaeg.jpg' },
-  { id: 'g4', title: 'Taper fade', src: 'img/taper-tekstur.jpg' },
-];
+// Billede på hvert behandlingskort på forsiden.
+export const SERVICE_PHOTOS = {
+  herreklip: 'img/taper-tekstur.jpg',
+  skaeg: 'img/mid-fade-skaeg.jpg',
+  haarvask: 'img/slick-back.jpg',
+  bryllupsklip: 'img/high-fade-skaeg.jpg',
+};
 
 const ALL = ['herreklip', 'skaeg', 'haarvask', 'bryllupsklip'];
 
