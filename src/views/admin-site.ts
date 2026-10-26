@@ -3,7 +3,8 @@ import { formatDateShort, formatDateTime, formatKr } from '../lib/format';
 import type { HistoryRow, SiteData, SitePage, SiteProduct, TemplateData } from '../site/content';
 import { keyLabel } from '../site/content';
 import { sectionSchema, type SettingDef } from '../site/engine';
-import { LEAD_KIND_LABEL, LEAD_STATUS_LABEL, LEAD_STATUSES, OPEN_LEAD_STATUSES, type LeadCartLine, type LeadEventRow, type LeadRow, type LeadStatus } from '../site/leads';
+import { COMMON_MAIL_DOMAINS } from '../lib/prospects';
+import { emailDomain, LEAD_BLOCK_KIND_LABEL, LEAD_KIND_LABEL, LEAD_STATUS_LABEL, LEAD_STATUSES, OPEN_LEAD_STATUSES, type LeadBlockRow, type LeadCartLine, type LeadEventRow, type LeadRow, type LeadStatus } from '../site/leads';
 import { alert, csrfField, type H } from './layout';
 
 export interface SiteFile {
@@ -515,11 +516,12 @@ function leadList(rows: LeadRow[]): H {
     )}</tbody></table></div>`;
 }
 
-export function leadsPage(args: { rows: LeadRow[]; filter: string; counts: Record<string, number> }): H {
+export function leadsPage(args: { rows: LeadRow[]; filter: string; counts: Record<string, number>; blocked?: number }): H {
   const tabs: [string, string][] = [['aabne', 'Åbne'], ['alle', 'Alle'], ...LEAD_STATUSES.map((st): [string, string] => [st, LEAD_STATUS_LABEL[st]])];
   return html`<div class="stack-lg">
   <div>${crumbs(['Admin', '/admin'])}<h1>Forespørgsler</h1>
-    <p class="lead">Alt, der sendes fra hjemmesiden: kontaktformularen, gratis vurdering og kurven. Du får også en mail ved hver ny.</p></div>
+    <p class="lead">Alt, der sendes fra hjemmesiden: kontaktformularen, gratis vurdering og kurven. Du får også en mail ved hver ny.</p>
+    <p class="small" style="margin:0">Spam? Åbn forespørgslen og tryk <strong>Bloker afsender</strong>. <a href="/admin/forespoergsler/blokerede">Se blokerede afsendere${args.blocked ? ` (${args.blocked})` : ''}</a></p></div>
   <nav class="row tabs" aria-label="Filtrér efter status">${tabs.map(
     ([k, label]) => html`<a class="btn btn-small ${args.filter === k ? 'btn-primary' : 'btn-secondary'}" href="/admin/forespoergsler?status=${k}"${args.filter === k ? raw(' aria-current="page"') : ''}>${label}${k !== 'alle' && k !== 'aabne' && args.counts[k] ? ` (${args.counts[k]})` : ''}</a>`,
   )}</nav>
@@ -540,7 +542,7 @@ function leadHistory(l: LeadRow, events: LeadEventRow[]): H {
     <p class="hint" style="margin:0">Statusændringer før historikken blev indført, er ikke registreret.</p></section>`;
 }
 
-export function leadDetailPage(args: { csrf: string; lead: LeadRow; flash: string | null; offerUrl: string | null; events?: LeadEventRow[]; prospects?: { id: number; name: string; signals: string[]; linked: boolean }[] }): H {
+export function leadDetailPage(args: { csrf: string; lead: LeadRow; flash: string | null; offerUrl: string | null; events?: LeadEventRow[]; prospects?: { id: number; name: string; signals: string[]; linked: boolean }[]; blocks?: LeadBlockRow[] }): H {
   const l = args.lead;
   let fields: Record<string, string> = {};
   let cart: LeadCartLine[] = [];
@@ -561,6 +563,8 @@ export function leadDetailPage(args: { csrf: string; lead: LeadRow; flash: strin
     <p class="lead">${LEAD_KIND_LABEL[l.kind]}${l.form_name ? ` · ${l.form_name}` : ''} · ${formatDateTime(l.created_at)}</p>
     <p style="margin:0">Status: ${leadBadge(l.status)}</p></div>
   ${args.flash === 'gemt' ? alert('ok', 'Gemt.') : ''}
+  ${args.flash === 'blokeret' ? alert('ok', 'Afsenderen er blokeret, og forespørgslen er flyttet til Spam. Nye henvendelser fra afsenderen afvises i stilhed.') : ''}
+  ${args.flash === 'fjernet' ? alert('ok', 'Blokeringen er fjernet.') : ''}
   <div class="row">
     ${l.offer_id
       ? html`<a class="btn btn-secondary" href="/admin/tilbud/${l.offer_id}">Se tilbuddet</a>`
@@ -612,6 +616,7 @@ export function leadDetailPage(args: { csrf: string; lead: LeadRow; flash: strin
     <div class="field"><label for="l-note">Intern note</label><textarea id="l-note" name="note" rows="3" maxlength="2000">${l.note ?? ''}</textarea></div>
     <div class="row"><button class="btn btn-primary" type="submit">Gem</button></div>
   </form>
+  ${leadBlockCard(args.csrf, l, args.blocks ?? [])}
   ${leadHistory(l, args.events ?? [])}
   <form method="post" action="/admin/forespoergsler/${l.id}/slet" class="card stack">
     ${csrfField(args.csrf)}
@@ -620,5 +625,56 @@ export function leadDetailPage(args: { csrf: string; lead: LeadRow; flash: strin
     <label class="check"><input type="checkbox" name="confirm" value="1" required> Ja, slet permanent</label>
     <div><button class="btn btn-danger btn-small" type="submit">Slet</button></div>
   </form>
+</div>`;
+}
+
+// ---------- Blokerede afsendere ----------
+
+function blockLabel(b: LeadBlockRow): string {
+  return b.label || b.value;
+}
+
+function leadBlockCard(csrf: string, l: LeadRow, blocks: LeadBlockRow[]): H {
+  const domain = emailDomain(l.email);
+  const domainOk = !!domain && !COMMON_MAIL_DOMAINS.has(domain);
+  return html`<section class="card stack" id="bloker" aria-labelledby="lb-h">
+    <h2 id="lb-h" class="h-small" style="margin:0">Bloker afsender</h2>
+    ${blocks.length
+      ? html`<p class="small" style="margin:0">Afsenderen er blokeret. Nye henvendelser afvises i stilhed: de får takkebeskeden, men intet gemmes, og I får ingen mail.</p>
+        <ul class="list">${blocks.map(
+          (b) => html`<li class="row between"><span><strong>${LEAD_BLOCK_KIND_LABEL[b.kind]}:</strong> ${blockLabel(b)} <span class="meta">${b.hits ? `${b.hits} afvist` : 'Ingen afvist endnu'}</span></span>
+            <form method="post" action="/admin/forespoergsler/blokerede/${b.id}/fjern" class="inline">${csrfField(csrf)}<input type="hidden" name="back" value="/admin/forespoergsler/${l.id}"><button class="btn btn-secondary btn-small" type="submit">Fjern blokering</button></form></li>`,
+        )}</ul>`
+      : html`<p class="small" style="margin:0">Spammer afsenderen? Blokér, så afvises nye henvendelser i stilhed: afsenderen får takkebeskeden som normalt, men intet gemmes, og I får ingen mail. Forespørgslen og andre fra samme afsender flyttes til Spam. Kan fjernes igen under <a href="/admin/forespoergsler/blokerede">Blokerede afsendere</a>.</p>`}
+    <form method="post" action="/admin/forespoergsler/${l.id}/bloker" class="stack">
+      ${csrfField(csrf)}
+      <label class="check"><input type="checkbox" name="email" value="1" checked> Mailadressen ${l.email}</label>
+      ${l.ip_hash
+        ? html`<label class="check"><input type="checkbox" name="ip" value="1" checked> IP-adressen, den blev sendt fra</label>`
+        : html`<p class="hint" style="margin:0">IP-adressen kendes ikke for denne forespørgsel (modtaget før IP-blokering blev indført).</p>`}
+      ${domainOk
+        ? html`<label class="check"><input type="checkbox" name="domain" value="1"> Hele domænet ${domain} (alle mailadresser @${domain})</label>`
+        : ''}
+      <div><button class="btn btn-danger btn-small" type="submit">Bloker afsender</button></div>
+    </form>
+  </section>`;
+}
+
+export function leadBlocksPage(args: { csrf: string; blocks: LeadBlockRow[]; flash: string | null }): H {
+  return html`<div class="stack-lg">
+  <div>${crumbs(['Admin', '/admin'], ['Forespørgsler', '/admin/forespoergsler'], ['Blokerede afsendere', null])}<h1>Blokerede afsendere</h1>
+    <p class="lead">Henvendelser fra disse afsendere afvises i stilhed: de får takkebeskeden, men intet gemmes, og I får ingen mail. Bloker en afsender fra selve forespørgslen.</p></div>
+  ${args.flash === 'fjernet' ? alert('ok', 'Blokeringen er fjernet. Afsenderen kan skrive igen.') : ''}
+  <section class="card">${args.blocks.length
+    ? html`<div class="table-wrap"><table class="responsive">
+      <thead><tr><th scope="col">Blokeret</th><th scope="col">Afviste</th><th scope="col">Blokeret af</th><th scope="col"><span class="sr-only">Handling</span></th></tr></thead>
+      <tbody>${args.blocks.map(
+        (b) => html`<tr>
+          <td data-label="Blokeret"><span class="small muted">${LEAD_BLOCK_KIND_LABEL[b.kind]}</span><br><strong>${blockLabel(b)}</strong>${b.lead_id ? html`<br><a class="small" href="/admin/forespoergsler/${b.lead_id}">Forespørgsel #${b.lead_id}</a>` : ''}</td>
+          <td data-label="Afviste">${b.hits}${b.last_hit_at ? html`<br><span class="small muted">Senest ${formatDateTime(b.last_hit_at)}</span>` : ''}</td>
+          <td data-label="Blokeret af">${formatDateShort(b.created_at)}${b.created_by ? html`<br><span class="small muted">${b.created_by}</span>` : ''}</td>
+          <td data-label=""><form method="post" action="/admin/forespoergsler/blokerede/${b.id}/fjern" class="inline">${csrfField(args.csrf)}<button class="btn btn-secondary btn-small" type="submit">Fjern blokering</button></form></td></tr>`,
+      )}</tbody></table></div>`
+    : html`<p class="empty">Ingen blokerede afsendere.</p>`}</section>
 </div>`;
 }

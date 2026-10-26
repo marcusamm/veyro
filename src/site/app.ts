@@ -13,7 +13,7 @@ import { samplePoaPdf } from '../lib/poa-pdf';
 import { latestTemplate, veyroInfo } from '../lib/nda';
 import { sampleNdaPdf } from '../lib/nda-docs';
 import { asset, THEME_VERSION, translate, warmUp, type FormState } from './engine';
-import { countView, createLead, LEAD_KIND_LABEL, markLeadNotified, type LeadCartLine, type LeadKind } from './leads';
+import { blockEmailKey, countView, createLead, ipHash, isBlockedSender, LEAD_KIND_LABEL, markLeadNotified, type LeadCartLine, type LeadKind } from './leads';
 import { cartDrop, renderSitePage, type CartLine, type RenderRequest } from './render';
 
 warmUp();
@@ -417,12 +417,17 @@ site.post('/contact', async (c) => {
     [formId]: { 'posted_successfully?': false, errors: formErrors(errors), name: fields['name'] ?? '', email: fields['email'] ?? '', body: fields['body'] ?? '' },
   });
 
-  const ip = c.req.header('CF-Connecting-IP') ?? 'ukendt';
-  if (!(await rateLimit(c.env.DB, 'lead-ip:' + (await sha256Hex(ip)), 8, 3600))) {
-    return respond(c, returnPath, state({ form: 'Du har sendt mange henvendelser på kort tid. Vent lidt, eller skriv direkte til kontakt@veyro.dk.' }), 429);
-  }
-
+  const ip = c.req.header('CF-Connecting-IP') ?? null;
+  const ip_hash = ip ? await ipHash(ip) : null;
   const email = normalizeEmail(fields['email']);
+  // Blokerede afsendere (admin › Forespørgsler › Bloker afsender) afvises i stilhed: takkebesked, men intet gemmes og ingen mail
+  if (await isBlockedSender(c.env.DB, email, ip_hash)) return success();
+
+  const tooMany = () => respond(c, returnPath, state({ form: 'Du har sendt mange henvendelser på kort tid. Vent lidt, eller skriv direkte til kontakt@veyro.dk.' }), 429);
+  if (!(await rateLimit(c.env.DB, 'lead-ip:' + (ip_hash ?? 'ukendt'), 8, 3600))) return tooMany();
+  if (ip_hash && !(await rateLimit(c.env.DB, 'lead-ip-dag:' + ip_hash, 20, 86400))) return tooMany();
+  if (email && !(await rateLimit(c.env.DB, 'lead-mail:' + (await sha256Hex(blockEmailKey(email))), 3, 3600))) return tooMany();
+
   const kind: LeadKind = formId === 'CartRequest' ? 'kurv' : formId.startsWith('Assessment') ? 'vurdering' : 'kontakt';
   const errors: Record<string, string> = {};
   if (!email) errors.email = 'er ugyldig';
@@ -453,6 +458,7 @@ site.post('/contact', async (c) => {
     fields,
     cart,
     page: returnPath,
+    ip_hash,
   });
   if (kind === 'kurv') writeCart(c, []);
 

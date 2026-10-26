@@ -702,6 +702,81 @@ describe('Admin: forespørgsler → tilbud', () => {
   });
 });
 
+describe('Admin: bloker afsender (spam)', () => {
+  const send = async (email, ip, body = 'Køb billige links') => {
+    const visitor = new Client(stack.site);
+    const page = await visitor.get('/pages/kontakt');
+    const id = page.html.match(/id="(Contact-[^"]+)"/)[1];
+    return visitor.post('/contact', contactForm(page.html, id, { 'contact[name]': 'Spam Spamsen', 'contact[email]': email, 'contact[body]': body, 'contact[Samtykke]': 'Ja' }), { 'CF-Connecting-IP': ip });
+  };
+  const count = (where) => sql(`SELECT COUNT(*) AS n FROM leads WHERE ${where}`)[0].n;
+
+  it('blokerer mailadresse og IP, afviser nye henvendelser i stilhed og kan fjernes igen', async () => {
+    expect((await send('s.p.a.m@gmail.com', '203.0.113.7')).status).toBe(303);
+    const [lead] = sql("SELECT id, ip_hash FROM leads WHERE email = 's.p.a.m@gmail.com'");
+    expect(lead.ip_hash).toMatch(/^[0-9a-f]{64}$/);
+    // IP-adressen gemmes aldrig i klartekst
+    expect(count("ip_hash = '203.0.113.7' OR fields LIKE '%203.0.113.7%'")).toBe(0);
+
+    const detail = await admin.get(`/admin/forespoergsler/${lead.id}`);
+    expect(detail.html).toContain('Bloker afsender');
+    expect(detail.html).toContain('IP-adressen, den blev sendt fra');
+    // gmail.com kan ikke blokeres som domæne
+    expect(detail.html).not.toContain('Hele domænet gmail.com');
+    let r = await admin.post(`/admin/forespoergsler/${lead.id}/bloker`, { _csrf: csrfFrom(detail.html), email: '1', ip: '1' });
+    expect(r.status).toBe(303);
+    expect(r.headers.get('location')).toBe(`/admin/forespoergsler/${lead.id}?besked=blokeret`);
+    expect(sql(`SELECT status FROM leads WHERE id = ${lead.id}`)[0].status).toBe('spam');
+    expect(sql('SELECT kind FROM lead_blocks ORDER BY kind').map((b) => b.kind)).toEqual(['email', 'ip']);
+
+    const mailsBefore = (await emails()).length;
+    // Samme Gmail-adresse i en anden stavemåde, fra en anden IP: afvist i stilhed (takkebesked, intet gemt)
+    r = await send('spam+2@googlemail.com', '198.51.100.20');
+    expect(r.status).toBe(303);
+    expect(r.headers.get('location')).toContain('kontakt=ok');
+    // Ny mailadresse fra den blokerede IP: også afvist
+    expect((await send('ny-adresse@spamfirma.dk', '203.0.113.7')).headers.get('location')).toContain('kontakt=ok');
+    expect(count("email IN ('spam+2@googlemail.com', 'ny-adresse@spamfirma.dk')")).toBe(0);
+    expect((await emails()).length).toBe(mailsBefore);
+    expect(sql('SELECT SUM(hits) AS n FROM lead_blocks')[0].n).toBe(2);
+
+    // Andre kan stadig skrive
+    expect((await send('rigtig@kunde.dk', '192.0.2.44', 'Vi vil gerne høre om drift')).status).toBe(303);
+    expect(count("email = 'rigtig@kunde.dk'")).toBe(1);
+
+    // Oversigten og fjernelse
+    const list = await admin.get('/admin/forespoergsler/blokerede');
+    expect(list.status).toBe(200);
+    expect(list.html).toContain('s.p.a.m@gmail.com');
+    expect(list.html).toContain(`IP fra forespørgsel #${lead.id}`);
+    for (const b of sql('SELECT id FROM lead_blocks')) {
+      const page = await admin.get('/admin/forespoergsler/blokerede');
+      r = await admin.post(`/admin/forespoergsler/blokerede/${b.id}/fjern`, { _csrf: csrfFrom(page.html) });
+      expect(r.status).toBe(303);
+    }
+    expect(sql('SELECT COUNT(*) AS n FROM lead_blocks')[0].n).toBe(0);
+    expect((await send('spam+3@gmail.com', '203.0.113.8')).status).toBe(303);
+    expect(count("email = 'spam+3@gmail.com'")).toBe(1);
+  });
+
+  it('blokerer et helt firmadomæne', async () => {
+    expect((await send('a@spamfirma.dk', '203.0.113.30')).status).toBe(303);
+    const [lead] = sql("SELECT id FROM leads WHERE email = 'a@spamfirma.dk'");
+    const detail = await admin.get(`/admin/forespoergsler/${lead.id}`);
+    expect(detail.html).toContain('Hele domænet spamfirma.dk');
+    await admin.post(`/admin/forespoergsler/${lead.id}/bloker`, { _csrf: csrfFrom(detail.html), domain: '1' });
+    expect((await send('b@spamfirma.dk', '203.0.113.31')).headers.get('location')).toContain('kontakt=ok');
+    expect(count("email = 'b@spamfirma.dk'")).toBe(0);
+    sql('DELETE FROM lead_blocks');
+  });
+
+  it('begrænser antal henvendelser fra samme mailadresse', async () => {
+    const codes = [];
+    for (let i = 0; i < 4; i++) codes.push((await send('gentager@firma.dk', `198.51.100.${60 + i}`)).status);
+    expect(codes).toEqual([303, 303, 303, 429]);
+  });
+});
+
 describe('Admin: statistik', () => {
   /** Læser en ukomprimeret ZIP (som buildXlsx laver) til { filnavn: tekst } */
   function unzip(buf) {
