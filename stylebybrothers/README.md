@@ -27,6 +27,10 @@ Hjemmeside til **StyleByBrothers**, herrefrisør og barbershop, Sct. Mikkelsgade
 Tests: `npx vitest run --root stylebybrothers` (fra repoets rod), 15 tests inkl. sommertidsskift.
 Gennemklik i browser: start `npm start` her i mappen og kør `node scripts/e2e.mjs http://localhost:8787/ <mappe-til-skærmbilleder>`.
 
+## Hosting
+
+Siden ligger på **https://sbb.veyro.dk** som en statisk Cloudflare Worker (`stylebybrothers`, se `wrangler.toml`). Workflowet *Deploy StyleByBrothers* tester bookingmotoren og publicerer `site/` ved hvert push til `main`, der ændrer `stylebybrothers/`, og kan også køres manuelt fra fanen Actions. `site/_headers` sætter `noindex`, så søgemaskiner ikke viser demoen.
+
 ## Skal bekræftes af ejeren før lancering
 
 - Varigheder på behandlingerne (priser og åbningstider er fra salonen; varighederne er et skøn).

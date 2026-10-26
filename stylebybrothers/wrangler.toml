@@ -1,0 +1,14 @@
+# StyleByBrothers' hjemmeside på sbb.veyro.dk. En ren statisk side (Workers Static Assets), ingen server eller database.
+# Deployes af workflowet "Deploy StyleByBrothers" ved push til main, eller manuelt fra fanen Actions.
+name = "stylebybrothers"
+compatibility_date = "2026-10-01"
+workers_dev = false
+preview_urls = false
+
+routes = [
+  { pattern = "sbb.veyro.dk", custom_domain = true }
+]
+
+[assets]
+directory = "./site"
+not_found_handling = "single-page-application"

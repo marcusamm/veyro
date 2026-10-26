@@ -1,0 +1,11 @@
+# Demoen må ikke indekseres af søgemaskiner, før ejeren har godkendt den.
+/*
+  X-Robots-Tag: noindex, nofollow
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/assets/*
+  Cache-Control: public, max-age=300
+
+/img/*
+  Cache-Control: public, max-age=86400
