@@ -1,6 +1,9 @@
-# StyleByBrothers' hjemmeside på sbb.veyro.dk. En ren statisk side (Workers Static Assets), ingen server eller database.
+# StyleByBrothers' hjemmeside på sbb.veyro.dk: statiske filer (site/) og en lille bookingserver (worker/).
+# Bookinger, behandlinger og tider gemmes i én Durable Object, så samme tid aldrig kan bookes to gange.
 # Deployes af workflowet "Deploy StyleByBrothers" ved push til main, eller manuelt fra fanen Actions.
+# Hemmelighed: RESEND_API_KEY (sættes af workflowet). Lokalt: .dev.vars med DEV_LOGIN=1.
 name = "stylebybrothers"
+main = "worker/index.js"
 compatibility_date = "2026-10-01"
 workers_dev = false
 preview_urls = false
@@ -11,4 +14,27 @@ routes = [
 
 [assets]
 directory = "./site"
+binding = "ASSETS"
 not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[durable_objects.bindings]]
+name = "SALON"
+class_name = "Salon"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Salon"]
+
+# Påmindelser om dagen efter og oprydning, hver dag kl. 16:00 UTC (17 eller 18 dansk tid).
+[triggers]
+crons = ["0 16 * * *"]
+
+[observability]
+enabled = true
+
+[vars]
+SITE_URL = "https://sbb.veyro.dk"
+# Hvem der kan logge ind i admin. Får også besked om nye bookinger, indtil salonens egen e-mail er sat i admin.
+ADMIN_EMAILS = "marcus@veyro.dk,kontakt@veyro.dk"
+EMAIL_FROM = "StyleByBrothers <booking@veyro.dk>"

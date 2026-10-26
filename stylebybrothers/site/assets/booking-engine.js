@@ -162,22 +162,24 @@ export function normalizePhone(p) {
   return digits.startsWith('+45') ? digits.slice(3) : digits.startsWith('0045') ? digits.slice(4) : digits;
 }
 
-export function validateCustomer({ name, phone, email }) {
+export function validateCustomer({ name, phone, email }, { requireEmail = true } = {}) {
   const errors = {};
   if (!name || name.trim().length < 2) errors.name = 'Skriv dit navn.';
   const p = normalizePhone(phone);
   if (!/^\+?\d{8,15}$/.test(p)) errors.phone = 'Skriv et gyldigt telefonnummer (8 cifre).';
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) errors.email = 'Skriv en gyldig e-mail.';
+  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((email || '').trim());
+  if (requireEmail ? !validEmail : email && !validEmail) errors.email = 'Skriv en gyldig e-mail.';
   return errors;
 }
 
 /**
  * Opretter en booking efter at have tjekket ledigheden igen, så to kunder ikke kan få samme tid.
  * Returnerer { ok: true, booking } eller { ok: false, error }. Ændrer state.bookings.
+ * requireEmail: false bruges, når salonen selv opretter en booking for en kunde, der har ringet.
  */
-export function createBooking(state, input, now, random = Math.random) {
+export function createBooking(state, input, now, random = Math.random, { requireEmail = true } = {}) {
   const { serviceId, barberId = 'any', date, start, customer } = input;
-  const errors = validateCustomer(customer || {});
+  const errors = validateCustomer(customer || {}, { requireEmail });
   if (Object.keys(errors).length) return { ok: false, error: 'invalid', errors };
   const slot = availableSlots(state, { serviceId, barberId, date, now }).find((s) => s.start === start);
   if (!slot) return { ok: false, error: 'taken' };
@@ -199,7 +201,7 @@ export function createBooking(state, input, now, random = Math.random) {
     startUtc: new Date(zonedToUtc(date, start)).toISOString(),
     name: customer.name.trim(),
     phone: normalizePhone(customer.phone),
-    email: customer.email.trim().toLowerCase(),
+    email: (customer.email || '').trim().toLowerCase(),
     note: (customer.note || '').trim().slice(0, 500),
     status: 'confirmed',
     createdAt: new Date(now).toISOString(),

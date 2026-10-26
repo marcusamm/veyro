@@ -1,9 +1,8 @@
-// Demodata for StyleByBrothers. Alt herunder kan ændres i adminpanelet (#/admin).
-// Priser og åbningstider er fra salonen. Varigheder og medarbejdere er IKKE bekræftet.
+// Startdata for StyleByBrothers. Behandlinger, frisører, tider og regler gemmes på serveren og ændres i admin (#/admin).
+// Priser og åbningstider er fra salonen. Varighederne er et skøn, som salonen kan rette i admin.
 
 export const SALON = {
   name: 'StyleByBrothers',
-  legalName: 'StyleByBrothers ApS',
   street: 'Sct. Mikkelsgade 26A',
   city: '4200 Slagelse',
   phone: '+45 61 70 70 44',
@@ -31,9 +30,23 @@ function hours({ off = [] } = {}) {
   return h;
 }
 
+// Faste billeder fra salonen. De ændres i koden, ikke i admin.
+export const PHOTOS = {
+  hero: { src: 'img/kroeller-taper.jpg', note: 'Klipning med krøller og taper fade' },
+  salon: { src: 'img/salonen.jpg', note: 'Salonen indefra' },
+  facade: { src: '', note: '' },
+};
+export const GALLERY = [
+  { id: 'g1', title: 'High fade med skæg', src: 'img/high-fade-skaeg.jpg' },
+  { id: 'g2', title: 'Slick back med lav fade', src: 'img/slick-back.jpg' },
+  { id: 'g3', title: 'Mid fade med skæg', src: 'img/mid-fade-skaeg.jpg' },
+  { id: 'g4', title: 'Taper fade', src: 'img/taper-tekstur.jpg' },
+];
+
+const ALL = ['herreklip', 'skaeg', 'haarvask', 'bryllupsklip'];
+
 export function defaultState() {
   return {
-    version: 4,
     settings: {
       slotStep: 15,
       minNoticeMinutes: 60,
@@ -47,35 +60,21 @@ export function defaultState() {
         { date: '2026-12-31', note: 'Nytårsaften' },
         { date: '2027-01-01', note: 'Nytårsdag' },
       ],
-      bookingProvider: 'demo',
+      // Kunden vælger ikke frisør; hver "stol" er en kalender, så to kunder kan klippes samtidig.
+      chooseBarber: false,
+      notifyEmails: [],
+      externalBookingUrl: '',
     },
-    // Priser fra salonen. Varighederne er et skøn og skal bekræftes.
     services: [
       { id: 'herreklip', name: 'Herreklip', desc: 'Med saks eller maskine, også fades.', duration: 30, price: 250, active: true },
       { id: 'skaeg', name: 'Skæg', desc: 'Trim og kontur.', duration: 20, price: 100, active: true },
       { id: 'haarvask', name: 'Hårvask', desc: 'Kan lægges oven i et klip.', duration: 10, price: 50, active: true },
       { id: 'bryllupsklip', name: 'Bryllupsklip', desc: 'Klip og skæg til den store dag.', duration: 90, price: 1000, active: true },
     ],
-    // Pladsholdere: navne og billeder leveres af ejeren.
     barbers: [
-      { id: 'b1', name: 'Frisør 1', role: 'Fades og skæg', photo: '', active: true, serviceIds: ['herreklip', 'skaeg', 'haarvask', 'bryllupsklip'], hours: hours(), absences: [] },
-      { id: 'b2', name: 'Frisør 2', role: 'Klassiske klip', photo: '', active: true, serviceIds: ['herreklip', 'skaeg', 'haarvask', 'bryllupsklip'], hours: hours(), absences: [] },
-      { id: 'b3', name: 'Frisør 3', role: 'Skin fades', photo: '', active: true, serviceIds: ['herreklip', 'skaeg', 'haarvask', 'bryllupsklip'], hours: hours(), absences: [] },
-    ],
-    // Billedpladser. Salonen uploader sine egne billeder under Admin → Billeder.
-    photos: {
-      hero: { src: 'img/kroeller-taper.jpg', note: 'Foto fra salonen: en frisør i gang ved stolen' },
-      salon: { src: 'img/salonen.jpg', note: 'Salonen indefra' },
-      facade: { src: '', note: 'Facaden på Sct. Mikkelsgade 26A' },
-    },
-    // Salonens egne billeder (fra Facebook). Ejeren skal godkende brugen, før siden går live.
-    gallery: [
-      { id: 'g1', title: 'High fade med skæg', src: 'img/high-fade-skaeg.jpg' },
-      { id: 'g2', title: 'Slick back med lav fade', src: 'img/slick-back.jpg' },
-      { id: 'g3', title: 'Mid fade med skæg', src: 'img/mid-fade-skaeg.jpg' },
-      { id: 'g4', title: 'Taper fade', src: 'img/taper-tekstur.jpg' },
+      { id: 'b1', name: 'Stol 1', role: '', active: true, serviceIds: ALL, hours: hours(), absences: [] },
+      { id: 'b2', name: 'Stol 2', role: '', active: true, serviceIds: ALL, hours: hours(), absences: [] },
     ],
     bookings: [],
-    outbox: [],
   };
 }
