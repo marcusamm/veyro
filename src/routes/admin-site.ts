@@ -21,11 +21,12 @@ import {
   type TemplateData,
 } from '../site/content';
 import { handleize, sectionSchema, sectionTypes, themeSettingsSchema, type SettingDef } from '../site/engine';
-import { deleteLead, getLead, leadCounts, leadEvents, listLeads, LEAD_STATUSES, updateLead, viewStats, type LeadCartLine, type LeadRow, type LeadStatus } from '../site/leads';
+import { blockLeadSender, blocksForLead, deleteLead, deleteLeadBlock, getLead, leadCounts, leadEvents, listLeadBlocks, listLeads, LEAD_STATUSES, updateLead, viewStats, type LeadCartLine, type LeadRow, type LeadStatus } from '../site/leads';
 import { siteHosts } from '../site/app';
 import {
   filesPage,
   historyPage,
+  leadBlocksPage,
   leadDetailPage,
   leadsPage,
   menusPage,
@@ -577,15 +578,42 @@ adminSite.post('/hjemmeside/historik/:id/gendan', async (c) => {
 adminSite.get('/forespoergsler', async (c) => {
   const q = c.req.query('status') ?? 'aabne';
   const filter = q === 'alle' || q === 'aabne' || (LEAD_STATUSES as readonly string[]).includes(q) ? q : 'aabne';
-  const [rows, counts] = await Promise.all([listLeads(c.env.DB, filter === 'alle' ? null : filter), leadCounts(c.env.DB)]);
-  return render(c, 'Forespørgsler', leadsPage({ rows, filter, counts }), { nav: 'admin-forespoergsler', admin: true });
+  const [rows, counts, blocked] = await Promise.all([
+    listLeads(c.env.DB, filter === 'alle' ? null : filter),
+    leadCounts(c.env.DB),
+    c.env.DB.prepare('SELECT COUNT(*) AS n FROM lead_blocks').first<{ n: number }>(),
+  ]);
+  return render(c, 'Forespørgsler', leadsPage({ rows, filter, counts, blocked: blocked?.n ?? 0 }), { nav: 'admin-forespoergsler', admin: true });
+});
+
+// Blokerede afsendere (før /:id, så "blokerede" ikke læses som et id)
+adminSite.get('/forespoergsler/blokerede', async (c) => {
+  const blocks = await listLeadBlocks(c.env.DB);
+  return render(c, 'Blokerede afsendere', leadBlocksPage({ csrf: c.get('csrf'), blocks, flash: c.req.query('besked') ?? null }), { nav: 'admin-forespoergsler', admin: true });
+});
+
+adminSite.post('/forespoergsler/blokerede/:id/fjern', async (c) => {
+  const body = await c.req.parseBody();
+  await deleteLeadBlock(c.env.DB, Number(c.req.param('id')));
+  const back = typeof body['back'] === 'string' && /^\/admin\/forespoergsler\/\d+$/.test(body['back']) ? body['back'] : '/admin/forespoergsler/blokerede';
+  return c.redirect(`${back}?besked=fjernet`, 303);
 });
 
 adminSite.get('/forespoergsler/:id', async (c) => {
   const lead = await getLead(c.env.DB, Number(c.req.param('id')));
   if (!lead) return render(c, 'Findes ikke', errorPage('Forespørgslen findes ikke', '', { href: '/admin/forespoergsler', label: 'Til forespørgsler' }), { status: 404, admin: true });
-  const [prospects, events] = await Promise.all([prospectsForLead(c.env.DB, lead), leadEvents(c.env.DB, lead.id)]);
-  return render(c, `Forespørgsel #${lead.id}`, leadDetailPage({ csrf: c.get('csrf'), lead, flash: c.req.query('besked') ?? null, offerUrl: null, prospects, events }), { nav: 'admin-forespoergsler', admin: true });
+  const [prospects, events, blocks] = await Promise.all([prospectsForLead(c.env.DB, lead), leadEvents(c.env.DB, lead.id), blocksForLead(c.env.DB, lead)]);
+  return render(c, `Forespørgsel #${lead.id}`, leadDetailPage({ csrf: c.get('csrf'), lead, flash: c.req.query('besked') ?? null, offerUrl: null, prospects, events, blocks }), { nav: 'admin-forespoergsler', admin: true });
+});
+
+adminSite.post('/forespoergsler/:id/bloker', async (c) => {
+  const lead = await getLead(c.env.DB, Number(c.req.param('id')));
+  if (!lead) return c.text('Findes ikke', 404);
+  const body = await c.req.parseBody();
+  const opts = { email: body['email'] === '1', domain: body['domain'] === '1', ip: body['ip'] === '1' };
+  if (!opts.email && !opts.domain && !opts.ip) return c.redirect(`/admin/forespoergsler/${lead.id}#bloker`, 303);
+  await blockLeadSender(c.env.DB, lead, opts, who(c));
+  return c.redirect(`/admin/forespoergsler/${lead.id}?besked=blokeret`, 303);
 });
 
 adminSite.post('/forespoergsler/:id', async (c) => {
