@@ -1,28 +1,30 @@
-// StyleByBrothers — hjemmeside, booking og adminpanel (demo).
-// Demoen gemmer alt i den besøgendes egen browser (localStorage). Intet sendes, og ingen tider reserveres hos salonen.
+// StyleByBrothers — hjemmeside, booking og adminpanel.
+// Bookinger, behandlinger og tider ligger på serveren (/api, se worker/). Browseren bruger samme bookingmotor
+// til at vise ledige tider, og serveren tjekker tiden igen, når kunden bekræfter.
 import * as E from './booking-engine.js';
-import { SALON, defaultState } from './data.js';
+import { SALON, PHOTOS, GALLERY } from './data.js';
 
-const KEY = 'sbb-demo-v4';
 const app = document.getElementById('app');
 
-// ---------- lager ----------
-function load() {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const s = JSON.parse(raw);
-      if (s && s.version === 4) return s;
-    }
-  } catch { /* privat vindue eller blokeret lager: kør videre i hukommelsen */ }
-  return defaultState();
+// ---------- server ----------
+let state = null; // { settings, services, barbers, bookings } – offentlig udgave, eller fuld udgave i admin
+let admin = null; // { email, outbox } når man er logget ind
+
+async function api(path, { method = 'GET', body } = {}) {
+  const res = await fetch(`/api/${path}`, {
+    method,
+    headers: body ? { 'content-type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: 'same-origin',
+  });
+  let data = {};
+  try { data = await res.json(); } catch { /* tomt svar */ }
+  if (!res.ok) { const e = new Error(data.error || 'Der skete en fejl. Prøv igen.'); e.status = res.status; e.data = data; throw e; }
+  return data;
 }
-let state = load();
-function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(state)); return true; } catch {
-    toast('Kunne ikke gemme i browseren. Billedet er måske for stort.');
-    return false;
-  }
+
+async function loadPublic() {
+  state = await api('state');
 }
 
 // ---------- hjælpere ----------
@@ -37,6 +39,7 @@ const service = (id) => state.services.find((s) => s.id === id);
 const barber = (id) => state.barbers.find((b) => b.id === id);
 const initials = (name) => name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 const uid = (p) => `${p}${Math.random().toString(36).slice(2, 8)}`;
+const chooseBarber = () => Boolean(state.settings.chooseBarber) && state.barbers.filter((b) => b.active).length > 1;
 const DAY_NAMES = ['søndag', 'mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag'];
 const DAY_SHORT = ['søn', 'man', 'tir', 'ons', 'tor', 'fre', 'lør'];
 
@@ -133,10 +136,8 @@ function todayLine() {
 }
 
 // ---------- fælles layout ----------
-const demoBar = () => `<div class="demo-bar"><div class="wrap">Demo af en ny hjemmeside. Det er ikke salonens officielle side, og bookinger her er ikke rigtige.</div></div>`;
-
 function header() {
-  return `${demoBar()}<header class="site-header">
+  return `<header class="site-header">
     <nav class="nav wrap" aria-label="Hovedmenu">
       <a class="wordmark" href="#/">StyleByBrothers</a>
       <ul class="nav-links">
@@ -165,7 +166,8 @@ function footer() {
   return `<footer class="site-footer"><div class="wrap">
     <strong>StyleByBrothers</strong>
     <div class="foot-row"><span>${SALON.street}, ${SALON.city}</span><span>Tlf. ${SALON.phone}</span><span>CVR ${SALON.cvr}</span></div>
-    <div class="foot-row"><a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook</a><a href="${SALON.instagram}" target="_blank" rel="noopener">Instagram</a><a href="#/min-booking">Flyt eller aflys en tid</a><a href="#/admin">Admin</a></div>
+    <div class="foot-row"><a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook</a><a href="${SALON.instagram}" target="_blank" rel="noopener">Instagram</a><a href="#/min-booking">Flyt eller aflys en tid</a><a href="#/privatliv">Privatliv og cookies</a><a href="#/admin">Log ind</a></div>
+    <p class="credit">Webudvikling: <a href="https://veyro.dk" target="_blank" rel="noopener">Veyro.dk</a></p>
   </div></footer>`;
 }
 
@@ -174,7 +176,7 @@ function renderHome(scrollTo) {
   const services = state.services.filter((s) => s.active);
   const open = todayLine();
   const team = state.barbers.filter((b) => b.active);
-  const p = state.photos;
+  const p = PHOTOS;
   app.innerHTML = `${header()}
   <main id="main">
     <div class="wrap intro">
@@ -201,7 +203,7 @@ function renderHome(scrollTo) {
               <span class="p-desc">${esc(s.desc)}</span><span class="p-dur">${s.duration} min</span>
             </a></li>`).join('')}
           </ul>
-          <p class="note" style="margin-top:14px">Betaling i salonen. Kan du ikke komme, så <a href="#/min-booking">flyt eller aflys din tid</a>.</p>
+          <p class="note" style="margin-top:14px">Alle priser er inkl. moms og betales i salonen. Kan du ikke komme, så <a href="#/min-booking">flyt eller aflys din tid</a>.</p>
         </div>
       </div>
     </section>
@@ -220,17 +222,17 @@ function renderHome(scrollTo) {
           ${photo(p.salon.src, 'Salonen', p.salon.note)}
           <div class="about-text">
             <h2 class="t-l" id="salon-titel">Salonen</h2>
-            <p>StyleByBrothers er en herrefrisør på Sct. Mikkelsgade i Slagelse. Vi klipper herrer og børn, mest fades, klassiske klip og skæg.</p>
-            <p>Book online, ring, eller skriv til os på Facebook. Har du en fast frisør, kan du vælge ham, når du booker.</p>
+            <p>StyleByBrothers er en herrefrisør på Sct. Mikkelsgade i Slagelse. Vi laver mest fades, klassiske klip og skæg.</p>
+            <p>Book online, ring, eller skriv til os på Facebook.${chooseBarber() ? ' Har du en fast frisør, kan du vælge ham, når du booker.' : ''}</p>
           </div>
         </div>
-        <h3 class="t-m" style="margin-top:56px">Holdet</h3>
+        ${chooseBarber() ? `<h3 class="t-m" style="margin-top:56px">Holdet</h3>
         <div class="team" style="margin-top:14px">
           ${team.map((b) => `<div class="member">
-            <div class="photo">${b.photo ? `<img src="${esc(b.photo)}" alt="${esc(b.name)}" loading="lazy">` : `<span class="initials">${esc(initials(b.name))}</span>`}</div>
+            <div class="photo"><span class="initials">${esc(initials(b.name))}</span></div>
             <div><h3>${esc(b.name)}</h3><p>${esc(b.role)}${b.role ? ' · ' : ''}${workDays(b)}</p><a class="small" href="#/booking?frisoer=${b.id}">Book hos ${esc(b.name)}</a></div>
           </div>`).join('')}
-        </div>
+        </div>` : ''}
       </div>
     </section>
 
@@ -270,7 +272,7 @@ function workDays(b) {
 }
 
 function galleryItems() {
-  return state.gallery.map((g) => `<figure class="g-item ${g.src ? 'has-img' : ''}">
+  return GALLERY.map((g) => `<figure class="g-item ${g.src ? 'has-img' : ''}">
       ${photo(g.src, g.title, g.title)}
       <figcaption class="g-cap">${esc(g.title)}</figcaption>
     </figure>`).join('');
@@ -339,8 +341,9 @@ function startBooking(params) {
   const sid = params.get('behandling');
   const bid = params.get('frisoer');
   bk = { step: 1, serviceId: null, barberId: null, date: null, start: null, month: monthStart(today()), customer: { name: '', phone: '', email: '', note: '' }, errors: {}, notice: '' };
-  if (bid && barber(bid)?.active) bk.presetBarber = bid;
-  if (sid && service(sid)?.active) { bk.serviceId = sid; bk.step = 2; }
+  if (!chooseBarber()) bk.barberId = 'any';
+  else if (bid && barber(bid)?.active) bk.presetBarber = bid;
+  if (sid && service(sid)?.active) { bk.serviceId = sid; bk.step = 2; if (bk.barberId) goStep(3, false); }
   if (bk.serviceId && bk.presetBarber && barber(bk.presetBarber).serviceIds.includes(bk.serviceId)) { bk.barberId = bk.presetBarber; goStep(3, false); }
   renderBooking();
   window.scrollTo(0, 0);
@@ -364,10 +367,12 @@ function barberLabel(id) { return id === 'any' ? 'Første ledige' : barber(id)?.
 function renderBooking() {
   if (!bk) return;
   const sv = service(bk.serviceId);
+  const choose = chooseBarber();
   const step = (n, title, value, body) => {
+    if (n === 2 && !choose) return '';
     const status = n < bk.step ? 'done' : n === bk.step ? 'current' : 'todo';
     return `<section class="step ${status}" aria-labelledby="step-${n}">
-      <div class="step-head"><h2 id="step-${n}"><span>${n}</span>${title}</h2>${status === 'done' ? `<button class="link small" data-act="step" data-step="${n}">Ændr</button>` : ''}</div>
+      <div class="step-head"><h2 id="step-${n}"><span>${!choose && n > 2 ? n - 1 : n}</span>${title}</h2>${status === 'done' ? `<button class="link small" data-act="step" data-step="${n}">Ændr</button>` : ''}</div>
       ${status === 'done' ? `<p class="step-value">${value}</p>` : ''}
       ${status === 'current' ? `<div class="step-body">${body()}</div>` : ''}
     </section>`;
@@ -383,14 +388,14 @@ function renderBooking() {
       <li><button type="button" class="choice with-face" role="radio" aria-checked="${bk.barberId === 'any'}" data-act="pick-barber" data-id="any">
         <span class="dot"></span><span class="face" aria-hidden="true">–</span><span><strong>Første ledige</strong><small>Flest tider at vælge imellem</small></span></button></li>
       ${list.map((b) => `<li><button type="button" class="choice with-face" role="radio" aria-checked="${bk.barberId === b.id}" data-act="pick-barber" data-id="${b.id}">
-        <span class="dot"></span><span class="face">${b.photo ? `<img src="${esc(b.photo)}" alt="">` : esc(initials(b.name))}</span><span><strong>${esc(b.name)}</strong><small>${esc(b.role)}${b.role ? ' · ' : ''}${workDays(b)}</small></span></button></li>`).join('')}
+        <span class="dot"></span><span class="face">${esc(initials(b.name))}</span><span><strong>${esc(b.name)}</strong><small>${esc(b.role)}${b.role ? ' · ' : ''}${workDays(b)}</small></span></button></li>`).join('')}
     </ul>`;
   };
   const s3 = () => `${bk.notice ? `<p class="notice danger" style="margin-bottom:16px">${esc(bk.notice)}</p>` : ''}
       ${bk.date ? '' : `<p class="empty">Der er ingen ledige tider de næste ${state.settings.maxDaysAhead} dage. Ring på ${SALON.phone}, så finder vi en tid.</p>`}
       ${calendarHtml({ serviceId: bk.serviceId, barberId: bk.barberId, month: bk.month, selected: bk.date })}
       ${timesHtml({ serviceId: bk.serviceId, barberId: bk.barberId, date: bk.date, selected: bk.start })}
-      <div class="continue" id="continue">${bk.start != null ? `<button class="btn" data-act="step" data-step="4">Fortsæt med ${esc(fmtDate(bk.date, { weekday: 'short', day: 'numeric', month: 'short' }))} kl. ${E.fmtTime(bk.start)}</button>${bk.barberId === 'any' ? '<p class="note" style="margin-top:8px">Frisøren bliver valgt, når du bekræfter.</p>' : ''}` : ''}</div>`;
+      <div class="continue" id="continue">${bk.start != null ? `<button class="btn" data-act="step" data-step="4">Fortsæt med ${esc(fmtDate(bk.date, { weekday: 'short', day: 'numeric', month: 'short' }))} kl. ${E.fmtTime(bk.start)}</button>${bk.barberId === 'any' && choose ? '<p class="note" style="margin-top:8px">Frisøren bliver valgt, når du bekræfter.</p>' : ''}` : ''}</div>`;
   const s4 = () => {
     const c = bk.customer;
     const err = bk.errors;
@@ -401,8 +406,9 @@ function renderBooking() {
         ${f('phone', 'Telefon', 'tel', 'autocomplete="tel" inputmode="tel" required', 'til påmindelse')}
         ${f('email', 'E-mail', 'email', 'autocomplete="email" required', 'til bekræftelsen')}
         <div class="field"><label for="f-note">Besked til frisøren <small>valgfri</small></label><textarea id="f-note" name="note" maxlength="500">${esc(c.note)}</textarea></div>
-        <p class="note">Vi bruger kun dine oplysninger til bookingen. Demo: tiden bliver ikke reserveret, og der sendes ingen e-mail eller sms.</p>
-        <div><button class="btn" type="submit">Book ${sv ? esc(sv.name.toLowerCase()) : 'tid'} ${bk.date ? `${esc(fmtDate(bk.date, { weekday: 'short', day: 'numeric', month: 'short' }))} kl. ${E.fmtTime(bk.start)}` : ''}</button></div>
+        ${bk.serverError ? `<p class="notice danger" role="alert">${esc(bk.serverError)}</p>` : ''}
+        <p class="note">Vi bruger kun dine oplysninger til at håndtere din booking og sende bekræftelse og påmindelse. Læs mere i vores <a href="#/privatliv">privatlivspolitik</a>.</p>
+        <div><button class="btn" type="submit" ${bk.sending ? 'disabled' : ''}>Book ${sv ? esc(sv.name.toLowerCase()) : 'tid'} ${bk.date ? `${esc(fmtDate(bk.date, { weekday: 'short', day: 'numeric', month: 'short' }))} kl. ${E.fmtTime(bk.start)}` : ''}</button></div>
       </form>`;
   };
   const timeValue = bk.date && bk.start != null ? `${esc(cap(fmtDate(bk.date)))} kl. ${E.fmtTime(bk.start)}` : '';
@@ -410,7 +416,7 @@ function renderBooking() {
   <main class="booking" id="main"><div class="wrap booking-grid">
     <div>
       <h1 class="t-l">Book tid</h1>
-      <p class="booking-intro">Vælg behandling, frisør og tidspunkt. Du skal ikke oprette en konto.</p>
+      <p class="booking-intro">Vælg ${choose ? 'behandling, frisør og tidspunkt' : 'behandling og tidspunkt'}. Du skal ikke oprette en konto.</p>
       ${step(1, 'Behandling', sv ? `${esc(sv.name)} · ${sv.duration} min · ${kr(sv.price)}` : '', s1)}
       ${step(2, 'Frisør', esc(barberLabel(bk.barberId)), s2)}
       ${step(3, 'Tidspunkt', timeValue, s3)}
@@ -420,7 +426,7 @@ function renderBooking() {
     <aside class="summary" aria-label="Din booking"><h2>Din booking</h2>
       <dl>
         <div><dt>Behandling</dt><dd>${sv ? esc(sv.name) : '–'}</dd></div>
-        <div><dt>Frisør</dt><dd>${bk.barberId ? esc(barberLabel(bk.barberId)) : '–'}</dd></div>
+        ${choose ? `<div><dt>Frisør</dt><dd>${bk.barberId ? esc(barberLabel(bk.barberId)) : '–'}</dd></div>` : ''}
         <div><dt>Tid</dt><dd>${bk.start != null ? `${esc(fmtDate(bk.date, { weekday: 'short', day: 'numeric', month: 'short' }))}, ${E.fmtTime(bk.start)}` : '–'}</dd></div>
         <div class="total"><dt>Pris</dt><dd>${sv ? kr(sv.price) : '–'}</dd></div>
       </dl>
@@ -437,30 +443,40 @@ function renderBooking() {
   }
 }
 
-function submitBooking() {
-  const r = E.createBooking(state, { serviceId: bk.serviceId, barberId: bk.barberId, date: bk.date, start: bk.start, customer: bk.customer }, now());
-  if (!r.ok && r.error === 'invalid') { bk.errors = r.errors; renderBooking(); return; }
-  if (!r.ok) {
-    bk.start = null;
-    bk.notice = 'Tiden blev taget, mens du bookede. Vælg en anden tid.';
-    goStep(3);
-    return;
-  }
-  queueMessages(r.booking, 'oprettet');
-  save();
-  history.replaceState(null, '', `#/booking/bekraeftet?ref=${r.booking.ref}`);
-  renderConfirmation(r.booking);
+let lastBooking = null;
+function rememberBooking(b) {
+  lastBooking = b;
+  try { sessionStorage.setItem('sbb-last', JSON.stringify(b)); } catch { /* ikke vigtigt */ }
+}
+function recallBooking(ref) {
+  if (lastBooking?.ref === ref) return lastBooking;
+  try { const b = JSON.parse(sessionStorage.getItem('sbb-last') || 'null'); return b?.ref === ref ? b : null; } catch { return null; }
 }
 
-// Simulerede udsendelser. I drift sendes e-mail via fx Resend og sms via en sms-udbyder (se README).
-function queueMessages(b, kind) {
-  const br = barber(b.barberId);
-  const when = `${cap(fmtDate(b.date))} kl. ${E.fmtTime(b.start)}`;
-  const at = new Date(now()).toISOString();
-  const subject = { oprettet: `Din tid hos StyleByBrothers: ${when}`, flyttet: `Din tid er flyttet til ${when}`, aflyst: `Din tid ${when} er aflyst` }[kind];
-  state.outbox.unshift({ id: uid('m'), at, type: 'E-mail', to: b.email, subject, body: `Hej ${b.name.split(' ')[0]}\n\n${b.serviceName} hos ${br?.name || 'StyleByBrothers'}\n${when}\n${SALON.street}, ${SALON.city}\nPris: ${kr(b.price)}\nBookingnummer: ${b.ref}\n\nFlyt eller aflys på hjemmesiden under "Flyt eller aflys en tid".` });
-  if (kind === 'oprettet') state.outbox.unshift({ id: uid('m'), at, type: 'Sms', to: b.phone, subject: 'Sendes dagen før', body: `Hej ${b.name.split(' ')[0]}. Husk din tid hos StyleByBrothers i morgen kl. ${E.fmtTime(b.start)}. Bookingnr. ${b.ref}` });
-  state.outbox = state.outbox.slice(0, 60);
+async function submitBooking() {
+  const errors = E.validateCustomer(bk.customer);
+  bk.serverError = '';
+  if (Object.keys(errors).length) { bk.errors = errors; renderBooking(); return; }
+  bk.errors = {}; bk.sending = true; renderBooking();
+  try {
+    const r = await api('bookings', { method: 'POST', body: { serviceId: bk.serviceId, barberId: bk.barberId, date: bk.date, start: bk.start, customer: bk.customer } });
+    state = r.state;
+    rememberBooking(r.booking);
+    history.replaceState(null, '', `#/booking/bekraeftet?ref=${r.booking.ref}`);
+    renderConfirmation(r.booking);
+  } catch (e) {
+    bk.sending = false;
+    if (e.status === 409) {
+      await loadPublic().catch(() => {});
+      bk.start = null;
+      bk.notice = 'Tiden blev taget, mens du bookede. Vælg en anden tid.';
+      goStep(3);
+      return;
+    }
+    if (e.status === 400 && e.data?.errors && Object.keys(e.data.errors).length) bk.errors = e.data.errors;
+    else bk.serverError = e.message;
+    renderBooking();
+  }
 }
 
 function gcalLink(b) {
@@ -474,7 +490,7 @@ function icsFor(b) {
   const dt = (iso) => iso.replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const start = new Date(b.startUtc);
   const end = new Date(start.getTime() + (b.end - b.start) * 60000);
-  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//StyleByBrothers//Booking//DA', 'BEGIN:VEVENT', `UID:${b.id}@stylebybrothers`, `DTSTAMP:${dt(new Date().toISOString())}`,
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//StyleByBrothers//Booking//DA', 'BEGIN:VEVENT', `UID:${b.ref}@stylebybrothers`, `DTSTAMP:${dt(new Date().toISOString())}`,
     `DTSTART:${dt(start.toISOString())}`, `DTEND:${dt(end.toISOString())}`, `SUMMARY:${b.serviceName}\\, StyleByBrothers`,
     `LOCATION:${SALON.street}\\, ${SALON.city}`, `DESCRIPTION:Bookingnummer ${b.ref}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
 }
@@ -484,12 +500,12 @@ function renderConfirmation(b) {
   app.innerHTML = `${header()}
   <main class="booking" id="main"><div class="wrap narrow">
     <h1 class="t-l">Tak, ${esc(b.name.split(' ')[0])}. Du er booket.</h1>
-    <p class="booking-intro">Bekræftelsen sendes til ${esc(b.email)}. <strong>Demo:</strong> der er ikke sendt noget, og tiden er ikke reserveret.</p>
+    <p class="booking-intro">Vi har sendt en bekræftelse til ${esc(b.email)}. Du får også en påmindelse dagen før.</p>
     <dl class="receipt">
       <div><dt>Hvornår</dt><dd>${esc(cap(fmtDate(b.date)))} kl. ${E.fmtTime(b.start)}–${E.fmtTime(b.end)}</dd></div>
       <div><dt>Behandling</dt><dd>${esc(b.serviceName)}</dd></div>
-      <div><dt>Frisør</dt><dd>${esc(br?.name || '')}</dd></div>
-      <div><dt>Pris</dt><dd>${kr(b.price)} <span class="muted" style="font-weight:400">betales i salonen</span></dd></div>
+      ${chooseBarber() ? `<div><dt>Frisør</dt><dd>${esc(br?.name || '')}</dd></div>` : ''}
+      <div><dt>Pris</dt><dd>${kr(b.price)} <span class="muted" style="font-weight:400">inkl. moms, betales i salonen</span></dd></div>
       <div><dt>Adresse</dt><dd>${SALON.street}, ${SALON.city}<br><a class="small" style="font-weight:400" href="${SALON.maps}" target="_blank" rel="noopener">Vis på kort</a></dd></div>
       <div><dt>Bookingnr.</dt><dd class="ref">${esc(b.ref)}</dd></div>
     </dl>
@@ -507,31 +523,31 @@ function renderConfirmation(b) {
 // ---------- flyt eller aflys ----------
 let mb = null;
 function renderManage(params) {
-  if (!mb || params) mb = { ref: params?.get('ref') || '', phone: '', booking: null, moving: false, date: null, start: null, month: monthStart(today()), msg: '', msgKind: '' };
+  if (!mb || params) mb = { ref: params?.get('ref') || '', phone: '', booking: null, moving: false, date: null, start: null, month: monthStart(today()), msg: '', msgKind: '', busy: false };
   const b = mb.booking;
   let inner;
   if (!b) {
     inner = `<form class="form" id="find-form" novalidate>
       <div class="field"><label for="m-ref">Bookingnummer <small>står i din bekræftelse</small></label><input id="m-ref" name="ref" value="${esc(mb.ref)}" autocomplete="off" autocapitalize="characters" required></div>
       <div class="field"><label for="m-phone">Telefonnummer</label><input id="m-phone" name="phone" type="tel" inputmode="tel" value="${esc(mb.phone)}" required></div>
-      <div><button class="btn" type="submit">Find min tid</button></div>
+      <div><button class="btn" type="submit" ${mb.busy ? 'disabled' : ''}>Find min tid</button></div>
     </form>`;
   } else {
     const br = barber(b.barberId);
-    const changeable = E.canChange(state, b, now());
+    const changeable = b.status === 'confirmed' && b.canChange;
     const sel = b.anyBarber ? 'any' : b.barberId;
     inner = `<dl class="receipt">
         <div><dt>Hvornår</dt><dd>${esc(cap(fmtDate(b.date)))} kl. ${E.fmtTime(b.start)}</dd></div>
         <div><dt>Behandling</dt><dd>${esc(b.serviceName)}, ${kr(b.price)}</dd></div>
-        <div><dt>Frisør</dt><dd>${esc(br?.name || '')}</dd></div>
+        ${chooseBarber() ? `<div><dt>Frisør</dt><dd>${esc(br?.name || '')}</dd></div>` : ''}
         <div><dt>Status</dt><dd>${b.status === 'confirmed' ? 'Booket' : 'Aflyst'}</dd></div>
       </dl>
       ${b.status === 'confirmed' && !changeable ? `<p class="notice" style="margin-top:20px">Tiden er så tæt på, at den ikke kan ændres online. Ring på ${SALON.phone}.</p>` : ''}
       ${changeable && !mb.moving ? `<div class="actions"><button class="btn" data-act="mb-move">Flyt tiden</button><button class="btn btn-line" data-act="mb-cancel">Aflys tiden</button></div>` : ''}
       ${mb.moving ? `<div style="margin-top:32px"><h2 class="t-m" style="margin-bottom:14px">Vælg en ny tid</h2>
-        ${calendarHtml({ serviceId: b.serviceId, barberId: sel, month: mb.month, selected: mb.date, ignoreBookingId: b.id })}
-        ${timesHtml({ serviceId: b.serviceId, barberId: sel, date: mb.date, selected: mb.start, ignoreBookingId: b.id })}
-        <div class="actions"><button class="btn" data-act="mb-save" ${mb.start == null ? 'disabled' : ''}>${mb.start != null ? `Flyt til ${esc(fmtDate(mb.date, { weekday: 'short', day: 'numeric', month: 'short' }))} kl. ${E.fmtTime(mb.start)}` : 'Vælg en tid'}</button><button class="btn btn-line" data-act="mb-stop">Fortryd</button></div></div>` : ''}
+        ${calendarHtml({ serviceId: b.serviceId, barberId: sel, month: mb.month, selected: mb.date, ignoreBookingId: b.pid })}
+        ${timesHtml({ serviceId: b.serviceId, barberId: sel, date: mb.date, selected: mb.start, ignoreBookingId: b.pid })}
+        <div class="actions"><button class="btn" data-act="mb-save" ${mb.start == null || mb.busy ? 'disabled' : ''}>${mb.start != null ? `Flyt til ${esc(fmtDate(mb.date, { weekday: 'short', day: 'numeric', month: 'short' }))} kl. ${E.fmtTime(mb.start)}` : 'Vælg en tid'}</button><button class="btn btn-line" data-act="mb-stop">Fortryd</button></div></div>` : ''}
       <p style="margin-top:28px"><button class="link small" data-act="mb-reset">Find en anden booking</button></p>`;
   }
   app.innerHTML = `${header()}
@@ -542,100 +558,211 @@ function renderManage(params) {
     ${inner}
   </div></main>${footer()}`;
   document.title = 'Flyt eller aflys · StyleByBrothers';
-  document.getElementById('find-form')?.addEventListener('submit', (e) => {
+  document.getElementById('find-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    mb.ref = fd.get('ref'); mb.phone = fd.get('phone');
-    mb.booking = E.findBooking(state, mb.ref, mb.phone);
-    mb.msg = mb.booking ? '' : 'Vi kan ikke finde en booking med det nummer og telefonnummer. Tjek bekræftelsen, eller ring til os.';
-    mb.msgKind = mb.booking ? '' : 'danger';
-    renderManage();
+    mb.ref = String(fd.get('ref') || '').trim(); mb.phone = String(fd.get('phone') || '').trim();
+    mb.busy = true; renderManage();
+    try {
+      mb.booking = (await api('bookings/find', { method: 'POST', body: { ref: mb.ref, phone: mb.phone } })).booking;
+      mb.msg = ''; mb.msgKind = '';
+    } catch (err) { mb.msg = err.message; mb.msgKind = 'danger'; }
+    mb.busy = false; renderManage();
   });
 }
 
+async function manageChange(kind) {
+  mb.busy = true;
+  try {
+    const body = { ref: mb.booking.ref, phone: mb.phone, ...(kind === 'move' ? { date: mb.date, start: mb.start } : {}) };
+    const r = await api(`bookings/${kind}`, { method: 'POST', body });
+    state = r.state; mb.booking = r.booking; mb.moving = false;
+    mb.msg = kind === 'move' ? 'Din tid er flyttet. Du får en bekræftelse på e-mail.' : 'Din tid er aflyst.'; mb.msgKind = 'ok';
+  } catch (e) {
+    mb.msgKind = 'danger'; mb.start = null;
+    mb.msg = e.data?.error === 'too_late' ? 'Tiden er for tæt på til at blive ændret online. Ring til os.' : e.data?.error === 'taken' ? 'Tiden er ikke længere ledig. Vælg en anden.' : e.message;
+    if (e.status === 409) await loadPublic().catch(() => {});
+  }
+  mb.busy = false;
+  renderManage(); window.scrollTo(0, 0);
+}
+
+// ---------- privatliv ----------
+function renderPrivacy() {
+  app.innerHTML = `${header()}
+  <main class="booking" id="main"><div class="wrap narrow legal">
+    <h1 class="t-l">Privatlivspolitik og cookies</h1>
+    <p class="booking-intro">Senest opdateret 27. oktober 2026.</p>
+    <h2>Dataansvarlig</h2>
+    <p>StyleByBrothers, ${SALON.street}, ${SALON.city}. CVR ${SALON.cvr}. Telefon <a href="${SALON.phoneHref}">${SALON.phone}</a>.</p>
+    <h2>Hvad vi gemmer, og hvorfor</h2>
+    <p>Når du booker en tid, gemmer vi dit navn, telefonnummer, din e-mail, en eventuel besked til frisøren og den tid og behandling, du har valgt. Vi bruger oplysningerne til at håndtere din booking: reservere tiden, sende bekræftelse og påmindelse på e-mail og kontakte dig, hvis tiden skal ændres.</p>
+    <p>Grundlaget er, at det er nødvendigt for at opfylde aftalen med dig (databeskyttelsesforordningens artikel 6, stk. 1, litra b). Vi bruger ikke oplysningerne til markedsføring og sælger dem ikke.</p>
+    <h2>Hvor længe</h2>
+    <p>Bookinger slettes automatisk 12 måneder efter tidspunktet for besøget. Log over udsendte e-mails rummer kun de seneste udsendelser og overskrives løbende.</p>
+    <h2>Hvem der behandler oplysningerne for os</h2>
+    <p>Hjemmesiden er udviklet og drives af Veyro (veyro.dk) som databehandler. Siden og bookingerne ligger hos Cloudflare, og e-mails sendes gennem Resend. Begge er databehandlere og må kun bruge oplysningerne til at levere deres tjeneste. Oplysningerne kan blive behandlet uden for EU. Det sker i så fald efter EU-Kommissionens standardkontraktbestemmelser eller EU-U.S. Data Privacy Framework.</p>
+    <h2>Dine rettigheder</h2>
+    <p>Du har ret til at få indsigt i de oplysninger, vi har om dig, og til at få dem rettet eller slettet. Du kan også gøre indsigelse eller bede om at få begrænset behandlingen. Ring til os på ${SALON.phone}, eller kom forbi salonen. Du kan klage til Datatilsynet, <a href="https://www.datatilsynet.dk" target="_blank" rel="noopener">datatilsynet.dk</a>.</p>
+    <h2>Cookies</h2>
+    <p>Siden bruger ikke cookies til statistik, annoncer eller sporing, og den indlæser ikke indhold fra andre tjenester. Derfor spørger vi ikke om samtykke. Efter en booking husker din browser bookingen, så længe fanen er åben, så du kan se bekræftelsen igen. Salonens medarbejdere får en nødvendig login-cookie, når de logger ind i admin.</p>
+  </div></main>${footer()}`;
+  document.title = 'Privatlivspolitik · StyleByBrothers';
+  window.scrollTo(0, 0);
+}
+
 // ---------- admin ----------
-const ADMIN_TABS = [['bookinger', 'Bookinger'], ['behandlinger', 'Behandlinger'], ['frisoerer', 'Frisører'], ['regler', 'Tider og regler'], ['billeder', 'Billeder'], ['beskeder', 'Udsendelser']];
+const ADMIN_TABS = [['kalender', 'Kalender'], ['behandlinger', 'Priser'], ['frisoerer', 'Stole og arbejdstider'], ['regler', 'Regler og lukkedage'], ['beskeder', 'Sendte e-mails']];
 let adminDate = null;
 let adminMove = null;
-function isAdmin() { try { return sessionStorage.getItem('sbb-admin') === '1'; } catch { return window.__sbbAdmin === true; } }
+let adminNew = null;
+let adminRefresh = null;
+let showCancelled = false;
 
-function renderAdmin(tab = 'bookinger') {
-  if (!isAdmin()) {
-    app.innerHTML = `<div class="admin"><div class="wrap"><div class="login-card">
-      <a class="wordmark" href="#/">StyleByBrothers</a>
-      <h1>Admin</h1>
-      <p class="muted">Når siden er i drift, logger ejeren og frisørerne ind med et link på e-mail. I demoen kan du gå direkte ind.</p>
-      <button class="btn btn-block" data-act="admin-login">Gå til admin</button>
-      <a class="small" href="#/">Tilbage til hjemmesiden</a>
-    </div></div></div>`;
-    document.title = 'Admin · StyleByBrothers';
-    return;
-  }
-  if (!ADMIN_TABS.some(([id]) => id === tab)) tab = 'bookinger';
-  const views = { bookinger: adminBookings, behandlinger: adminServices, frisoerer: adminBarbers, regler: adminRules, billeder: adminPhotos, beskeder: adminOutbox };
-  app.innerHTML = `<div class="admin">
-    <div class="admin-top">${demoBar()}<div class="nav wrap"><a class="wordmark" href="#/">StyleByBrothers<small>admin</small></a>
+async function loadAdmin() {
+  const r = await api('admin/state');
+  state = r.state;
+  admin = { email: r.email, admins: r.admins, outbox: r.outbox };
+}
+
+function adminShell(tab, body) {
+  return `<div class="admin">
+    <div class="admin-top"><div class="nav wrap"><a class="wordmark" href="#/">StyleByBrothers<small>admin</small></a>
       <a class="btn btn-sm hide-sm" href="#/">Se siden</a><button class="btn btn-sm" data-act="admin-logout">Log ud</button></div>
       <nav class="admin-tabs wrap" aria-label="Admin">${ADMIN_TABS.map(([id, label]) => `<a href="#/admin/${id}" ${id === tab ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
     </div>
-    <div class="wrap admin-body">${views[tab]()}</div>
+    <div class="wrap admin-body">${body}</div>
   </div>`;
-  document.title = `Admin · ${ADMIN_TABS.find(([id]) => id === tab)[1]} · StyleByBrothers`;
 }
 
-function adminBookings() {
+function renderLogin(msg = '', kind = '') {
+  app.innerHTML = `<div class="admin"><div class="wrap"><form class="login-card" id="login-form" novalidate>
+      <a class="wordmark" href="#/">StyleByBrothers</a>
+      <h1>Log ind</h1>
+      <p class="muted">Skriv din e-mail, så sender vi et link, du logger ind med.</p>
+      ${msg ? `<p class="notice ${kind}" role="status">${msg}</p>` : ''}
+      <div class="field"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="email" required></div>
+      <button class="btn btn-block" type="submit">Send login-link</button>
+      <a class="small" href="#/">Tilbage til hjemmesiden</a>
+    </form></div></div>`;
+  document.title = 'Log ind · StyleByBrothers';
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = new FormData(e.target).get('email');
+    try {
+      const r = await api('admin/login', { method: 'POST', body: { email } });
+      renderLogin(r.devLink ? `Udvikling: <a href="${esc(r.devLink)}">log ind her</a>` : 'Hvis adressen har adgang, har vi sendt et login-link. Tjek din indbakke.', 'ok');
+    } catch (err) { renderLogin(esc(err.message), 'danger'); }
+  });
+}
+
+async function renderAdmin(tab, params) {
+  clearInterval(adminRefresh);
+  if (tab === 'login') {
+    try {
+      await api('admin/verify', { method: 'POST', body: { token: params.get('t') || '' } });
+      history.replaceState(null, '', '#/admin');
+      tab = 'kalender';
+    } catch (e) { renderLogin(esc(e.message), 'danger'); return; }
+  }
+  if (!admin) {
+    try { await loadAdmin(); } catch (e) {
+      if (e.status === 401) { renderLogin(); return; }
+      renderLogin(esc(e.message), 'danger'); return;
+    }
+  }
+  if (!ADMIN_TABS.some(([id]) => id === tab)) tab = 'kalender';
+  const views = { kalender: adminCalendar, behandlinger: adminServices, frisoerer: adminBarbers, regler: adminRules, beskeder: adminOutbox };
+  app.innerHTML = adminShell(tab, views[tab]());
+  document.title = `${ADMIN_TABS.find(([id]) => id === tab)[1]} · StyleByBrothers`;
+  if (tab === 'kalender') {
+    // Hent nye bookinger hvert minut, så skærmen i salonen altid er opdateret.
+    adminRefresh = setInterval(async () => {
+      if (adminMove || adminNew || document.hidden || !location.hash.startsWith('#/admin')) return;
+      try { await loadAdmin(); const y = window.scrollY; app.innerHTML = adminShell('kalender', adminCalendar()); window.scrollTo(0, y); } catch { /* prøv igen næste gang */ }
+    }, 60000);
+  }
+}
+
+const chairs = () => state.barbers.filter((b) => b.active);
+
+function adminCalendar() {
   adminDate ||= today();
-  const barbers = state.barbers.filter((b) => b.active);
-  const dayBookings = state.bookings.filter((b) => b.date === adminDate).sort((a, b) => a.start - b.start);
-  const upcoming = state.bookings.filter((b) => b.status === 'confirmed' && b.date >= today()).length;
+  const t = today();
+  const weekStart = E.addDays(adminDate, -((E.weekday(adminDate) + 6) % 7));
+  const confirmed = (d) => state.bookings.filter((b) => b.status === 'confirmed' && b.date === d);
+  const dayAll = state.bookings.filter((b) => b.date === adminDate);
+  const cancelledCount = dayAll.filter((b) => b.status === 'cancelled').length;
+  // Aflyste tider fylder kun, så de er skjult, medmindre frisøren beder om at se dem.
+  const list = dayAll.filter((b) => showCancelled || b.status !== 'cancelled').sort((a, b) => a.start - b.start || (a.status === 'cancelled') - (b.status === 'cancelled'));
   const closed = state.settings.closedDates.find((c) => c.date === adminDate);
+  const open = salonDay(adminDate);
+  const many = chairs().length > 1;
+  const nowMin = E.utcToZoned(now()).minutes;
   const card = (b) => {
     const moving = adminMove?.id === b.id;
-    return `<article class="bk ${b.status}">
+    const past = adminDate < t || (adminDate === t && b.end <= nowMin);
+    return `<article class="bk ${b.status} ${past ? 'past' : ''}">
       <time>${E.fmtTime(b.start)}<small>${E.fmtTime(b.end)}</small></time>
-      <div><h3>${esc(b.name)} ${b.status === 'cancelled' ? '<span class="tag off">Aflyst</span>' : ''}${b.example ? ' <span class="tag">Eksempel</span>' : ''}</h3>
-        <p>${esc(b.serviceName)} · ${kr(b.price)}${b.anyBarber ? ' · første ledige' : ''}</p>
-        <p>${esc(b.phone)} · ${esc(b.email)} · ${esc(b.ref)}</p>
-        ${b.note ? `<p>“${esc(b.note)}”</p>` : ''}
-        ${b.status === 'confirmed' ? (moving ? `<div class="grid-2" style="margin-top:10px">
-            <div class="field"><label>Ny dato</label><input type="date" data-act-change="move-date" value="${adminMove.date}" min="${today()}"></div>
+      <div><h3>${esc(b.name)} ${b.status === 'cancelled' ? '<span class="tag off">Aflyst</span>' : ''}${many ? ` <span class="tag">${esc(barber(b.barberId)?.name || '')}</span>` : ''}</h3>
+        <p><strong>${esc(b.serviceName)}</strong> · ${kr(b.price)}</p>
+        <p><a href="tel:${esc(b.phone)}">${esc(b.phone)}</a>${b.email ? ` · ${esc(b.email)}` : ''}</p>
+        ${b.note ? `<p class="bk-note">${esc(b.note)}</p>` : ''}
+        ${b.status === 'confirmed' && !past ? (moving ? `<div class="grid-2" style="margin-top:10px">
+            <div class="field"><label>Ny dato</label><input type="date" data-act-change="move-date" value="${adminMove.date}" min="${t}"></div>
             <div class="field"><label>Ny tid</label><select data-act-change="move-time"><option value="">Vælg</option>${E.availableSlots(state, { serviceId: b.serviceId, barberId: adminMove.barberId, date: adminMove.date, now: now(), ignoreBookingId: b.id }).map((s) => `<option value="${s.start}" ${adminMove.start === s.start ? 'selected' : ''}>${E.fmtTime(s.start)}</option>`).join('')}</select></div>
-            <div class="field"><label>Frisør</label><select data-act-change="move-barber"><option value="any">Første ledige</option>${E.barbersFor(state, b.serviceId, 'any').map((x) => `<option value="${x.id}" ${adminMove.barberId === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>
+            ${many ? `<div class="field"><label>Stol</label><select data-act-change="move-barber"><option value="any">Første ledige</option>${E.barbersFor(state, b.serviceId, 'any').map((x) => `<option value="${x.id}" ${adminMove.barberId === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` : ''}
             <div class="row"><button class="btn btn-sm" data-act="move-save" data-id="${b.id}">Gem</button><button class="btn btn-line btn-sm" data-act="move-stop">Fortryd</button></div>
           </div>` : `<div class="row"><button class="btn btn-line btn-sm" data-act="move-start" data-id="${b.id}">Flyt</button><button class="btn btn-line btn-sm" data-act="admin-cancel" data-id="${b.id}">Aflys</button></div>`) : ''}
       </div>
     </article>`;
   };
-  return `<div class="row between" style="margin-bottom:18px"><div><h1>Bookinger</h1><p class="muted">${upcoming} kommende. Alt er demodata i din browser.</p></div>
-      <button class="btn btn-line btn-sm" data-act="seed">Lav eksempelbookinger</button></div>
-    <div class="panel" style="margin-bottom:16px"><div class="row between">
-      <div class="row"><button class="btn btn-line btn-sm" data-act="admin-day" data-dir="-1" aria-label="Forrige dag">‹</button>
-      <input class="input" type="date" value="${adminDate}" data-act-change="admin-date" style="width:auto" aria-label="Dato">
-      <button class="btn btn-line btn-sm" data-act="admin-day" data-dir="1" aria-label="Næste dag">›</button>
-      <button class="btn btn-sm" data-act="admin-today">I dag</button></div>
-      <strong>${esc(cap(fmtDate(adminDate, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })))}</strong></div>
-      ${closed ? `<p class="notice" style="margin-top:12px">Lukket: ${esc(closed.note)}</p>` : ''}
+  const week = Array.from({ length: 7 }, (_, i) => E.addDays(weekStart, i));
+  return `<div class="row between" style="margin-bottom:16px">
+      <div class="row"><button class="btn btn-line btn-sm" data-act="admin-day" data-dir="-7" aria-label="Forrige uge">‹‹</button><button class="btn btn-line btn-sm" data-act="admin-day" data-dir="-1" aria-label="Forrige dag">‹</button>
+      <button class="btn btn-sm" data-act="admin-today">I dag</button>
+      <button class="btn btn-line btn-sm" data-act="admin-day" data-dir="1" aria-label="Næste dag">›</button><button class="btn btn-line btn-sm" data-act="admin-day" data-dir="7" aria-label="Næste uge">››</button></div>
+      <button class="btn btn-sm" data-act="new-start">Ny booking</button>
     </div>
-    <div class="day-cols" style="--cols:${barbers.length}">
-      ${barbers.map((br) => {
-        const list = dayBookings.filter((b) => b.barberId === br.id);
-        const h = br.hours[E.weekday(adminDate)];
-        const off = !h || E.isAbsent(br, adminDate) || closed;
-        return `<div><p class="col-head">${esc(br.name)} · ${off ? 'fri' : `${h.start}–${h.end}`}</p><div class="bk-list">${list.length ? list.map(card).join('') : '<p class="empty">Ingen bookinger</p>'}</div></div>`;
-      }).join('')}
-    </div>`;
+    <div class="week" role="group" aria-label="Uge">${week.map((d) => `<button class="wk-day ${d === adminDate ? 'sel' : ''} ${d === t ? 'is-today' : ''}" data-act="admin-pick" data-date="${d}"><span>${DAY_SHORT[E.weekday(d)]}</span><strong>${+d.slice(8)}</strong><small>${confirmed(d).length || ''}</small></button>`).join('')}</div>
+    <h1 class="cal-title">${esc(cap(fmtDate(adminDate, { weekday: 'long', day: 'numeric', month: 'long' })))}</h1>
+    <p class="muted" style="margin-bottom:16px">${closed ? `Lukket: ${esc(closed.note)}` : open ? `Åbent ${open.start}–${open.end} · ${confirmed(adminDate).length} ${confirmed(adminDate).length === 1 ? 'booking' : 'bookinger'}` : 'Lukket'}</p>
+    ${adminNew ? adminNewForm() : ''}
+    <div class="bk-list">${list.length ? list.map(card).join('') : '<p class="empty">Ingen bookinger denne dag.</p>'}</div>
+    ${cancelledCount ? `<p style="margin-top:14px"><button class="link small" data-act="toggle-cancelled">${showCancelled ? 'Skjul aflyste' : `Vis ${cancelledCount} ${cancelledCount === 1 ? 'aflyst' : 'aflyste'}`}</button></p>` : ''}`;
+}
+
+function adminNewForm() {
+  const n = adminNew;
+  const svs = state.services.filter((s) => s.active);
+  const slots = n.serviceId ? E.availableSlots({ ...state, settings: { ...state.settings, minNoticeMinutes: 0 } }, { serviceId: n.serviceId, barberId: n.barberId, date: n.date, now: now() }) : [];
+  const f = (id, label, type, extra = '') => `<div class="field ${n.errors[id] ? 'invalid' : ''}"><label for="n-${id}">${label}</label><input id="n-${id}" data-new="${id}" type="${type}" value="${esc(n[id] || '')}" ${extra}>${n.errors[id] ? `<span class="err">${esc(n.errors[id])}</span>` : ''}</div>`;
+  return `<div class="panel" style="margin-bottom:16px"><h2>Ny booking</h2>
+    <div class="grid-3">
+      <div class="field"><label for="n-service">Behandling</label><select id="n-service" data-act-change="new-service">${svs.map((s) => `<option value="${s.id}" ${s.id === n.serviceId ? 'selected' : ''}>${esc(s.name)} (${s.duration} min)</option>`).join('')}</select></div>
+      <div class="field"><label for="n-date">Dato</label><input id="n-date" type="date" data-act-change="new-date" value="${n.date}" min="${today()}"></div>
+      <div class="field"><label for="n-time">Tid</label><select id="n-time" data-act-change="new-time"><option value="">${slots.length ? 'Vælg' : 'Ingen ledige'}</option>${slots.map((s) => `<option value="${s.start}" ${n.start === s.start ? 'selected' : ''}>${E.fmtTime(s.start)}</option>`).join('')}</select></div>
+      ${chairs().length > 1 ? `<div class="field"><label for="n-barber">Stol</label><select id="n-barber" data-act-change="new-barber"><option value="any">Første ledige</option>${E.barbersFor(state, n.serviceId, 'any').map((x) => `<option value="${x.id}" ${n.barberId === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` : ''}
+      ${f('name', 'Navn', 'text', 'autocomplete="off"')}
+      ${f('phone', 'Telefon', 'tel', 'inputmode="tel"')}
+      ${f('email', 'E-mail (valgfri, så får kunden en bekræftelse)', 'email')}
+      ${f('note', 'Note (valgfri)', 'text')}
+    </div>
+    ${n.error ? `<p class="notice danger" style="margin-top:10px">${esc(n.error)}</p>` : ''}
+    <div class="row" style="margin-top:12px"><button class="btn btn-sm" data-act="new-save">Opret booking</button><button class="btn btn-line btn-sm" data-act="new-stop">Fortryd</button></div>
+  </div>`;
 }
 
 function adminServices() {
-  return `<div class="row between" style="margin-bottom:18px"><div><h1>Behandlinger</h1><p class="muted">Ændringer gemmes med det samme og vises på siden og i bookingen.</p></div><button class="btn btn-sm" data-act="service-add">Ny behandling</button></div>
+  return `<div class="row between" style="margin-bottom:18px"><div><h1>Priser og behandlinger</h1><p class="muted">Ændringer gemmes med det samme og vises på siden og i bookingen. Priser er inkl. moms.</p></div><button class="btn btn-sm" data-act="service-add">Ny behandling</button></div>
     ${state.services.map((s, i) => `<div class="panel">
       <div class="row between"><h2>${esc(s.name)} ${s.active ? '' : '<span class="tag off">Skjult</span>'}</h2>
         <div class="row"><button class="btn btn-line btn-sm" data-act="service-move" data-id="${s.id}" data-dir="-1" aria-label="Flyt op" ${i === 0 ? 'disabled' : ''}>↑</button><button class="btn btn-line btn-sm" data-act="service-move" data-id="${s.id}" data-dir="1" aria-label="Flyt ned" ${i === state.services.length - 1 ? 'disabled' : ''}>↓</button></div></div>
       <div class="grid-2">
         <div class="field"><label>Navn</label><input data-path="services:${s.id}:name" value="${esc(s.name)}"></div>
         <div class="grid-2"><div class="field"><label>Pris (kr.)</label><input type="number" min="0" step="5" data-path="services:${s.id}:price" value="${s.price}"></div>
-        <div class="field"><label>Varighed (min)</label><input type="number" min="5" max="240" step="5" data-path="services:${s.id}:duration" value="${s.duration}"></div></div>
-        <div class="field" style="grid-column:1/-1"><label>Kort beskrivelse</label><input data-path="services:${s.id}:desc" maxlength="80" value="${esc(s.desc)}"></div>
+        <div class="field"><label>Varighed (min)</label><input type="number" min="5" max="480" step="5" data-path="services:${s.id}:duration" value="${s.duration}"></div></div>
+        <div class="field" style="grid-column:1/-1"><label>Kort beskrivelse</label><input data-path="services:${s.id}:desc" maxlength="120" value="${esc(s.desc)}"></div>
       </div>
       <div class="row between" style="margin-top:10px"><label class="row"><input type="checkbox" data-path="services:${s.id}:active" ${s.active ? 'checked' : ''}> Vis på siden og i bookingen</label><button class="link small" data-act="service-del" data-id="${s.id}">Slet</button></div>
     </div>`).join('')}`;
@@ -643,68 +770,65 @@ function adminServices() {
 
 function adminBarbers() {
   const days = [[1, 'Man'], [2, 'Tir'], [3, 'Ons'], [4, 'Tor'], [5, 'Fre'], [6, 'Lør'], [0, 'Søn']];
-  return `<div class="row between" style="margin-bottom:18px"><div><h1>Frisører</h1><p class="muted">Hver frisør har sin egen kalender. Åbningstiderne på siden regnes ud fra arbejdstiderne her.</p></div><button class="btn btn-sm" data-act="barber-add">Ny frisør</button></div>
+  return `<div class="row between" style="margin-bottom:18px"><div><h1>Stole og arbejdstider</h1><p class="muted">Hver stol (eller frisør) er en kalender. Har salonen to stole, kan to kunder bookes samtidig. Åbningstiderne på siden regnes ud fra tiderne her.</p></div><button class="btn btn-sm" data-act="barber-add">Tilføj stol</button></div>
     ${state.barbers.map((b) => `<div class="panel">
-      <div class="row" style="gap:16px;margin-bottom:12px">
-        <div class="avatar-lg">${b.photo ? `<img src="${esc(b.photo)}" alt="">` : esc(initials(b.name))}</div>
-        <div class="row"><span class="btn btn-line btn-sm file-btn">Upload billede<input type="file" accept="image/*" data-upload="barber" data-id="${b.id}" aria-label="Upload billede af ${esc(b.name)}"></span>${b.photo ? `<button class="link small" data-act="barber-photo-del" data-id="${b.id}">Fjern billede</button>` : ''}</div>
-      </div>
       <div class="grid-2">
-        <div class="field"><label>Navn</label><input data-path="barbers:${b.id}:name" value="${esc(b.name)}"></div>
-        <div class="field"><label>Speciale</label><input data-path="barbers:${b.id}:role" value="${esc(b.role)}"></div>
+        <div class="field"><label>Navn <small>fx "Stol 1" eller frisørens navn</small></label><input data-path="barbers:${b.id}:name" value="${esc(b.name)}"></div>
+        <div class="field"><label>Speciale <small>valgfrit</small></label><input data-path="barbers:${b.id}:role" value="${esc(b.role)}"></div>
       </div>
       <p class="col-head" style="margin-top:16px">Behandlinger</p>
       <div class="check-list">${state.services.map((s) => `<label><input type="checkbox" data-act-change="barber-service" data-id="${b.id}" data-service="${s.id}" ${b.serviceIds.includes(s.id) ? 'checked' : ''}> ${esc(s.name)}</label>`).join('')}</div>
       <p class="col-head" style="margin-top:16px">Arbejdstider</p>
-      <div class="table-scroll"><table class="hours-table"><thead><tr><th>Dag</th><th>Arbejder</th><th>Fra</th><th>Til</th><th>Pause fra</th><th>Pause til</th></tr></thead><tbody>
-        ${days.map(([d, label]) => { const h = b.hours[d]; return `<tr><td>${label}</td><td><input type="checkbox" data-act-change="barber-day" data-id="${b.id}" data-day="${d}" ${h ? 'checked' : ''} aria-label="Arbejder ${label}"></td>
+      <div class="table-scroll"><table class="hours-table"><thead><tr><th>Dag</th><th>Åben</th><th>Fra</th><th>Til</th><th>Pause fra</th><th>Pause til</th></tr></thead><tbody>
+        ${days.map(([d, label]) => { const h = b.hours[d]; return `<tr><td>${label}</td><td><input type="checkbox" data-act-change="barber-day" data-id="${b.id}" data-day="${d}" ${h ? 'checked' : ''} aria-label="Åben ${label}"></td>
           ${['start', 'end', 'breakStart', 'breakEnd'].map((k) => `<td><input type="time" step="900" data-path="barbers:${b.id}:hours:${d}:${k}" value="${h ? esc(h[k] || '') : ''}" ${h ? '' : 'disabled'} aria-label="${label} ${k}"></td>`).join('')}</tr>`; }).join('')}
       </tbody></table></div>
       <p class="col-head" style="margin-top:16px">Ferie og fravær</p>
       ${(b.absences || []).map((a, i) => `<div class="row" style="margin-bottom:6px"><span class="tag">${esc(fmtDate(a.from, { day: 'numeric', month: 'short' }))} – ${esc(fmtDate(a.to || a.from, { day: 'numeric', month: 'short', year: 'numeric' }))}</span><span class="muted">${esc(a.note || '')}</span><button class="link small" data-act="absence-del" data-id="${b.id}" data-i="${i}">Fjern</button></div>`).join('') || '<p class="muted small" style="margin-bottom:8px">Intet fravær.</p>'}
       <div class="grid-3" style="align-items:end"><div class="field"><label for="abs-from-${b.id}">Fra</label><input type="date" id="abs-from-${b.id}" min="${today()}"></div><div class="field"><label for="abs-to-${b.id}">Til</label><input type="date" id="abs-to-${b.id}" min="${today()}"></div><div class="row"><input class="input" id="abs-note-${b.id}" placeholder="Fx ferie" style="flex:1;min-width:120px" aria-label="Note"><button class="btn btn-sm" data-act="absence-add" data-id="${b.id}">Tilføj</button></div></div>
-      <div class="row between" style="margin-top:14px"><label class="row"><input type="checkbox" data-path="barbers:${b.id}:active" ${b.active ? 'checked' : ''}> Kan bookes</label><button class="link small" data-act="barber-del" data-id="${b.id}">Slet frisør</button></div>
+      <div class="row between" style="margin-top:14px"><label class="row"><input type="checkbox" data-path="barbers:${b.id}:active" ${b.active ? 'checked' : ''}> Kan bookes</label><button class="link small" data-act="barber-del" data-id="${b.id}">Slet</button></div>
     </div>`).join('')}`;
 }
 
 function adminRules() {
   const s = state.settings;
-  return `<h1>Tider og regler</h1><p class="muted" style="margin-bottom:18px">Bestemmer, hvilke tider kunderne kan booke.</p>
+  return `<h1>Regler og lukkedage</h1><p class="muted" style="margin-bottom:18px">Bestemmer, hvilke tider kunderne kan booke, og hvem der får besked.</p>
+    <div class="panel"><h2>Besked om bookinger</h2>
+      <div class="field"><label for="notify">Send nye, flyttede og aflyste bookinger til <small>e-mails, adskilt med komma</small></label><input id="notify" type="text" data-act-change="notify" value="${esc((s.notifyEmails || []).join(', '))}" placeholder="${esc(admin.admins[0] || '')}"></div>
+      <p class="muted small" style="margin-top:6px">${s.notifyEmails?.length ? '' : `Er feltet tomt, går beskeden til ${esc(admin.admins[0] || '')}.`}</p>
+    </div>
     <div class="panel"><h2>Booking</h2><div class="grid-3">
       <div class="field"><label>Tider starter hvert</label><select data-path="settings:slotStep" data-type="number">${[5, 10, 15, 20, 30].map((n) => `<option value="${n}" ${s.slotStep === n ? 'selected' : ''}>${n} min</option>`).join('')}</select></div>
       <div class="field"><label>Mindste varsel (min)</label><input type="number" min="0" step="15" data-path="settings:minNoticeMinutes" value="${s.minNoticeMinutes}"></div>
       <div class="field"><label>Book højst (dage frem)</label><input type="number" min="1" max="365" data-path="settings:maxDaysAhead" value="${s.maxDaysAhead}"></div>
       <div class="field"><label>Pause mellem kunder (min)</label><input type="number" min="0" step="5" data-path="settings:bufferMinutes" value="${s.bufferMinutes}"></div>
       <div class="field"><label>Flyt/aflys online indtil (min før)</label><input type="number" min="0" step="15" data-path="settings:cancelNoticeMinutes" value="${s.cancelNoticeMinutes}"></div>
-    </div></div>
+    </div>
+    <label class="row" style="margin-top:12px"><input type="checkbox" data-path="settings:chooseBarber" ${s.chooseBarber ? 'checked' : ''}> Kunden vælger selv frisør (kræver mindst to stole med frisørernes navne)</label></div>
     <div class="panel"><h2>Lukkedage</h2>
       ${s.closedDates.slice().sort((a, b) => a.date.localeCompare(b.date)).map((c) => `<div class="row" style="margin-bottom:6px"><span class="tag">${esc(fmtDate(c.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }))}</span><span>${esc(c.note)}</span><button class="link small" data-act="closed-del" data-date="${c.date}">Fjern</button></div>`).join('')}
       <div class="row" style="margin-top:10px"><input class="input" type="date" id="closed-date" min="${today()}" style="width:auto" aria-label="Dato"><input class="input" id="closed-note" placeholder="Fx helligdag" style="flex:1;min-width:140px" aria-label="Note"><button class="btn btn-sm" data-act="closed-add">Tilføj lukkedag</button></div>
-    </div>
-    <div class="panel"><h2>Eksisterende bookingsystem</h2><p class="muted small" style="margin-bottom:10px">Bruger salonen allerede et bookingsystem (fx Planway, Booksy eller Fresha), kan alle "Book tid"-knapper sende kunden dertil i stedet.</p>
-      <div class="field"><label for="ext-url">Link til bookingsystem <small>valgfrit</small></label><input id="ext-url" type="url" placeholder="https://" data-path="settings:externalBookingUrl" value="${esc(s.externalBookingUrl || '')}"></div>
-    </div>
-    <div class="panel"><h2>Demodata</h2><p class="muted small" style="margin-bottom:10px">Sletter alle ændringer, bookinger og billeder i denne browser.</p><button class="btn btn-line btn-sm" data-act="reset">Nulstil demo</button></div>`;
-}
-
-function adminPhotos() {
-  const slots = [['hero', 'Forsiden'], ['salon', 'Salonen'], ['facade', 'Find os']];
-  return `<h1>Billeder</h1><p class="muted" style="margin-bottom:18px">Brug salonens egne billeder. I demoen gemmes de kun i denne browser.</p>
-    <h2 class="t-m" style="margin-bottom:10px">Faste billeder</h2>
-    <div class="thumb-grid" style="margin-bottom:32px">${slots.map(([key, label]) => { const p = state.photos[key]; return `<div class="thumb">${photo(p.src, label, p.note)}
-      <div class="body"><strong>${label}</strong><p class="muted small">${esc(p.note)}</p>
-        <div class="row between"><span class="btn btn-line btn-sm file-btn">${p.src ? 'Udskift' : 'Upload'}<input type="file" accept="image/*" data-upload="photo" data-id="${key}" aria-label="Upload billede til ${label}"></span>${p.src ? `<button class="link small" data-act="photo-del" data-id="${key}">Fjern</button>` : ''}</div></div></div>`; }).join('')}</div>
-    <div class="row between" style="margin-bottom:10px"><h2 class="t-m">Klipninger</h2><span class="btn btn-sm file-btn">Tilføj billede<input type="file" accept="image/*" data-upload="gallery-new" aria-label="Tilføj billede"></span></div>
-    <div class="thumb-grid">${state.gallery.map((g) => `<div class="thumb">${photo(g.src, g.title, g.title)}
-      <div class="body">
-        <div class="field"><label>Titel</label><input data-path="gallery:${g.id}:title" value="${esc(g.title)}"></div>
-        <div class="row between"><span class="btn btn-line btn-sm file-btn">${g.src ? 'Udskift' : 'Upload'}<input type="file" accept="image/*" data-upload="gallery" data-id="${g.id}" aria-label="Upload ${esc(g.title)}"></span><button class="link small" data-act="gallery-del" data-id="${g.id}">Slet</button></div>
-      </div></div>`).join('')}</div>`;
+    </div>`;
 }
 
 function adminOutbox() {
-  return `<h1>Udsendelser</h1><p class="muted" style="margin-bottom:18px">De e-mails og sms'er, siden sender, når den er i drift. I demoen sendes intet.</p>
-    ${state.outbox.length ? `<div class="bk-list">${state.outbox.map((m) => `<div class="outbox-item"><div class="row between"><strong>${m.type} til ${esc(m.to)}</strong><span class="tag">Ikke sendt (demo)</span></div><p class="muted small">${esc(m.subject)} · ${new Date(m.at).toLocaleString('da-DK', { timeZone: E.TZ })}</p><pre>${esc(m.body)}</pre></div>`).join('')}</div>` : '<p class="empty">Ingen endnu. Book en tid på siden, så kan du se bekræftelsen og sms-påmindelsen her.</p>'}`;
+  const list = admin.outbox || [];
+  return `<h1>Sendte e-mails</h1><p class="muted" style="margin-bottom:18px">Bekræftelser, påmindelser og beskeder til salonen. De seneste 150.</p>
+    ${list.length ? `<div class="bk-list">${list.map((m) => `<div class="outbox-item"><div class="row between"><strong>${esc(m.to)}</strong>${m.ok ? '<span class="tag ok">Sendt</span>' : `<span class="tag off" title="${esc(m.error)}">Ikke sendt</span>`}</div><p class="muted small">${esc(m.subject)} · ${new Date(m.at).toLocaleString('da-DK', { timeZone: E.TZ })}</p><pre>${esc(m.text)}</pre></div>`).join('')}</div>` : '<p class="empty">Ingen endnu.</p>'}`;
+}
+
+// Gem indstillinger på serveren lidt efter sidste ændring.
+let saveTimer = null;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      await api('admin/config', { method: 'PUT', body: { settings: state.settings, services: state.services, barbers: state.barbers } });
+      toast('Gemt');
+    } catch (e) {
+      toast(e.status === 401 ? 'Du er logget ud. Log ind igen.' : `Ikke gemt: ${e.message}`);
+    }
+  }, 500);
 }
 
 function setPath(path, value) {
@@ -717,34 +841,16 @@ function setPath(path, value) {
   obj[rest[0]] = value;
 }
 
-async function fileToDataUrl(file, max) {
-  const url = URL.createObjectURL(file);
+async function adminBooking(path, body, okMsg) {
   try {
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
-    const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
-    const c = document.createElement('canvas');
-    c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
-    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    return c.toDataURL('image/jpeg', 0.8);
-  } finally { URL.revokeObjectURL(url); }
-}
-
-function seedBookings() {
-  const names = ['Eksempel A', 'Eksempel B', 'Eksempel C', 'Eksempel D', 'Eksempel E', 'Eksempel F'];
-  let made = 0;
-  for (let d = 0; d < 7; d++) {
-    const date = E.addDays(today(), d);
-    let perDay = 0;
-    for (const sv of state.services.filter((s) => s.active)) {
-      if (perDay >= 3) break;
-      const slots = E.availableSlots(state, { serviceId: sv.id, barberId: 'any', date, now: now() });
-      if (!slots.length) continue;
-      const pick = slots[Math.floor(Math.random() * slots.length)];
-      const r = E.createBooking(state, { serviceId: sv.id, barberId: 'any', date, start: pick.start, customer: { name: names[made % names.length], phone: `2000000${made % 10}`, email: `kunde${made}@example.com` } }, now());
-      if (r.ok) { r.booking.example = true; made++; perDay++; }
-    }
+    await api(path, { method: 'POST', body });
+    await loadAdmin();
+    toast(okMsg);
+    return true;
+  } catch (e) {
+    toast(e.data?.error === 'taken' ? 'Tiden er ikke ledig' : e.message);
+    return false;
   }
-  return made;
 }
 
 // ---------- handlinger ----------
@@ -783,72 +889,75 @@ const actions = {
     document.getElementById('continue')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   },
   ics: (el) => {
-    const b = state.bookings.find((x) => x.ref === el.dataset.ref);
+    const b = recallBooking(el.dataset.ref);
+    if (!b) return;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([icsFor(b)], { type: 'text/calendar' }));
     a.download = `stylebybrothers-${b.ref}.ics`; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   },
-  'mb-move': () => { const sel = mb.booking.anyBarber ? 'any' : mb.booking.barberId; mb.moving = true; mb.date = firstAvailableDate(mb.booking.serviceId, sel, mb.booking.id); mb.month = monthStart(mb.date || today()); mb.start = null; mb.msg = ''; renderManage(); },
+  'mb-move': () => { const sel = mb.booking.anyBarber ? 'any' : mb.booking.barberId; mb.moving = true; mb.date = firstAvailableDate(mb.booking.serviceId, sel, mb.booking.pid); mb.month = monthStart(mb.date || today()); mb.start = null; mb.msg = ''; renderManage(); },
   'mb-stop': () => { mb.moving = false; renderManage(); },
-  'mb-save': () => {
-    const r = E.moveBooking(state, mb.booking, { date: mb.date, start: mb.start }, now());
-    if (r.ok) { queueMessages(mb.booking, 'flyttet'); save(); mb.moving = false; mb.msg = 'Din tid er flyttet.'; mb.msgKind = 'ok'; }
-    else { mb.msg = r.error === 'too_late' ? 'Tiden er for tæt på til at blive ændret online.' : 'Tiden er ikke længere ledig. Vælg en anden.'; mb.msgKind = 'danger'; mb.start = null; }
-    renderManage(); window.scrollTo(0, 0);
-  },
+  'mb-save': () => manageChange('move'),
   'mb-cancel': async () => {
     if (!(await ask('Vil du aflyse din tid?', 'Ja, aflys'))) return;
-    const r = E.cancelBooking(state, mb.booking, now());
-    if (r.ok) { queueMessages(mb.booking, 'aflyst'); save(); mb.msg = 'Din tid er aflyst.'; mb.msgKind = 'ok'; }
-    else { mb.msg = 'Tiden er for tæt på til at blive aflyst online. Ring til os.'; mb.msgKind = 'danger'; }
-    renderManage();
+    manageChange('cancel');
   },
   'mb-reset': () => { mb = null; history.replaceState(null, '', '#/min-booking'); renderManage(new URLSearchParams()); },
-  'admin-login': () => { try { sessionStorage.setItem('sbb-admin', '1'); } catch { window.__sbbAdmin = true; } route(); },
-  'admin-logout': () => { try { sessionStorage.removeItem('sbb-admin'); } catch { window.__sbbAdmin = false; } location.hash = '#/'; },
+  'admin-logout': async () => { await api('admin/logout', { method: 'POST', body: {} }).catch(() => {}); admin = null; clearInterval(adminRefresh); await loadPublic().catch(() => {}); location.hash = '#/'; },
   'admin-day': (el) => { adminDate = E.addDays(adminDate, +el.dataset.dir); adminMove = null; route(); },
-  'admin-today': () => { adminDate = today(); route(); },
-  seed: () => { const n = seedBookings(); save(); toast(`${n} eksempelbookinger de næste 7 dage`); route(); },
+  'admin-pick': (el) => { adminDate = el.dataset.date; adminMove = null; route(); },
+  'toggle-cancelled': () => { showCancelled = !showCancelled; route(); },
+  'admin-today': () => { adminDate = today(); adminMove = null; route(); },
   'move-start': (el) => { const b = state.bookings.find((x) => x.id === el.dataset.id); adminMove = { id: b.id, date: b.date, start: null, barberId: b.barberId }; route(); },
   'move-stop': () => { adminMove = null; route(); },
-  'move-save': (el) => {
-    const b = state.bookings.find((x) => x.id === el.dataset.id);
+  'move-save': async (el) => {
     if (adminMove.start == null) { toast('Vælg en ny tid'); return; }
-    const r = E.moveBooking(state, b, { date: adminMove.date, start: adminMove.start, barberId: adminMove.barberId }, now(), 'salon');
-    if (r.ok) { queueMessages(b, 'flyttet'); save(); adminMove = null; adminDate = b.date; toast('Bookingen er flyttet'); } else toast('Tiden er ikke ledig');
+    if (await adminBooking('admin/bookings/move', { id: el.dataset.id, date: adminMove.date, start: adminMove.start, barberId: adminMove.barberId }, 'Bookingen er flyttet. Kunden har fået besked.')) { adminDate = adminMove.date; adminMove = null; }
     route();
   },
   'admin-cancel': async (el) => {
     const b = state.bookings.find((x) => x.id === el.dataset.id);
-    if (!(await ask(`Aflys ${b.name} kl. ${E.fmtTime(b.start)}?`, 'Ja, aflys'))) return;
-    E.cancelBooking(state, b, now(), 'salon'); queueMessages(b, 'aflyst'); save(); toast('Bookingen er aflyst'); route();
+    if (!(await ask(`Aflys ${b.name} kl. ${E.fmtTime(b.start)}? Kunden får besked på e-mail.`, 'Ja, aflys'))) return;
+    await adminBooking('admin/bookings/cancel', { id: b.id }, 'Bookingen er aflyst');
+    route();
+  },
+  'new-start': () => { const sv = state.services.find((s) => s.active); adminNew = { serviceId: sv?.id, date: adminDate < today() ? today() : adminDate, start: null, barberId: 'any', name: '', phone: '', email: '', note: '', errors: {} }; route(); },
+  'new-stop': () => { adminNew = null; route(); },
+  'new-save': async () => {
+    const n = adminNew;
+    for (const k of ['name', 'phone', 'email', 'note']) n[k] = document.querySelector(`[data-new="${k}"]`)?.value || '';
+    n.errors = E.validateCustomer(n, { requireEmail: false });
+    n.error = n.start == null ? 'Vælg en tid.' : '';
+    if (Object.keys(n.errors).length || n.error) { route(); return; }
+    try {
+      await api('admin/bookings', { method: 'POST', body: { serviceId: n.serviceId, barberId: n.barberId, date: n.date, start: n.start, customer: { name: n.name, phone: n.phone, email: n.email, note: n.note } } });
+      await loadAdmin();
+      adminDate = n.date; adminNew = null; toast('Bookingen er oprettet');
+    } catch (e) { n.error = e.data?.error === 'taken' ? 'Tiden er ikke længere ledig.' : e.message; }
+    route();
   },
   'service-add': () => { state.services.push({ id: uid('s'), name: 'Ny behandling', desc: '', duration: 30, price: 0, active: false }); save(); route(); },
   'service-del': async (el) => { if (!(await ask('Slet behandlingen? Bookinger, der allerede er lavet, bliver ikke slettet.', 'Slet'))) return; state.services = state.services.filter((s) => s.id !== el.dataset.id); state.barbers.forEach((b) => { b.serviceIds = b.serviceIds.filter((id) => id !== el.dataset.id); }); save(); route(); },
   'service-move': (el) => { const i = state.services.findIndex((s) => s.id === el.dataset.id); const j = i + +el.dataset.dir; [state.services[i], state.services[j]] = [state.services[j], state.services[i]]; save(); route(); },
-  'barber-add': () => { const base = defaultState().barbers[0]; state.barbers.push({ ...structuredClone(base), id: uid('b'), name: `Frisør ${state.barbers.length + 1}`, role: '', active: false }); save(); route(); },
-  'barber-del': async (el) => { if (!(await ask('Slet frisøren? Bookinger, der allerede er lavet, bliver ikke slettet.', 'Slet'))) return; state.barbers = state.barbers.filter((b) => b.id !== el.dataset.id); save(); route(); },
-  'barber-photo-del': (el) => { barber(el.dataset.id).photo = ''; save(); route(); },
-  'photo-del': (el) => { state.photos[el.dataset.id].src = ''; save(); route(); },
+  'barber-add': () => { const base = state.barbers[0]; state.barbers.push({ id: uid('b'), name: `Stol ${state.barbers.length + 1}`, role: '', active: false, serviceIds: state.services.map((s) => s.id), hours: structuredClone(base?.hours || {}), absences: [] }); save(); route(); },
+  'barber-del': async (el) => { if (!(await ask('Slet stolen? Bookinger, der allerede er lavet, bliver ikke slettet.', 'Slet'))) return; state.barbers = state.barbers.filter((b) => b.id !== el.dataset.id); save(); route(); },
   'absence-add': (el) => {
     const id = el.dataset.id;
     const from = document.getElementById(`abs-from-${id}`).value;
     const to = document.getElementById(`abs-to-${id}`).value || from;
     if (!from || to < from) { toast('Vælg en gyldig periode'); return; }
     barber(id).absences.push({ from, to, note: document.getElementById(`abs-note-${id}`).value.trim() });
-    save(); toast('Fravær tilføjet'); route();
+    save(); route();
   },
   'absence-del': (el) => { barber(el.dataset.id).absences.splice(+el.dataset.i, 1); save(); route(); },
   'closed-add': () => {
     const date = document.getElementById('closed-date').value;
     if (!date) { toast('Vælg en dato'); return; }
     if (!state.settings.closedDates.some((c) => c.date === date)) state.settings.closedDates.push({ date, note: document.getElementById('closed-note').value.trim() || 'Lukket' });
-    save(); toast('Lukkedag tilføjet'); route();
+    save(); route();
   },
   'closed-del': (el) => { state.settings.closedDates = state.settings.closedDates.filter((c) => c.date !== el.dataset.date); save(); route(); },
-  'gallery-del': async (el) => { if (!(await ask('Slet billedet?', 'Slet'))) return; state.gallery = state.gallery.filter((g) => g.id !== el.dataset.id); save(); route(); },
-  reset: async () => { if (!(await ask('Nulstil al demodata i denne browser?', 'Nulstil'))) return; state = defaultState(); save(); toast('Demoen er nulstillet'); route(); },
 };
 
 app.addEventListener('click', (e) => {
@@ -862,70 +971,72 @@ app.addEventListener('click', (e) => {
 });
 
 const changeActions = {
-  'admin-date': (el) => { if (el.value) { adminDate = el.value; adminMove = null; route(); } },
   'move-date': (el) => { adminMove.date = el.value; adminMove.start = null; route(); },
   'move-time': (el) => { adminMove.start = el.value === '' ? null : +el.value; },
   'move-barber': (el) => { adminMove.barberId = el.value; adminMove.start = null; route(); },
+  'new-service': (el) => { keepNewInputs(); adminNew.serviceId = el.value; adminNew.start = null; route(); },
+  'new-date': (el) => { keepNewInputs(); adminNew.date = el.value; adminNew.start = null; route(); },
+  'new-time': (el) => { adminNew.start = el.value === '' ? null : +el.value; },
+  'new-barber': (el) => { keepNewInputs(); adminNew.barberId = el.value; adminNew.start = null; route(); },
+  notify: (el) => { state.settings.notifyEmails = el.value.split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean); save(); },
   'barber-service': (el) => {
     const b = barber(el.dataset.id);
     b.serviceIds = el.checked ? [...new Set([...b.serviceIds, el.dataset.service])] : b.serviceIds.filter((x) => x !== el.dataset.service);
-    save(); toast('Gemt');
+    save();
   },
   'barber-day': (el) => {
     const b = barber(el.dataset.id);
-    b.hours[el.dataset.day] = el.checked ? { start: '11:30', end: '17:30', breakStart: '14:00', breakEnd: '14:30' } : null;
+    b.hours[el.dataset.day] = el.checked ? { start: '10:00', end: '18:00', breakStart: '', breakEnd: '' } : null;
     save(); route();
   },
 };
+function keepNewInputs() { for (const k of ['name', 'phone', 'email', 'note']) adminNew[k] = document.querySelector(`[data-new="${k}"]`)?.value ?? adminNew[k]; }
 
-app.addEventListener('change', async (e) => {
+app.addEventListener('change', (e) => {
   const el = e.target;
   if (el.dataset.actChange) { changeActions[el.dataset.actChange]?.(el); return; }
-  if (el.dataset.upload) {
-    const file = el.files?.[0];
-    if (!file) return;
-    try {
-      const kind = el.dataset.upload;
-      const src = await fileToDataUrl(file, kind === 'barber' ? 600 : 1400);
-      if (kind === 'barber') barber(el.dataset.id).photo = src;
-      else if (kind === 'photo') state.photos[el.dataset.id].src = src;
-      else if (kind === 'gallery') state.gallery.find((g) => g.id === el.dataset.id).src = src;
-      else state.gallery.unshift({ id: uid('g'), title: 'Nyt billede', src });
-      if (save()) toast('Billedet er gemt');
-    } catch { toast('Billedet kunne ikke læses'); }
-    route();
-    return;
-  }
   if (el.dataset.path) {
     let v = el.type === 'checkbox' ? el.checked : el.value;
     if (el.type === 'number' || el.dataset.type === 'number') v = Math.max(0, Number(v) || 0);
     setPath(el.dataset.path, v);
-    if (save()) toast('Gemt');
+    save();
     if (el.type === 'checkbox' || el.tagName === 'SELECT') route();
   }
 });
 
 // ---------- router ----------
 let currentView = '';
-function route() {
+async function route() {
   const h = location.hash || '#/';
   const [path, query] = h.slice(1).split('?');
   const params = new URLSearchParams(query || '');
   toggleMenu(false);
+  if (path.startsWith('/admin')) { const y = currentView === 'admin' ? window.scrollY : 0; currentView = 'admin'; await renderAdmin(path.split('/')[2] || 'kalender', params); window.scrollTo(0, y); return; }
+  clearInterval(adminRefresh);
   if (path.startsWith('/booking/bekraeftet')) {
-    const b = state.bookings.find((x) => x.ref === params.get('ref'));
+    const b = recallBooking(params.get('ref'));
     currentView = 'confirm';
-    if (b) renderConfirmation(b); else location.hash = '#/booking';
+    if (b) renderConfirmation(b); else location.hash = `#/min-booking?ref=${encodeURIComponent(params.get('ref') || '')}`;
     return;
   }
   if (path.startsWith('/booking')) { currentView = 'booking'; startBooking(params); return; }
   if (path.startsWith('/min-booking')) { currentView = 'manage'; renderManage(params); window.scrollTo(0, 0); return; }
-  if (path.startsWith('/admin')) { const y = currentView === 'admin' ? window.scrollY : 0; currentView = 'admin'; renderAdmin(path.split('/')[2]); window.scrollTo(0, y); return; }
+  if (path.startsWith('/privatliv')) { currentView = 'privacy'; renderPrivacy(); return; }
   // Forside: "#/#priser" eller "#priser" ruller til sektionen.
   const target = h.includes('#', 1) ? h.slice(h.indexOf('#', 1) + 1) : (!h.startsWith('#/') ? h.slice(1) : '');
   if (currentView === 'home' && target) { document.getElementById(target)?.scrollIntoView(); return; }
   currentView = 'home';
   renderHome(target);
 }
-window.addEventListener('hashchange', route);
-route();
+
+async function boot() {
+  try {
+    await loadPublic();
+  } catch {
+    app.innerHTML = `<main class="wrap" style="padding-block:80px"><h1 class="t-l">StyleByBrothers</h1><p class="lead">Siden kunne ikke hentes lige nu. Ring på <a href="${SALON.phoneHref}">${SALON.phone}</a> for at booke, eller prøv igen om lidt.</p><p>${SALON.street}, ${SALON.city}</p></main>`;
+    return;
+  }
+  window.addEventListener('hashchange', route);
+  route();
+}
+boot();

@@ -1,4 +1,4 @@
-# Publicerer StyleByBrothers' hjemmeside (stylebybrothers/site) på sbb.veyro.dk.
+# Publicerer StyleByBrothers' hjemmeside og bookingserver (stylebybrothers/) på sbb.veyro.dk.
 # Kører ved push til main, der ændrer stylebybrothers/, og kan køres manuelt fra fanen Actions.
 name: Deploy StyleByBrothers
 
@@ -35,11 +35,18 @@ jobs:
           npx vitest run --root stylebybrothers
       - name: Deploy
         run: npx wrangler deploy --config stylebybrothers/wrangler.toml
+      - name: E-mail-nøgle
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ]; then echo "::warning::RESEND_API_KEY mangler, der sendes ingen e-mails"; exit 0; fi
+          printf '%s' "$RESEND_API_KEY" | npx wrangler secret put RESEND_API_KEY --config stylebybrothers/wrangler.toml
       - name: Tjek siden
         run: |
           for i in $(seq 1 18); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' https://sbb.veyro.dk/ || true)
-            if [ "$code" = "200" ]; then echo "OK 200 https://sbb.veyro.dk/"; exit 0; fi
-            echo "Venter på https://sbb.veyro.dk/ (fik $code)"; sleep 10
+            a=$(curl -s -o /dev/null -w '%{http_code}' https://sbb.veyro.dk/ || true)
+            b=$(curl -s -o /dev/null -w '%{http_code}' https://sbb.veyro.dk/api/state || true)
+            if [ "$a" = "200" ] && [ "$b" = "200" ]; then echo "OK: siden og bookingserveren svarer"; exit 0; fi
+            echo "Venter (side $a, server $b)"; sleep 10
           done
-          echo "::error::https://sbb.veyro.dk/ svarede ikke 200"; exit 1
+          echo "::error::sbb.veyro.dk svarede ikke 200"; exit 1
