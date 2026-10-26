@@ -136,7 +136,8 @@ function todayLine() {
 }
 
 // ---------- fælles layout ----------
-const LOGO_MARK = '<svg viewBox="0 0 44 44" aria-hidden="true"><path d="M22 1.5 42.5 22 22 42.5 1.5 22Z" fill="none" stroke="currentColor" stroke-width="1.4"/><text x="22" y="25.6" text-anchor="middle" font-size="10" font-weight="600" letter-spacing=".4" fill="currentColor" font-family="Inter, Arial, sans-serif">SBB</text></svg>';
+// Logo: to bogstaver (S og B) i en cirkel, delt af en lodret streg, de to brødre side om side.
+const LOGO_MARK = '<svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M22 10.5v23" stroke="currentColor" stroke-width="1.1"/><text y="26.8" font-size="13.5" font-weight="500" fill="currentColor" font-family="Inter, Arial, sans-serif" text-anchor="middle"><tspan x="15.4">S</tspan><tspan x="28.8">B</tspan></text></svg>';
 function logo() {
   return `<a class="logo" href="#/" aria-label="StyleByBrothers, til forsiden"><span class="logo-mark">${LOGO_MARK}</span><span class="logo-name">StyleByBrothers</span></a>`;
 }
