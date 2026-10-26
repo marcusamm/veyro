@@ -45,7 +45,7 @@ const DAY_SHORT = ['søn', 'man', 'tir', 'ons', 'tor', 'fre', 'lør'];
 
 /** Billedplads: viser billedet, eller en neutral flade med en note om, hvad der skal ind. */
 function photo(src, alt, note, cls = '') {
-  return `<div class="photo ${cls}">${src ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" decoding="async">` : ''}<span class="ph">${esc(note || alt)}</span></div>`;
+  return `<div class="photo ${cls}">${src ? `<img src="${esc(src)}" alt="${esc(alt)}" ${cls.includes('hero') ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">` : ''}<span class="ph">${esc(note || alt)}</span></div>`;
 }
 document.addEventListener('error', (e) => {
   const t = e.target;
@@ -137,17 +137,18 @@ function todayLine() {
 
 // ---------- fælles layout ----------
 function header() {
-  return `<header class="site-header">
+  return `<div class="topbar"><div class="wrap"><span class="hide-sm">Herrefrisør · </span>${SALON.street}, Slagelse · <a href="${SALON.phoneHref}">${SALON.phone.replace('+45 ', '')}</a></div></div>
+  <header class="site-header">
     <nav class="nav wrap" aria-label="Hovedmenu">
-      <a class="wordmark" href="#/">StyleByBrothers</a>
       <ul class="nav-links">
         <li><a href="#/#priser">Priser</a></li>
         <li><a href="#/#klipninger">Klipninger</a></li>
         <li><a href="#/#salonen">Salonen</a></li>
         <li><a href="#/#find-os">Find os</a></li>
       </ul>
-      <a class="btn" ${bookAttrs()}>Book tid</a>
       <button class="menu-btn" data-act="menu" aria-expanded="false" aria-controls="menu">Menu</button>
+      <a class="wordmark" href="#/">StyleByBrothers</a>
+      <a class="btn btn-gold" ${bookAttrs()}>Book tid</a>
     </nav>
     <div class="mobile-menu wrap" id="menu" hidden>
       <ul>
@@ -164,10 +165,14 @@ function header() {
 
 function footer() {
   return `<footer class="site-footer"><div class="wrap">
-    <strong>StyleByBrothers</strong>
-    <div class="foot-row"><span>${SALON.street}, ${SALON.city}</span><span>Tlf. ${SALON.phone}</span><span>CVR ${SALON.cvr}</span></div>
-    <div class="foot-row"><a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook</a><a href="${SALON.instagram}" target="_blank" rel="noopener">Instagram</a><a href="#/min-booking">Flyt eller aflys en tid</a><a href="#/privatliv">Privatliv og cookies</a><a href="#/admin">Log ind</a></div>
-    <p class="credit">Webudvikling: <a href="https://veyro.dk" target="_blank" rel="noopener">Veyro.dk</a></p>
+    <p class="foot-mark">StyleByBrothers</p>
+    <div class="foot-cols">
+      <div><h3>Besøg os</h3><p>${SALON.street}<br>${SALON.city}</p><p><a href="${SALON.maps}" target="_blank" rel="noopener">Vis på kort</a></p></div>
+      <div><h3>Kontakt</h3><p><a href="${SALON.phoneHref}">${SALON.phone}</a></p><p>CVR ${SALON.cvr}</p></div>
+      <div><h3>Booking</h3><p><a ${bookAttrs()}>Book tid</a></p><p><a href="#/min-booking">Flyt eller aflys en tid</a></p></div>
+      <div><h3>Følg med</h3><p><a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook</a></p><p><a href="${SALON.instagram}" target="_blank" rel="noopener">Instagram</a></p></div>
+    </div>
+    <div class="foot-bottom"><span>© ${new Date().getFullYear()} StyleByBrothers</span><a href="#/privatliv">Privatliv og cookies</a><a href="#/admin">Log ind</a><span class="credit">Webudvikling: <a href="https://veyro.dk" target="_blank" rel="noopener">Veyro.dk</a></span></div>
   </div></footer>`;
 }
 
@@ -179,55 +184,43 @@ function renderHome(scrollTo) {
   const p = PHOTOS;
   app.innerHTML = `${header()}
   <main id="main">
-    <div class="wrap intro">
-      <div class="intro-text">
+    <section class="hero">
+      ${photo(p.hero.src, 'Klipning i salonen', p.hero.note, 'hero-photo')}
+      <div class="hero-text wrap">
         <p class="kicker">Herrefrisør i Slagelse</p>
-        <h1 class="t-xl">StyleByBrothers</h1>
-        <p class="lead">Klip, fades og skæg på Sct. Mikkelsgade 26A. Find en tid online, eller ring på ${SALON.phone.replace('+45 ', '')}.</p>
-        <div class="intro-actions"><a class="btn" ${bookAttrs()}>Book tid</a><a href="#/#priser">Se priser</a></div>
+        <h1 class="display">Klip, fades<br>og skæg</h1>
+        <div class="hero-actions"><a class="btn btn-gold btn-lg" ${bookAttrs()}>Book tid</a><a class="btn btn-ghost btn-lg" href="#/#priser">Se priser</a></div>
         <p class="open-now ${open.open ? '' : 'closed'}"><i aria-hidden="true"></i>${esc(open.text)}</p>
       </div>
-      ${photo(p.hero.src, 'Fra salonen', p.hero.note)}
-    </div>
+    </section>
 
     <section class="sec dark" id="priser" aria-labelledby="priser-titel">
-      <div class="wrap prices">
-        <div class="prices-head">
-          <h2 class="t-l" id="priser-titel">Priser</h2>
-          <p class="muted">Trænger du til en klipning? Tryk på en behandling, så ser du de ledige tider.</p>
-        </div>
-        <div>
-          <ul class="price-list">
-            ${services.map((s) => `<li><a ${bookAttrs(s.id)}>
-              <span class="p-name">${esc(s.name)}</span><span class="p-price">${kr(s.price)}</span>
-              <span class="p-desc">${esc(s.desc)}</span><span class="p-dur">${s.duration} min</span>
-            </a></li>`).join('')}
-          </ul>
-          <p class="note" style="margin-top:14px">Alle priser er inkl. moms og betales i salonen. Kan du ikke komme, så <a href="#/min-booking">flyt eller aflys din tid</a>.</p>
-        </div>
+      <div class="wrap">
+        <div class="sec-head"><h2 class="display-l" id="priser-titel">Priser</h2><p class="muted">Tryk på en behandling for at se ledige tider.</p></div>
+        <ul class="price-list">
+          ${services.map((s) => `<li><a ${bookAttrs(s.id)}>
+            <span class="p-name">${esc(s.name)}</span><span class="p-dots" aria-hidden="true"></span><span class="p-price">${kr(s.price)}</span>
+            <span class="p-desc">${esc(s.desc)} · ${s.duration} min</span><span class="p-book" aria-hidden="true">Book →</span>
+          </a></li>`).join('')}
+        </ul>
+        <p class="note" style="margin-top:18px">Alle priser er inkl. moms og betales i salonen. Kan du ikke komme, så <a href="#/min-booking">flyt eller aflys din tid</a>.</p>
       </div>
     </section>
 
     <section class="sec" id="klipninger" aria-labelledby="klip-titel">
-      <div class="wrap">
-        <h2 class="t-l sec-title" id="klip-titel">Klipninger</h2>
-        <div class="gallery" id="gallery">${galleryItems()}</div>
-        <p class="note gallery-note">Klipninger fra stolen på Sct. Mikkelsgade. Nyt arbejde lægges også op på <a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook</a>.</p>
-      </div>
+      <div class="wrap sec-head"><h2 class="display-l" id="klip-titel">Fra stolen</h2><p class="muted">Nyt arbejde lægges op på <a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook</a> og <a href="${SALON.instagram}" target="_blank" rel="noopener">Instagram</a>.</p></div>
+      <div class="gallery" id="gallery">${galleryItems()}</div>
     </section>
 
-    <section class="sec" id="salonen" aria-labelledby="salon-titel">
-      <div class="wrap">
-        <div class="about">
-          ${photo(p.salon.src, 'Salonen', p.salon.note)}
-          <div class="about-text">
-            <h2 class="t-l" id="salon-titel">Salonen</h2>
-            <p>StyleByBrothers er en herrefrisør på Sct. Mikkelsgade i Slagelse. Vi laver mest fades, klassiske klip og skæg.</p>
-            <p>Book online, ring, eller skriv til os på Facebook.${chooseBarber() ? ' Har du en fast frisør, kan du vælge ham, når du booker.' : ''}</p>
-          </div>
-        </div>
-        ${chooseBarber() ? `<h3 class="t-m" style="margin-top:56px">Holdet</h3>
-        <div class="team" style="margin-top:14px">
+    <section class="split" id="salonen" aria-labelledby="salon-titel">
+      ${photo(p.salon.src, 'Salonen indefra', p.salon.note, 'split-photo')}
+      <div class="split-text">
+        <p class="kicker">Salonen</p>
+        <h2 class="display-l" id="salon-titel">Sct. Mikkelsgade 26A</h2>
+        <p>StyleByBrothers er en herrefrisør midt i Slagelse. Vi laver mest fades, klassiske klip og skæg, og vi tager os tid til at få det rigtigt.</p>
+        <p>Book online, ring, eller skriv til os på Facebook.${chooseBarber() ? ' Har du en fast frisør, kan du vælge ham, når du booker.' : ''}</p>
+        <p><a class="btn btn-line" ${bookAttrs()}>Book tid</a></p>
+        ${chooseBarber() ? `<div class="team">
           ${team.map((b) => `<div class="member">
             <div class="photo"><span class="initials">${esc(initials(b.name))}</span></div>
             <div><h3>${esc(b.name)}</h3><p>${esc(b.role)}${b.role ? ' · ' : ''}${workDays(b)}</p><a class="small" href="#/booking?frisoer=${b.id}">Book hos ${esc(b.name)}</a></div>
@@ -236,21 +229,19 @@ function renderHome(scrollTo) {
       </div>
     </section>
 
-    <section class="sec tight" id="find-os" aria-labelledby="find-titel">
-      <div class="wrap contact">
-        <div style="display:grid;gap:20px;align-content:start">
-          <h2 class="t-l" id="find-titel">Find os</h2>
-          <dl>
-            <div><dt>Adresse</dt><dd>${SALON.street}<br>${SALON.city}<br><a class="small" href="${SALON.maps}" target="_blank" rel="noopener">Vis på kort</a></dd></div>
-            <div><dt>Telefon</dt><dd><a href="${SALON.phoneHref}">${SALON.phone}</a></dd></div>
-          </dl>
+    <section class="sec dark" id="find-os" aria-labelledby="find-titel">
+      <div class="wrap visit">
+        <div><p class="kicker">Find os</p><h2 class="display-l" id="find-titel">Kom forbi</h2>
+          <p class="visit-addr">${SALON.street}<br>${SALON.city}</p>
+          <p class="row" style="margin-top:18px"><a class="btn btn-gold" href="${SALON.maps}" target="_blank" rel="noopener">Vis på kort</a><a class="btn btn-ghost" href="${SALON.phoneHref}">Ring ${SALON.phone.replace('+45 ', '')}</a></p>
         </div>
-        <dl>
-          <div><dt>Åbningstider</dt><dd><table class="hours"><tbody>${weekHours().map((h) => `<tr class="${h.today ? 'is-today' : ''}"><td>${esc(h.label)}</td><td>${esc(h.text)}</td></tr>`).join('')}</tbody></table></dd></div>
-          <div><dt>Følg med</dt><dd><a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook</a> · <a href="${SALON.instagram}" target="_blank" rel="noopener">Instagram</a></dd></div>
-        </dl>
-        ${p.facade.src ? photo(p.facade.src, 'Facaden', p.facade.note) : ''}
+        <div><h3 class="label">Åbningstider</h3><table class="hours"><tbody>${weekHours().map((h) => `<tr class="${h.today ? 'is-today' : ''}"><td>${esc(h.label)}</td><td>${esc(h.text)}</td></tr>`).join('')}</tbody></table>
+          ${p.facade.src ? photo(p.facade.src, 'Facaden', p.facade.note) : ''}</div>
       </div>
+    </section>
+
+    <section class="cta">
+      <div class="wrap"><h2 class="display-l">Klar til en frisk klipning?</h2><a class="btn btn-gold btn-lg" ${bookAttrs()}>Book tid</a></div>
     </section>
   </main>
   ${footer()}`;

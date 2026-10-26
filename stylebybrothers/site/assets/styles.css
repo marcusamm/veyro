@@ -1,7 +1,14 @@
 /* StyleByBrothers
-   Lys side med sort tekst, én skrifttype (Schibsted Grotesk), skarpe hjørner og få, rolige flader.
-   Mørke flader bruges kun til prislisten og footeren. Ingen effekter, der ikke hjælper kunden. */
+   Inspireret af klassiske barbershops: sort, hvid og salonens guld, store versaler (Anton) til overskrifter,
+   Schibsted Grotesk til brødtekst, billeder i fuld bredde og skarpe kanter. */
 
+@font-face {
+  font-family: 'Anton';
+  src: url('fonts/anton-latin.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 @font-face {
   font-family: 'Schibsted Grotesk';
   src: url('fonts/schibsted-grotesk-latin.woff2') format('woff2');
@@ -18,24 +25,28 @@
 }
 
 :root {
-  --paper: #F5F2EB;
-  --stone: #E7E4DE;
-  --line: #D8D3C9;
-  --ink: #111111;
-  --char: #292929;
-  --mute: #625E57;
-  --mute-on-dark: #A8A39A;
-  --accent: #7A5A34; /* tobak; skal tilpasses salonens logo */
+  --paper: #F4F1EA;
+  --stone: #E6E2D9;
+  --line: #D6D0C4;
+  --ink: #0D0D0D;
+  --char: #262624;
+  --mute: #5E5A53;
+  --mute-on-dark: #A29D93;
+  --line-dark: #2E2D2A;
+  --gold: #C6A15B; /* salonens guld (logo og kapper) */
+  --gold-dark: #A9853F;
+  --accent: #8A6A2E;
   --ok: #3F6B46;
   --danger: #A23B2A;
   --font: 'Schibsted Grotesk', 'Helvetica Neue', Arial, sans-serif;
-  --wrap: 1160px;
+  --display: 'Anton', 'Impact', 'Arial Narrow', sans-serif;
+  --wrap: 1240px;
   --gutter: max(20px, env(safe-area-inset-left, 0px));
   color-scheme: light;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; scroll-padding-top: 72px; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 76px; }
 body {
   margin: 0;
   background: var(--paper);
@@ -47,53 +58,63 @@ img { display: block; max-width: 100%; }
 a { color: inherit; text-underline-offset: .18em; text-decoration-thickness: 1px; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 h1, h2, h3 { text-wrap: balance; }
 p { margin: 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .wrap { max-width: var(--wrap); margin: 0 auto; padding-left: var(--gutter); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
 .muted { color: var(--mute); }
 .small { font-size: 15px; }
+.kicker { font-size: 13px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--gold-dark); }
+.dark .kicker, .hero .kicker { color: var(--gold); }
+.label { font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--mute-on-dark); margin: 0 0 10px; }
 
-/* typografi: fire størrelser */
-.t-xl { font-size: clamp(40px, 6.4vw, 68px); line-height: 1; font-weight: 700; letter-spacing: -.035em; margin: 0; }
-.t-l { font-size: clamp(28px, 3.6vw, 38px); line-height: 1.1; font-weight: 700; letter-spacing: -.025em; margin: 0; }
+/* typografi */
+.display, .display-l, .t-xl, .t-l { font-family: var(--display); font-weight: 400; text-transform: uppercase; letter-spacing: .005em; line-height: .95; margin: 0; }
+.display { font-size: clamp(56px, 11vw, 148px); }
+.display-l, .t-xl { font-size: clamp(40px, 6.5vw, 84px); }
+.t-l { font-size: clamp(32px, 4.4vw, 48px); }
 .t-m { font-size: 21px; line-height: 1.3; font-weight: 600; letter-spacing: -.01em; margin: 0; }
 
 /* knapper */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-  min-height: 48px; padding: 0 22px;
-  background: var(--ink); color: var(--paper); border: 1px solid var(--ink); border-radius: 2px;
-  font-size: 16px; font-weight: 600; text-decoration: none; white-space: nowrap;
+  min-height: 48px; padding: 0 24px;
+  background: var(--ink); color: var(--paper); border: 1px solid var(--ink); border-radius: 0;
+  font-size: 14px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; white-space: nowrap;
 }
 .btn:hover { background: var(--char); }
+.btn-gold { background: var(--gold); border-color: var(--gold); color: var(--ink); }
+.btn-gold:hover { background: #D4B06A; }
+.btn-ghost { background: transparent; border-color: currentColor; color: inherit; }
+.btn-ghost:hover { background: rgba(255, 255, 255, .1); }
 .btn-line { background: transparent; color: var(--ink); }
 .btn-line:hover { background: var(--ink); color: var(--paper); }
 .btn-paper { background: var(--paper); color: var(--ink); border-color: var(--paper); }
-.btn-paper:hover { background: #fff; }
-.btn-sm { min-height: 38px; padding: 0 14px; font-size: 14px; }
+.btn-lg { min-height: 56px; padding: 0 30px; font-size: 15px; }
+.btn-sm { min-height: 38px; padding: 0 14px; font-size: 12px; }
 .btn-block { width: 100%; }
 .btn[disabled] { opacity: .35; pointer-events: none; }
 .link { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; text-underline-offset: .18em; text-decoration-thickness: 1px; }
 .link:hover { color: var(--accent); }
 
-/* demobjælke */
-
-/* header */
-.site-header { position: sticky; top: 0; z-index: 40; background: var(--paper); border-bottom: 1px solid var(--line); }
-.nav { display: flex; align-items: center; gap: 24px; height: 64px; }
-.wordmark { font-size: 20px; font-weight: 700; letter-spacing: -.03em; text-decoration: none; margin-right: auto; }
-.nav-links { display: none; list-style: none; gap: 26px; margin: 0; padding: 0; font-size: 16px; }
+/* topbjælke og header */
+.topbar { background: var(--gold); color: var(--ink); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; text-align: center; padding: 8px 0; }
+.topbar a { text-decoration: none; }
+.site-header { position: sticky; top: 0; z-index: 40; background: var(--ink); color: var(--paper); border-bottom: 1px solid var(--line-dark); }
+.nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; height: 68px; }
+.wordmark { font-family: var(--display); font-size: 24px; letter-spacing: .04em; text-transform: uppercase; text-decoration: none; justify-self: center; white-space: nowrap; }
+.nav-links { display: none; list-style: none; gap: 26px; margin: 0; padding: 0; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 .nav-links a { text-decoration: none; }
-.nav-links a:hover { text-decoration: underline; }
-.nav .btn { min-height: 40px; padding: 0 16px; font-size: 15px; }
-.menu-btn { background: none; border: 0; padding: 8px 0; font-weight: 600; }
-@media (min-width: 860px) { .nav-links { display: flex; } .menu-btn { display: none; } }
-.mobile-menu { border-top: 1px solid var(--line); padding-block: 4px 20px; }
+.nav-links a:hover { color: var(--gold); }
+.nav .btn { justify-self: end; min-height: 40px; padding: 0 16px; font-size: 12px; }
+.menu-btn { justify-self: start; background: none; border: 0; padding: 8px 0; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: inherit; }
+@media (max-width: 420px) { .wordmark { font-size: 19px; } .nav .btn { padding: 0 12px; } }
+@media (min-width: 960px) { .nav-links { display: flex; } .menu-btn { display: none; } .wordmark { font-size: 28px; } }
+.mobile-menu { border-top: 1px solid var(--line-dark); padding-block: 4px 24px; }
 .mobile-menu ul { list-style: none; margin: 0; padding: 0; }
-.mobile-menu li a { display: block; padding: 12px 0; font-size: 20px; font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--line); }
-.mobile-menu p { margin-top: 16px; font-size: 15px; color: var(--mute); }
+.mobile-menu li a { display: block; padding: 12px 0; font-family: var(--display); font-size: 30px; text-transform: uppercase; text-decoration: none; border-bottom: 1px solid var(--line-dark); }
+.mobile-menu p { margin-top: 16px; font-size: 15px; color: var(--mute-on-dark); }
 
 /* billedpladser */
 .photo { position: relative; background: var(--stone); overflow: hidden; }
@@ -101,93 +122,96 @@ p { margin: 0; }
 .photo .ph { position: absolute; left: 14px; bottom: 12px; right: 14px; font-size: 13px; line-height: 1.35; color: var(--mute); }
 .photo .ph::before { content: 'Billede kommer'; display: block; font-weight: 600; color: var(--char); }
 .photo img ~ .ph { display: none; }
-.dark .photo { background: #333230; }
-.dark .photo .ph { color: var(--mute-on-dark); }
-.dark .photo .ph::before { color: var(--paper); }
+.dark .photo { background: #222; }
 
 /* sektioner */
-.sec { padding: 64px 0; }
-.sec + .sec { border-top: 1px solid var(--line); }
+.sec { padding: 72px 0; }
 .dark { background: var(--ink); color: var(--paper); }
 .dark .muted { color: var(--mute-on-dark); }
-.sec.dark + .sec, .sec + .sec.dark { border-top: 0; }
-@media (min-width: 860px) { .sec { padding: 96px 0; } .sec.tight { padding: 64px 0; } }
+@media (min-width: 860px) { .sec { padding: 112px 0; } }
+.sec-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 40px; margin-bottom: 36px; }
+.sec-head p { max-width: 28em; }
 
-/* intro */
-.intro { display: grid; gap: 32px; padding-block: 36px 56px; }
-.intro-text { display: grid; gap: 18px; align-content: start; max-width: 30em; }
-.intro-text .kicker { font-size: 17px; color: var(--mute); }
-.intro-text .lead { font-size: 19px; color: var(--char); }
-.intro-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-top: 6px; }
-.open-now { display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--char); padding-top: 18px; border-top: 1px solid var(--line); margin-top: 10px; }
-.open-now i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
-.open-now.closed i { background: var(--mute); }
-.intro .photo { aspect-ratio: 4 / 3; }
-@media (min-width: 860px) {
-  .intro { grid-template-columns: 5fr 6fr; gap: 56px; padding-block: 64px 88px; align-items: end; }
-  .intro .photo { aspect-ratio: 1; }
-}
+/* hero: billede i fuld bredde med tekst ovenpå */
+.hero { position: relative; min-height: min(88vh, 860px); display: grid; align-items: end; background: var(--ink); color: var(--paper); overflow: hidden; }
+.hero-photo { position: absolute; inset: 0; background: #1a1a1a; }
+.hero-photo img { object-position: 50% 30%; }
+.hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, .15) 0%, rgba(0, 0, 0, .15) 40%, rgba(0, 0, 0, .78) 100%); }
+.hero-text { position: relative; z-index: 1; width: 100%; display: grid; gap: 20px; padding-block: 120px 48px; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+.open-now { display: flex; align-items: center; gap: 10px; font-size: 14px; letter-spacing: .04em; }
+.open-now i { width: 8px; height: 8px; border-radius: 50%; background: #6FBF73; flex: none; }
+.open-now.closed i { background: var(--mute-on-dark); }
+@media (min-width: 860px) { .hero-text { padding-block: 160px 72px; } }
 
 /* prisliste */
-.prices { display: grid; gap: 28px; }
-.prices-head { display: grid; gap: 12px; align-content: start; }
-.price-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid #3a3936; }
-.price-list a { display: grid; grid-template-columns: 1fr auto; gap: 2px 20px; padding: 16px 0; border-bottom: 1px solid #3a3936; text-decoration: none; }
-.price-list a:hover .p-name { text-decoration: underline; }
-.p-name { font-size: 19px; font-weight: 600; }
-.p-price { font-size: 19px; font-weight: 600; text-align: right; }
-.p-desc { font-size: 15px; color: var(--mute-on-dark); }
-.p-dur { font-size: 15px; color: var(--mute-on-dark); text-align: right; }
+.price-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line-dark); }
+.price-list a { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 4px 16px; padding: 22px 0; border-bottom: 1px solid var(--line-dark); text-decoration: none; }
+.p-name { font-family: var(--display); font-size: clamp(26px, 3.4vw, 40px); text-transform: uppercase; line-height: 1; }
+.p-dots { border-bottom: 2px dotted #4a4843; transform: translateY(-6px); }
+.p-price { font-family: var(--display); font-size: clamp(26px, 3.4vw, 40px); line-height: 1; color: var(--gold); }
+.p-desc { grid-column: 1 / 3; font-size: 15px; color: var(--mute-on-dark); }
+.p-book { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); text-align: right; }
+.price-list a:hover .p-name { color: var(--gold); }
+@media (max-width: 559px) { .p-dots { display: none; } .price-list a { grid-template-columns: 1fr auto; } .p-desc { grid-column: 1; } }
 .note { font-size: 14px; color: var(--mute); }
 .dark .note { color: var(--mute-on-dark); }
-.note-flag { display: inline-block; justify-self: start; font-size: 13px; font-weight: 600; padding: 3px 8px; border: 1px solid currentColor; border-radius: 2px; }
-@media (min-width: 860px) { .prices { grid-template-columns: 4fr 7fr; gap: 64px; } }
 
-/* galleri */
-.sec-title { margin-bottom: 24px; }
-.gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-.g-item { position: relative; margin: 0; aspect-ratio: 4 / 5; }
+/* galleri: kant til kant */
+.gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; }
+.g-item { position: relative; margin: 0; aspect-ratio: 4 / 5; overflow: hidden; }
 .g-item .photo { position: absolute; inset: 0; }
-.g-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px; font-size: 14px; font-weight: 600; color: #fff; background: linear-gradient(transparent, rgba(0, 0, 0, .55)); }
+.g-item img { transition: transform .4s ease; }
+.g-item:hover img { transform: scale(1.03); }
+.g-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 16px 14px; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #fff; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
 .g-item:not(.has-img) .g-cap { display: none; }
+@media (min-width: 860px) { .gallery { grid-template-columns: repeat(4, 1fr); } }
+
+/* salonen: billede og tekst side om side */
+.split { display: grid; background: var(--paper); }
+.split-photo { aspect-ratio: 4 / 3; }
+.split-text { display: grid; gap: 18px; align-content: center; padding: 56px var(--gutter); max-width: 620px; }
 @media (min-width: 860px) {
-  .gallery { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .split { grid-template-columns: 1fr 1fr; min-height: 640px; }
+  .split-photo { aspect-ratio: auto; }
+  .split-text { padding: 80px 64px; }
 }
-.gallery-note { margin-top: 16px; }
-
-
-/* om salonen og holdet */
-.about { display: grid; gap: 36px; }
-.about .photo { aspect-ratio: 3 / 2; }
-.about-text { display: grid; gap: 16px; max-width: 34em; align-content: start; }
-@media (min-width: 860px) { .about { grid-template-columns: 7fr 5fr; gap: 64px; } }
-.team { display: grid; margin-top: 48px; border-top: 1px solid var(--line); }
-.member { display: grid; grid-template-columns: 64px 1fr; gap: 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
-.member .photo { width: 64px; aspect-ratio: 1; }
+.team { display: grid; margin-top: 12px; border-top: 1px solid var(--line); }
+.member { display: grid; grid-template-columns: 56px 1fr; gap: 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.member .photo { width: 56px; aspect-ratio: 1; }
 .member .photo .ph { display: none; }
 .member .initials { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; color: var(--mute); }
 .member h3 { font-size: 18px; font-weight: 600; margin: 0; }
 .member p { font-size: 15px; color: var(--mute); }
-@media (min-width: 860px) { .team { grid-template-columns: repeat(3, 1fr); column-gap: 32px; } }
 
-/* kontakt */
-.contact { display: grid; gap: 32px; }
-.contact dl { margin: 0; display: grid; gap: 22px; align-content: start; }
-.contact dt { font-size: 15px; color: var(--mute); margin-bottom: 2px; }
-.contact dd { margin: 0; font-size: 18px; }
-.hours { border-collapse: collapse; font-size: 17px; }
-.hours td { padding: 2px 24px 2px 0; }
-.hours tr.is-today td { font-weight: 700; }
-.contact .photo { aspect-ratio: 4 / 3; }
-@media (min-width: 860px) { .contact { grid-template-columns: 1fr 1fr 1.3fr; gap: 48px; } }
+/* find os */
+.visit { display: grid; gap: 48px; }
+.visit-addr { font-size: 22px; margin-top: 18px; }
+.hours { border-collapse: collapse; font-size: 18px; width: 100%; max-width: 420px; }
+.hours td { padding: 10px 0; border-bottom: 1px solid var(--line-dark); }
+.hours td:last-child { text-align: right; }
+.hours tr.is-today td { color: var(--gold); font-weight: 700; }
+.visit .photo { aspect-ratio: 4 / 3; margin-top: 24px; }
+@media (min-width: 860px) { .visit { grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; } }
+
+/* afsluttende opfordring */
+.cta { background: var(--gold); color: var(--ink); padding: 64px 0; }
+.cta .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px; }
+.cta .btn { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 
 /* footer */
-.site-footer { background: var(--ink); color: var(--mute-on-dark); font-size: 15px; padding: 40px 0 calc(40px + env(safe-area-inset-bottom, 0px)); }
-.site-footer .wrap { display: grid; gap: 18px; }
-.site-footer strong { color: var(--paper); font-size: 18px; letter-spacing: -.02em; }
-.foot-row { display: flex; flex-wrap: wrap; gap: 6px 24px; }
+.site-footer { background: var(--ink); color: var(--mute-on-dark); font-size: 15px; padding: 64px 0 calc(28px + env(safe-area-inset-bottom, 0px)); }
+.site-footer .wrap { display: grid; gap: 40px; }
+.foot-mark { font-family: var(--display); font-size: clamp(44px, 9vw, 120px); line-height: .9; text-transform: uppercase; color: var(--paper); }
+.foot-cols { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px 24px; }
+@media (min-width: 860px) { .foot-cols { grid-template-columns: repeat(4, 1fr); } }
+.foot-cols h3 { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px; }
+.foot-cols p + p { margin-top: 4px; }
 .site-footer a { color: var(--paper); text-decoration: none; }
 .site-footer a:hover { text-decoration: underline; }
+.foot-bottom { display: flex; flex-wrap: wrap; gap: 8px 24px; padding-top: 20px; border-top: 1px solid var(--line-dark); font-size: 13px; }
+.foot-bottom .credit { margin-left: auto; font-size: 12px; }
+.foot-bottom .credit a { color: inherit; }
 
 /* ---------- booking ---------- */
 .booking { padding: 32px 0 80px; }
@@ -349,8 +373,6 @@ p { margin: 0; }
 @media (max-width: 559px) { .hide-sm { display: none; } .admin-top .nav { gap: 12px; } }
 
 /* produktion: kreditering, juridisk side og frisørens dagskalender */
-.credit { margin-top: 18px; font-size: 12px; color: var(--mute-on-dark); }
-.credit a { color: inherit; }
 .legal h2 { font-size: 20px; margin: 28px 0 8px; }
 .legal p { max-width: 64ch; }
 .legal p + p { margin-top: 10px; }
