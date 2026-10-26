@@ -421,7 +421,7 @@ site.post('/contact', async (c) => {
   const ip_hash = ip ? await ipHash(ip) : null;
   const email = normalizeEmail(fields['email']);
   // Blokerede afsendere (admin › Forespørgsler › Bloker afsender) afvises i stilhed: takkebesked, men intet gemmes og ingen mail
-  if (await isBlockedSender(c.env.DB, email, ip_hash)) return success();
+  if (await isBlockedSender(c.env.DB, email, ip_hash, fields['name'] ?? null)) return success();
 
   const tooMany = () => respond(c, returnPath, state({ form: 'Du har sendt mange henvendelser på kort tid. Vent lidt, eller skriv direkte til kontakt@veyro.dk.' }), 429);
   if (!(await rateLimit(c.env.DB, 'lead-ip:' + (ip_hash ?? 'ukendt'), 8, 3600))) return tooMany();

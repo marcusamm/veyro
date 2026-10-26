@@ -770,6 +770,23 @@ describe('Admin: bloker afsender (spam)', () => {
     sql('DELETE FROM lead_blocks');
   });
 
+  it('blokerer på navn, når en robot skifter mailadresse', async () => {
+    const page = await site.get('/pages/kontakt');
+    const id = page.html.match(/id="(Contact-[^"]+)"/)[1];
+    const named = (email, ip) =>
+      new Client(stack.site).post('/contact', contactForm(page.html, id, { 'contact[name]': 'Robertbaick', 'contact[email]': email, 'contact[body]': 'Hej, jeg ønskede at kende din pris.', 'contact[Samtykke]': 'Ja' }), { 'CF-Connecting-IP': ip });
+    await named('robot1@shaw.ca', '203.0.113.50');
+    await named('robot2@yahoo.ca', '203.0.113.51');
+    const [lead] = sql("SELECT id FROM leads WHERE email = 'robot1@shaw.ca'");
+    const detail = await admin.get(`/admin/forespoergsler/${lead.id}`);
+    expect(detail.html).toContain('Navnet „Robertbaick"');
+    await admin.post(`/admin/forespoergsler/${lead.id}/bloker`, { _csrf: csrfFrom(detail.html), name: '1' });
+    expect(sql("SELECT status FROM leads WHERE email IN ('robot1@shaw.ca', 'robot2@yahoo.ca')").map((r) => r.status)).toEqual(['spam', 'spam']);
+    expect((await named('robot3@hotmail.com', '203.0.113.52')).headers.get('location')).toContain('kontakt=ok');
+    expect(count("email = 'robot3@hotmail.com'")).toBe(0);
+    sql('DELETE FROM lead_blocks');
+  });
+
   it('begrænser antal henvendelser fra samme mailadresse', async () => {
     const codes = [];
     for (let i = 0; i < 4; i++) codes.push((await send('gentager@firma.dk', `198.51.100.${60 + i}`)).status);
