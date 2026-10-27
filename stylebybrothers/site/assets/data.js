@@ -32,7 +32,7 @@ function hours({ off = [] } = {}) {
 
 // Faste billeder fra salonen. De ændres i koden, ikke i admin.
 export const PHOTOS = {
-  hero: { src: 'img/salonen-hero.jpg', note: 'Salonen indefra' },
+  hero: { src: 'img/salonen-forside.jpg', note: 'Salonen indefra' },
   salon: { src: 'img/kroeller-taper.jpg', note: 'Klipning med krøller og taper fade' },
 };
 // Billede på hvert behandlingskort på forsiden.
