@@ -2,7 +2,7 @@
 .booking { background:#f4f1e9; color:#171b19; padding-block:clamp(36px,5.5vw,80px) clamp(64px,8vw,120px); min-height:65vh; --line:#d8d4ca; --stone:#e8e3d8; --mute:#60625b; --char:#252c27; --ink:#171b19; --paper:#f4f1e9; --accent:#685234; }
 .booking .booking-grid { gap:clamp(28px,4.5vw,64px); }
 .booking .booking-grid > div, .booking .narrow { min-width:0; }
-.booking .t-l { font-family:var(--display,var(--font)); font-weight:600; font-size:clamp(40px,5.3vw,76px); letter-spacing:-.035em; line-height:1.04; margin:0; }
+.booking .t-l { font-family:var(--display,var(--font)); font-weight:400; font-size:clamp(40px,5.3vw,68px); letter-spacing:-.035em; line-height:1.04; margin:0; }
 .booking .booking-intro { font-size:16px; line-height:1.75; max-width:40ch; margin:18px 0 32px; }
 .booking .step { border:1px solid #d8d4ca; border-radius:18px; padding:22px 24px; background:#eeebe3; margin-block:12px; }
 .booking .step.current { background:#fffdf8; border-color:#c4b8a3; box-shadow:0 8px 30px #171b1906; }

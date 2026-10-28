@@ -172,7 +172,7 @@ function header() {
 
 function footer() {
   return `<footer class="site-footer"><div class="wrap">
-    ${currentView === 'home' ? `<div class="sbb-footer-cta"><div><p class="sbb-kicker">Næste klip starter her.</p><h2>SES I STOLEN.</h2></div><a class="sbb-book" ${bookAttrs()}>Find en ledig tid <span aria-hidden="true">↗</span></a></div>` : ''}
+    ${currentView === 'home' ? `<div class="sbb-footer-cta"><div><p class="sbb-kicker">Næste klip starter her.</p><h2>Vi ses i stolen.</h2></div><a class="sbb-book" ${bookAttrs()}>Find en ledig tid <span aria-hidden="true">↗</span></a></div>` : ''}
     <div class="foot-cols">
       <div class="foot-brand">${logo()}<p>Klip, fades og skæg.<br>Midt i Slagelse.</p></div>
       <div><h3>Besøg os</h3><p>${SALON.street}<br>${SALON.city}</p><p><a href="${SALON.maps}" target="_blank" rel="noopener">Vis på kort ↗</a></p></div>
@@ -205,26 +205,26 @@ function renderHome(scrollTo) {
     <section class="sbb-hero" aria-labelledby="sbb-title">
       <div class="wrap sbb-hero__grid">
         <div class="sbb-hero__copy">
-          <p class="sbb-kicker"><span aria-hidden="true"></span> StyleByBrothers · Slagelse</p>
-          <h1 id="sbb-title">DIT HÅR.<br><span>DIT UDTRYK.</span></h1>
-          <p class="sbb-hero__intro">Fra den skarpe fade til det klassiske klip. Vi tager os af detaljerne, så du går herfra med dit eget udtryk.</p>
-          <div class="sbb-hero__actions"><a class="sbb-book" ${bookAttrs()}>Find din næste tid <span aria-hidden="true">↗</span></a><a class="sbb-text-link" href="#/#priser">Se behandlinger <span aria-hidden="true">↓</span></a></div>
+          <p class="sbb-kicker"><span aria-hidden="true"></span> Klip, fades og skæg</p>
+          <h1 id="sbb-title">Herrefrisør<br><em>i Slagelse.</em></h1>
+          <p class="sbb-hero__intro">Fades, klassiske klip og skæg på Sct. Mikkelsgade. Book en tid, og sæt dig godt til rette.</p>
+          <div class="sbb-hero__actions"><a class="sbb-book" ${bookAttrs()}>Book en tid <span aria-hidden="true">↗</span></a><a class="sbb-text-link" href="#/#priser">Se behandlinger <span aria-hidden="true">↓</span></a></div>
           <div class="sbb-hero__meta"><div><span>Din lokale herrefrisør</span><strong>${SALON.street}</strong></div>${haircut ? `<div><span>${esc(haircut.name)} · ${haircut.duration} min.</span><strong>${kr(haircut.price)} <small>inkl. moms</small></strong></div>` : ''}</div>
         </div>
         <div class="sbb-hero__visual">
-          <div class="sbb-hero__image">${photo('img/kroeller-taper.jpg', 'Taper fade med krøller, klippet hos StyleByBrothers', '', 'hero-photo')}</div>
-          <div class="sbb-hero__stamp" aria-hidden="true"><span>STIL I DETALJEN</span><strong>S|B</strong><span>SLAGELSE</span></div>
+          <div class="sbb-hero__composition">
+            <div class="sbb-hero__image">${photo('img/kroeller-taper.jpg', 'Taper fade med krøller, klippet hos StyleByBrothers', '', 'hero-photo')}</div>
+            <a class="sbb-hero__salon" href="#/#salonen" aria-label="Se salonen på Sct. Mikkelsgade">${photo('img/salonen.jpg', 'Indenfor i StyleByBrothers med sorte og gyldne barberstole', '', 'hero-salon-photo')}<span>Indenfor hos os <span aria-hidden="true">↗</span></span></a>
+          </div>
           <div class="sbb-hero__status"><span class="open-now ${open.open ? '' : 'closed'}"><i aria-hidden="true"></i>${esc(open.text)}</span><span>Klip. Fade. Skæg.</span></div>
         </div>
       </div>
       <div class="wrap sbb-hero__bottom"><span>Godt håndværk. Hele vejen rundt.</span><button type="button" data-act="motion-toggle" aria-pressed="${motionPaused}">${motionPaused?'Start':'Sæt'} bevægelse ${motionPaused?'på siden':'på pause'} <span aria-hidden="true">${motionPaused?'▷':'Ⅱ'}</span></button><a href="#/#galleri">Se vores klip <span aria-hidden="true">↓</span></a></div>
     </section>
 
-    <div class="sbb-ticker" aria-hidden="true"><div>${Array.from({length:4},()=>'<span>KLIP</span><i>✳</i><span>FADE</span><i>✳</i><span>SKÆG</span><i>✳</i><span>STYLEBYBROTHERS</span><i>✳</i>').join('')}</div></div>
-
     <section class="sbb-services sbb-section" id="priser" aria-labelledby="priser-titel">
       <div class="wrap">
-        <div class="sbb-section-head"><div><p class="sbb-kicker">01 / Behandlinger & priser</p><h2 id="priser-titel">GOD STIL.<br><span>HELT ENKELT.</span></h2></div><p>Vælg dit klip. Find din tid.<br>Vi klarer resten i stolen.</p></div>
+        <div class="sbb-section-head"><div><p class="sbb-kicker">Behandlinger & priser</p><h2 id="priser-titel">Find dit næste klip.</h2></div><p>Fra et hurtigt trim til klippet<br>til den store dag.</p></div>
         <div class="sbb-services__grid">
           <div class="sbb-services__story" data-reveal>${photo('img/high-fade-skaeg.jpg', 'Fade og skæg med skarpe konturer fra StyleByBrothers', '')}<div><span>Til hverdag.<br>Og de store dage.</span><span aria-hidden="true">↗</span></div></div>
           <div class="sbb-services__list"><div class="cards">
@@ -235,18 +235,18 @@ function renderHome(scrollTo) {
     </section>
 
     <section class="sbb-gallery sbb-section" id="galleri" aria-labelledby="galleri-titel">
-      <div class="wrap sbb-section-head"><div><p class="sbb-kicker">02 / Fra vores stole</p><h2 id="galleri-titel">LAD KLIPNINGERNE<br><span>TALE FOR SIG SELV.</span></h2></div><div class="sbb-gallery__controls"><p>Rigtige klip. Fra vores salon.</p><div><button type="button" data-act="gallery-prev" aria-label="Se forrige klip">←</button><button type="button" data-act="gallery-next" aria-label="Se flere klip">→</button></div></div></div>
+      <div class="wrap sbb-section-head"><div><p class="sbb-kicker">Klip fra salonen</p><h2 id="galleri-titel">Forskellige hoveder.<br><em>Hver sit udtryk.</em></h2></div><div class="sbb-gallery__controls"><p>Et lille udvalg af vores arbejde.</p><div><button type="button" data-act="gallery-prev" aria-label="Se forrige klip">←</button><button type="button" data-act="gallery-next" aria-label="Se flere klip">→</button></div></div></div>
       <div class="sbb-gallery__track" role="region" aria-label="Galleri med salonens klipninger" tabindex="0">${LOOKS.map((look,i)=>`<button type="button" class="sbb-look" data-act="look-open" data-index="${i}" aria-label="Se større billede: ${esc(look.title)}"><span class="sbb-look__image">${photo(look.src,look.title,'')}<span class="sbb-look__zoom" aria-hidden="true">↗</span></span><span class="sbb-look__caption"><span><strong>${look.title}</strong><span>${look.detail}</span></span><span aria-hidden="true">0${i+1}</span></span></button>`).join('')}</div>
       <div class="wrap sbb-gallery__bottom"><span>Træk eller brug pilene for at se mere.</span><a href="${SALON.instagram}" target="_blank" rel="noopener">Følg med på Instagram ↗</a></div>
       <dialog class="sbb-lightbox" aria-labelledby="look-title"><div class="sbb-lightbox__top"><p id="look-title"></p><button type="button" data-act="look-close" aria-label="Luk billedet">Luk <span aria-hidden="true">×</span></button></div><img src="${LOOKS[0].src}" alt="${LOOKS[0].title}" loading="lazy"><div class="sbb-lightbox__bottom"><button type="button" data-act="look-prev" aria-label="Forrige billede">←</button><span data-look-counter>1 / ${LOOKS.length}</span><button type="button" data-act="look-next" aria-label="Næste billede">→</button></div></dialog>
     </section>
 
     <section class="sbb-about sbb-section" id="salonen" aria-labelledby="salonen-titel"><div class="wrap">
-      <div class="sbb-about__grid"><div class="sbb-about__photo" data-reveal>${photo(PHOTOS.hero.src,'De sorte og gyldne barberstole i StyleByBrothers på Sct. Mikkelsgade','')}<span class="sbb-about__photo-label">Sct. Mikkelsgade 26A · Slagelse</span></div><div class="sbb-about__copy"><p class="sbb-kicker">03 / Din lokale barber</p><h2 id="salonen-titel">GODT HÅNDVÆRK.<br><span>GOD STEMNING.</span></h2><p>Herrefrisør midt i Slagelse. Fades, klassiske klip og skæg — vi tager os tid til at få det rigtigt.</p><p>Kom ind med en idé, eller lad os finde udtrykket sammen. Det handler om et klip, der passer til dig.${chooseBarber()?' Du kan vælge din faste frisør, når du booker.':''}</p><a class="sbb-book" ${bookAttrs()}>Vi har en stol til dig <span aria-hidden="true">↗</span></a>${chooseBarber()?`<div class="team">${team.map(b=>`<div class="member"><span class="initials">${esc(initials(b.name))}</span><div><h3>${esc(b.name)}</h3><p>${workDays(b)}</p></div></div>`).join('')}</div>`:''}</div></div>
+      <div class="sbb-about__grid"><div class="sbb-about__photo" data-reveal>${photo(PHOTOS.hero.src,'De sorte og gyldne barberstole i StyleByBrothers på Sct. Mikkelsgade','')}<span class="sbb-about__photo-label">Sct. Mikkelsgade 26A · Slagelse</span></div><div class="sbb-about__copy"><p class="sbb-kicker">StyleByBrothers</p><h2 id="salonen-titel">En stol<br><em>midt i byen.</em></h2><p>Herrefrisør midt i Slagelse. Fades, klassiske klip og skæg — vi tager os tid til at få det rigtigt.</p><p>Kom ind med en idé, eller lad os finde udtrykket sammen. Det handler om et klip, der passer til dig.${chooseBarber()?' Du kan vælge din faste frisør, når du booker.':''}</p><a class="sbb-book" ${bookAttrs()}>Book en tid hos os <span aria-hidden="true">↗</span></a>${chooseBarber()?`<div class="team">${team.map(b=>`<div class="member"><span class="initials">${esc(initials(b.name))}</span><div><h3>${esc(b.name)}</h3><p>${workDays(b)}</p></div></div>`).join('')}</div>`:''}</div></div>
       <div class="sbb-how"><div><span>01</span><p><strong>Vælg behandling</strong>Klip, skæg eller den store dag.</p></div><div><span>02</span><p><strong>Find en ledig tid</strong>Se tiderne og book online.</p></div><div><span>03</span><p><strong>Vi ses i salonen</strong>Sæt dig godt til rette. Vi klarer resten.</p></div></div>
     </div></section>
 
-    <section class="sbb-find sbb-section" id="find-os" aria-labelledby="find-titel"><div class="wrap"><div class="sbb-section-head"><div><p class="sbb-kicker">04 / Kom forbi</p><h2 id="find-titel">VI ER<br><span>LIGE HER.</span></h2></div><p>Midt i Slagelse.<br>Et godt sted at blive klippet.</p></div><div class="sbb-find__grid"><div class="sbb-find__address"><span class="sbb-address-number" aria-hidden="true">26A</span><div><p class="sbb-kicker">StyleByBrothers</p><h3>${SALON.street}</h3><p>${SALON.city}</p></div><a class="sbb-text-link" href="${SALON.maps}" target="_blank" rel="noopener">Find vej til salonen <span aria-hidden="true">↗</span></a><a class="sbb-find__phone" href="${SALON.phoneHref}">${SALON.phone.replace('+45 ','')} <span aria-hidden="true">↗</span></a></div><div class="sbb-find__hours"><div><h3>Åbningstider</h3><span class="open-now ${open.open?'':'closed'}"><i aria-hidden="true"></i>${esc(open.text)}</span></div><table class="hours"><tbody>${weekHours().map(h=>`<tr class="${h.today?'is-today':''}"><th scope="row">${esc(h.label)}</th><td>${esc(h.text)}</td></tr>`).join('')}</tbody></table><p>Vil du være sikker på en tid? <a ${bookAttrs()}>Book inden du kommer ↗</a></p></div></div></div></section>
+    <section class="sbb-find sbb-section" id="find-os" aria-labelledby="find-titel"><div class="wrap"><div class="sbb-section-head"><div><p class="sbb-kicker">Find vej</p><h2 id="find-titel">Kom forbi.</h2></div><p>Sct. Mikkelsgade 26A.<br>Lige midt i Slagelse.</p></div><div class="sbb-find__grid"><div class="sbb-find__address"><span class="sbb-address-number" aria-hidden="true">26A</span><div><p class="sbb-kicker">StyleByBrothers</p><h3>${SALON.street}</h3><p>${SALON.city}</p></div><a class="sbb-text-link" href="${SALON.maps}" target="_blank" rel="noopener">Find vej til salonen <span aria-hidden="true">↗</span></a><a class="sbb-find__phone" href="${SALON.phoneHref}">${SALON.phone.replace('+45 ','')} <span aria-hidden="true">↗</span></a></div><div class="sbb-find__hours"><div><h3>Åbningstider</h3><span class="open-now ${open.open?'':'closed'}"><i aria-hidden="true"></i>${esc(open.text)}</span></div><table class="hours"><tbody>${weekHours().map(h=>`<tr class="${h.today?'is-today':''}"><th scope="row">${esc(h.label)}</th><td>${esc(h.text)}</td></tr>`).join('')}</tbody></table><p>Vil du være sikker på en tid? <a ${bookAttrs()}>Book inden du kommer ↗</a></p></div></div></div></section>
   </main>
   ${footer()}`;
   document.title = 'StyleByBrothers · Herrefrisør i Slagelse';

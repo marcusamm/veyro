@@ -15,12 +15,19 @@ Live på **https://sbb.veyro.dk**.
 
 Billederne ligger i `site/img/` og ændres i koden (`PHOTOS` og `SERVICE_PHOTOS` i `site/assets/data.js`, galleriet `LOOKS` i `site/assets/app.js`), ikke i admin.
 
+## Designreferencer
+
+Den redaktionelle revision bruger naturlig bogstavform og en rolig serif frem for versalslogans. Inspirationen er Rendezvous Barbers' sætningstypografi og Salon Sonas fotografiske komposition — med salonens egne billeder og selvhostede OFL-skrifter:
+
+- https://www.awwwards.com/sites/rendezvous-barbers · https://www.myrendezvous.ca/
+- https://www.awwwards.com/sites/salon-sona · https://ss.art4web.co/
+
 ## Design og frontend
 
 - `site/assets/studio.css`: grafit, varm elfenben og messing; forside, navigation, billedgalleri og footer.
 - `site/assets/booking-polish.css`: booking, flytning/aflysning, bekræftelse og privatliv. Admin har sit eksisterende layout.
 - `site/assets/styles.css`: fælles fundament og admin.
-- Inter og Oswald serveres lokalt. Oswalds OFL-licens følger med i `site/assets/fonts/`.
+- Inter og Instrument Serif serveres lokalt. Instrument Serifs OFL-licens følger med i `site/assets/fonts/`.
 - Galleriet kan bladres med pile, touch eller mus; billeder åbnes i en dialog med tastaturnavigation og Escape. Bevægelse kan sættes på pause, og systemets indstilling for reduceret bevægelse respekteres.
 - Priser, behandlinger og åbningstider vises fra serverens aktuelle opsætning. Designændringer erstatter ikke salonens bookinger eller indstillinger.
 
