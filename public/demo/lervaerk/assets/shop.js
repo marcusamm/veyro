@@ -71,6 +71,7 @@
     function imgFor(v, size) { return root + 'assets/img/' + v.img + '-' + size + '.webp'; }
 
     updateCount();
+    window.addEventListener('storage', function (event) { if (event.key === KEY) updateCount(); });
 
     // Mobilmenu
     var btn = document.querySelector('.menu-btn');
@@ -80,6 +81,9 @@
         var open = btn.getAttribute('aria-expanded') === 'true';
         btn.setAttribute('aria-expanded', String(!open));
         nav.classList.toggle('is-open', !open);
+      });
+      nav.addEventListener('click', function (e) {
+        if (e.target.closest('a')) { btn.setAttribute('aria-expanded', 'false'); nav.classList.remove('is-open'); }
       });
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && btn.getAttribute('aria-expanded') === 'true') {
@@ -99,6 +103,7 @@
       var buttons = filter.querySelectorAll('button');
       var show = function (cat, announce) {
         var n = 0;
+        grid.classList.toggle('is-filtered', cat !== 'alle');
         grid.querySelectorAll('li').forEach(function (li) {
           var hit = cat === 'alle' || li.getAttribute('data-cat') === cat;
           li.hidden = !hit; if (hit) n++;
@@ -191,6 +196,11 @@
         qty.value = 1;
         check();
       });
+      var selectedGlaze = new URLSearchParams(location.search).get('glasur');
+      if (selectedGlaze && /^[a-z]+$/.test(selectedGlaze)) {
+        var glazeInput = buy.querySelector('input[name="variant"][value="' + selectedGlaze + '"]');
+        if (glazeInput) glazeInput.checked = true;
+      }
       refresh();
     }
 
@@ -333,7 +343,10 @@
       cform.addEventListener('change', function (e) {
         if (e.target.name === 'levering') { ['adresse', 'postnr', 'by'].forEach(function (n) { if (cform.elements[n].getAttribute('aria-invalid') === 'true') checkF(n); }); draw(); }
       });
-      cform.addEventListener('input', function (e) { if (rules[e.target.name] && e.target.getAttribute('aria-invalid') === 'true') checkF(e.target.name); });
+      cform.addEventListener('input', function (e) {
+        if (rules[e.target.name] && e.target.getAttribute('aria-invalid') === 'true') checkF(e.target.name);
+        if (!summary.hidden && Object.keys(rules).every(function (n) { return !rules[n](val(n)); })) summary.hidden = true;
+      });
       cform.addEventListener('submit', function (e) {
         e.preventDefault();
         var errs = Object.keys(rules).map(function (n) { return { n: n, m: checkF(n) }; }).filter(function (x) { return x.m; });
@@ -361,6 +374,8 @@
         window.scrollTo(0, 0);
       });
       draw();
+      // Only the fully initialized local handler may submit this demo form.
+      cform.querySelector('[data-checkout-submit]').disabled = false;
     }
   });
 })();

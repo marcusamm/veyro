@@ -30,19 +30,38 @@
     var btn = document.querySelector('.menu-btn');
     var nav = document.getElementById('menu');
     if (btn && nav) {
+      function closeMenu(returnFocus) {
+        btn.setAttribute('aria-expanded', 'false');
+        nav.classList.remove('is-open');
+        if (returnFocus) btn.focus();
+      }
       btn.addEventListener('click', function () {
         var open = btn.getAttribute('aria-expanded') === 'true';
         btn.setAttribute('aria-expanded', String(!open));
         nav.classList.toggle('is-open', !open);
+        if (!open) nav.querySelector('a').focus();
       });
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && btn.getAttribute('aria-expanded') === 'true') {
-          btn.setAttribute('aria-expanded', 'false');
-          nav.classList.remove('is-open');
-          btn.focus();
+          closeMenu(true);
         }
       });
+      nav.addEventListener('click', function (e) { if (e.target.closest('a')) closeMenu(false); });
+      matchMedia('(min-width: 851px)').addEventListener('change', function (event) { if (event.matches) closeMenu(false); });
     }
+
+    // Quiet editorial entrances; all content is visible without JavaScript or with reduced motion.
+    var reduce = matchMedia('(prefers-reduced-motion: reduce)');
+    var reveals = document.querySelectorAll('.reveal, .tgroup');
+    var observer = 'IntersectionObserver' in window ? new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) { if (entry.isIntersecting) { entry.target.classList.add('in-view'); observer.unobserve(entry.target); } });
+    }, { rootMargin: '0px 0px -25px 0px', threshold: .05 }) : null;
+    if (observer) {
+      reveals.forEach(function (el) { el.classList.add('reveal'); if (el.getBoundingClientRect().top < innerHeight - 25) el.classList.add('in-view'); else observer.observe(el); });
+      document.body.classList.toggle('motion-ready', !reduce.matches);
+    }
+    document.addEventListener('focusin', function (e) { var reveal = e.target.closest('.reveal'); if (reveal) reveal.classList.add('in-view'); });
+    reduce.addEventListener('change', function () { document.body.classList.toggle('motion-ready', !reduce.matches && !!observer); });
 
     var form = document.querySelector('[data-booking]');
     if (!form) return;
@@ -243,7 +262,8 @@
       if (quiet) return;
       var h = form.querySelector('[data-step="' + n + '"] h2');
       if (h) h.focus({ preventScroll: true });
-      var top = form.getBoundingClientRect().top + window.scrollY - 16;
+      var headerHeight = document.querySelector('.header').getBoundingClientRect().height;
+      var top = form.getBoundingClientRect().top + window.scrollY - headerHeight - 20;
       if (window.scrollY > top) window.scrollTo(0, top);
     }
 
@@ -365,8 +385,14 @@
     // Forvalg fra behandlingssiden: book?behandling=dameklip
     var pre = new URLSearchParams(location.search).get('behandling');
     var preInput = pre && form.querySelector('input[name="behandling"][value="' + pre.replace(/[^a-z-]/g, '') + '"]');
+    var preStaff = new URLSearchParams(location.search).get('frisoer');
+    var preStaffInput = preStaff && form.querySelector('input[name="frisoer"][value="' + preStaff.replace(/[^a-z-]/g, '') + '"]');
+    if (preStaffInput) preStaffInput.checked = true;
     if (history.replaceState) history.replaceState({ step: 1, i: 0 }, '', location.pathname + location.search);
     if (preInput) { preInput.checked = true; go(2, true, true); }
     else go(1, false, true);
+    // Enable controls only after every local validation/submit handler is installed.
+    // Without JS the noscript message remains, with no native GET submission path.
+    form.inert = false;
   });
 })();

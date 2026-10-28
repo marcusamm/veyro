@@ -29,6 +29,8 @@ async function bookingStep3(page) {
 
 const SHOTS = [
   { name: 'holm-tomrer', path: '/demo/holm-tomrer/' },
+  { name: 'salon-nord', path: '/demo/salon-nord/' },
+  { name: 'lervaerk', path: '/demo/lervaerk/' },
   { name: 'salon-nord-booking', path: '/demo/salon-nord/book?behandling=dameklip', prepare: bookingStep3 },
   { name: 'lervaerk-produkt', path: '/demo/lervaerk/produkter/krus' },
 ];
@@ -44,6 +46,7 @@ try {
   for (const shot of SHOTS) {
     for (const v of VIEWS) {
       const ctx = await browser.newContext({ viewport: { width: v.width, height: v.height }, deviceScaleFactor: v.scale, reducedMotion: 'reduce' });
+      await ctx.route('**/*', route => route.request().method() === 'POST' ? route.abort() : route.continue());
       const page = await ctx.newPage();
       await page.goto(stack.site + shot.path, { waitUntil: 'networkidle' });
       await page.addStyleTag({ content: '.demo-bar { display: none !important; }' });

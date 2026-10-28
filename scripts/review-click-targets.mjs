@@ -49,7 +49,7 @@ async function auditDom(page){
     if(seen.has(el)||!visible(el)){skipped++;continue;}
     seen.add(el);
     const cs=getComputedStyle(el);
-    if(el.classList.contains('skip-link')){records.push({state,selector:selector(el),label:el.textContent.trim(),status:'intentional-keyboard-only'});continue;}
+    if(el.matches('.skip-link, .skip')){records.push({state,selector:selector(el),label:el.textContent.trim(),status:'intentional-keyboard-only'});continue;}
     if(cs.pointerEvents==='none'&&el.matches('.doc__toc-box summary')&&el.parentElement.open){records.push({state,selector:selector(el),label:el.textContent.trim(),status:'intentional-open-toc-heading'});continue;}
     let target=el,proxy=false;
     if(el.matches('input[type="radio"],input[type="checkbox"]')&&(cs.opacity==='0'||el.getBoundingClientRect().width<8||cs.clipPath!=='none')){

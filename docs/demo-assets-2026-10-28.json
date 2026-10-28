@@ -1,0 +1,46 @@
+{
+  "generator": "Built-in image_gen, original generated photographs for fictional demo brands",
+  "assets": [
+    {
+      "path": "public/demo/salon-nord/assets/img/salon-interior.webp",
+      "prompt": "Use case: photorealistic-natural. Asset type: original editorial website photography for a fictional Danish hair salon named Salon Nord. Create a beautiful photograph of a small sophisticated Scandinavian hair salon interior, three pale oak and warm cream styling stations with tall oval mirrors, espresso brown leather salon chairs, brushed metal hairdressing tools, subtle oxblood accents, limewashed ivory walls, daylight from tall street-front windows, a lived-in calm professional atmosphere. No people. Wide landscape 4:3 framing, layered depth, warm soft natural morning light, refined architecture-magazine photographic realism, honest material texture and restrained film grain. No logos, no text, no signage, no watermarks, no grid or collage.",
+      "generator_output": "exec-61b3285b-9a55-460d-a441-ea072f85455b.png"
+    },
+    {
+      "path": "public/demo/salon-nord/assets/img/hair-texture.webp",
+      "prompt": "Use case: photorealistic-natural. Asset type: original editorial hair photograph for a fictional Danish hair salon website. Close crop of the back and side of an adult woman's beautifully cut shoulder-length dark blonde hair, soft natural waves and fine individual strands, partial nape and an ivory linen shoulder, almost no face visible. Artistic yet natural professional salon photography, warm beige and espresso palette, raking window light, tactile hair detail, muted plaster background, portrait 4:5 composition with the hair filling the frame. Realistic everyday refined haircut, no product advertising, no logos, no text, no watermark, not a collage.",
+      "generator_output": "exec-08bde383-8cec-4433-b3d5-701978badc30.png"
+    },
+    {
+      "path": "public/demo/salon-nord/assets/img/hair-copper.webp",
+      "prompt": "Use case: photorealistic-natural. Asset type: original editorial portrait photograph for a fictional Scandinavian hair salon website. Adult woman with natural copper red curly shoulder-length hair in a quiet side profile, wearing a plain chocolate brown top, soft cream plaster studio background, thoughtful relaxed expression, realistic fine curls and skin texture, sophisticated salon magazine portrait, soft warm natural window light and gently falling shadows. Portrait 4:5, focus on expressive hair shape, no text, no logo, no watermark, no products, no collage.",
+      "generator_output": "exec-d9be4fb6-d9af-4705-b0e7-3ebb707ea745.png"
+    },
+    {
+      "path": "public/demo/holm-tomrer/assets/img/terrace.webp",
+      "prompt": "Use case: photorealistic-natural. Asset type: original architectural photography for a fictional Danish carpenter portfolio website. A beautifully crafted timber terrace with wide lightly weathered oak boards and precise joinery, built next to a simple low Danish brick home, large glazed sliding door, understated oak pergola and one pale canvas outdoor chair. Lush restrained northern European garden, warm early evening light, quiet sense of human craftsmanship, architectural magazine photograph, wide landscape 3:2 composition with strong geometry and natural timber texture. No people, no logos, no text, no signs, no watermark, no impossible construction.",
+      "generator_output": "exec-730712ce-caa7-4876-9497-54faf69ef5db.png"
+    },
+    {
+      "path": "public/demo/holm-tomrer/assets/img/interior.webp",
+      "prompt": "Use case: photorealistic-natural. Asset type: original architectural photography for a fictional Danish joinery workshop website. Warm minimalist Danish home interior featuring bespoke floor-to-ceiling pale oak built-in bookshelves and storage around a large square window, beautifully detailed fitted carpentry and timber bench below, a few neutral books and ceramic vessels, soft natural daylight, limewashed ivory walls and a warm oak floor. Architectural editorial photograph, exquisite subtle material texture and joinery details, wide landscape 3:2, believable proportions, no people, no text, no logo, no watermark.",
+      "generator_output": "exec-502ad087-c09f-4ff8-a024-74c7cfdd6c72.png"
+    }
+  ],
+  "references": {
+    "holm": [
+      "https://www.awwwards.com/sites/eham",
+      "https://www.awwwards.com/sites/aebele-interiors",
+      "https://www.awwwards.com/sites/borgatta-menuiserie"
+    ],
+    "salon": [
+      "https://www.awwwards.com/sites/alice-hair-art",
+      "https://www.awwwards.com/sites/salon-sona"
+    ],
+    "lervaerk": [
+      "https://www.awwwards.com/sites/kevala-ceramics",
+      "https://www.awwwards.com/sites/helbak-ceramics",
+      "https://www.awwwards.com/sites/ombia-studio"
+    ]
+  }
+}
