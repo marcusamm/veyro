@@ -3,13 +3,13 @@
 .studio-art > svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .45; transition: opacity .4s; }
 .studio-art.has-canvas > svg { opacity: 0; }
 .studio-particles { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.studio-stage { grid-template-rows: 410px auto auto; }
+.studio-stage { grid-template-rows: minmax(410px, auto) auto auto; row-gap: 1rem; }
 .studio-stage::before { background-size: 6px 6px; }
-.studio-message { position: relative; }
+.studio-message { position: relative; z-index: 1; }
 .home-hero__title { text-wrap: balance; }
 .hero-word-shell { display: inline-block; overflow: clip; vertical-align: top; padding-bottom: .12em; margin-bottom: -.12em; }
 .hero-word { display: inline-block; }
-.studio-wordmark { display: flex; justify-content: space-between; letter-spacing: -.055em; font-size: clamp(100px, 29.5vw, 420px); line-height: .93; padding-bottom: 1rem; }
+.studio-wordmark { display: flex; justify-content: space-between; letter-spacing: -.055em; font-size: clamp(100px, 29.5vw, 420px); line-height: .93; padding-bottom: 1rem; z-index: 0; pointer-events: none; user-select: none; }
 .studio-wordmark > span { display: inline-block; }
 .studio-scroll { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; color: #b8b8b5; text-decoration: none; font-size: .6875rem; padding-block: 1rem 1.5rem; }
 .studio-scroll > span:last-child { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid #ffffff44; border-radius: 50%; color: #f6f5f2; font-size: 1rem; }

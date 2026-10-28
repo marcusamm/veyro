@@ -66,7 +66,7 @@
 .booking-flow__details > div { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem; }
 .booking-flow__details span { padding: .35rem .65rem; border-radius: 999px; border: 1px solid #ffffff35; color: #d0d0cb; font-size: .6875rem; }
 @media (min-width: 990px) {
- .studio-stage { grid-template-rows: 470px auto auto; }
+ .studio-stage { grid-template-rows: minmax(470px, auto) auto auto; }
  .studio-motion-ready .steps__item { min-height: 34vh; padding-block: 5vh 8vh; }
 }
 @media (max-width: 989px) {
