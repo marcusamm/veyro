@@ -1,4 +1,4 @@
-{%- comment -%}Illustration af den eksisterende Booking-pakke. Kun fiktive data, ingen handlinger eller netværkskald.{%- endcomment -%}
+{%- comment -%}Skærmbillede fra den aktuelle Salon Nord-demo. Linket åbner det fiktive bookingforløb.{%- endcomment -%}
 <section class="section booking-flow" id="{{ section.settings.anchor | default: 'fra-booking-til-overblik' | handle }}">
   <div class="container booking-flow__inner">
     <div class="booking-flow__copy">
@@ -13,18 +13,12 @@
       <div class="booking-flow__details"><p>Fra første klik til dagens overblik</p><div><span>Ydelser og ledige tider</span><span>Bekræftelse på mail</span><span>Flytning og aflysning</span></div></div>
     </div>
     <figure class="booking-flow__figure">
-      <div class="booking-preview">
-        <div class="booking-preview__bar"><span>Salon Nord / Booking</span><span class="badge">Demo</span></div>
-        <div class="booking-preview__body">
-          <p class="booking-preview__label">Kundens valg</p>
-          <h3>Klip &amp; føn</h3>
-          <p class="muted">45 min. · 450 kr. · Hos Emma</p>
-          <div class="booking-preview__date"><span>Tirsdag<strong>27. oktober</strong></span><span class="booking-preview__time">10.30–11.15</span></div>
-          <div class="booking-preview__confirmation"><span aria-hidden="true">✓</span><div><strong>Tiden er booket</strong><p>Bekræftelse til kunden og salonen</p></div></div>
-        </div>
-        <div class="booking-preview__calendar"><span>Jeres overblik</span><div><span>10.30</span><div><strong>Klip &amp; føn · Emma</strong><span>45 min. · Eksempel på en booking</span></div></div></div>
-      </div>
-      <figcaption>Illustreret bookingforløb med fiktive oplysninger. Ingen tid bliver booket.</figcaption>
+      <a class="demo-snapshot" href="/demo/salon-nord/book?behandling=dameklip" aria-label="Prøv bookingforløbet hos Salon Nord">
+        <span class="capability-browser__chrome" aria-hidden="true"><span><i></i><i></i><i></i></span><span>Salon Nord · Bookingdemo</span><span>↗</span></span>
+        <picture><source media="(max-width: 499px)" srcset="/demo/_previews/salon-nord-booking-mobil.jpg"><img src="/demo/_previews/salon-nord-booking-960.jpg" srcset="/demo/_previews/salon-nord-booking-960.jpg 960w, /demo/_previews/salon-nord-booking-1920.jpg 1920w" sizes="(min-width: 990px) 45vw, 90vw" width="960" height="600" loading="lazy" alt="Skærmbillede fra Salon Nords bookingforløb, hvor kunden vælger en ledig tid"></picture>
+        <span class="demo-snapshot__action">Prøv hele bookingforløbet <span aria-hidden="true">↗</span></span>
+      </a>
+      <figcaption>Skærmbillede fra Salon Nords bookingdemo. Ingen tid bliver booket.</figcaption>
     </figure>
   </div>
 </section>

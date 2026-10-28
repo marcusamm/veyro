@@ -223,8 +223,12 @@ describe('Pakker og priser', () => {
     const gallery = section('project-gallery');
     expect(gallery).toContain('Fiktive designkoncepter — lavet af Veyro');
     for (const demo of ['/demo/holm-tomrer/', '/demo/salon-nord/', '/demo/lervaerk/']) expect(gallery).toContain(`href="${demo}"`);
+    const capabilities = section('section studio-capabilities');
+    for (const screenshot of ['holm-tomrer-960.jpg', 'holm-tomrer-phone-780.jpg', 'salon-nord-booking-960.jpg', 'lervaerk-kurv-960.jpg']) expect(capabilities).toContain('/demo/_previews/' + screenshot);
+    for (const demo of ['/demo/holm-tomrer/', '/demo/salon-nord/book?behandling=dameklip', '/demo/lervaerk/']) expect(capabilities).toContain(`href="${demo}"`);
+    expect(capabilities).not.toMatch(/capability-website__body|capability-booking__selection|capability-shop__order/);
     const flow = section('section booking-flow');
-    expect(flow).toContain('Illustreret bookingforløb med fiktive oplysninger. Ingen tid bliver booket.');
+    expect(flow).toContain('Skærmbillede fra Salon Nords bookingdemo. Ingen tid bliver booket.');
     expect(flow).not.toMatch(/<form|<button/);
     // Pakkerne: tre kan bestilles, to er på vej
     const prices = section('section packages packages--summary');
@@ -256,7 +260,7 @@ describe('Pakker og priser', () => {
       // Intet sendes: ingen POST-formularer og ingen adresser uden for siden
       expect(r.html, p).not.toMatch(/method="post"|action="|https?:\/\/(?!localhost)/i);
     }
-    for (const f of ['holm-tomrer', 'salon-nord', 'lervaerk', 'salon-nord-booking', 'lervaerk-produkt'].flatMap((n) => [`${n}-960.jpg`, `${n}-1920.jpg`, `${n}-mobil.jpg`])) {
+    for (const f of ['holm-tomrer', 'salon-nord', 'lervaerk', 'salon-nord-booking', 'lervaerk-produkt', 'lervaerk-kurv'].flatMap((n) => [`${n}-960.jpg`, `${n}-1920.jpg`, `${n}-mobil.jpg`]).concat('holm-tomrer-phone-780.jpg')) {
       const r = await site.get('/demo/_previews/' + f);
       expect(r.status, f).toBe(200);
       expect(r.headers.get('content-type'), f).toBe('image/jpeg');
