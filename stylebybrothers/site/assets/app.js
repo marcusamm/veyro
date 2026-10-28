@@ -143,26 +143,24 @@ function logo() {
 }
 
 function header() {
-  return `<div class="topbar"><div class="wrap">Herrefrisør på ${SALON.street} i Slagelse.<a ${bookAttrs()}>Book tid</a></div></div>
+  return `<div class="topbar"><div class="wrap"><span>Herrefrisør i Slagelse · ${SALON.street}</span><a href="${SALON.phoneHref}">Ring ${SALON.phone.replace('+45 ', '')} <span aria-hidden="true">↗</span></a></div></div>
   <header class="site-header">
     <nav class="nav wrap" aria-label="Hovedmenu">
+      ${logo()}
       <ul class="nav-links">
-        <li><a href="#/#priser">Priser</a></li>
+        <li><a href="#/#priser">Behandlinger</a></li>
+        <li><a href="#/#galleri">Vores klip</a></li>
         <li><a href="#/#salonen">Salonen</a></li>
         <li><a href="#/#find-os">Find os</a></li>
-        <li><a href="#/min-booking">Min booking</a></li>
       </ul>
+      <div class="nav-right"><a href="#/min-booking">Min booking</a><a class="sbb-book" ${bookAttrs()}>Book tid <span aria-hidden="true">↗</span></a></div>
       <button class="menu-btn" data-act="menu" aria-expanded="false" aria-controls="menu">Menu</button>
-      ${logo()}
-      <ul class="nav-right">
-        <li><a href="${SALON.phoneHref}">Ring ${SALON.phone.replace('+45 ', '')}</a></li>
-        <li><a ${bookAttrs()}>Book tid</a></li>
-      </ul>
-      <a class="nav-book" ${bookAttrs()}>Book tid</a>
+      <a class="nav-book sbb-book" ${bookAttrs()}>Book tid <span aria-hidden="true">↗</span></a>
     </nav>
     <div class="mobile-menu wrap" id="menu" hidden>
       <ul>
-        <li><a href="#/#priser">Priser</a></li>
+        <li><a href="#/#priser">Behandlinger & priser</a></li>
+        <li><a href="#/#galleri">Vores klip</a></li>
         <li><a href="#/#salonen">Salonen</a></li>
         <li><a href="#/#find-os">Find os</a></li>
         <li><a href="#/min-booking">Flyt eller aflys en tid</a></li>
@@ -174,72 +172,139 @@ function header() {
 
 function footer() {
   return `<footer class="site-footer"><div class="wrap">
+    ${currentView === 'home' ? `<div class="sbb-footer-cta"><div><p class="sbb-kicker">Næste klip starter her.</p><h2>SES I STOLEN.</h2></div><a class="sbb-book" ${bookAttrs()}>Find en ledig tid <span aria-hidden="true">↗</span></a></div>` : ''}
     <div class="foot-cols">
-      <div class="foot-brand">${logo()}</div>
-      <div><h3>Besøg os</h3><p>${SALON.street}<br>${SALON.city}</p><p><a href="${SALON.maps}" target="_blank" rel="noopener">Vis på kort</a></p></div>
+      <div class="foot-brand">${logo()}<p>Klip, fades og skæg.<br>Midt i Slagelse.</p></div>
+      <div><h3>Besøg os</h3><p>${SALON.street}<br>${SALON.city}</p><p><a href="${SALON.maps}" target="_blank" rel="noopener">Vis på kort ↗</a></p></div>
       <div><h3>Kontakt</h3><p><a href="${SALON.phoneHref}">${SALON.phone}</a></p><p>CVR ${SALON.cvr}</p></div>
-      <div><h3>Booking</h3><p><a ${bookAttrs()}>Book tid</a></p><p><a href="#/min-booking">Flyt eller aflys en tid</a></p></div>
-      <div><h3>Følg med</h3><p><a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook</a></p><p><a href="${SALON.instagram}" target="_blank" rel="noopener">Instagram</a></p></div>
+      <div><h3>Din tid</h3><p><a ${bookAttrs()}>Book tid ↗</a></p><p><a href="#/min-booking">Flyt eller aflys</a></p></div>
+      <div><h3>Følg med</h3><p><a href="${SALON.instagram}" target="_blank" rel="noopener">Instagram ↗</a></p><p><a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook ↗</a></p></div>
     </div>
     <div class="foot-bottom"><span>© ${new Date().getFullYear()} StyleByBrothers</span><a href="#/privatliv">Privatliv og cookies</a><a href="#/admin">Log ind</a><span class="credit">Webudvikling: <a href="https://veyro.dk" target="_blank" rel="noopener">Veyro.dk</a></span></div>
   </div></footer>`;
 }
 
 // ---------- forside ----------
+const LOOKS = [
+  { src: 'img/kroeller-taper.jpg', title: 'Krøller & taper', detail: 'Tekstur med en skarp overgang' },
+  { src: 'img/high-fade-skaeg.jpg', title: 'Fade & skæg', detail: 'Skarpe linjer. Ren finish.' },
+  { src: 'img/slick-back.jpg', title: 'Klassisk slick back', detail: 'Et klassisk udtryk med kant' },
+  { src: 'img/taper-tekstur.jpg', title: 'Taper & tekstur', detail: 'Detaljerne gør forskellen' },
+  { src: 'img/mid-fade-skaeg.jpg', title: 'Mid fade', detail: 'En blød overgang og et skarpt skæg' },
+];
+let homeObserver;
+let motionPaused = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 function renderHome(scrollTo) {
   const services = state.services.filter((s) => s.active);
   const open = todayLine();
   const team = state.barbers.filter((b) => b.active);
-  const p = PHOTOS;
+  const haircut = services.find((s) => s.id === 'herreklip');
   app.innerHTML = `${header()}
-  <main id="main">
-    <h1 class="sr-only">StyleByBrothers, herrefrisør i Slagelse</h1>
-    <section class="hero" aria-label="Salonen">
-      ${photo(p.hero.src, 'Salonen på Sct. Mikkelsgade', p.hero.note, 'hero-photo')}
+  <main id="main" class="sbb-home ${motionPaused ? 'motion-paused' : ''}">
+    <section class="sbb-hero" aria-labelledby="sbb-title">
+      <div class="wrap sbb-hero__grid">
+        <div class="sbb-hero__copy">
+          <p class="sbb-kicker"><span aria-hidden="true"></span> StyleByBrothers · Slagelse</p>
+          <h1 id="sbb-title">DIT HÅR.<br><span>DIT UDTRYK.</span></h1>
+          <p class="sbb-hero__intro">Fra den skarpe fade til det klassiske klip. Vi tager os af detaljerne, så du går herfra med dit eget udtryk.</p>
+          <div class="sbb-hero__actions"><a class="sbb-book" ${bookAttrs()}>Find din næste tid <span aria-hidden="true">↗</span></a><a class="sbb-text-link" href="#/#priser">Se behandlinger <span aria-hidden="true">↓</span></a></div>
+          <div class="sbb-hero__meta"><div><span>Din lokale herrefrisør</span><strong>${SALON.street}</strong></div>${haircut ? `<div><span>${esc(haircut.name)} · ${haircut.duration} min.</span><strong>${kr(haircut.price)} <small>inkl. moms</small></strong></div>` : ''}</div>
+        </div>
+        <div class="sbb-hero__visual">
+          <div class="sbb-hero__image">${photo('img/kroeller-taper.jpg', 'Taper fade med krøller, klippet hos StyleByBrothers', '', 'hero-photo')}</div>
+          <div class="sbb-hero__stamp" aria-hidden="true"><span>STIL I DETALJEN</span><strong>S|B</strong><span>SLAGELSE</span></div>
+          <div class="sbb-hero__status"><span class="open-now ${open.open ? '' : 'closed'}"><i aria-hidden="true"></i>${esc(open.text)}</span><span>Klip. Fade. Skæg.</span></div>
+        </div>
+      </div>
+      <div class="wrap sbb-hero__bottom"><span>Godt håndværk. Hele vejen rundt.</span><button type="button" data-act="motion-toggle" aria-pressed="${motionPaused}">${motionPaused?'Start':'Sæt'} bevægelse ${motionPaused?'på siden':'på pause'} <span aria-hidden="true">${motionPaused?'▷':'Ⅱ'}</span></button><a href="#/#galleri">Se vores klip <span aria-hidden="true">↓</span></a></div>
     </section>
 
-    <section class="sec" id="priser" aria-labelledby="priser-titel">
+    <div class="sbb-ticker" aria-hidden="true"><div>${Array.from({length:4},()=>'<span>KLIP</span><i>✳</i><span>FADE</span><i>✳</i><span>SKÆG</span><i>✳</i><span>STYLEBYBROTHERS</span><i>✳</i>').join('')}</div></div>
+
+    <section class="sbb-services sbb-section" id="priser" aria-labelledby="priser-titel">
       <div class="wrap">
-        <div class="sec-title"><h2 class="h-sec" id="priser-titel">Book en tid hos StyleByBrothers</h2><p>Klip, fades og skæg. Vælg en behandling og se ledige tider.</p></div>
-        <div class="cards">
-          ${services.map((s) => `<div class="card">
-            ${photo(SERVICE_PHOTOS[s.id] || '', s.name, s.name)}
-            <h3>${esc(s.name)}</h3><p class="sub">${s.duration} min</p>
-            <a class="btn btn-outline" ${bookAttrs(s.id)}>Book · ${kr(s.price)}</a>
-          </div>`).join('')}
+        <div class="sbb-section-head"><div><p class="sbb-kicker">01 / Behandlinger & priser</p><h2 id="priser-titel">GOD STIL.<br><span>HELT ENKELT.</span></h2></div><p>Vælg dit klip. Find din tid.<br>Vi klarer resten i stolen.</p></div>
+        <div class="sbb-services__grid">
+          <div class="sbb-services__story" data-reveal>${photo('img/high-fade-skaeg.jpg', 'Fade og skæg med skarpe konturer fra StyleByBrothers', '')}<div><span>Til hverdag.<br>Og de store dage.</span><span aria-hidden="true">↗</span></div></div>
+          <div class="sbb-services__list"><div class="cards">
+            ${services.map((s,i)=>`<a class="card sbb-treatment" ${bookAttrs(s.id)}><span class="sbb-treatment__number" aria-hidden="true">${String(i+1).padStart(2,'0')}</span>${photo(SERVICE_PHOTOS[s.id] || '', '', s.name)}<div class="sbb-treatment__copy"><h3>${esc(s.name)}</h3><p>${esc(s.desc)}</p><span>${s.duration} min.</span></div><span class="sbb-treatment__price">${kr(s.price)}<span aria-hidden="true">↗</span></span></a>`).join('')}
+          </div><p class="cards-note">Alle priser er inkl. moms. Du betaler i salonen.<br>Allerede en tid? <a href="#/min-booking">Flyt eller aflys din booking ↗</a></p></div>
         </div>
-        <p class="cards-note">Alle priser er inkl. moms og betales i salonen. Kan du ikke komme, så <a href="#/min-booking">flyt eller aflys din tid</a>.</p>
       </div>
     </section>
 
-    <section class="zz" aria-label="Salonen og åbningstider">
-      <div class="zz-row" id="salonen">
-        <div class="zz-text">
-          <h2 class="h-big">Salonen</h2>
-          <p>Herrefrisør midt i Slagelse. Vi laver mest fades, klassiske klip og skæg, og vi tager os tid til at få det rigtigt.${chooseBarber() ? ' Har du en fast frisør, kan du vælge ham, når du booker.' : ''}</p>
-          <a class="btn btn-outline" ${bookAttrs()}>Book tid</a>
-          ${chooseBarber() ? `<div class="team">${team.map((b) => `<div class="member"><div class="photo"><span class="initials">${esc(initials(b.name))}</span></div><div><h3>${esc(b.name)}</h3><p>${workDays(b)}</p></div></div>`).join('')}</div>` : ''}
-        </div>
-        <div class="zz-media">${photo(p.salon.src, 'Klipning i salonen', p.salon.note)}</div>
-      </div>
-      <div class="zz-row flip" id="find-os">
-        <div class="zz-text">
-          <h2 class="h-big">Find os</h2>
-          <p>${SALON.street}, ${SALON.city}.<br>Ring på <a href="${SALON.phoneHref}">${SALON.phone.replace('+45 ', '')}</a> eller book online.</p>
-          <p class="open-now ${open.open ? '' : 'closed'}"><i aria-hidden="true"></i>${esc(open.text)}</p>
-          <a class="btn btn-outline" href="${SALON.maps}" target="_blank" rel="noopener">Vis på kort</a>
-        </div>
-        <div class="zz-media zz-panel">
-          <h3 class="panel-title">Åbningstider</h3>
-          <table class="hours"><tbody>${weekHours().map((h) => `<tr class="${h.today ? 'is-today' : ''}"><td>${esc(h.label)}</td><td>${esc(h.text)}</td></tr>`).join('')}</tbody></table>
-        </div>
-      </div>
+    <section class="sbb-gallery sbb-section" id="galleri" aria-labelledby="galleri-titel">
+      <div class="wrap sbb-section-head"><div><p class="sbb-kicker">02 / Fra vores stole</p><h2 id="galleri-titel">LAD KLIPNINGERNE<br><span>TALE FOR SIG SELV.</span></h2></div><div class="sbb-gallery__controls"><p>Rigtige klip. Fra vores salon.</p><div><button type="button" data-act="gallery-prev" aria-label="Se forrige klip">←</button><button type="button" data-act="gallery-next" aria-label="Se flere klip">→</button></div></div></div>
+      <div class="sbb-gallery__track" role="region" aria-label="Galleri med salonens klipninger" tabindex="0">${LOOKS.map((look,i)=>`<button type="button" class="sbb-look" data-act="look-open" data-index="${i}" aria-label="Se større billede: ${esc(look.title)}"><span class="sbb-look__image">${photo(look.src,look.title,'')}<span class="sbb-look__zoom" aria-hidden="true">↗</span></span><span class="sbb-look__caption"><span><strong>${look.title}</strong><span>${look.detail}</span></span><span aria-hidden="true">0${i+1}</span></span></button>`).join('')}</div>
+      <div class="wrap sbb-gallery__bottom"><span>Træk eller brug pilene for at se mere.</span><a href="${SALON.instagram}" target="_blank" rel="noopener">Følg med på Instagram ↗</a></div>
+      <dialog class="sbb-lightbox" aria-labelledby="look-title"><div class="sbb-lightbox__top"><p id="look-title"></p><button type="button" data-act="look-close" aria-label="Luk billedet">Luk <span aria-hidden="true">×</span></button></div><img src="${LOOKS[0].src}" alt="${LOOKS[0].title}" loading="lazy"><div class="sbb-lightbox__bottom"><button type="button" data-act="look-prev" aria-label="Forrige billede">←</button><span data-look-counter>1 / ${LOOKS.length}</span><button type="button" data-act="look-next" aria-label="Næste billede">→</button></div></dialog>
     </section>
+
+    <section class="sbb-about sbb-section" id="salonen" aria-labelledby="salonen-titel"><div class="wrap">
+      <div class="sbb-about__grid"><div class="sbb-about__photo" data-reveal>${photo(PHOTOS.hero.src,'De sorte og gyldne barberstole i StyleByBrothers på Sct. Mikkelsgade','')}<span class="sbb-about__photo-label">Sct. Mikkelsgade 26A · Slagelse</span></div><div class="sbb-about__copy"><p class="sbb-kicker">03 / Din lokale barber</p><h2 id="salonen-titel">GODT HÅNDVÆRK.<br><span>GOD STEMNING.</span></h2><p>Herrefrisør midt i Slagelse. Fades, klassiske klip og skæg — vi tager os tid til at få det rigtigt.</p><p>Kom ind med en idé, eller lad os finde udtrykket sammen. Det handler om et klip, der passer til dig.${chooseBarber()?' Du kan vælge din faste frisør, når du booker.':''}</p><a class="sbb-book" ${bookAttrs()}>Vi har en stol til dig <span aria-hidden="true">↗</span></a>${chooseBarber()?`<div class="team">${team.map(b=>`<div class="member"><span class="initials">${esc(initials(b.name))}</span><div><h3>${esc(b.name)}</h3><p>${workDays(b)}</p></div></div>`).join('')}</div>`:''}</div></div>
+      <div class="sbb-how"><div><span>01</span><p><strong>Vælg behandling</strong>Klip, skæg eller den store dag.</p></div><div><span>02</span><p><strong>Find en ledig tid</strong>Se tiderne og book online.</p></div><div><span>03</span><p><strong>Vi ses i salonen</strong>Sæt dig godt til rette. Vi klarer resten.</p></div></div>
+    </div></section>
+
+    <section class="sbb-find sbb-section" id="find-os" aria-labelledby="find-titel"><div class="wrap"><div class="sbb-section-head"><div><p class="sbb-kicker">04 / Kom forbi</p><h2 id="find-titel">VI ER<br><span>LIGE HER.</span></h2></div><p>Midt i Slagelse.<br>Et godt sted at blive klippet.</p></div><div class="sbb-find__grid"><div class="sbb-find__address"><span class="sbb-address-number" aria-hidden="true">26A</span><div><p class="sbb-kicker">StyleByBrothers</p><h3>${SALON.street}</h3><p>${SALON.city}</p></div><a class="sbb-text-link" href="${SALON.maps}" target="_blank" rel="noopener">Find vej til salonen <span aria-hidden="true">↗</span></a><a class="sbb-find__phone" href="${SALON.phoneHref}">${SALON.phone.replace('+45 ','')} <span aria-hidden="true">↗</span></a></div><div class="sbb-find__hours"><div><h3>Åbningstider</h3><span class="open-now ${open.open?'':'closed'}"><i aria-hidden="true"></i>${esc(open.text)}</span></div><table class="hours"><tbody>${weekHours().map(h=>`<tr class="${h.today?'is-today':''}"><th scope="row">${esc(h.label)}</th><td>${esc(h.text)}</td></tr>`).join('')}</tbody></table><p>Vil du være sikker på en tid? <a ${bookAttrs()}>Book inden du kommer ↗</a></p></div></div></div></section>
   </main>
   ${footer()}`;
   document.title = 'StyleByBrothers · Herrefrisør i Slagelse';
+  enhanceHome();
   if (scrollTo) requestAnimationFrame(() => document.getElementById(scrollTo)?.scrollIntoView());
   else window.scrollTo(0, 0);
+}
+
+function enhanceHome() {
+  homeObserver?.disconnect();
+  if (!motionPaused && !window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+    homeObserver = new IntersectionObserver(entries => entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('is-in'); homeObserver.unobserve(entry.target); } }), { threshold: .1 });
+    document.querySelectorAll('[data-reveal]').forEach(el=>homeObserver.observe(el));
+  }
+  const track = document.querySelector('.sbb-gallery__track');
+  if (track) {
+    let drag = null, dragged = false;
+    track.addEventListener('dragstart', e => e.preventDefault());
+    track.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      drag = { x:e.clientX, left:track.scrollLeft, pointer:e.pointerId };
+      dragged = false;
+    });
+    track.addEventListener('pointermove', e => {
+      if (!drag) return;
+      if (!(e.buttons & 1)) { stopDrag(); return; }
+      const delta = e.clientX - drag.x;
+      if (!dragged && Math.abs(delta) < 6) return;
+      dragged = true;
+      track.setPointerCapture(drag.pointer);
+      track.classList.add('is-dragging');
+      track.scrollLeft = drag.left - delta;
+      e.preventDefault();
+    });
+    const stopDrag = () => { if (drag && track.hasPointerCapture(drag.pointer)) track.releasePointerCapture(drag.pointer); drag=null; track.classList.remove('is-dragging'); };
+    track.addEventListener('pointerup', stopDrag);
+    track.addEventListener('pointercancel', stopDrag);
+    track.addEventListener('pointerleave', () => { if (drag && !track.hasPointerCapture(drag.pointer)) stopDrag(); });
+    track.addEventListener('click', e => { if (dragged) { e.preventDefault(); e.stopImmediatePropagation(); dragged=false; } }, true);
+  }
+  const dialog = document.querySelector('.sbb-lightbox');
+  dialog?.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});
+  dialog?.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();showLook((Number(dialog.dataset.index)||0)+(e.key==='ArrowRight'?1:-1));}});
+}
+function showLook(index) {
+  const dialog = document.querySelector('.sbb-lightbox');
+  if (!dialog) return;
+  const i=(index+LOOKS.length)%LOOKS.length,look=LOOKS[i];
+  dialog.dataset.index=i;
+  const img=dialog.querySelector('img');img.src=look.src;img.alt=look.title;
+  dialog.querySelector('#look-title').textContent=look.title;
+  dialog.querySelector('[data-look-counter]').textContent=`${i+1} / ${LOOKS.length}`;
+  if (!dialog.open) dialog.showModal();
+}
+function scrollGallery(direction) {
+  const track=document.querySelector('.sbb-gallery__track');
+  if (!track) return;
+  track.scrollBy({left:direction*(track.querySelector('.sbb-look')?.getBoundingClientRect().width+24||320),behavior:motionPaused?'instant':'smooth'});
 }
 
 function workDays(b) {
@@ -832,6 +897,19 @@ async function adminBooking(path, body, okMsg) {
 // ---------- handlinger ----------
 const onManage = () => location.hash.startsWith('#/min-booking');
 const actions = {
+  'gallery-prev': () => scrollGallery(-1),
+  'gallery-next': () => scrollGallery(1),
+  'look-open': el => showLook(Number(el.dataset.index)),
+  'look-close': () => document.querySelector('.sbb-lightbox')?.close(),
+  'look-prev': () => showLook(Number(document.querySelector('.sbb-lightbox')?.dataset.index)-1),
+  'look-next': () => showLook(Number(document.querySelector('.sbb-lightbox')?.dataset.index)+1),
+  'motion-toggle': el => {
+    motionPaused=!motionPaused;
+    document.querySelector('.sbb-home')?.classList.toggle('motion-paused',motionPaused);
+    el.setAttribute('aria-pressed',String(motionPaused));
+    el.innerHTML=`${motionPaused?'Start':'Sæt'} bevægelse ${motionPaused?'på siden':'på pause'} <span aria-hidden="true">${motionPaused?'▷':'Ⅱ'}</span>`;
+    if(motionPaused)homeObserver?.disconnect();
+  },
   menu: () => toggleMenu(document.getElementById('menu')?.hidden),
   'pick-service': (el) => {
     bk.serviceId = el.dataset.id; bk.date = null; bk.start = null;
@@ -983,6 +1061,7 @@ app.addEventListener('change', (e) => {
 // ---------- router ----------
 let currentView = '';
 async function route() {
+  document.querySelector('.sbb-lightbox[open]')?.close();
   const h = location.hash || '#/';
   const [path, query] = h.slice(1).split('?');
   const params = new URLSearchParams(query || '');
