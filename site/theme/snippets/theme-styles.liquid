@@ -3,14 +3,14 @@
   og skrives som CSS-variabler, som assets/base.css bygger på.
 {%- endcomment -%}
 {%- liquid
-  assign font_heading_family = '"Inter Tight", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
-  assign font_body_family = '"Inter Tight", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
+  assign font_heading_family = '"Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
+  assign font_body_family = '"Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
 -%}
 <style>
   @font-face {
-    font-family: "Inter Tight";
-    src: url("{{ 'inter-tight-latin-wght-normal.woff2' | asset_url }}") format("woff2");
-    font-weight: 100 900;
+    font-family: "Manrope";
+    src: url("{{ 'manrope-latin-variable.woff2' | asset_url }}") format("woff2");
+    font-weight: 400 800;
     font-style: normal;
     font-display: swap;
   }

@@ -84,6 +84,7 @@ describe('Hjemmesiden vises uden Shopify', () => {
     const home = await site.get('/');
     expect(home.html).toContain('<title>Veyro');
     expect(home.html).toContain('Kundelogin');
+    expect(home.html).not.toMatch(/head__title t-\d/);
     // Sådan arbejder vi ligger under Veyro i bunden og peger på afsnittet på forsiden
     expect(home.html).toContain('id="proces"');
     expect(home.html).toMatch(/Veyro<\/h2><ul role="list">(?:(?!<\/ul>).)*<a href="\/#proces">Sådan arbejder vi<\/a>/s);
@@ -206,21 +207,25 @@ describe('Pakker og priser', () => {
     for (const h of ['starter', 'business', 'premium']) expect((await site.get('/products/' + h)).status).toBe(404);
   });
 
-  it('forsiden: hero, eksempler, pakker, samarbejde, "På vej", FAQ og kontakt i den rækkefølge', async () => {
+  it('forsiden: hero, eksempler, bookingforløb, pakker, samarbejde, "På vej", FAQ og kontakt', async () => {
     const r = await site.get('/');
     const at = (cls) => r.html.indexOf(`<section class="${cls}"`);
     const section = (cls) => r.html.slice(at(cls), r.html.indexOf('</section>', at(cls)));
-    const order = ['home-hero', 'section concepts', 'section packages packages--summary', 'section steps', 'section coming', 'section faq', 'section contact'];
+    const order = ['home-hero', 'project-gallery', 'section studio-capabilities', 'section booking-flow', 'section packages packages--summary', 'section steps', 'section coming', 'section faq', 'section contact'];
     for (const cls of order) expect(at(cls), cls).toBeGreaterThan(-1);
     expect(order.map(at)).toEqual([...order.map(at)].sort((a, b) => a - b));
     // Hero: én H1, én primær og én sekundær knap, og eksemplet er mærket som designkoncept
     const hero = section('home-hero');
     expect(r.html.match(/<h1/g)).toHaveLength(1);
-    expect(hero).toContain('En hjemmeside, der passer til din forretning.');
-    expect(hero).toContain('<a class="btn btn--primary" href="/pages/priser">Se priser</a>');
-    expect(hero).toContain('<a class="btn btn--secondary" href="/pages/eksempler">Se eksempler</a>');
-    expect(hero).toContain('Fiktivt designkoncept — lavet af Veyro');
-    expect(hero).toContain('<a class="arrow-link" href="/demo/holm-tomrer/">Åbn demoen');
+    expect(hero).toContain('Din forretning.<br>Dit eget udtryk.<br><span>Et website, der arbejder for dig.</span>');
+    expect(hero).toContain('<a class="btn btn--primary" href="/pages/kontakt?ydelse=aftal-en-demo#formular">Aftal en demo</a>');
+    expect(hero).toContain('<a class="btn btn--secondary" href="/pages/eksempler">Se vores eksempler</a>');
+    const gallery = section('project-gallery');
+    expect(gallery).toContain('Fiktive designkoncepter — lavet af Veyro');
+    for (const demo of ['/demo/holm-tomrer/', '/demo/salon-nord/book', '/demo/lervaerk/produkter/krus']) expect(gallery).toContain(`href="${demo}"`);
+    const flow = section('section booking-flow');
+    expect(flow).toContain('Illustreret bookingforløb med fiktive oplysninger. Ingen tid bliver booket.');
+    expect(flow).not.toMatch(/<form|<button/);
     // Pakkerne: tre kan bestilles, to er på vej
     const prices = section('section packages packages--summary');
     expect(names(prices)).toEqual(['Hjemmeside', 'Booking', 'Webshop']);

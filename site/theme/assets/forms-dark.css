@@ -1,0 +1,164 @@
+/* Public-site form controls inherit the dark palette, including native dropdowns. */
+:root {
+  --form-control-bg: color-mix(in srgb, var(--bg) 94%, var(--fg));
+  --form-control-border: color-mix(in srgb, var(--bg) 58%, var(--fg));
+  --form-control-focus: #ffad87;
+  --form-control-error: #ffb5aa;
+  --form-control-success: #b7dfbd;
+}
+
+.field {
+  color-scheme: dark;
+}
+
+.field input:not([type='checkbox']):not([type='radio']),
+.field select,
+.field textarea,
+.cart__qty {
+  color: var(--fg);
+  -webkit-text-fill-color: var(--fg);
+  caret-color: var(--fg);
+  background-color: var(--form-control-bg);
+  border-color: var(--form-control-border);
+  color-scheme: dark;
+  opacity: 1;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--muted);
+  -webkit-text-fill-color: var(--muted);
+  opacity: 1;
+}
+
+.field select option,
+.field select optgroup {
+  color: var(--fg);
+  -webkit-text-fill-color: var(--fg);
+  background-color: var(--surface);
+}
+
+.field select option:disabled {
+  color: var(--muted);
+  -webkit-text-fill-color: var(--muted);
+}
+
+.field input:not(:disabled):hover,
+.field select:not(:disabled):hover,
+.field textarea:not(:disabled):hover,
+.cart__qty:not(:disabled):hover {
+  border-color: var(--muted);
+}
+
+.field input:not([type='checkbox']):not([type='radio']):focus-visible,
+.field input[type='checkbox']:focus-visible,
+.field input[type='radio']:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible,
+.cart__qty:focus-visible {
+  outline: 2px solid var(--form-control-focus);
+  outline-offset: 3px;
+  border-color: var(--form-control-focus);
+  box-shadow: 0 0 0 1px var(--form-control-focus);
+}
+
+/* Browser autofill otherwise paints its own light background or dark text. */
+.field input:autofill {
+  color: var(--fg);
+  -webkit-text-fill-color: var(--fg);
+  caret-color: var(--fg);
+  box-shadow: inset 0 0 0 1000px var(--form-control-bg);
+}
+
+.field input:-webkit-autofill {
+  color: var(--fg);
+  -webkit-text-fill-color: var(--fg);
+  caret-color: var(--fg);
+  -webkit-box-shadow: inset 0 0 0 1000px var(--form-control-bg);
+}
+
+.field input:autofill:focus-visible {
+  box-shadow: inset 0 0 0 1000px var(--form-control-bg), 0 0 0 1px var(--form-control-focus);
+}
+
+.field input:-webkit-autofill:focus-visible {
+  -webkit-box-shadow: inset 0 0 0 1000px var(--form-control-bg), 0 0 0 1px var(--form-control-focus);
+}
+
+.field input:not([type='checkbox']):not([type='radio']):disabled,
+.field select:disabled,
+.field textarea:disabled,
+.cart__qty:disabled {
+  color: var(--muted);
+  -webkit-text-fill-color: var(--muted);
+  background-color: var(--surface);
+  border-color: var(--form-control-border);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.field input[type='checkbox'],
+.field input[type='radio'] {
+  accent-color: var(--form-control-focus);
+  color-scheme: dark;
+}
+
+.field label,
+.field legend,
+.select .icon {
+  color: var(--fg);
+}
+
+.field .field__opt,
+.field.field--check label {
+  color: var(--muted);
+}
+
+.field.field--check label a {
+  color: var(--fg);
+}
+
+.field [aria-invalid='true'],
+.has-error input,
+.has-error select,
+.has-error textarea {
+  border-color: var(--form-control-error) !important;
+}
+
+.field .field__error,
+.field .req,
+.form__error-summary .form__error-title {
+  color: var(--form-control-error);
+}
+
+.field .field__error::before {
+  color: var(--bg);
+  background: var(--form-control-error);
+}
+
+.form__error-summary,
+.form-status--error {
+  color: var(--fg);
+  border-color: var(--form-control-error);
+  background: color-mix(in srgb, var(--surface) 90%, var(--form-control-error));
+}
+
+.form__error-summary a,
+.form-status--error a {
+  color: var(--fg);
+}
+
+.form-status--error .h4 {
+  color: var(--form-control-error);
+}
+
+.form-status--success {
+  color: var(--fg);
+  border-color: var(--form-control-success);
+  background: color-mix(in srgb, var(--surface) 90%, var(--form-control-success));
+}
+
+.form-status--success .form-status__icon {
+  color: var(--surface);
+  background: var(--form-control-success);
+}

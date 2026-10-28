@@ -1,21 +1,35 @@
-{%- comment -%}
-  Forsidens top: én H1, en kort tekst, én primær og én sekundær knap og ét stort designkoncept.
-  Konceptet er et skærmbillede af en fiktiv demo og er mærket "Fiktivt designkoncept — lavet af Veyro".
-{%- endcomment -%}
 <section class="home-hero">
-  <div class="container home-hero__grid">
-    <div class="home-hero__text">
-      <h1 class="t-xl home-hero__title">{{ section.settings.heading }}</h1>
-      {%- if section.settings.text != blank -%}<div class="lead rte">{{ section.settings.text }}</div>{%- endif -%}
-      <div class="actions">
-        {% render 'button', label: section.settings.primary_label, url: section.settings.primary_link, style: 'primary' %}
-        {% render 'button', label: section.settings.secondary_label, url: section.settings.secondary_link, style: 'secondary' %}
+  <div class="container">
+    <div class="studio-stage">
+      <div class="studio-art" aria-hidden="true">
+        <canvas class="studio-particles" data-particle-scene></canvas>
+        <svg viewBox="0 0 700 600" fill="none"><defs><linearGradient id="v-light" x1="100" y1="80" x2="570" y2="530" gradientUnits="userSpaceOnUse"><stop stop-color="#ffffff"/><stop offset=".46" stop-color="#777777"/><stop offset=".7" stop-color="#eeeeee"/><stop offset="1" stop-color="#555555"/></linearGradient></defs><g stroke="url(#v-light)" stroke-linejoin="round">
+        <path d="M95 125 350 530 605 125" stroke-width="78"/><path d="M95 125 350 530 605 125" stroke="#181818" stroke-width="61"/><path d="M95 125 350 530 605 125" stroke-width="2"/>
+        </g></svg>
       </div>
-      {%- if section.settings.facts != blank -%}<p class="home-hero__facts">{{ section.settings.facts | escape }}</p>{%- endif -%}
+      <div class="studio-message">
+        <p class="studio-label">Et lille digitalt bureau. Tæt på din forretning.</p>
+        <h1 class="home-hero__title">{{ section.settings.heading }}</h1>
+        <p class="studio-message__description">Hjemmeside, booking og webshop til mindre virksomheder. Vi designer, sætter op og hjælper jer videre i hverdagen.</p>
+        <nav class="studio-specialties" aria-label="Vores løsninger"><a href="/pages/hjemmeside">Hjemmeside <span aria-hidden="true">↗</span></a><a href="/pages/booking">Booking <span aria-hidden="true">↗</span></a><a href="/pages/webshop">Webshop <span aria-hidden="true">↗</span></a></nav>
+      </div>
+      <div class="studio-action">
+        <p class="studio-price"><span>Hjemmesider fra</span><strong>199 <small>kr./md.</small></strong><span>ekskl. moms</span></p>
+        <div class="actions">
+          {% render 'button', label: section.settings.primary_label, url: section.settings.primary_link, style: 'primary' %}
+          {% render 'button', label: section.settings.secondary_label, url: section.settings.secondary_link, style: 'secondary' %}
+        </div>
+        <p class="home-hero__facts">Første måned gratis · Ingen binding</p>
+      </div>
+      <div class="studio-wordmark" aria-hidden="true">VEYRO</div>
+      <a class="studio-scroll" href="#studio-introduction"><span>Scroll og se mere</span><span aria-hidden="true">↓</span></a>
     </div>
-    <figure class="concept home-hero__concept">
-      {% render 'concept', name: section.settings.concept, caption: section.settings.caption, eager: true %}
-    </figure>
+    <div class="studio-introduction" id="studio-introduction">
+      <div class="studio-introduction__identity"><p class="studio-label">Din forretning.<br>Vores håndværk.</p><svg viewBox="0 0 100 100" fill="none" aria-hidden="true"><rect x="1" y="1" width="98" height="98" rx="28" stroke="currentColor" opacity=".25"/><path d="m23 31 27 43 27-43" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Et lille bureau.<br>En fast kontakt.</span></div>
+      <div><h2>Du gør det, du er god til.<br><span>Vi tager os af hjemmesiden.</span></h2><div class="rte">{{ section.settings.text }}</div></div>
+      <div class="studio-introduction__contact"><p>Lad os starte med jeres idé.</p><a href="mailto:{{ settings.company_email | escape }}">{{ settings.company_email | escape }}</a><a class="arrow-link" href="/pages/om-os">Mød Veyro</a></div>
+      <ul class="studio-promises" role="list"><li><span aria-hidden="true">✳</span><div><strong>Design til jeres virksomhed</strong><p>Et udtryk, der tager afsæt i jer og det, kunderne skal kunne.</p></div></li><li><span aria-hidden="true">↗</span><div><strong>Teknikken er med</strong><p>Hosting, teknisk vedligeholdelse og hjælp til de små justeringer.</p></div></li><li><span aria-hidden="true">↔</span><div><strong>Vi finder formen sammen</strong><p>Tre korrekturrunder under opsætningen, så I kan give samlet feedback.</p></div></li></ul>
+    </div>
   </div>
 </section>
 

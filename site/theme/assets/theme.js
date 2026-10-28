@@ -40,6 +40,7 @@
       toggle.setAttribute('aria-expanded', String(open));
       panel.hidden = !open;
       document.documentElement.classList.toggle('nav-open', open);
+      document.querySelectorAll('main, .site-footer').forEach((el) => { el.inert = open; });
       if (label) label.textContent = open ? 'Luk' : 'Menu';
       if (open) {
         panel.querySelector('a')?.focus();
@@ -51,6 +52,13 @@
     toggle.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !panel.hidden) setOpen(false);
+      if (e.key === 'Tab' && !panel.hidden) {
+        const items = [...header.querySelectorAll('a[href], button:not([disabled])')].filter(el => el.getClientRects().length);
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
     });
     panel.addEventListener('click', (e) => {
       if (e.target.closest('a')) setOpen(false, false);

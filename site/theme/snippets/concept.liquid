@@ -39,7 +39,7 @@
   <a class="browser__shot" href="{{ path }}" tabindex="-1">
     <picture>
       <source media="(max-width: 599px)" srcset="/demo/_previews/{{ shot }}-mobil.jpg" width="780" height="1280">
-      <img src="/demo/_previews/{{ shot }}-960.jpg" srcset="/demo/_previews/{{ shot }}-960.jpg 960w, /demo/_previews/{{ shot }}-1920.jpg 1920w" sizes="(min-width: 990px) 58vw, 100vw" width="1920" height="1200" alt="{{ alt }}" loading="{{ loading }}" fetchpriority="{{ priority }}" decoding="async">
+      <img src="/demo/_previews/{{ shot }}-960.jpg" srcset="/demo/_previews/{{ shot }}-960.jpg 960w, /demo/_previews/{{ shot }}-1920.jpg 1920w" sizes="{% if wide %}(min-width: 1280px) 1152px, 100vw{% else %}(min-width: 990px) 58vw, 100vw{% endif %}" width="1920" height="1200" alt="{{ alt }}" loading="{{ loading }}" fetchpriority="{{ priority }}" decoding="async">
     </picture>
   </a>
 </div>
