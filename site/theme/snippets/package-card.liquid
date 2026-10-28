@@ -10,23 +10,29 @@
   assign key = s.handle | default: s.title | handle
   assign card_id = 'pakke-' | append: key | append: id_suffix
 -%}
-<li class="pc pc--{{ s.status }} pc--{{ layout | default: 'summary' }}" id="{{ card_id }}" {{ block.shopify_attributes }}>
+<li class="pc pc--{{ s.status }} pc--{{ layout | default: 'summary' }}{% if selectable and selected %} is-selected{% endif %}" id="{{ card_id }}"{% if selectable %} data-plan-card data-plan-title="{{ s.title | escape }}" data-plan-price="{{ s.price | escape }}" data-plan-link="{{ s.button_link | escape }}"{% endif %} {{ block.shopify_attributes }}>
+  <div class="pc__intro">
   <div class="pc__top">
     <h3 class="pc__name">{{ s.title | escape }}</h3>
     {%- if s.status == 'coming' and s.badge != blank -%}<span class="badge badge--coming">{{ s.badge | escape }}</span>{%- endif -%}
   </div>
   {%- if s.text != blank -%}<p class="pc__desc">{{ s.text | escape }}</p>{%- endif -%}
+  {%- if selectable -%}{% render 'plan-art', key: key %}{%- endif -%}
   <div class="pc__price">
     {%- if s.price_label != blank -%}<span class="pc__price-label">{{ s.price_label | escape }}</span>{%- endif -%}
     <span class="pc__amount"><strong>{{ s.price | escape }}</strong>{%- if s.interval != blank -%}<span class="pc__interval">{{ s.interval | escape }}</span>{%- endif -%}</span>
     {%- if s.vat != blank -%}<span class="pc__vat">{{ s.vat | escape }}</span>{%- endif -%}
   </div>
+  </div>
+  <div class="pc__content">
+  {%- if layout == 'summary' -%}<details class="pc__scope"{% if selectable %} open{% endif %}><summary>{% if selectable %}Det er med{% else %}Se hvad der er med{% endif %}</summary>{%- endif -%}
   {%- if features.size > 0 and s.features != blank -%}
     {%- if layout == 'detail' and s.features_label != blank -%}<p class="pc__list-title">{{ s.features_label | escape }}</p>{%- endif -%}
     <ul class="pc__list ticks" role="list">
       {%- for f in features -%}{%- assign line = f | strip -%}{%- if line != blank -%}<li>{{ line | escape }}</li>{%- endif -%}{%- endfor -%}
     </ul>
   {%- endif -%}
+  {%- if layout == 'summary' -%}</details>{%- endif -%}
   {%- if layout == 'detail' and s.limits != blank -%}
     {%- if s.limits_label != blank -%}<p class="pc__list-title">{{ s.limits_label | escape }}</p>{%- endif -%}
     <ul class="pc__list pc__list--limits" role="list">
@@ -34,10 +40,18 @@
     </ul>
   {%- endif -%}
   {%- if layout == 'detail' and s.note != blank -%}<div class="pc__note rte">{{ s.note }}</div>{%- endif -%}
+  </div>
   <div class="pc__actions">
     {% render 'button', label: s.button_label, url: s.button_link, style: s.button_style %}
     {%- if s.details_label != blank and s.details_link != blank -%}
       <a class="pc__details" href="{{ s.details_link }}">{{ s.details_label | escape }}</a>
     {%- endif -%}
   </div>
+  {%- if selectable and s.status == 'available' -%}
+    <label class="pc__select" for="{{ card_id }}-choice" data-plan-label hidden>
+      <input id="{{ card_id }}-choice" type="radio" name="plan-{{ group | handle }}" value="{{ key }}" data-plan-radio aria-label="Vælg pakken {{ s.title | escape }}"{% if selected %} checked{% endif %}>
+      <span class="pc__select-text"><span class="pc__select-off">Vælg pakken</span><span class="pc__select-on">Valgt</span></span>
+      <span class="pc__switch" aria-hidden="true"></span>
+    </label>
+  {%- endif -%}
 </li>

@@ -3,11 +3,11 @@
     "hero": {
       "type": "home-hero",
       "settings": {
-        "heading": "En hjemmeside, der passer til din forretning.",
-        "text": "<p>Vi laver hjemmesider, booking og webshops til mindre virksomheder og hjælper med at holde dem opdateret. Fast månedspris, og vi sætter det hele op for dig.</p>",
-        "primary_label": "Se priser",
-        "primary_link": "/pages/priser",
-        "secondary_label": "Se eksempler",
+        "heading": "Din forretning.<br>Dit eget udtryk.<br><span>Et website, der arbejder for dig.</span>",
+        "text": "<p>Du kender din forretning. Vi hjælper med at vise den frem — og med booking, webshop og løsninger, der gør det daglige arbejde lettere.</p>",
+        "primary_label": "Aftal en demo",
+        "primary_link": "/pages/kontakt?ydelse=aftal-en-demo#formular",
+        "secondary_label": "Se vores eksempler",
         "secondary_link": "/pages/eksempler",
         "facts": "Fra 199 kr./md. ekskl. moms · Første måned gratis · Ingen binding",
         "concept": "craft",
@@ -15,47 +15,13 @@
       }
     },
     "eksempler": {
-      "type": "concepts",
+      "type": "project-gallery",
       "settings": {
         "anchor": "eksempler",
-        "heading_tag": "h2",
-        "heading": "Udvalgte eksempler",
-        "text": "<p>Skærmbilleder fra vores demoer. Åbn dem, og prøv bookingen og kurven: intet bliver sendt, booket eller betalt.</p>",
-        "link_label": "Se eksempler",
-        "link": "/pages/eksempler"
-      },
-      "blocks": {
-        "concept_1": {
-          "type": "concept",
-          "settings": {
-            "concept": "salon",
-            "package": "Booking · 299 kr./md. ekskl. moms",
-            "title": "Booking til en frisørsalon",
-            "text": "<p>Kunden vælger behandling og tid, og begge får en bekræftelse på mail. Kunden kan selv flytte eller aflyse.</p>",
-            "points": "Ydelser med varighed og pris\nOptagne tider kan ikke vælges\nBekræftelse til både salon og kunde",
-            "link_label": "Se hvad Booking indeholder",
-            "link": "/pages/booking",
-            "caption": "Bookingen hos Salon Nord: valg af dato og tid."
-          }
-        },
-        "concept_2": {
-          "type": "concept",
-          "settings": {
-            "concept": "shop",
-            "package": "Webshop · 499 kr./md. ekskl. moms",
-            "title": "Lille webshop til et keramikværksted",
-            "text": "<p>En produktside med varianter og en kurv, der opdateres med det samme.</p>",
-            "points": "Tre glasurer er ét produkt med tre varianter\nOp til 50 aktive produkter og 200 varianter\nI kan selv rette produkter bagefter",
-            "link_label": "Se hvad Webshop indeholder",
-            "link": "/pages/webshop",
-            "caption": "Produktside hos Lerværk med glasur, lager og antal."
-          }
-        }
-      },
-      "block_order": [
-        "concept_1",
-        "concept_2"
-      ]
+        "eyebrow": "Formet efter din forretning",
+        "heading": "Forskellige forretninger.<br>Hver sit udtryk.",
+        "text": "<p>En salon, en håndværker, et værksted. Se, hvordan en hjemmeside kan tage form efter netop den virksomhed, der står bag.</p>"
+      }
     },
     "priser": {
       "type": "packages",
@@ -63,8 +29,8 @@
         "anchor": "priser",
         "layout": "summary",
         "id_suffix": "-forside",
-        "heading": "Tre pakker med fast månedspris",
-        "text": "<p>Vælg den pakke, der passer. Alle priser er ekskl. moms.</p>",
+        "heading": "En løsning, der passer til jer.",
+        "text": "<p>Vi sætter det op og hjælper jer videre. Her er de tre løsninger, I kan komme i gang med nu.</p>",
         "terms": "Gratis oprettelse · Første måned gratis · Ingen binding",
         "note": "<p>Har du brug for flere brugere eller noget, der ikke står her? <a href=\"/pages/kontakt?ydelse=tilkoeb-eller-stoerre-aendring#formular\">Kontakt os om tilkøb</a>, så aftaler vi pris på forhånd. <a href=\"/pages/priser\">Se alle vilkår</a>.</p>"
       },
@@ -349,11 +315,21 @@
         "step_2",
         "step_3"
       ]
+    },
+    "booking_flow": {
+      "type": "booking-flow",
+      "settings": {}
+    },
+    "muligheder": {
+      "type": "studio-capabilities",
+      "settings": {}
     }
   },
   "order": [
     "hero",
     "eksempler",
+    "muligheder",
+    "booking_flow",
     "priser",
     "proces",
     "paa_vej",

@@ -1,14 +1,13 @@
 {%- comment -%}
   Fælles sektionshoved: lille label (bruges sparsomt), overskrift og intro.
-  Parametre: eyebrow, heading, text (richtext), tag (h1/h2), size ('xl'|'lg'|'md'), id, class
+  Parametre: eyebrow, heading, text (richtext), tag (h1/h2), heading_size ('xl'|'lg'|'md'), id, class
 {%- endcomment -%}
 {%- assign tag = tag | default: 'h2' -%}
-{%- assign size = size | default: 'lg' -%}
 {%- if eyebrow != blank or heading != blank or text != blank -%}
   <header class="head{% if class %} {{ class }}{% endif %}">
     {%- if eyebrow != blank -%}<p class="label">{{ eyebrow | escape }}</p>{%- endif -%}
     {%- if heading != blank -%}
-      <{{ tag }} class="head__title t-{{ size }}"{% if id %} id="{{ id }}"{% endif %}>{{ heading }}</{{ tag }}>
+      <{{ tag }} class="head__title {% if heading_size == 'xl' %}t-xl{% elsif heading_size == 'md' %}t-md{% else %}t-lg{% endif %}"{% if id %} id="{{ id }}"{% endif %}>{{ heading }}</{{ tag }}>
     {%- endif -%}
     {%- if text != blank -%}<div class="head__text rte">{{ text }}</div>{%- endif -%}
   </header>

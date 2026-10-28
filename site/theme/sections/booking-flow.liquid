@@ -1,0 +1,42 @@
+{%- comment -%}Illustration af den eksisterende Booking-pakke. Kun fiktive data, ingen handlinger eller netværkskald.{%- endcomment -%}
+<section class="section booking-flow" id="{{ section.settings.anchor | default: 'fra-booking-til-overblik' | handle }}">
+  <div class="container booking-flow__inner">
+    <div class="booking-flow__copy">
+      <p class="studio-label">{{ section.settings.eyebrow | escape }}</p>
+      <h2 class="t-lg">{{ section.settings.heading }}</h2>
+      <div class="rte">{{ section.settings.text }}</div>
+      <ol class="booking-flow__steps" role="list">
+        <li><span>01</span><div><strong>Kunden vælger selv en tid</strong><p>Jeres ydelser og ledige tider er samlet på hjemmesiden.</p></div></li>
+        <li><span>02</span><div><strong>Bookingen er på plads</strong><p>I og kunden får en bekræftelse på mail. Kunden kan selv flytte eller aflyse.</p></div></li>
+      </ol>
+      <a class="arrow-link" href="/pages/booking">Se hvad Booking indeholder</a>
+      <div class="booking-flow__details"><p>Fra første klik til dagens overblik</p><div><span>Ydelser og ledige tider</span><span>Bekræftelse på mail</span><span>Flytning og aflysning</span></div></div>
+    </div>
+    <figure class="booking-flow__figure">
+      <div class="booking-preview">
+        <div class="booking-preview__bar"><span>Salon Nord / Booking</span><span class="badge">Demo</span></div>
+        <div class="booking-preview__body">
+          <p class="booking-preview__label">Kundens valg</p>
+          <h3>Klip &amp; føn</h3>
+          <p class="muted">45 min. · 450 kr. · Hos Emma</p>
+          <div class="booking-preview__date"><span>Tirsdag<strong>27. oktober</strong></span><span class="booking-preview__time">10.30–11.15</span></div>
+          <div class="booking-preview__confirmation"><span aria-hidden="true">✓</span><div><strong>Tiden er booket</strong><p>Bekræftelse til kunden og salonen</p></div></div>
+        </div>
+        <div class="booking-preview__calendar"><span>Jeres overblik</span><div><span>10.30</span><div><strong>Klip &amp; føn · Emma</strong><span>45 min. · Eksempel på en booking</span></div></div></div>
+      </div>
+      <figcaption>Illustreret bookingforløb med fiktive oplysninger. Ingen tid bliver booket.</figcaption>
+    </figure>
+  </div>
+</section>
+{% schema %}
+{
+  "name": "Booking: fra valg til overblik",
+  "settings": [
+    { "type": "text", "id": "anchor", "label": "Anker-id", "default": "fra-booking-til-overblik" },
+    { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Mere end et flot førstehåndsindtryk" },
+    { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "En god hjemmeside arbejder også i hverdagen." },
+    { "type": "richtext", "id": "text", "label": "Tekst", "default": "<p>For en salon er det ikke kun et spørgsmål om at se godt ud. Det handler også om at gøre det nemt at booke en tid — uden endnu et telefonopkald.</p>" }
+  ],
+  "presets": [{ "name": "Booking: fra valg til overblik" }]
+}
+{% endschema %}

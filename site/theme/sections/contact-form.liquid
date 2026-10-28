@@ -13,7 +13,7 @@
 <section class="section contact" id="{{ section.settings.anchor | default: section.id | handle }}">
   <div class="container contact__inner">
     <div class="contact__aside">
-      {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text, tag: section.settings.heading_tag, size: 'lg' %}
+      {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text, tag: section.settings.heading_tag, heading_size: 'lg' %}
 
       {%- if section.blocks.size > 0 -%}
         <div class="contact__next">

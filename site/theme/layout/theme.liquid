@@ -47,13 +47,22 @@
 
     {% render 'meta-tags', full_title: full_title %}
 
-    {{ 'inter-tight-latin-wght-normal.woff2' | asset_url | preload_tag: as: 'font', type: 'font/woff2', crossorigin: 'anonymous' }}
+    {{ 'manrope-latin-variable.woff2' | asset_url | preload_tag: as: 'font', type: 'font/woff2', crossorigin: 'anonymous' }}
 
     {%- render 'theme-styles' -%}
     {{ 'base.css' | asset_url | stylesheet_tag }}
+    {{ 'motion.css' | asset_url | stylesheet_tag }}
+    {{ 'forms-dark.css' | asset_url | stylesheet_tag }}
+    {{ 'plan-picker.css' | asset_url | stylesheet_tag }}
+    {{ 'project-gallery.css' | asset_url | stylesheet_tag }}
+    {{ 'studio-capabilities.css' | asset_url | stylesheet_tag }}
+    {{ 'studio-depth.css' | asset_url | stylesheet_tag }}
 
     <script>document.documentElement.className = document.documentElement.className.replace('no-js', 'js');</script>
     <script src="{{ 'theme.js' | asset_url }}" defer="defer"></script>
+    <script src="{{ 'motion.js' | asset_url }}" defer="defer"></script>
+    <script src="{{ 'plan-picker.js' | asset_url }}" defer="defer"></script>
+    <script src="{{ 'project-gallery.js' | asset_url }}" defer="defer"></script>
 
     {{ content_for_header }}
   </head>
