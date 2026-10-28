@@ -222,7 +222,7 @@ describe('Pakker og priser', () => {
     expect(hero).toContain('<a class="btn btn--secondary" href="/pages/eksempler">Se vores eksempler</a>');
     const gallery = section('project-gallery');
     expect(gallery).toContain('Fiktive designkoncepter — lavet af Veyro');
-    for (const demo of ['/demo/holm-tomrer/', '/demo/salon-nord/book', '/demo/lervaerk/produkter/krus']) expect(gallery).toContain(`href="${demo}"`);
+    for (const demo of ['/demo/holm-tomrer/', '/demo/salon-nord/', '/demo/lervaerk/']) expect(gallery).toContain(`href="${demo}"`);
     const flow = section('section booking-flow');
     expect(flow).toContain('Illustreret bookingforløb med fiktive oplysninger. Ingen tid bliver booket.');
     expect(flow).not.toMatch(/<form|<button/);
@@ -245,18 +245,18 @@ describe('Pakker og priser', () => {
   it('demoerne er statiske sider med noindex og mærkning, og skærmbillederne findes', async () => {
     const pages = ['/demo/holm-tomrer/', '/demo/holm-tomrer/ydelser', '/demo/holm-tomrer/projekter', '/demo/holm-tomrer/kontakt',
       '/demo/salon-nord/', '/demo/salon-nord/behandlinger', '/demo/salon-nord/book',
-      '/demo/lervaerk/', '/demo/lervaerk/produkter/krus', '/demo/lervaerk/produkter/kande', '/demo/lervaerk/kurv', '/demo/lervaerk/kasse'];
+      '/demo/lervaerk/', ...['krus', 'espressokop', 'morgenmadsskaal', 'serveringsskaal', 'frokosttallerken', 'middagstallerken', 'kande', 'serveringsfad'].map((p) => `/demo/lervaerk/produkter/${p}`), '/demo/lervaerk/kurv', '/demo/lervaerk/kasse'];
     for (const p of pages) {
       const r = await site.get(p);
       expect(r.status, p).toBe(200);
       expect(r.headers.get('x-robots-tag'), p).toBe('noindex, nofollow');
       expect(r.headers.get('content-security-policy'), p).toContain("frame-ancestors 'none'");
       expect(r.html, p).toContain('Fiktivt designkoncept — lavet af Veyro');
-      expect(r.html, p).toContain('<meta name="robots" content="noindex, nofollow">');
+      expect(r.html, p).toMatch(/<meta\s+name="robots"\s+content="noindex, nofollow"\s*\/?>/);
       // Intet sendes: ingen POST-formularer og ingen adresser uden for siden
       expect(r.html, p).not.toMatch(/method="post"|action="|https?:\/\/(?!localhost)/i);
     }
-    for (const f of ['holm-tomrer', 'salon-nord-booking', 'lervaerk-produkt'].flatMap((n) => [`${n}-960.jpg`, `${n}-1920.jpg`, `${n}-mobil.jpg`])) {
+    for (const f of ['holm-tomrer', 'salon-nord', 'lervaerk', 'salon-nord-booking', 'lervaerk-produkt'].flatMap((n) => [`${n}-960.jpg`, `${n}-1920.jpg`, `${n}-mobil.jpg`])) {
       const r = await site.get('/demo/_previews/' + f);
       expect(r.status, f).toBe(200);
       expect(r.headers.get('content-type'), f).toBe('image/jpeg');
