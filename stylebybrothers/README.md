@@ -7,13 +7,22 @@ Live på **https://sbb.veyro.dk**.
 
 | Side | Adresse | Hvad |
 | --- | --- | --- |
-| Forside | `#/` | Introduktion med "åbent nu", prisliste (inkl. moms), fire billeder af salonens klipninger, salonen, find os med åbningstider |
+| Forside | `#/` | Introduktion med "åbent nu", prisliste (inkl. moms), synlig booking-intro, behandlingsliste, galleri med salonens klipninger, salonen og åbningstider |
 | Booking | `#/booking` | Behandling, tidspunkt og kundeoplysninger. `?behandling=herreklip` forudvælger behandlingen. Bekræftelse med bookingnummer og kalenderlink |
 | Flyt eller aflys | `#/min-booking` | Kunden finder sin tid med bookingnummer og telefonnummer |
 | Privatliv og cookies | `#/privatliv` | Privatlivspolitik (GDPR) og cookieinformation |
 | Admin | `#/admin` | Login med engangslink på e-mail. Dagskalender til frisøren (opdateres hvert minut), ny booking for kunder der ringer, flyt og aflys, priser, stole og arbejdstider, lukkedage, hvem der får besked, og log over sendte e-mails |
 
-Billederne ligger i `site/img/` og ændres i koden (`PHOTOS` og `GALLERY` i `site/assets/data.js`), ikke i admin.
+Billederne ligger i `site/img/` og ændres i koden (`PHOTOS` og `SERVICE_PHOTOS` i `site/assets/data.js`, galleriet `LOOKS` i `site/assets/app.js`), ikke i admin.
+
+## Design og frontend
+
+- `site/assets/studio.css`: grafit, varm elfenben og messing; forside, navigation, billedgalleri og footer.
+- `site/assets/booking-polish.css`: booking, flytning/aflysning, bekræftelse og privatliv. Admin har sit eksisterende layout.
+- `site/assets/styles.css`: fælles fundament og admin.
+- Inter og Oswald serveres lokalt. Oswalds OFL-licens følger med i `site/assets/fonts/`.
+- Galleriet kan bladres med pile, touch eller mus; billeder åbnes i en dialog med tastaturnavigation og Escape. Bevægelse kan sættes på pause, og systemets indstilling for reduceret bevægelse respekteres.
+- Priser, behandlinger og åbningstider vises fra serverens aktuelle opsætning. Designændringer erstatter ikke salonens bookinger eller indstillinger.
 
 ## Sådan virker bookingen
 

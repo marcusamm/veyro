@@ -66,7 +66,10 @@ async function run(name, viewport, isMobile) {
     const st = await (await fetch('/api/state')).json();
     const { availableSlots, addDays, utcToZoned } = await import('./assets/booking-engine.js');
     let date = addDays(utcToZoned(Date.now()).date, 3), slot;
-    for (let i = 0; i < 20 && !slot; i++, date = addDays(date, 1)) slot = availableSlots(st, { serviceId: 'herreklip', date, now: Date.now() }).find((s) => s.barberIds.length >= 1);
+    for (let i = 0; i < 20 && !slot; i++) {
+      slot = availableSlots(st, { serviceId: 'herreklip', date, now: Date.now() }).find((s) => s.barberIds.length >= 1);
+      if (!slot) date = addDays(date, 1);
+    }
     const chairs = slot.barberIds.length;
     const body = (n) => JSON.stringify({ serviceId: 'herreklip', date, start: slot.start, customer: { name: `Test ${n}`, phone: `9800000${n}`, email } });
     const res = await Promise.all(Array.from({ length: chairs + 2 }, (_, n) => fetch('/api/bookings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: body(n) }).then(async (r) => ({ status: r.status, data: await r.json() }))));
