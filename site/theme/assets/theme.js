@@ -40,7 +40,7 @@
       toggle.setAttribute('aria-expanded', String(open));
       panel.hidden = !open;
       document.documentElement.classList.toggle('nav-open', open);
-      document.querySelectorAll('main, .site-footer').forEach((el) => { el.inert = open; });
+      document.querySelectorAll('main, .site-footer, [data-cookie]').forEach((el) => { el.inert = open; });
       if (label) label.textContent = open ? 'Luk' : 'Menu';
       if (open) {
         panel.querySelector('a')?.focus();

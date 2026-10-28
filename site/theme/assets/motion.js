@@ -64,7 +64,9 @@
         entry.target.classList.add('is-visible');
         revealObserver.unobserve(entry.target);
       }), { rootMargin: '0px 0px -30px 0px', threshold: .05 });
-      document.querySelectorAll('.studio-introduction, .home-hero__project, .head, .concepts__item, .booking-flow__copy, .booking-flow__figure, .packages .pc, .coming__head, .contact__aside, .contact__form-wrap, .footer-invitation, .page-hero__title, .page-hero__text').forEach((el, i) => {
+      document.querySelectorAll('.studio-introduction, .home-hero__project, .head, .faq__intro, .concepts__item, .booking-flow__copy, .booking-flow__figure, .packages .pc, .coming__head, .contact__aside, .contact__form-wrap, .footer-invitation, .page-hero__title, .page-hero__text').forEach((el, i) => {
+        // Keep the FAQ heading and its link together throughout the entrance.
+        if (el.matches('.head') && el.closest('.faq__intro')) return;
         el.classList.add('motion-reveal');
         el.style.setProperty('--reveal-delay', `${(i % 2) * 70}ms`);
         if (el.getBoundingClientRect().top < innerHeight - 30) el.classList.add('is-visible');

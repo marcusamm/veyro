@@ -59,6 +59,7 @@
  .studio-motion-ready .studio-scroll > span:last-child { animation: scroll-cue 2.5s 2s ease-in-out infinite; }
  .studio-motion-ready .motion-reveal { opacity: .18; transform: translateY(35px); transition: opacity .85s cubic-bezier(.2,.7,.2,1), transform .85s cubic-bezier(.2,.7,.2,1); transition-delay: var(--reveal-delay,0ms); }
  .studio-motion-ready .motion-reveal.is-visible,.studio-motion-ready .motion-reveal:focus-within { opacity: 1; transform: none; }
+ .studio-motion-ready .faq__intro.motion-reveal { transform: none; }
  .studio-motion-ready .site-header .mobile-nav:not([hidden]) { animation: menu-in .45s cubic-bezier(.2,.8,.2,1) both; }
  .studio-motion-ready .mobile-nav__list > li { animation: menu-link-in .6s cubic-bezier(.2,.8,.2,1) both; }
  .studio-motion-ready .mobile-nav__list > li:nth-child(2) { animation-delay: .045s; }
@@ -140,6 +141,7 @@
 @media print { .studio-art,.effect-control,.process-orbit,.scroll-progress,.studio-scroll { display: none !important; } }
 /* Stick the section wrapper; a sticky child is otherwise trapped in its 88px parent. */
 .section-header { position: sticky; top: 0; z-index: 50; }
+.nav-open .section-header { z-index: 100; }
 .site-header--sticky { position: relative; }
 .site-header,.site-header.is-scrolled { background: transparent; backdrop-filter: none; }
 .site-header::before { content: ''; position: absolute; inset: 0; z-index: -1; background: #202020eF; backdrop-filter: blur(18px); pointer-events: none; }
