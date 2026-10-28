@@ -572,7 +572,7 @@ code, pre { font-family: var(--font-mono); font-size: .9em; }
   .doc--toc .doc__grid { grid-template-columns: minmax(0, 3.5fr) minmax(0, 8.5fr); }
   .doc__toc { position: sticky; top: calc(var(--header-h) + 1.5rem); max-height: calc(100vh - var(--header-h) - 3rem); overflow-y: auto; }
   .doc__toc-box { padding: 0; background: none; border: 0; }
-  .doc__toc-box summary { pointer-events: none; list-style: none; font-size: var(--fs-xs); color: var(--muted); min-height: 0; margin-bottom: var(--sp-2); }
+  .doc__toc-box summary { list-style: none; font-size: var(--fs-xs); color: var(--muted); min-height: 44px; margin-bottom: var(--sp-2); }
   .doc__toc-box summary::-webkit-details-marker { display: none; }
 }
 
@@ -617,12 +617,12 @@ code, pre { font-family: var(--font-mono); font-size: .9em; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: var(--sp-4); margin-top: var(--sp-7); }
 
 /* 12 ─ Cookiebanner (afvis og accepter er lige synlige) */
-.cookie { position: fixed; z-index: 90; left: var(--sp-3); right: var(--sp-3); bottom: var(--sp-3); max-width: 480px; max-height: calc(100vh - 2rem); overflow-y: auto; background: var(--surface); color: var(--color-ink); border: 1px solid var(--line-strong); border-radius: var(--radius-lg); box-shadow: 0 20px 60px -24px rgba(var(--ink-rgb), .4); }
+.cookie { position: fixed; z-index: 90; left: var(--sp-3); right: var(--sp-3); bottom: var(--sp-3); max-width: 480px; max-height: calc(100vh - 2rem); overflow-y: auto; background: var(--surface); color: var(--fg); border: 1px solid var(--line-strong); border-radius: var(--radius-lg); box-shadow: 0 20px 60px -24px rgba(var(--ink-rgb), .4); }
 .cookie__inner { padding: var(--sp-5); display: grid; gap: var(--sp-4); }
 .cookie__text { color: var(--muted); }
 .cookie__actions { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
 .cookie__actions .btn { width: 100%; }
-.cookie__actions [data-cookie-action='accept'], .cookie__actions [data-cookie-action='reject'] { background: var(--color-ink); color: var(--color-surface); border-color: var(--color-ink); }
+.cookie__actions [data-cookie-action='accept'], .cookie__actions [data-cookie-action='reject'] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 .cookie__actions [data-cookie-action='customize'], .cookie__actions [data-cookie-action='save'] { grid-column: 1 / -1; grid-row: 2; }
 .toggle { display: grid; grid-template-columns: 44px 1fr; gap: .9rem; align-items: start; padding: .8rem 0; border-bottom: var(--border); cursor: pointer; position: relative; }
 .toggle input { position: absolute; opacity: 0; width: 44px; height: 26px; margin: 0; cursor: pointer; }
@@ -634,6 +634,10 @@ code, pre { font-family: var(--font-mono); font-size: .9em; }
 .toggle input:focus-visible + .toggle__ui { outline: 2px solid var(--color-ink); outline-offset: 2px; }
 .toggle strong { display: block; font-size: var(--fs-small); }
 .toggle .small { display: block; }
+.cookie .toggle__ui { background: color-mix(in srgb, var(--fg) 25%, transparent); }
+.cookie .toggle input:checked + .toggle__ui { background: var(--fg); }
+.cookie .toggle input:checked + .toggle__ui::after { background: var(--bg); }
+.cookie .toggle input:focus-visible + .toggle__ui { outline-color: var(--fg); }
 @media (min-width: 600px) { .cookie { left: var(--sp-5); bottom: var(--sp-5); } }
 
 /* 13 ─ Bevægelse og print. Siden virker helt uden animation. */
