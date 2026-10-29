@@ -47,6 +47,8 @@ export interface BilagRow {
   uncertain: string;
   reading_source: '' | 'pdf-tekst' | 'manuel' | 'simuleret';
   ocr_provider: string;
+  reading_token: string;
+  data_revision: number;
   reading_note: string;
   payment: BilagPayment;
   paid_by: string;
@@ -287,6 +289,7 @@ export interface Checks {
 export function checkBilag(b: BilagRow, lines: BilagLineRow[], allocs: AllocationRow[], s: Pick<Settings, 'vat_registered'>): Checks {
   const errors: string[] = [];
   const warnings: string[] = [];
+  if (b.reading_token) errors.push('Bilaget afventer OCR eller er under aflæsning. Vent på resultatet, eller ret og gem oplysningerne manuelt for at afbryde aflæsningen.');
   if (!b.supplier_name.trim()) errors.push('Leverandørens navn mangler.');
   if (!b.doc_date) errors.push('Datoen mangler.');
   if (!/^[A-Z]{3}$/.test(b.currency)) errors.push('Valutaen mangler.');
@@ -397,7 +400,15 @@ export async function createBilag(db: D1Database, file: FileRow, name: string, i
  * Aflæser et bilag. En PDF med tekst læses med den indbyggede PDF-læser. Billeder og indskannede
  * PDF'er kan bruge en særskilt OCR-servicebinding. Uden binding registreres de manuelt.
  */
-export async function readBilag(env: Env, s: Settings, id: number, actor: Actor, now: number): Promise<{ ok: boolean; message: string }> {
+export interface ReadBilagResult {
+  ok: boolean;
+  message: string;
+  needsOcr?: boolean;
+  retryable?: boolean;
+  cancelled?: boolean;
+}
+
+export async function readBilag(env: Env, s: Settings, id: number, actor: Actor, now: number, opts: { deferOcr?: boolean; backgroundToken?: string } = {}): Promise<ReadBilagResult> {
   const db = env.DB;
   const b = await getBilag(db, id);
   if (!b) return { ok: false, message: 'Bilaget findes ikke.' };
@@ -406,7 +417,6 @@ export async function readBilag(env: Env, s: Settings, id: number, actor: Actor,
   if (allocated) return { ok: false, message: 'Bilaget er allerede fordelt. Ret oplysningerne manuelt; genaflæsning må ikke fjerne fordeling eller registrerede varemodtagelser.' };
   const f = await getFile(db, b.file_id);
   if (!f) return { ok: false, message: 'Filen findes ikke.' };
-  await db.prepare("UPDATE bilag SET status = 'under_aflaesning', updated_at = ? WHERE id = ? AND status IN ('modtaget', 'klar', 'afklaring')").bind(now, id).run();
   let message = 'Originalen er gemt. Kontrollér og registrér oplysningerne manuelt.';
   let ok = false;
   let pages: string[][] = [];
@@ -417,14 +427,35 @@ export async function readBilag(env: Env, s: Settings, id: number, actor: Actor,
     const text = await pdfText(bytes);
     if (text.hasText) { pages = text.pages; source = 'pdf-tekst'; }
   }
+  if (!pages.length && bytes && opts.deferOcr && env.RECEIPT_OCR) return { ok: true, needsOcr: true, message: 'Bilaget skal aflæses med OCR.' };
+  const token = opts.backgroundToken || crypto.randomUUID();
+  if (opts.backgroundToken) {
+    if (b.reading_token !== token || b.status !== 'under_aflaesning') return { ok: false, cancelled: true, message: 'Aflæsningen er afbrudt, fordi bilaget er ændret.' };
+  } else {
+    if (b.reading_token) return { ok: false, message: 'Bilaget er allerede i kø eller under aflæsning.' };
+    const claimed = await db.prepare(`UPDATE bilag SET reading_token = ?, status = 'under_aflaesning', updated_at = ?
+      WHERE id = ? AND data_revision = ? AND reading_token = '' AND status NOT IN ('godkendt','arkiveret')
+      AND NOT EXISTS (SELECT 1 FROM bilag_allocations WHERE bilag_id = ?) RETURNING id`).bind(token, now, id, b.data_revision, id).first();
+    if (!claimed) return { ok: false, cancelled: true, message: 'Bilaget er ændret imens. Genindlæs siden.' };
+  }
+  let retryable = false;
   if (!pages.length && bytes) {
     const ocr = await extractReceiptText(env, { bytes, mime: f.mime });
     if (ocr.status === 'ok') {
       pages = ocr.pages.map((page) => page.split(/\r?\n/));
       provider = ocr.provider;
-    } else message = ocr.message;
+    } else { message = ocr.message; retryable = !!ocr.retryable; }
   }
+  // The queue owns retries and final failure state. Keep its lease/token intact
+  // after a temporary provider failure; never re-post any business data.
+  if (!pages.length && opts.backgroundToken) return { ok: false, message, retryable };
   const stmts: D1PreparedStatement[] = [];
+  // The guard and suggested replacements commit in one D1 batch. Changes made
+  // while a CPU container was working invalidate the token through DB triggers.
+  stmts.push(db.prepare(`UPDATE bilag SET reading_token = CASE
+    WHEN reading_token = ? AND data_revision = ? AND status = 'under_aflaesning'
+      AND NOT EXISTS (SELECT 1 FROM bilag_allocations WHERE bilag_id = ?)
+    THEN reading_token ELSE NULL END WHERE id = ?`).bind(token, b.data_revision, id, id));
   if (pages.length) {
       const { results: sups } = await db.prepare('SELECT id, name FROM suppliers').all<{ id: number; name: string }>();
       const r = readText(pages, { ownCvr: s.company_cvr, ownName: s.company_name, suppliers: sups });
@@ -482,10 +513,14 @@ export async function readBilag(env: Env, s: Settings, id: number, actor: Actor,
     db.prepare(`UPDATE bilag SET status = ?, reading_note = CASE WHEN ? THEN reading_note ELSE ? END, updated_at = ? WHERE id = ?`).bind(ok ? 'klar' : 'modtaget', ok ? 1 : 0, message, now, id),
     eventStmt(db, id, b.version, 'aflaesning', message, actor, now),
   );
-  await db.batch(stmts);
+  try { await db.batch(stmts); }
+  catch (error) {
+    if (String((error as Error)?.message).includes('bilag.reading_token')) return { ok: false, cancelled: true, message: 'OCR-resultatet blev ikke gemt, fordi bilaget er ændret eller fordelt imens. Dine ændringer er bevaret.' };
+    throw error;
+  }
   if (ok) await suggestProducts(db, id);
   await refreshDuplicate(db, id, actor, now);
-  return { ok, message };
+  return { ok, message, ...(retryable ? { retryable: true } : {}) };
 }
 
 /** Foreslår egne varer til varelinjerne ud fra varenummer, EAN eller navn (skal godkendes). */

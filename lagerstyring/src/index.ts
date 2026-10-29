@@ -3,6 +3,7 @@ import type { AppEnv, Env } from './env';
 import { fetchFeeds, readProductPages } from './lib/estimates';
 import { syncKatalogLogged, syncKatalogOnce } from './lib/katalog';
 import { appIcon } from './lib/icon';
+import { wakeOcrQueue } from './lib/bilagqueue';
 import { runPurchaseDigest } from './lib/notices';
 import { cleanup, csrfMiddleware, requireUser, sessionMiddleware } from './lib/session';
 import { getLogo, getSettings } from './lib/settings';
@@ -22,6 +23,8 @@ import { pageHead } from './views/common';
 import { INTER_TIGHT } from './views/font';
 import { favicon } from './views/layout';
 import { SERVICE_WORKER, iconColors, manifest } from './views/pwa';
+
+export { BilagOcrQueue } from './lib/bilagqueue';
 
 const app = new Hono<AppEnv>();
 
@@ -143,6 +146,7 @@ export default {
   fetch: app.fetch,
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(cleanup(env.DB));
+    ctx.waitUntil(wakeOcrQueue(env));
     // Brugerne i kundekataloget, så Kundelogin på kunde.veyro.dk kan sende dem hertil
     ctx.waitUntil(syncKatalogLogged(env));
     // Samlet e-mail med nye indkøbsbehov med det valgte interval (slået fra som standard)

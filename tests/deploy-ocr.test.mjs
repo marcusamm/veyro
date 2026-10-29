@@ -16,10 +16,14 @@ describe('OCR konfigureres særskilt pr. virksomhed', () => {
   it('opretter ingen forbindelse, når virksomheden ikke har valgt en OCR-worker', () => {
     const config = bygKonfiguration(template, customer()(), 'test-database');
     expect(config).not.toContain('RECEIPT_OCR');
+    expect(config).not.toContain('BILAG_OCR_QUEUE');
+    expect(config).not.toContain('new_sqlite_classes');
   });
   it('binder kun den udtrykkeligt valgte eksisterende tjeneste', () => {
     const config = bygKonfiguration(template, customer('testfirma-kvittering-ocr')(), 'test-database');
     expect(config).toContain('binding = "RECEIPT_OCR"\nservice = "testfirma-kvittering-ocr"');
+    expect(config).toContain('name = "BILAG_OCR_QUEUE"\nclass_name = "BilagOcrQueue"');
+    expect(config).toContain('new_sqlite_classes = ["BilagOcrQueue"]');
   });
   it('afviser URL, TOML-injektion og OCR på varebestillingssystemet', () => {
     for (const invalid of ['https://example.com', 'worker"\n[vars]', 42]) expect(customer(invalid)).toThrow(/ocr_service/);

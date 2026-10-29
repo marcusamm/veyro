@@ -1,0 +1,7 @@
+{
+  "fixture": "Synthetic TESTDATA receipt only; captured from real local PaddleOCR 3.7.0 / PP-OCRv6 small CPU inference on 29 October 2026. No real purchase or personal data.",
+  "pages": [
+    "TESTDATA BYGGEMARKED\nFiktivt bilag - ingen handel\nDato: 29.10.2026\nVare  Antal  Enhed  Pris  Beløb\nSkruer 5 x 80 mm  2  pk.  125,00  250,00\nFugemasse hvid  3  stk.  40,00  120,00\nNetto  370,00\nMoms 25 %  92,50\nTotal DKK  462,50"
+  ],
+  "provider": "Veyro PaddleOCR 3.7.0 · PP-OCRv6 small · CPU"
+}

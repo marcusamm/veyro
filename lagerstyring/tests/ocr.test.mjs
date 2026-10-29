@@ -23,8 +23,11 @@ describe('Særskilt OCR-integration uden automatisk lager- eller omkostningsbogf
     expect(Object.keys(binding)).toEqual(['RECEIPT_OCR']);
   });
 
-  it.each([{ pages: [] }, { pages: [42] }, { pages: [''] }, { pages: Array(11).fill('TEST') }, { pages: ['x'.repeat(100001)] }])('afviser ugyldige OCR-data uden at opfinde oplysninger: %j', async data => {
-    expect((await extractReceiptText(env(data), input)).status).toBe('failed');
+  it.each([
+    ['ingen sider', { pages: [] }], ['forkert teksttype', { pages: [42] }], ['tom tekst', { pages: [''] }],
+    ['for mange sider', { pages: Array(11).fill('TEST') }], ['for megen tekst', { pages: ['x'.repeat(100001)] }],
+  ])('afviser %s uden at opfinde oplysninger', async (_label, data) => {
+    expect(await extractReceiptText(env(data), input)).toMatchObject({ status: 'failed', retryable: false });
   });
 
   it('falder sikkert tilbage ved fejl, ugyldig filtype eller en langsom tjeneste', async () => {
@@ -34,7 +37,20 @@ describe('Særskilt OCR-integration uden automatisk lager- eller omkostningsbogf
     expect(unsupported.RECEIPT_OCR.fetch).not.toHaveBeenCalled();
     vi.useFakeTimers();
     const slow = extractReceiptText({ RECEIPT_OCR: { fetch: () => new Promise(() => {}) } }, input);
-    await vi.advanceTimersByTimeAsync(15001);
-    expect((await slow).status).toBe('failed');
+    await vi.advanceTimersByTimeAsync(120001);
+    expect(await slow).toMatchObject({ status: 'failed', retryable: true });
+  });
+
+  it('giver CPU-containeren tid til koldstart uden at miste den samlede frist', async () => {
+    vi.useFakeTimers();
+    const cpu = extractReceiptText({ RECEIPT_OCR: { fetch: () => new Promise(resolve => setTimeout(() => resolve(Response.json({pages:['TESTDATA CPU'],provider:'TEST CPU'})), 30000)) } }, input);
+    await vi.advanceTimersByTimeAsync(30000);
+    expect(await cpu).toMatchObject({status:'ok',pages:['TESTDATA CPU']});
+  });
+
+  it('genprøver kun midlertidige fejl, aldrig den daglige grænse eller ugyldige svar', async () => {
+    expect(await extractReceiptText(env({},429),input)).toMatchObject({status:'failed',retryable:false});
+    expect(await extractReceiptText(env({},503),input)).toMatchObject({status:'failed',retryable:true});
+    expect(await extractReceiptText({RECEIPT_OCR:{fetch:async()=>new Response('{bad json')}},input)).toMatchObject({status:'failed',retryable:false});
   });
 });

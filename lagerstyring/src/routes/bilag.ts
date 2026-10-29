@@ -19,7 +19,6 @@ import {
   listBilag,
   performAllocation,
   purchaseSuggestions,
-  readBilag,
   deleteBilag,
   deleteBlocker,
   removeAllocation,
@@ -35,6 +34,7 @@ import {
   type BilagRow,
   type LineInput,
 } from '../lib/bilag';
+import { ocrJob, requestBilagRead, wakeOcrQueue } from '../lib/bilagqueue';
 import { buildExport, bilagViewPdf } from '../lib/bilagexport';
 import { FILE_MAX_BYTES, UPLOAD_MAX_FILES, fileBytes, getFile, safeName, storeFile } from '../lib/files';
 import { normalizeEmail, parseDay, parseKr, parseQty, str } from '../lib/format';
@@ -159,7 +159,7 @@ export function bilagRoutes(portal: Portal) {
         t,
       );
       ids.push(id);
-      const read = await readBilag(c.env, c.get('settings'), id, actor, t);
+      const read = await requestBilagRead(c.env, c.get('settings'), id, actor, t);
       notes.push(read.message);
     }
     if (!ids.length) return showUpload(c, errs);
@@ -281,7 +281,7 @@ export function bilagRoutes(portal: Portal) {
   async function showDetail(c: Context<AppEnv>, b: BilagRow, errs: string[] = [], message?: string) {
     const db = c.env.DB;
     const s = c.get('settings');
-    const [full, f, lines, allocs, events, jobs, users, { results: products }] = await Promise.all([
+    const [full, f, lines, allocs, events, jobs, users, { results: products }, ocr] = await Promise.all([
       db
         .prepare('SELECT b.*, u.name AS uploader, pu.name AS payer, au.name AS approver FROM bilag b LEFT JOIN users u ON u.email = b.uploaded_by LEFT JOIN users pu ON pu.email = b.paid_by LEFT JOIN users au ON au.email = b.approved_by WHERE b.id = ?')
         .bind(b.id)
@@ -293,6 +293,7 @@ export function bilagRoutes(portal: Portal) {
       jobsList(db),
       usersList(db),
       db.prepare('SELECT id, sku, name, unit FROM products WHERE active = 1 ORDER BY name COLLATE NOCASE LIMIT 2000').all<{ id: number; sku: string; name: string; unit: string }>(),
+      ocrJob(db, b.id),
     ]);
     const suggestions = manager(c) ? await purchaseSuggestions(db, b, lines) : [];
     const dupOf = b.dup_of ? await db.prepare('SELECT id, supplier_name, total FROM bilag WHERE id = ?').bind(b.dup_of).first<{ id: number; supplier_name: string; total: number | null }>() : null;
@@ -308,6 +309,7 @@ export function bilagRoutes(portal: Portal) {
         lines,
         allocs,
         events,
+        ocr,
         checks: checkBilag(b, lines, allocs, s),
         canEdit: canEditData(b, user(c)),
         canDelete: (canEditData(b, user(c)) || manager(c)) && !(await deleteBlocker(db, b)),
@@ -329,6 +331,7 @@ export function bilagRoutes(portal: Portal) {
 
   r.get('/:id{[0-9]+}', async (c) => {
     const b = await load(c);
+    if (b?.reading_token) c.executionCtx.waitUntil(wakeOcrQueue(c.env));
     return b ? showDetail(c, b) : c.notFound();
   });
 
@@ -476,7 +479,7 @@ export function bilagRoutes(portal: Portal) {
 
     if (action === 'laes') {
       if (!canEditData(b, user(c))) return showDetail(c, b, ['Bilaget kan ikke aflæses igen.']);
-      const res = await readBilag(c.env, s, b.id, actor, t);
+      const res = await requestBilagRead(c.env, s, b.id, actor, t);
       return showDetail(c, (await getBilag(db, b.id))!, [], res.message);
     }
 

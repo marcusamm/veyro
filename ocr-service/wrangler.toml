@@ -1,0 +1,27 @@
+# Private service binding only. No public URL, routes, cron, or document storage.
+name = "veyro-receipt-ocr"
+main = "src/index.ts"
+compatibility_date = "2026-10-29"
+workers_dev = false
+preview_urls = false
+
+[observability]
+enabled = false
+
+[[containers]]
+class_name = "ReceiptOcrContainer"
+image = "./engine/Dockerfile"
+image_build_context = "./engine"
+instance_type = "standard-2"
+max_instances = 1
+
+[containers.constraints]
+jurisdiction = "eu"
+
+[[durable_objects.bindings]]
+name = "OCR_CONTAINER"
+class_name = "ReceiptOcrContainer"
+
+[[migrations]]
+tag = "v1-receipt-ocr"
+new_sqlite_classes = ["ReceiptOcrContainer"]
