@@ -304,35 +304,6 @@
     document.addEventListener('visibilitychange', syncMotion);
     addEventListener('focus', syncMotion);
 
-    // Optional interaction audio. Silent until the visitor explicitly enables it.
-    const soundButton = document.querySelector('[data-sound-toggle]');
-    const Audio = window.AudioContext || window.webkitAudioContext;
-    if (soundButton && Audio) {
-      soundButton.hidden = false;
-      let audio, sound = false, lastTone = 0;
-      const tone = (frequency = 420) => {
-        if (!audio || audio.state !== 'running' || performance.now() - lastTone < 90) return;
-        lastTone = performance.now();
-        const oscillator = audio.createOscillator(), gain = audio.createGain();
-        oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(frequency, audio.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(frequency * .55, audio.currentTime + .07);
-        gain.gain.setValueAtTime(.025, audio.currentTime); gain.gain.exponentialRampToValueAtTime(.001, audio.currentTime + .09);
-        oscillator.connect(gain); gain.connect(audio.destination);
-        oscillator.start(); oscillator.stop(audio.currentTime + .1);
-      };
-      soundButton.addEventListener('click', () => {
-        sound = !sound;
-        soundButton.setAttribute('aria-pressed', String(sound));
-        const label = sound ? 'Slå lyde fra' : 'Slå lyde til';
-        soundButton.setAttribute('aria-label', label); soundButton.title = label;
-        if (sound) {
-          try { audio ||= new Audio(); audio.resume().then(() => tone(660)).catch(() => {}); } catch (_) { sound = false; soundButton.setAttribute('aria-pressed', 'false'); }
-        }
-      });
-      document.addEventListener('pointerdown', event => {
-        if (sound && !document.hidden && event.target.closest('a,button,summary') && !event.target.closest('[data-sound-toggle]')) tone(440);
-      }, { passive: true });
-    }
     measure(); syncMotion();
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
