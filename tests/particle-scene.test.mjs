@@ -7,8 +7,8 @@ import { chromium } from 'playwright';
 
 const motion = readFileSync(fileURLToPath(new URL('../site/theme/assets/motion.js', import.meta.url)), 'utf8').replace(/<\/script/gi, '<\\/script');
 const fixture = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
-body{margin:0;background:#222;color:#eee;font:16px sans-serif}main{min-height:4000px}.studio-stage{position:relative;height:950px;overflow:clip}.studio-art{position:absolute;width:800px;height:650px;left:0;top:0;pointer-events:none}.studio-particles{width:100%;height:100%;pointer-events:none}.studio-message{position:absolute;right:20px;top:60px;width:260px}.studio-action{position:absolute;right:20px;top:430px;width:260px}.studio-stage a,.studio-stage button,.studio-stage summary{display:block;padding:10px}.studio-stage input{width:180px}.motion-reveal{opacity:1}@media(max-width:500px){.studio-art{width:360px;height:470px}.studio-message{top:500px;width:320px}.studio-message h1{font-size:22px}.studio-action{top:700px;width:320px}}
-</style></head><body class="has-motion"><header><button data-motion-toggle><span data-motion-icon>Ⅱ</span></button></header><main>
+body{margin:0;background:#222;color:#eee;font:16px sans-serif}.site-header{height:88px}main{min-height:4000px}.studio-stage{position:relative;height:950px;overflow:clip}.studio-art{position:absolute;width:800px;height:650px;left:0;top:0;pointer-events:none}.studio-particles{width:100%;height:100%;pointer-events:none}.studio-message{position:absolute;right:20px;top:60px;width:260px}.studio-action{position:absolute;right:20px;top:430px;width:260px}.studio-stage a,.studio-stage button,.studio-stage summary{display:block;padding:10px}.studio-stage input{width:180px}.motion-reveal{opacity:1}@media(max-width:500px){.studio-art{width:360px;height:470px}.studio-message{top:500px;width:320px}.studio-message h1{font-size:22px}.studio-action{top:700px;width:320px}}
+</style></head><body class="has-motion"><header class="site-header" data-header><button data-motion-toggle><span data-motion-icon>Ⅱ</span></button></header><main>
 <section class="studio-stage"><div class="studio-art"><canvas data-particle-scene class="studio-particles" aria-hidden="true"></canvas></div><div class="studio-message"><h1>Din forretning. Dit eget udtryk.</h1><a id="cta" href="#destination">Aftal en demo</a><button id="ordinary">Ordinary action</button><details id="package"><summary>Hvad er med i pakkerne?</summary><p>Includes hosting.</p></details><label for="name">Name</label><input id="name"><select aria-label="Service"><option>Hjemmeside</option></select></div><div class="studio-action"><a href="#destination">Se vores eksempler</a></div></section><div id="destination">Destination</div>
 </main><script>${motion}</script></body></html>`;
 
@@ -111,7 +111,7 @@ describe('Existing hero particle V through the real browser renderer', () => {
     await advance(page,480);const formed=await frame(page);expect(formed.formation).toBe('formed');
     expect(formed.count).toBe(3672);expect(formed.pixels).not.toBe(initial.pixels);
     await scroll(page,350);const rotated=await frame(page);expect(rotated.formation).toBe('formed');expect(rotated.count).toBe(3672);
-    expect(rotated.bounds[1]-rotated.bounds[0]).toBeGreaterThan(formed.bounds[1]*.55);
+    expect(rotated.bounds[1]-rotated.bounds[0]).toBeGreaterThan((formed.bounds[1]-formed.bounds[0])*.55);
     await scroll(page,0);await page.setViewportSize({width:1120,height:1000});await advance(page,200);
     expect((await frame(page)).formation).toBe('formed');
     expect(await page.locator('.studio-stage h1').getAttribute('aria-label')).toBe('Din forretning. Dit eget udtryk.');
@@ -145,16 +145,30 @@ describe('Existing hero particle V through the real browser renderer', () => {
     expect((await frame(page)).pixels).toBe(reducedAgain.pixels);expect((await frame(page)).draws).toBe(reducedAgain.draws);
   });
 
-  it('responds to desktop pointer and scroll input and returns to the same idle pose', async () => {
+  it('responds to desktop pointer input and returns to the same idle pose', async () => {
     const active=await mount(),control=await mount();await settle(active);await settle(control);
     await pointer(active,260,230);await advance(active,600);await advance(control,600);
     const touched=await frame(active),idle=await frame(control);expect(touched.pixels).not.toBe(idle.pixels);expect(delta(touched,idle)).toBeGreaterThan(.2);
     await active.locator('.studio-stage').dispatchEvent('pointerleave');await advance(active,2100);await advance(control,2100);
     expect(delta(await frame(active),await frame(control))).toBeLessThan(.1);
-    await scroll(active,320);await advance(active,500);await advance(control,580);
-    expect(delta(await frame(active),await frame(control))).toBeGreaterThan(1);
-    await scroll(active,0);await advance(active,300);await advance(control,380);
-    expect(delta(await frame(active),await frame(control))).toBeLessThan(.2);
+  });
+
+  it('noticeably changes the visible V within 240px of scroll on desktop and mobile, then reverses', async () => {
+    for(const mobile of [false,true]){
+      const active=await mount({mobile}),control=await mount({mobile});await settle(active);await settle(control);
+      const neutral=await frame(control);expect((await frame(active)).pixels).toBe(neutral.pixels);
+      await scroll(active,240);await advance(active,420);await advance(control,500);
+      const moved=await frame(active),idle=await frame(control);
+      const idleWidth=idle.bounds[1]-idle.bounds[0],movedWidth=moved.bounds[1]-moved.bounds[0];
+      const contraction=(idleWidth-movedWidth)/idleWidth,hostWidth=mobile?360:800;
+      expect(moved.pixels,`Native pixels change on ${mobile?'mobile':'desktop'}`).not.toBe(idle.pixels);
+      expect(contraction,`V width contracts visibly on ${mobile?'mobile':'desktop'} (actual ${contraction})`).toBeGreaterThan(.05);
+      expect(delta(moved,idle),'Pose changes by at least 3.5% of the art width').toBeGreaterThan(hostWidth*.035);
+      expect(moved.count).toBe(neutral.count);expect(moved.formation).toBe('formed');
+      await scroll(active,0);await advance(active,300);await advance(control,380);
+      expect(delta(await frame(active),await frame(control)),'Returning scroll restores the same idle pose').toBeLessThan(.2);
+      expect((await frame(active)).formation).toBe('formed');
+    }
   });
 
   it('limits a temporary ripple to empty hero clicks and never applies it to controls', async () => {
