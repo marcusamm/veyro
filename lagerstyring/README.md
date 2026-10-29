@@ -122,6 +122,20 @@ Et fælles katalog for begge portaler (Lager → Produktkatalog og Job → Produ
 - **Opsætningsguide**: Indstillinger → Opsætningsguide.
 - **Demo**: `/lager/demo/bilag` kører et 14-trins bilagsforløb.
 
+### Samtale om et bilag
+
+**Spørg til bilaget** giver plads til frie spørgsmål og opfølgende spørgsmål ved siden af originalen. Aflæsning og samtale er to særskilte funktioner: [Veyros PaddleOCR-container](../ocr-service/README.md) aflæser dokumentet; Cloudflare Workers AI med modellen `@cf/meta/llama-3.3-70b-instruct-fp8-fast` besvarer spørgsmål til den aflæste tekst. Chatmodellen ser **ikke originalens billedpunkter** og kan derfor ikke kontrollere, om OCR har læst et tal korrekt på billedet.
+
+Kildetekst fra en vellykket aflæsning gemmes i virksomhedens egen D1, adskilt fra de felter, brugeren kan rette: højst 100.000 tegn med bevarede sider og linjer. Kilden har fil-ID, aflæsningstidspunkt, udbyder og kildeversion; senere manuelle rettelser ændrer ikke kildeteksten. Et udskiftet originalbilag får aldrig kilde fra den tidligere fil. Store tekst-PDF'er markeres udtrykkeligt som delvist medtaget. Migration `0057_bilag_ocr_evidence.sql` opretter lageret. Gamle bilag skal aflæses igen for at få denne kildetekst.
+
+Modellen modtager højst 28.000 tegn fra kildeteksten, de aktuelle gemte felter, brugerens spørgsmål og højst seks tidligere samtalebeskeder. Kildetekst, gemte felter og brugerrettelser holdes adskilt i forespørgslen. Svar ledsages af kildeuddrag: serveren kontrollerer side- og linjehenvisningerne og henter selve uddraget fra den gemte tekst. Det validerer henvisningen, **ikke korrektheden af OCR eller modellens fortolkning**. Manglende dokumentation eller afkortet tekst skal fremgå af svaret. Chatten må ikke opfinde værdier eller beregne erstatningsbeløb uden et udtrykkeligt spørgsmål om det.
+
+Veyro gemmer ikke spørgsmål og svar i D1; samtalen holdes i hukommelsen på den åbne side og nulstilles ved genindlæsning. Den nødvendige samtalekontekst sendes til Cloudflare ved hvert spørgsmål. Kun forbrugstællere med bruger og tidspunkt gemmes på serveren (`0058_bilag_chat_usage.sql`): højst 30 forsøg pr. virksomhed pr. UTC-døgn og fire pr. bruger inden for 60 sekunder. Tællere ældre end syv døgn ryddes ved efterfølgende brug.
+
+Chatten ændrer ingen felter, varelinjer, godkendelser, omkostninger eller lagerantal. Brugeren kontrollerer og retter oplysningerne i den eksisterende formular og gemmer/godkender gennem det normale bilagsforløb. Originalen forbliver uændret. Et spørgsmål, som blev startet før en bilagsændring eller ny aflæsning, må ikke vise et gammelt svar som aktuelt.
+
+**Aktivering:** `systemer.lagerstyring.receipt_chat: true` kræver en udtrykkelig `ocr_service` i kundefilen. `scripts/deploy-kunder.mjs` kører migrationerne og tilføjer kun da `[ai] binding = "RECEIPT_CHAT"`; der bruges Cloudflare-kontoens Workers AI-adgang uden en ny API-nøgle. Fravær eller `false` giver ingen AI-binding. Kun `ek-enterprise`-demoen har tilvalgt chatten; rigtige kunder er ikke tilsluttet. Workers AI-forbrug hører til Cloudflare-kontoen. Der gives ingen garanti for EU-placering af AI-behandlingen eller OCR-containerens beregning; databehandling og regionalt behov skal afklares, før rigtige kundebilag bruges. AI-svar er forslag til gennemgang og kan være forkerte.
+
 ## Roller
 
 | Rolle | Kan |

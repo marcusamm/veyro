@@ -74,7 +74,7 @@ export function laesKunder(dir = KUNDER_DIR, kundeDomaene = process.env.KUNDE_DO
     }
     const systemer = Object.entries(data.systemer).map(([system, opsaetning]) => {
       if (!SYSTEMER[system]) fejl(fil, `ukendt system "${system}" (brug ${Object.keys(SYSTEMER).join(' eller ')})`);
-      const { domaene = '', admins = [], afsender = '', ocr_service = '' } = opsaetning ?? {};
+      const { domaene = '', admins = [], afsender = '', ocr_service = '', receipt_chat = false } = opsaetning ?? {};
       if (domaene && !DOMAENE.test(domaene)) fejl(fil, `${system}: ugyldigt domæne "${domaene}"`);
       if (!Array.isArray(admins) || !admins.length || !admins.every((a) => EMAIL.test(a))) {
         fejl(fil, `${system}: "admins" skal være en liste med mindst én e-mailadresse`);
@@ -85,12 +85,15 @@ export function laesKunder(dir = KUNDER_DIR, kundeDomaene = process.env.KUNDE_DO
       if (typeof ocr_service !== 'string' || (ocr_service && (system !== 'lagerstyring' || !SLUG.test(ocr_service) || ocr_service.length > 63))) {
         fejl(fil, `${system}: "ocr_service" skal være navnet på en eksisterende OCR-worker (små bogstaver, tal og bindestreger), kun til lagerstyring`);
       }
+      if (typeof receipt_chat !== 'boolean' || (receipt_chat && (system !== 'lagerstyring' || !ocr_service))) {
+        fejl(fil, `${system}: "receipt_chat" skal være true eller false; true kræver lagerstyring med en udtrykkeligt valgt "ocr_service"`);
+      }
       const navn = `${slug}-${SYSTEMER[system].kort}`;
       // Uden eget domæne: <adresse>.<KUNDE_DOMAENE> til lagerstyringen, <adresse>-bestilling.<…> til varebestillingen
       const standardDomaene = kundeDomaene
         ? `${adresse}${system === 'lagerstyring' ? '' : `-${SYSTEMER[system].kort}`}.${kundeDomaene}`
         : '';
-      return { system, navn, domaene: domaene || standardDomaene, admins, afsender, ocrService: ocr_service };
+      return { system, navn, domaene: domaene || standardDomaene, admins, afsender, ocrService: ocr_service, receiptChat: receipt_chat };
     });
     const udseende = laesUdseende(fil, dir, data.udseende);
     if (data.demo !== undefined && typeof data.demo !== 'boolean') fejl(fil, '"demo" skal være true eller false');
@@ -169,6 +172,9 @@ export function bygKonfiguration(skabelon, inst, databaseId, { standardAfsender 
     throw new Error(`${inst.navn}: angiv "domaene" eller sæt WORKERS_SUBDOMAIN`);
   }
   if (workersSubdomain && !SLUG.test(workersSubdomain)) throw new Error('WORKERS_SUBDOMAIN er ugyldigt');
+  if ((inst.receiptChat !== undefined && typeof inst.receiptChat !== 'boolean') || (inst.receiptChat && (inst.system !== 'lagerstyring' || !inst.ocrService))) {
+    throw new Error('receipt_chat kræver lagerstyring med en udtrykkeligt valgt OCR-worker');
+  }
   const appUrl = inst.domaene ? `https://${inst.domaene}` : `https://${inst.navn}.${workersSubdomain}.workers.dev`;
   const afsender = inst.afsender || standardAfsender;
   let t = skabelon;
@@ -188,6 +194,9 @@ export function bygKonfiguration(skabelon, inst, databaseId, { standardAfsender 
       if (!SLUG.test(inst.ocrService) || inst.ocrService.length > 63) throw new Error('OCR-workerens navn er ugyldigt');
       t += `\n# Særskilt, udtrykkeligt konfigureret OCR-tjeneste for denne virksomhed\n[[services]]\nbinding = "RECEIPT_OCR"\nservice = "${inst.ocrService}"\n`;
       t += '\n# Køen indeholder kun henvisninger til virksomhedens egne bilag.\n[[durable_objects.bindings]]\nname = "BILAG_OCR_QUEUE"\nclass_name = "BilagOcrQueue"\n\n[[migrations]]\ntag = "v1-bilag-ocr-queue"\nnew_sqlite_classes = ["BilagOcrQueue"]\n';
+    }
+    if (inst.receiptChat) {
+      t += '\n# Bilagschat er valgt særskilt for denne virksomhed; ingen fælles AI-binding.\n[ai]\nbinding = "RECEIPT_CHAT"\n';
     }
   }
   if (inst.domaene) {

@@ -135,13 +135,17 @@ const LABEL = {
   // Ikke en momslinje: ekskl./inkl.-tekster og momsnumre (fx "IE VAT IE4143435AH", "VAT no.")
   vatNot: /(ekskl|inkl|excl|incl|grundlag|fri|momspligtig|nr\.|\b(?:vat|tax)\s*(?:no|nr|number|id|reg)|\b[A-Z]{2}\d{6,})/i,
   rounding: /(øreafrunding|afrunding)/i,
-  number: /(invoice\s*(?:number|no\.?|nr\.?|#)|receipt\s*(?:number|no\.?|#)|credit\s*note\s*(?:number|no\.?)|order\s*(?:number|no\.?)|kreditnota\s*nr\.?|kreditnotanr\.?|faktura\s*nr\.?|fakturanr\.?|fakturanummer|bilagsnr\.?|bilag\s*nr\.?|kvitteringsnr\.?|kvittering\s*nr\.?|bon\s*nr\.?|bonnr\.?|ordrenr\.?|ordre\s*nr\.?)\s*[:.#]?\s*([A-Za-z0-9][A-Za-z0-9\-/]{0,30})/i,
+  number: /(invoice\s*(?:number|no\.?|nr\.?|#)|receipt\s*(?:number|no\.?|#)|credit\s*note\s*(?:number|no\.?)|order\s*(?:number|no\.?)|kreditnota\s*nr\.?|kreditnotanr\.?|faktura\s*nr\.?|fakturanr\.?|fakturanummer|bilagsnr\.?|bilag\s*nr\.?|\bbilag\s*[:#]|kvitteringsnr\.?|kvittering\s*nr\.?|bon\s*nr\.?|bonnr\.?|ordrenr\.?|ordre\s*nr\.?)\s*[:.#]?\s*([A-Za-z0-9][A-Za-z0-9\-/]{0,30})/i,
   date: /(fakturadato|kreditnotadato|købsdato|udstedelsesdato|bilagsdato|date of issue|issue date|invoice date|\bdato\b|\bdate\b)/i,
   due: /(forfaldsdato|forfald|betalingsfrist|betales senest|sidste rettidige|due date|date due|payment due)/i,
   payment: /(\bFIK\b|\+7[135]<|\breg\.?\s*nr|\bkontonr|\bkonto nr|\bkonto:|\bIBAN\b|\bBIC\b|\bSWIFT\b|\bMobilePay\b|\bbetalings-?id)/i,
   cvr: /\b(?:CVR|SE)(?:[-\s.]?nr)?\.?\s*[:.]?\s*(?:DK)?\s*(\d{2}\s?\d{2}\s?\d{2}\s?\d{2})\b/gi,
   header: /(beskrivelse|varetekst|tekst|vare\b|varenr|produkt|ydelse|antal|stk\.?|enhed|á|a-pris|stykpris|pris|beløb|rabat|moms|description|qty|quantity|unit price|price|amount|tax)/gi,
 };
+
+// "Subtotal" kan være et bruttobeløb på en kassebon. Kun disse labels siger udtrykkeligt ekskl. moms.
+const EXPLICIT_NET = /(ekskl\.?\s*moms|excl\.?\s*vat|excluding (?:tax|vat)|netto|momsgrundlag|momspligtigt beløb)/i;
+const INCLUSIVE_RECEIPT_VAT = /\bheraf\s+moms\b|\bmoms(?=\s|\d|[(:])[^\n]{0,60}\bheraf\b|\binkl\.?\s*moms\b/i;
 
 type Col = 'name' | 'sku' | 'qty' | 'unit' | 'price' | 'discount' | 'vat' | 'amount' | 'skip';
 
@@ -169,12 +173,43 @@ function vatRateOf(raw: string): number | null {
   return m ? Math.round(parseFloat(m[1]!.replace(',', '.')) * 100) : null;
 }
 
+// Kassebon uden kolonneoverskrift: varenavn på én linje, derefter fx "2 x 89,95 179,90".
+// Kræver alle tre udtrykkelige tal; dimensioner og pakningsstørrelser i navnet fortolkes ikke.
+const RECEIPT_ROW = new RegExp(`^\\s*(-?\\d+(?:[.,]\\d{1,3})?)\\s*[x×]\\s*((?:${MONEY.source})(?:\\s*(?:kr\\.?|DKK))?)\\s+((?:${MONEY.source})(?:\\s*(?:kr\\.?|DKK))?)\\s*$`, 'i');
+const RECEIPT_META = /^(?:cvr|se[- .]?nr|tlf|telefon|kasse|bilag|bon(?:nr)?|kvittering|receipt|eksp|ekspedient|terminal|dato|date|tid|time|rabat|discount|retur\s+(?:kontant(?:er)?|cash|penge|beløb|kort)\b|byttepenge|kontant|kort|dankort|visa|mastercard|betaling|betalt|tak\b|velkommen|åbningstid|www\.|https?:|[-_=*]{3})/i;
+
+function receiptFooter(line: string): boolean {
+  return moneyIn(line).length > 0 && (LABEL.net.test(line) || LABEL.total.test(line) || (LABEL.vat.test(line) && !LABEL.vatNot.test(line)) || LABEL.rounding.test(line) || LABEL.payment.test(line));
+}
+
+function readReceiptLines(lines: string[]): ReadLine[] {
+  const out: ReadLine[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!.trim();
+    if (out.length && receiptFooter(line)) break;
+    const m = RECEIPT_ROW.exec(line);
+    if (!m) continue;
+    let before = i - 1;
+    while (before >= 0 && !lines[before]!.trim()) before--;
+    const name = lines[before]?.trim();
+    if (!name || !/[a-zæøå]/i.test(name) || RECEIPT_META.test(name) || receiptFooter(name) || LABEL.payment.test(name) || datesIn(name).length || RECEIPT_ROW.test(name)) continue;
+    const qty = parseQtyText(m[1]!);
+    const price = parseMoney(m[2]!);
+    const amount = parseMoney(m[3]!);
+    if (qty === null || price === null || amount === null) continue;
+    if (/^retur\b/i.test(name) && (qty >= 0 || !/[a-zæøå]{2}/i.test(name.replace(/^retur\b[\s:.-]*/i, '')))) continue;
+    // Fallback-formatet og de læste værdier skal altid kontrolleres; ret aldrig regnestykket automatisk.
+    out.push({ name: name.slice(0, 200), qty, unit: '', unit_price: price, discount: 0, amount, vat_rate: null, uncertain: true });
+  }
+  return out;
+}
+
 /** Varelinjer mellem en kolonneoverskrift og den første total. */
 function readLines(lines: string[]): ReadLine[] {
   const hi = lines.findIndex(
     (l) => new Set([...l.matchAll(LABEL.header)].map((m) => m[1]!.toLowerCase())).size >= 3 && l.trim().split(/\s{2,}/).filter((c) => colOf(c) !== 'skip').length >= 3 && moneyIn(l).length === 0,
   );
-  if (hi < 0) return [];
+  if (hi < 0) return readReceiptLines(lines);
   const heads = lines[hi]!.trim().split(/\s{2,}/).map(colOf);
   const out: ReadLine[] = [];
   // Tekstlinjer uden beløb: enten fortsættelsen af forrige vare eller navnet på den næste
@@ -296,6 +331,11 @@ export function readText(pages: string[][], opts: { ownCvr?: string; ownName?: s
   else if (/\bfaktura\b|invoice/i.test(text)) values.doc_type = 'faktura';
   else if (/kvittering|\bbon\b|receipt/i.test(text)) values.doc_type = 'kvittering';
 
+  // På en tydelig kassebon betyder "heraf moms", at momsen allerede er indeholdt i de trykte priser.
+  // Bevar de trykte beløb: hverken en generisk subtotal eller total minus moms er et aflæst nettobeløb.
+  const receiptContext = values.doc_type === 'kvittering' || (values.doc_type === undefined && /\bkasse\b/i.test(text) && /\bbilag\s*(?:nr\.?)?\s*[:#]/i.test(text));
+  const inclusiveReceipt = receiptContext && INCLUSIVE_RECEIPT_VAT.test(text);
+
   // CVR: leverandørens (ikke vores eget)
   const cvrs = [...text.matchAll(LABEL.cvr)].map((m) => m[1]!.replace(/\s/g, '')).filter((c) => c !== own);
   if (cvrs.length) {
@@ -401,6 +441,7 @@ export function readText(pages: string[][], opts: { ownCvr?: string; ownName?: s
       return;
     }
     if (LABEL.net.test(l)) {
+      if (inclusiveReceipt && !EXPLICIT_NET.test(l)) return;
       const v = lastMoney(l, i);
       if (v !== null && net === null) net = v;
       return;
@@ -435,7 +476,7 @@ export function readText(pages: string[][], opts: { ownCvr?: string; ownName?: s
   if (vatLines > 1) notes.push(`Flere momslinjer fundet (${vatLines}); momsen er summen af dem.`);
   if (rounding !== null) values.rounding = rounding;
   if (net !== null) values.net = net;
-  else if (total !== null && vat !== null) {
+  else if (!inclusiveReceipt && total !== null && vat !== null) {
     // Ekskl. moms står ikke på bilaget, men følger af to læste beløb (markeres som usikkert)
     values.net = (total as number) - (vat as number) - ((rounding as number | null) ?? 0);
     uncertain.add('net');
@@ -451,13 +492,19 @@ export function readText(pages: string[][], opts: { ownCvr?: string; ownName?: s
 
   // Varelinjer
   const items = readLines(lines);
+  if (inclusiveReceipt) values.line_prices = 'inkl';
   if (items.length) {
     // Én momssats på bilaget gælder alle linjer uden egen sats
     if (rates.length === 1) for (const r of items) if (r.vat_rate === null) r.vat_rate = rates[0]!;
     const sum = items.reduce((a, r) => a + (r.amount ?? 0), 0);
     const n = values.net as number | undefined;
     const t = values.total as number | undefined;
-    if (n !== undefined && Math.abs(sum - n) <= 2) values.line_prices = 'ekskl';
+    if (inclusiveReceipt) {
+      if (t === undefined || Math.abs(sum - t) > 2) {
+        uncertain.add('line_prices');
+        notes.push('Bilaget angiver priser inkl. moms, men varelinjerne kan ikke afstemmes med den trykte total. Kontrollér linjerne.');
+      }
+    } else if (n !== undefined && Math.abs(sum - n) <= 2) values.line_prices = 'ekskl';
     else if (t !== undefined && Math.abs(sum - t) <= 2) values.line_prices = 'inkl';
     else {
       values.line_prices = 'ekskl';

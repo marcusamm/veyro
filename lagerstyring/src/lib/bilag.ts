@@ -408,6 +408,76 @@ export interface ReadBilagResult {
   cancelled?: boolean;
 }
 
+export interface BilagEvidence {
+  bilag_id: number;
+  file_id: number;
+  /** Version of the saved fields when this unchanged original was read. */
+  sourceVersion: number;
+  currentVersion: number;
+  pages: string[][];
+  source: 'ocr' | 'pdf-tekst';
+  provider: string;
+  read_at: number;
+  /** A large text PDF may have more source text than the review limit. */
+  truncated: boolean;
+}
+
+const MAX_EVIDENCE_TEXT = 100_000;
+const MAX_EVIDENCE_PAGES = 20;
+
+function boundedEvidence(pages: string[][]): { pages: string[][]; textChars: number; truncated: boolean } {
+  const bounded: string[][] = [];
+  let remaining = MAX_EVIDENCE_TEXT;
+  let truncated = pages.length > MAX_EVIDENCE_PAGES;
+  for (const page of pages.slice(0, MAX_EVIDENCE_PAGES)) {
+    const lines: string[] = [];
+    for (const line of page) {
+      // Preserve line boundaries within each page as part of the text budget.
+      if (lines.length) {
+        if (!remaining) { truncated = true; break; }
+        remaining--;
+      }
+      if (line.length > remaining) {
+        lines.push(line.slice(0, remaining));
+        remaining = 0;
+        truncated = true;
+        break;
+      } else {
+        lines.push(line);
+        remaining -= line.length;
+      }
+    }
+    bounded.push(lines);
+    if (!remaining && bounded.length < pages.length) { truncated = true; break; }
+  }
+  return { pages: bounded, textChars: MAX_EVIDENCE_TEXT - remaining, truncated };
+}
+
+/**
+ * Exact text returned by the reader, separate from editable suggested fields.
+ * Evidence survives manual field edits of the same original, with both versions
+ * exposed so callers never imply that OCR reflects those later corrections.
+ * Replaced originals can never select evidence belonging to the former file.
+ * The caller must apply the same per-document access check as the detail view.
+ */
+export async function getBilagEvidence(db: D1Database, id: number): Promise<BilagEvidence | null> {
+  const row = await db.prepare(`SELECT e.bilag_id,e.file_id,e.version AS sourceVersion,b.version AS currentVersion,
+      e.pages_json,e.source,e.provider,e.read_at,e.truncated
+    FROM bilag_ocr_evidence e JOIN bilag b ON b.id=e.bilag_id AND b.file_id=e.file_id
+    WHERE b.id=? AND e.version<=b.version ORDER BY e.version DESC,e.read_at DESC LIMIT 1`).bind(id).first<{
+      bilag_id: number; file_id: number; sourceVersion: number; currentVersion: number;
+      pages_json: string; source: 'ocr' | 'pdf-tekst'; provider: string; read_at: number; truncated: number;
+    }>();
+  if (!row) return null;
+  try {
+    const pages: unknown = JSON.parse(row.pages_json);
+    if (!Array.isArray(pages) || pages.length > MAX_EVIDENCE_PAGES || !pages.every((p) => Array.isArray(p) && p.every((l) => typeof l === 'string'))
+      || (pages as string[][]).reduce((n, p) => n + p.join('\n').length, 0) > MAX_EVIDENCE_TEXT) return null;
+    const { pages_json: _, truncated, ...value } = row;
+    return { ...value, pages: pages as string[][], truncated: !!truncated };
+  } catch { return null; }
+}
+
 export async function readBilag(env: Env, s: Settings, id: number, actor: Actor, now: number, opts: { deferOcr?: boolean; backgroundToken?: string } = {}): Promise<ReadBilagResult> {
   const db = env.DB;
   const b = await getBilag(db, id);
@@ -453,10 +523,19 @@ export async function readBilag(env: Env, s: Settings, id: number, actor: Actor,
   // The guard and suggested replacements commit in one D1 batch. Changes made
   // while a CPU container was working invalidate the token through DB triggers.
   stmts.push(db.prepare(`UPDATE bilag SET reading_token = CASE
-    WHEN reading_token = ? AND data_revision = ? AND status = 'under_aflaesning'
+    WHEN reading_token = ? AND data_revision = ? AND file_id = ? AND version = ? AND status = 'under_aflaesning'
       AND NOT EXISTS (SELECT 1 FROM bilag_allocations WHERE bilag_id = ?)
-    THEN reading_token ELSE NULL END WHERE id = ?`).bind(token, b.data_revision, id, id));
+    THEN reading_token ELSE NULL END WHERE id = ?`).bind(token, b.data_revision, b.file_id, b.version, id, id));
   if (pages.length) {
+      const evidence = boundedEvidence(pages);
+      // This insert and the result replacement share the token/revision guard
+      // and one atomic batch. A delayed/cancelled read leaves no new evidence.
+      stmts.push(db.prepare(`INSERT INTO bilag_ocr_evidence
+          (bilag_id,file_id,version,pages_json,text_chars,source,provider,read_at,truncated)
+        VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(bilag_id,file_id,version) DO UPDATE SET
+          pages_json=excluded.pages_json,text_chars=excluded.text_chars,source=excluded.source,
+          provider=excluded.provider,read_at=excluded.read_at,truncated=excluded.truncated`)
+        .bind(id, b.file_id, b.version, JSON.stringify(evidence.pages), evidence.textChars, provider ? 'ocr' : 'pdf-tekst', provider, now, evidence.truncated ? 1 : 0));
       const { results: sups } = await db.prepare('SELECT id, name FROM suppliers').all<{ id: number; name: string }>();
       const r = readText(pages, { ownCvr: s.company_cvr, ownName: s.company_name, suppliers: sups });
       const v = r.values;
