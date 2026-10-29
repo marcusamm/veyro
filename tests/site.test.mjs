@@ -216,6 +216,10 @@ describe('Pakker og priser', () => {
     expect(order.map(at)).toEqual([...order.map(at)].sort((a, b) => a - b));
     // Hero: én H1, én primær og én sekundær knap, og eksemplet er mærket som designkoncept
     const hero = section('home-hero');
+    // Before JavaScript starts there is no old solid V to flash behind the copy.
+    const artwork = hero.match(/<div class="studio-art"[^>]*>([\s\S]*?)<\/div>/)?.[1];
+    expect(artwork).toContain('<canvas class="studio-particles" data-particle-scene></canvas>');
+    expect(artwork).not.toMatch(/<svg|<img|v-light/);
     expect(r.html.match(/<h1/g)).toHaveLength(1);
     expect(hero).toContain('Din forretning.<br>Dit eget udtryk.<br><span>Et website, der arbejder for dig.</span>');
     expect(hero).toContain('<a class="btn btn--primary" href="/pages/kontakt?ydelse=aftal-en-demo#formular">Aftal en demo</a>');

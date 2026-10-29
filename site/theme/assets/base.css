@@ -966,7 +966,6 @@ h1,h2,h3,.t-xl,.t-lg,.t-md { font-weight: 500; }
 .studio-stage { min-height: 680px; position: relative; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 410px auto; align-items: end; isolation: isolate; }
 .studio-stage::before { content: ''; position: absolute; inset: -90px -30px 0; background-image: radial-gradient(#ffffff14 .7px, transparent .8px); background-size: 5px 5px; z-index: -2; mask-image: linear-gradient(#000, #0008 65%, transparent); pointer-events: none; }
 .studio-art { position: absolute; width: 58%; left: 10%; top: -75px; z-index: -1; opacity: .7; pointer-events: none; transform: rotate(-12deg); }
-.studio-art svg { width: 100%; filter: drop-shadow(0 0 40px #ffffff18); }
 .studio-message { grid-column: 2; grid-row: 1; align-self: center; padding: 0 0 0 2rem; }
 .studio-message .studio-label { font-size: .75rem; margin-bottom: 1.2rem; }
 .home-hero__title { font-size: clamp(2.5rem, 3.8vw, 3.8rem); line-height: 1.08; letter-spacing: -.055em; max-width: 15ch; font-weight: 500; }

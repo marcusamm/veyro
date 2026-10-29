@@ -101,7 +101,7 @@
       if (hero && enabled()) {
         hero.style.setProperty('--hero-scroll', String(heroProgress));
         hero.style.setProperty('--wordmark-shift', `${heroProgress * 65}px`);
-        scene?.setScroll(heroProgress);
+        scene?.setScroll();
       }
       layout.forEach(({ section, items }) => {
         if (!items.length) return;
@@ -133,7 +133,7 @@
       const lowPower = (navigator.hardwareConcurrency || 8) <= 2 || (navigator.deviceMemory || 8) <= 2;
       let width = 0, height = 0, dpr = 1;
       let visible = true, raf = 0, last = 0, elapsed = 0, totalFrames = 0;
-      let scroll = 0, pointerX = 0, pointerY = 0, targetX = 0, targetY = 0;
+      let scroll = 0, scrollStart = 0, scrollRange = 1, pointerX = 0, pointerY = 0, targetX = 0, targetY = 0;
       let pointerU = .5, pointerV = .5, targetU = .5, targetV = .5, strength = 0, targetStrength = 0;
       let entranceStart = null, formed = false, rippleStart = -10, rippleU = .5, rippleV = .5;
       let points = [], projected = [], readingAreas = [];
@@ -171,6 +171,12 @@
       function resize() {
         const rect = host.getBoundingClientRect();
         if (!rect.width || !rect.height) return;
+        // The sculpture leaves before the large wordmark. Complete its turn
+        // while it is still visible, starting at the header-aligned hero top.
+        const heroTop = (hero || host).getBoundingClientRect().top + scrollY;
+        const headerHeight = document.querySelector('[data-header]')?.offsetHeight || 0;
+        scrollStart = Math.max(0, heroTop - headerHeight);
+        scrollRange = Math.max(1, Math.min(rect.height * .66, innerHeight * .58));
         // Cache text bounds outside the render loop. Silver recedes under copy,
         // especially where the unchanged mobile composition overlaps the sculpture.
         const areas = [...(hero?.querySelectorAll('.studio-message > p, .studio-message h1, .studio-specialties, .studio-action > *') || [])].map(el => {
@@ -202,12 +208,12 @@
         const settle = 1 - Math.pow(1 - entry, 3);
         const s = moving ? scroll : 0;
         const idle = moving ? t : 0;
-        const ay = .18 + Math.sin(idle * .22) * .16 + pointerX * .22 + s * .32 + (1 - settle) * .16;
-        const ax = -.1 + Math.sin(idle * .18) * .045 - pointerY * .12 - s * .09;
-        const az = -.16 + Math.sin(idle * .15) * .025 + s * .055 - (1 - settle) * .07;
+        const ay = .18 + Math.sin(idle * .22) * .16 + pointerX * .22 + s * .74 + (1 - settle) * .16;
+        const ax = -.1 + Math.sin(idle * .18) * .045 - pointerY * .12 - s * .18;
+        const az = -.16 + Math.sin(idle * .15) * .025 + s * .14 - (1 - settle) * .07;
         const cy = Math.cos(ay), sy = Math.sin(ay), cx = Math.cos(ax), sx = Math.sin(ax), cz = Math.cos(az), sz = Math.sin(az);
-        const scale = Math.min(width / 3.6, height / 3.1) * (1.025 - s * .045);
-        const camera = 4.6 - s * .22;
+        const scale = Math.min(width / 3.6, height / 3.1) * (1.025 - s * .1);
+        const camera = 4.6 - s * .38;
         const localRadius = Math.min(width * .2, 145);
         const pointerScreenX = pointerU * width, pointerScreenY = pointerV * height;
         const rippleAge = moving ? t - rippleStart : 10;
@@ -225,8 +231,8 @@
           const ry = y * cx - rz * sx, depth = y * sx + rz * cx;
           const px = rx * cz - ry * sz, py = rx * sz + ry * cz;
           const perspective = camera / (camera - depth);
-          let screenX = width * .49 + px * scale * perspective - s * width * .018;
-          let screenY = height * .49 - py * scale * perspective - s * 10;
+          let screenX = width * .49 + px * scale * perspective - s * width * .025;
+          let screenY = height * .49 - py * scale * perspective + s * 24;
           const dx = screenX - pointerScreenX, dy = screenY - pointerScreenY;
           const distance = strength > .001 ? Math.hypot(dx, dy) : localRadius;
           const near = strength > .001 ? Math.pow(clamp(1 - distance / localRadius), 2) * strength : 0;
@@ -246,6 +252,8 @@
           const spec = Math.pow(Math.max(0, normalX * -.2 + normalY * .2 + normalZ * .96), 9);
           const openingSweep = !formed ? Math.exp(-Math.pow((p.u - (entry * 1.7 - .35)) / .13, 2)) * .42 : 0;
           const sweep = Math.exp(-Math.pow((p.u - idleSweep - s * .35) / .095, 2)) * .2;
+          // This band is driven by scroll position, independently of idle time.
+          const scrollSweep = s > 0 ? Math.exp(-Math.pow((p.u - (s * 1.5 - .25)) / .13, 2)) * .32 : 0;
           const depthLight = clamp((depth + .7) / 1.4);
           let legibility = 1;
           for (const area of readingAreas) {
@@ -253,7 +261,7 @@
             const gapY = Math.max(area.top - screenY, 0, screenY - area.bottom);
             if (gapX < 26 && gapY < 26) legibility = Math.min(legibility, .34 + .66 * clamp(Math.hypot(gapX, gapY) / 26));
           }
-          const brightness = legibility * clamp(.21 + diffuse * .38 + spec * .29 + depthLight * .1 + sweep + openingSweep + near * .22 + ripple * .15, .17, .96);
+          const brightness = legibility * clamp(.21 + diffuse * .38 + spec * .29 + depthLight * .1 + sweep + scrollSweep + openingSweep + near * .22 + ripple * .15, .17, .96);
           Object.assign(projected[i], { x: screenX, y: screenY, depth, brightness, size: (width < 500 ? .88 : 1.02) * perspective + diffuse * .19 + spec * .25 + near * .14 });
         });
         projected.sort((a, b) => a.depth - b.depth);
@@ -261,7 +269,6 @@
           ctx.fillStyle = `rgba(229,234,239,${p.brightness.toFixed(2)})`;
           ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
         }
-        host.classList.add('has-canvas');
       }
       function tick(now) {
         raf = 0;
@@ -317,7 +324,7 @@
         rippleU = (event.clientX - r.left) / r.width; rippleV = (event.clientY - r.top) / r.height;
         rippleStart = elapsed;
       });
-      return { resize, sync, setScroll(p) { scroll = p; locatePointer(); } };
+      return { resize, sync, setScroll() { scroll = clamp((scrollY - scrollStart) / scrollRange); locatePointer(); } };
     }
     const canvas = document.querySelector('[data-particle-scene]');
     const scene = canvas ? createScene(canvas) : null;
