@@ -20,6 +20,9 @@ columns and unchanged original bytes. This is a regression fixture, not a
 real-world receipt accuracy score. `smoke.py --url http://127.0.0.1:8080` can
 exercise a running HTTP service instead.
 
+`smoke.py --font /path/to/DejaVuSans.ttf` selects the same fixture font used by
+the Linux image, so a developer on another OS can reproduce its layout exactly.
+
 Unit tests require the same Python dependencies and run from this directory:
 
 ```sh
@@ -50,7 +53,11 @@ python -m unittest discover -s tests -v
 
 `layout.py` tightens detection boxes using word geometry, groups boxes into rows,
 and separates visual columns with two spaces for Veyro's existing receipt reader.
-It does not invent missing values. Receipts without recognizable headings or
+When detection merges visibly separate cells and recognition loses the space
+(for example `EnhedPris`), `refine.py` detects a wide blank pixel gutter and reads
+the separated image crops again. It uses no guessed vocabulary split and caps
+refinement at 32 crops per page; more ambiguity requires manual review. It does
+not invent missing values. Receipts without recognizable headings or
 with complex layouts can still need manual correction. Whole-page rotation
 without EXIF and curved-page dewarping are not enabled in this lightweight model.
 
@@ -68,6 +75,7 @@ The engine calls no hosted OCR API.
 - [pillow-heif documentation](https://pillow-heif.readthedocs.io/)
 
 Local verification on 29 October 2026: actual CPU inference on synthetic PNG and
-scanned PDF, with table columns and expected amounts preserved. Docker/Linux
-verification is separate and must pass in CI before release.
+scanned PDF, with table columns and expected amounts preserved using both Arial
+and Debian's DejaVu Sans 2.37 font. Docker/Linux verification is separate and must
+pass in CI before release.
 

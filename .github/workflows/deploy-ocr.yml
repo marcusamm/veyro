@@ -58,6 +58,7 @@ jobs:
           PY
           docker exec veyro-ocr-test python smoke.py --url http://127.0.0.1:8080 > /tmp/veyro-ocr-smoke.json
           cat /tmp/veyro-ocr-smoke.json
+          OCR_SMOKE_REPORT=/tmp/veyro-ocr-smoke.json npx vitest run tests/receipt-parser.test.ts
       - name: Deploy privat OCR-service
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:

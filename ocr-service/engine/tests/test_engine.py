@@ -18,6 +18,8 @@ from fixtures import receipt_bytes
 from layout import TextBox, reconstruct_rows, text_boxes
 from limits import InvalidDocument, MAX_FILE_BYTES
 from service import app, run_child
+from refine import ink_segments, refine_columns
+import numpy as np
 
 
 class LayoutTests(unittest.TestCase):
@@ -53,6 +55,43 @@ class LayoutTests(unittest.TestCase):
             "text_word_region": [[[[830, 105], [910, 105], [910, 135], [830, 135]]], [[[980, 105], [1030, 105], [1030, 135], [980, 135]]]],
         }
         self.assertEqual(reconstruct_rows(text_boxes(result)), "Enhed  Pris")
+
+    def test_merged_heading_with_no_ctc_space_is_reread_from_visible_columns(self):
+        # PaddleOCR can produce this single literal/CTC word on DejaVu receipts.
+        # Splitting a guessed vocabulary string would conceal a parser risk.
+        image = np.full((50, 270, 3), 255, dtype=np.uint8)
+        image[10:40, 50:125] = 0
+        image[10:40, 190:245] = 0
+        result = {
+            "rec_texts": ["EnhedPris"],
+            "rec_polys": [[[40, 0], [250, 0], [250, 45], [40, 45]]],
+            "text_word": [["EnhedPris"]],
+            "text_word_region": [[[[50, 0], [245, 0], [245, 45], [50, 45]]]],
+        }
+        def observed(text):
+            return {"rec_texts": [text], "rec_polys": [[[0, 0], [70, 0], [70, 30], [0, 30]]]}
+        for merged, pieces in [("EnhedPris", ["Enhed", "Pris"]), ("125,00250,00", ["125,00", "250,00"])]:
+            result["rec_texts"] = [merged]
+            result["text_word"] = [[merged]]
+            recognize = unittest.mock.Mock(side_effect=[[observed(piece)] for piece in pieces])
+            output = reconstruct_rows(refine_columns(image, result, recognize))
+            self.assertEqual(output, "  ".join(pieces))
+            self.assertEqual(recognize.call_count, 2)
+
+    def test_ordinary_word_gaps_do_not_trigger_column_rereading(self):
+        image = np.full((50, 270, 3), 255, dtype=np.uint8)
+        for left in range(20, 230, 40):
+            image[10:40, left:left + 30] = 0
+        result = {"rec_texts": ["Skruer 5 x 80 mm"], "rec_polys": [[[10, 0], [260, 0], [260, 45], [10, 45]]]}
+        recognize = unittest.mock.Mock()
+        self.assertEqual(reconstruct_rows(refine_columns(image, result, recognize)), "Skruer 5 x 80 mm")
+        recognize.assert_not_called()
+
+    def test_visible_gutters_ignore_dark_background_polarity(self):
+        image = np.zeros((50, 250, 3), dtype=np.uint8)
+        image[10:40, 20:80] = 255
+        image[10:40, 150:210] = 255
+        self.assertEqual(ink_segments(image, 30), [(20, 80), (150, 210)])
 
 
 class DocumentTests(unittest.TestCase):

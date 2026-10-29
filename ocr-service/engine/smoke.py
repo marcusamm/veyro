@@ -12,10 +12,10 @@ from fastapi.testclient import TestClient
 from service import app
 
 
-def smoke(url: str | None = None) -> dict:
+def smoke(url: str | None = None, font_path: str | None = None) -> dict:
     cases = []
     for mime, format in [("image/png", "PNG"), ("application/pdf", "PDF")]:
-        raw = receipt_bytes(format)
+        raw = receipt_bytes(format, font_path)
         before = hashlib.sha256(raw).hexdigest()
         started = time.monotonic()
         if url:
@@ -34,16 +34,16 @@ def smoke(url: str | None = None) -> dict:
         # This is a synthetic regression, not an accuracy score on real receipts.
         for token in ["TESTDATA", "Skruer", "Fugemasse", "250,00", "120,00", "462,50"]:
             if token.casefold() not in text.casefold():
-                raise AssertionError(f"TESTDATA expected OCR token missing: {token}")
+                raise AssertionError(f"TESTDATA expected OCR token missing: {token}; synthetic output={text!r}")
         if "  " not in text:
             raise AssertionError("No reconstructed column spacing")
         header = next((line for line in text.splitlines() if "Antal" in line), "")
         if re.split(r"\s{2,}", header) != ["Vare", "Antal", "Enhed", "Pris", "Beløb"]:
-            raise AssertionError("TESTDATA receipt headings do not have five separate columns")
+            raise AssertionError(f"TESTDATA receipt headings do not have five separate columns: heading={header!r}; synthetic output={text!r}")
         for name in ["Skruer", "Fugemasse"]:
             row = next((line for line in text.splitlines() if line.startswith(name)), "")
             if len(re.split(r"\s{2,}", row)) != 5:
-                raise AssertionError("TESTDATA material columns are not aligned")
+                raise AssertionError(f"TESTDATA material columns are not aligned: row={row!r}; synthetic output={text!r}")
         if before != hashlib.sha256(raw).hexdigest():
             raise AssertionError("Original bytes changed")
         cases.append({"mime": mime, "seconds": round(time.monotonic() - started, 2), "sha256": before, "pages": result["pages"], "provider": result["provider"]})
@@ -53,6 +53,7 @@ def smoke(url: str | None = None) -> dict:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--url")
+    parser.add_argument("--font", help="Explicit font file for a reproducible synthetic fixture")
     args = parser.parse_args()
-    print(json.dumps(smoke(args.url), ensure_ascii=False, indent=2))
+    print(json.dumps(smoke(args.url, args.font), ensure_ascii=False, indent=2))
 

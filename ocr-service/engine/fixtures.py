@@ -6,13 +6,13 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 
-def receipt_image() -> Image.Image:
+def receipt_image(font_path: str | None = None) -> Image.Image:
     paths = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/System/Library/Fonts/Supplemental/Arial.ttf",
         "/Library/Fonts/Arial.ttf",
     ]
-    path = next((p for p in paths if Path(p).is_file()), None)
+    path = font_path if font_path is not None else next((p for p in paths if Path(p).is_file()), None)
     if path is None:
         raise RuntimeError("Smoke test needs DejaVu Sans or Arial")
     font = ImageFont.truetype(path, 32)
@@ -40,8 +40,8 @@ def receipt_image() -> Image.Image:
     return image
 
 
-def receipt_bytes(format: str = "PNG") -> bytes:
-    with receipt_image() as image:
+def receipt_bytes(format: str = "PNG", font_path: str | None = None) -> bytes:
+    with receipt_image(font_path) as image:
         buffer = io.BytesIO()
         image.save(buffer, format=format)
         return buffer.getvalue()

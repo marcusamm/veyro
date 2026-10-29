@@ -12,7 +12,7 @@ os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
 from limits import InvalidDocument, MAX_TEXT_CHARS
-from layout import reconstruct_rows, text_boxes
+from layout import reconstruct_rows
 
 MODEL_NAMES = ("PP-OCRv6_small_det", "PP-OCRv6_small_rec")
 PROVIDER = "Veyro PaddleOCR 3.7.0 · PP-OCRv6 small · CPU"
@@ -45,6 +45,7 @@ def create_pipeline():
 def extract(data: bytes, mime: str) -> dict:
     import numpy as np
     from documents import pages
+    from refine import refine_columns
 
     pipeline = None
     output = []
@@ -57,7 +58,7 @@ def extract(data: bytes, mime: str) -> dict:
         results = list(pipeline.predict(bgr, return_word_box=True))
         if len(results) != 1:
             raise InvalidDocument("Unexpected OCR page result")
-        text = reconstruct_rows(text_boxes(results[0]))
+        text = reconstruct_rows(refine_columns(bgr, results[0], lambda crop: pipeline.predict(crop, return_word_box=True)))
         length += len(text)
         if length > MAX_TEXT_CHARS:
             raise InvalidDocument("OCR text exceeds limit")
