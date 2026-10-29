@@ -5,7 +5,8 @@ CPU-baseret PaddleOCR i en privat Cloudflare Container. Hjemmesiden og kundeport
 ## Adgang og drift
 
 - Worker `veyro-receipt-ocr` har ingen offentlig adresse, preview-adresse eller routes. Kun en eksplicit `RECEIPT_OCR`-servicebinding giver adgang.
-- Container og styrende Durable Object placeres i EU. Én `standard-2`-container (1 vCPU / 6 GiB) ad gangen, internetadgang deaktiveret ved drift, dvale efter to minutters inaktivitet.
+- Kontoen kræver `durable_object`-planlægning. En fast Durable Object-identitet starter én `standard-2`-container (1 vCPU / 6 GiB) ad gangen, med internetadgang deaktiveret og dvale efter to minutters inaktivitet. Identiteten kan ikke vælges fra en upload.
+- Den styrende Durable Object og dens tæller placeres i EU. Cloudflare understøtter på denne kontotype ikke en placeringsbegrænsning for selve containerens beregning. EU-placering af OCR kan derfor **ikke garanteres**. Den første aktivering er kun i demoen med TESTDATA; regionalt krav skal afklares før behandling af rigtige kundebilag.
 - En vedvarende tæller tillader indledningsvis højst **30 forsøg pr. UTC-dag på tværs af kunder**. Fejlede afkodninger tæller også. Grænsen er ikke et løfte om en bestemt kronepris; Workers Paid og containerforbrug afregnes efter Cloudflares vilkår.
 - Ingen originalsider eller OCR-resultater gemmes i OCR-workerens Durable Object. Originaler og kontrollerede oplysninger forbliver i den enkelte kundes eksisterende database. HTTP-adgangslogning er deaktiveret. Containerens barnproces bruger filens bytes i hukommelsen.
 - Modeller og afhængigheder bygges ind i image; modelarkiver kontrolleres med SHA-256. Der downloades ingen modeller ved aflæsning. Image kører som bruger10001.

@@ -10,13 +10,11 @@ enabled = false
 
 [[containers]]
 class_name = "ReceiptOcrContainer"
-image = "./engine/Dockerfile"
-image_build_context = "./engine"
-instance_type = "standard-2"
-max_instances = 1
+scheduling_policy = "durable_object"
 
-[containers.constraints]
-jurisdiction = "eu"
+[containers.images.ocr]
+dockerfile = "./engine/Dockerfile"
+build_context = "./engine"
 
 [[durable_objects.bindings]]
 name = "OCR_CONTAINER"
