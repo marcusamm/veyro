@@ -13,7 +13,8 @@
 import type { Env, JobItemRow, JobRow } from '../env';
 import { Q, lineAmount, todayDk } from './format';
 import { canReadPages, fetchProductPage, getRetailer, readProductPages, type RetailerRow } from './estimates';
-import type { Actor } from './ledger';
+import { Conflict, type Actor, type Tx } from './ledger';
+import { defaultJobList, getMaterial, getProduct, setPlanned } from './materials';
 import { buyPlan, convertVat, findMatch, nameTokens, normGtin, normUnit, type BuyPlan, type CatalogRow, type MatchBasis, type MatchKind, type Vat } from './prices';
 import type { Settings } from './settings';
 
@@ -51,6 +52,9 @@ export type ItemView = JobItemRow & {
   retailer_key: string | null;
   retailer_website: string | null;
   retailer_access: string | null;
+  /** Permission belongs to the price's original retailer, independent of today's preference. */
+  price_side_allowed: number;
+  price_retailer_name: string | null;
   product_purchase_price: number | null;
   product_sale_price: number | null;
   product_whole_units: number | null;
@@ -81,12 +85,15 @@ export async function jobItems(db: D1Database, jobId: number, prefRetailerId: nu
     .prepare(
       `SELECT i.*, COALESCE(i.retailer_id, j.retailer_id, ?2) AS eff_retailer_id,
          r.name AS retailer_name, r.key AS retailer_key, r.website AS retailer_website, r.access AS retailer_access,
+         price_retailer.name AS price_retailer_name,
+         CASE WHEN price_retailer.active = 1 AND price_retailer.access = 'side' AND price_retailer.terms_confirmed_at IS NOT NULL THEN 1 ELSE 0 END AS price_side_allowed,
          p.purchase_price AS product_purchase_price, p.sale_price AS product_sale_price, p.whole_units AS product_whole_units,
          p.stock AS product_stock, p.reserved AS product_reserved,
          m.planned AS m_planned, m.reserved AS m_reserved, m.issued AS m_issued, m.returned AS m_returned, m.site_received AS m_site_received, m.site_used AS m_site_used,
          l.qty AS pl_qty, l.ordered AS pl_ordered, l.received AS pl_received, l.cancelled AS pl_cancelled
        FROM job_items i JOIN jobs j ON j.id = i.job_id
        LEFT JOIN retailers r ON r.id = COALESCE(i.retailer_id, j.retailer_id, ?2)
+       LEFT JOIN retailers price_retailer ON price_retailer.id = i.price_retailer_id
        LEFT JOIN products p ON p.id = i.product_id
        LEFT JOIN job_materials m ON m.job_id = i.job_id AND m.product_id = i.product_id
        LEFT JOIN purchase_lines l ON l.id = i.purchase_line_id
@@ -156,9 +163,14 @@ export function otherRetailer(it: Pick<ItemView, 'price' | 'price_source' | 'pri
   return it.price !== null && it.price_source !== 'manuel' && it.price_retailer_id !== it.eff_retailer_id;
 }
 
-export function itemCalc(it: Pick<ItemView, keyof JobItemRow | 'product_purchase_price' | 'eff_retailer_id'>, qty: number, ctx: CalcCtx): ItemCalc {
+export function sidePriceUnconfirmed(it: Pick<ItemView, 'price_source' | 'price_side_allowed'>): boolean {
+  return it.price_source === 'side' && it.price_side_allowed !== 1;
+}
+
+export function itemCalc(it: Pick<ItemView, keyof JobItemRow | 'product_purchase_price' | 'eff_retailer_id' | 'price_side_allowed'>, qty: number, ctx: CalcCtx): ItemCalc {
   const markup = it.markup_pct ?? ctx.jobMarkup ?? ctx.defaultMarkup;
-  const hasPrice = it.price !== null && it.vat !== null && !!it.pack_qty && !otherRetailer(it);
+  const unconfirmed = sidePriceUnconfirmed(it);
+  const hasPrice = it.price !== null && it.vat !== null && !!it.pack_qty && !otherRetailer(it) && !unconfirmed;
   const usable = hasPrice && (it.match === 'praecis' || it.approved_at !== null);
   const publicUnit = usable ? perUnitEx(it.price!, it.vat!, it.pack_qty!) : null;
   let buy: ItemCalc['buy'] = null;
@@ -197,6 +209,7 @@ export function itemCalc(it: Pick<ItemView, keyof JobItemRow | 'product_purchase
       missing = it.cost_basis === 'lager' && it.product_id ? 'Kostprisen mangler på varen.' : hasPrice && it.match === 'alternativ' ? 'Alternativet skal godkendes.' : 'Pris mangler.';
     }
   }
+  if (saleUnit === null && unconfirmed) missing = 'Den tidligere sidepris er ikke bekræftet. Brug en prisfil eller indtast prisen manuelt.';
   const stale = usable && it.checked_at !== null && it.price_source !== 'manuel' && ctx.now - it.checked_at > ctx.maxAgeDays * 86400;
   const priceState: PriceState = hasPrice && !usable ? 'godkend' : !usable && it.cost_basis !== 'lager' ? 'mangler' : stale ? 'gammel' : usable || it.cost_basis === 'lager' ? 'ok' : 'mangler';
   return {
@@ -216,15 +229,15 @@ export function itemCalc(it: Pick<ItemView, keyof JobItemRow | 'product_purchase
 
 type CandRow = CatalogRow & { product_id: number | null };
 
-async function catalogFor(db: D1Database, retailerId: number, it: JobItemRow): Promise<CandRow[]> {
+async function catalogFor(db: D1Database, retailer: RetailerRow, it: JobItemRow): Promise<CandRow[]> {
   const words = [...nameTokens(it.name).words].sort((a, b) => b.length - a.length).slice(0, 2);
   const like = (i: number) => (words[i] ? `%${words[i]}%` : '\u0000');
   const { results } = await db
     .prepare(
-      `SELECT * FROM retailer_products WHERE retailer_id = ?1
+      `SELECT * FROM retailer_products WHERE retailer_id = ?1 AND (source <> 'side' OR ?7 = 1)
          AND (ean = ?2 OR (mpn <> '' AND brand = ?3 COLLATE NOCASE) OR name LIKE ?4 OR name LIKE ?5 OR product_id = ?6) LIMIT 300`,
     )
-    .bind(retailerId, normGtin(it.ean) ?? '\u0000', it.brand || '\u0000', like(0), like(1), it.product_id ?? -1)
+    .bind(retailer.id, normGtin(it.ean) ?? '\u0000', it.brand || '\u0000', like(0), like(1), it.product_id ?? -1, canReadPages(retailer) ? 1 : 0)
     .all<CandRow>();
   return results;
 }
@@ -365,7 +378,7 @@ export async function lookupItem(env: Env, it: JobItemRow, retailer: RetailerRow
     }
     if (!found && !failure) {
       // 2) Byggemarkedets prisdata (cache fra prisfil, produktsider eller demodata)
-      const cands = await catalogFor(db, retailer.id, it);
+      const cands = await catalogFor(db, retailer, it);
       const linked = it.product_id ? cands.find((c) => c.product_id === it.product_id) : undefined;
       const g = normGtin(it.ean);
       const m = linked
@@ -454,3 +467,88 @@ export function clearPriceStmt(db: D1Database, itemId: number, note: string, now
 }
 
 export { todayDk };
+
+
+/** Quantity to purchase in base units, including whole packs even before a price is known. */
+export function purchaseQuantity(it: Pick<JobItemRow, 'qty' | 'unit' | 'sales_unit' | 'pack_qty' | 'min_qty' | 'divisible'>): number {
+  if (it.qty === 0) return 0;
+  if (!it.pack_qty) return it.qty;
+  // The zero is used only for quantity conversion; no price is written from this plan.
+  const plan = buyPlan(it.qty, it.unit, {
+    sales_unit: it.sales_unit || it.unit,
+    content_unit: it.unit,
+    pack_qty: it.pack_qty,
+    min_qty: it.min_qty,
+    divisible: it.divisible,
+    price: 0,
+    vat: 'ekskl',
+    offer_price: null,
+    offer_text: '',
+    offer_min_qty: null,
+    offer_until: '',
+  });
+  if (!plan.ok) throw new Conflict(plan.reason);
+  return plan.covered;
+}
+
+/**
+ * Keep an already planned material in sync with its stock reservation or purchase draft.
+ * Actual orders and receipts retain their quantities and prices; reducing below committed
+ * goods requires the buyer to correct that order explicitly first.
+ */
+export async function syncItemPlan(tx: Tx, job: JobRow, it: ItemView, s: Settings, force = false): Promise<void> {
+  if (it.product_id) {
+    const p = await getProduct(tx.db, it.product_id);
+    if (!p) throw new Conflict('Varen findes ikke længere.');
+    if (p.whole_units && it.qty % Q !== 0) throw new Conflict(`${p.name} håndteres kun i hele ${p.unit}.`);
+    const material = await getMaterial(tx.db, job.id, p.id);
+    if (force || it.planned_at || material.planned > 0) await setPlanned(tx, job, p, it.qty);
+  } else if (force || it.planned_at || it.purchase_line_id) {
+    if (job.status !== 'aktiv') throw new Conflict('Jobbet er afsluttet. Genåbn jobbet for at ændre materialebehovet.');
+    if (it.qty < it.used_qty) throw new Conflict(`Behovet kan ikke være mindre end det allerede registrerede forbrug.`);
+    const next = purchaseQuantity(it);
+    const line = it.purchase_line_id
+      ? await tx.db.prepare('SELECT l.*, p.archived FROM purchase_lines l JOIN purchase_lists p ON p.id = l.list_id WHERE l.id = ? AND l.job_id = ?').bind(it.purchase_line_id, job.id).first<import('../env').PurchaseLineRow & { archived: number }>()
+      : null;
+    if (line?.cancelled && (line.ordered > 0 || line.received > 0)) throw new Conflict('Det annullerede indkøb har bestilte eller modtagne varer. Ret indkøbet direkte eller opret en særskilt materialelinje, så historikken bevares.');
+    if (line && !line.cancelled) {
+      if (line.archived) throw new Conflict('Indkøbslisten er arkiveret. Genåbn listen før materialebehovet ændres.');
+      if (normUnit(line.unit) !== normUnit(it.unit) && (line.ordered > 0 || line.received > 0 || it.used_qty > 0)) {
+        throw new Conflict('Enheden kan ikke ændres, når varen er bestilt, modtaget eller brugt. Opret en særskilt materialelinje.');
+      }
+      if (next < Math.max(line.ordered, line.received)) throw new Conflict(`Der er allerede bestilt eller modtaget ${line.ordered / Q} ${line.unit}. Ret bestillingen på indkøbslisten først.`);
+      let changed = false;
+      if (next === 0) {
+        changed = true;
+        tx.add(tx.db.prepare('UPDATE purchase_lines SET qty = CASE WHEN ordered + received = 0 THEN qty ELSE 0 END, cancelled = 1, updated_at = ? WHERE id = ?').bind(tx.now, line.id));
+        tx.add(tx.db.prepare('UPDATE job_items SET purchase_line_id = NULL WHERE id = ?').bind(it.id));
+      } else {
+        const cost = itemCalc(it, it.qty, calcCtx(job, s, tx.now)).unitCost;
+        const committed = line.ordered > 0 || line.received > 0;
+        const retailer = committed ? line.retailer_id : it.eff_retailer_id;
+        const unitChanged = normUnit(line.unit) !== normUnit(it.unit);
+        changed = line.qty !== next || line.name !== it.name || line.unit !== it.unit || line.retailer_id !== retailer || (!committed && line.unit_price !== cost);
+        if (changed) tx.add(tx.db.prepare(`UPDATE purchase_lines SET qty = CASE WHEN ?1 >= MAX(ordered, received) AND (?2 = 0 OR ordered + received = 0) THEN ?1 ELSE 0 END,
+          name = ?3, unit = ?4, retailer_id = CASE WHEN ordered + received = 0 THEN ?5 ELSE retailer_id END,
+          unit_price = CASE WHEN ordered + received = 0 THEN ?6 ELSE unit_price END,
+          ready = CASE WHEN ordered = 0 AND qty <> ?1 THEN 0 ELSE ready END, updated_at = ?7 WHERE id = ?8`)
+          .bind(next, unitChanged ? 1 : 0, it.name, it.unit, retailer, cost, tx.now, line.id));
+      }
+      if (changed) tx.touchList(line.list_id);
+    } else if (next > 0) {
+      if (line?.cancelled && !force) throw new Conflict('Indkøbet er annulleret. Brug Reservér og sæt på indkøbsliste for at oprette et nyt behov.');
+      const listId = await defaultJobList(tx.db, job, tx.now);
+      const cost = itemCalc(it, it.qty, calcCtx(job, s, tx.now)).unitCost;
+      tx.add(
+        tx.db.prepare(`INSERT INTO purchase_lines (list_id, job_id, product_id, sku, name, unit, qty, unit_price, deliver_to, note, retailer_id, created_at, updated_at)
+          VALUES (?, ?, NULL, '', ?, ?, ?, ?, 'arbejdssted', ?, ?, ?, ?)`)
+          .bind(listId, job.id, it.name, it.unit, next, cost, 'Købes til jobbet. Mængden er inkl. hele pakker.', it.eff_retailer_id, tx.now, tx.now),
+        tx.db.prepare(`UPDATE job_items SET purchase_line_id = (SELECT MAX(id) FROM purchase_lines WHERE list_id = ? AND job_id = ? AND product_id IS NULL), updated_at = ? WHERE id = ?`)
+          .bind(listId, job.id, tx.now, it.id),
+      );
+      tx.touchList(listId);
+    }
+  }
+  if (force && !it.planned_at) tx.add(tx.db.prepare('UPDATE job_items SET planned_at = ? WHERE id = ?').bind(tx.now, it.id));
+  tx.jobs.add(job.id);
+}

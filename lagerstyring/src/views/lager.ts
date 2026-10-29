@@ -10,6 +10,11 @@ import { errors, flash, lineTag, meter, pageHead, qtyOrMissing, rowClass, stockT
 import { alert, csrfField, opField, type H } from './layout';
 import { veyroId } from '../lib/produktkatalog';
 
+function priceOrigin(source: string, at: number | null): string {
+  if (!source || !at) return 'Kilde/dato ikke oplyst';
+  return `${source === 'manuel' ? 'Manuelt indtastet' : source} · ${formatDateTime(at)}`;
+}
+
 export type MovementView = MovementRow & { product_name: string | null; product_unit: string | null; sku: string | null; job_number: string | null; job_name: string | null };
 
 export function moveText(m: MovementView): H {
@@ -146,7 +151,7 @@ export function productsPage(d: { products: ProductOverview[]; status: string; q
   const shown = all.filter(
     (p) =>
       (!d.status || p.plan.status === d.status) &&
-      words.every((w) => `${p.sku} ${p.name} ${p.category} ${p.supplier_name ?? ''}`.toLowerCase().includes(w)),
+      words.every((w) => `${p.sku} ${p.name} ${p.description} ${p.category} ${p.supplier_name ?? ''}`.toLowerCase().includes(w)),
   );
   return html`<div class="stack-lg">
   ${pageHead('Lagerportal', 'Varer og lager', html`<a class="btn btn-primary" href="/lager/varer/ny">+ Ny vare</a>`, 'Disponibel beholdning er fysisk beholdning minus reservationer til job.')}
@@ -163,15 +168,17 @@ export function productsPage(d: { products: ProductOverview[]; status: string; q
   </div>
   <div class="card card-flush"><div class="table-wrap"><table class="list stackable dense">
     <thead><tr>
-      <th>Vare</th><th>Enhed</th><th class="num">Fysisk</th><th class="num">Reserveret</th><th class="num">Disponibel</th>
+      <th>Vare</th><th>Enhed</th><th class="num">Indkøbspris</th><th class="num">Salgspris</th><th class="num">Fysisk</th><th class="num">Reserveret</th><th class="num">Disponibel</th>
       <th class="num">Bestilt</th><th class="num">Forbrug/dag</th><th>Leverandør</th><th class="num">Levering</th>
       <th class="num">Sikkerhedslager</th><th class="num">Genbestillingspunkt</th><th>Status</th>
     </tr></thead>
     <tbody>${shown.length
       ? shown.map(
           (p) => html`<tr class="row-link ${rowClass(p.plan.status)}" data-href="/lager/varer/${p.id}">
-        <td class="cell-main"><a class="title" href="/lager/varer/${p.id}">${p.name}</a><span class="sku">${p.sku}</span></td>
+        <td class="cell-main"><a class="title" href="/lager/varer/${p.id}">${p.name}</a><span class="sku">${p.sku}</span>${p.description ? html`<small>${p.description}</small>` : ''}</td>
         <td data-label="Enhed">${p.unit}</td>
+        <td class="num" data-label="Indkøbspris">${formatKr(p.purchase_price)}${p.purchase_price !== null ? html`<small>${priceOrigin(p.purchase_price_source, p.purchase_price_at)}</small>` : ''}</td>
+        <td class="num" data-label="Salgspris">${formatKr(p.sale_price)}${p.sale_price !== null ? html`<small>${priceOrigin(p.sale_price_source, p.sale_price_at)}</small>` : ''}</td>
         <td class="num" data-label="Fysisk">${formatQty(p.stock)}</td>
         <td class="num" data-label="Reserveret">${formatQty(p.reserved)}</td>
         <td class="num" data-label="Disponibel"><strong>${formatQty(p.plan.available)}</strong>${meter(p.plan)}</td>
@@ -180,11 +187,11 @@ export function productsPage(d: { products: ProductOverview[]; status: string; q
         <td data-label="Leverandør">${p.supplier_name ?? html`<span class="miss">Ingen</span>`}</td>
         <td class="num" data-label="Leveringstid">${p.plan.leadDays === null ? html`<span class="miss">Mangler opsætning</span>` : `${p.plan.leadDays} dage`}</td>
         <td class="num" data-label="Sikkerhedslager">${qtyOrMissing(p.plan.safety)}<small>${safetyText(p)}</small></td>
-        <td class="num" data-label="Genbestillingspunkt">${qtyOrMissing(p.plan.rop)}</td>
+        <td class="num" data-label="Genbestillingspunkt">${qtyOrMissing(p.plan.rop)}<small>${p.plan.ropSource === 'manuel' ? 'Manuelt' : p.plan.ropSource === 'beregnet' ? 'Beregnet' : ''}</small></td>
         <td data-label="Status">${stockTag(p.plan.status)}${p.refill_ordered > 0 ? html` <span class="tag tag-ordered">Genbestilling oprettet</span>` : ''}${p.active ? '' : html` <span class="tag tag-off">Inaktiv</span>`}</td>
       </tr>`,
         )
-      : html`<tr><td colspan="12" class="empty">Ingen varer matcher.</td></tr>`}</tbody>
+      : html`<tr><td colspan="14" class="empty">Ingen varer matcher.</td></tr>`}</tbody>
   </table></div></div>
 </div>`;
 }
@@ -192,6 +199,8 @@ export function productsPage(d: { products: ProductOverview[]; status: string; q
 export interface ProductFormValues {
   sku: string;
   name: string;
+  description: string;
+  reorder_point: string;
   unit: string;
   whole_units: boolean;
   category: string;
@@ -216,6 +225,8 @@ export function productValues(p: ProductOverview | null): ProductFormValues {
   return {
     sku: p?.sku ?? '',
     name: p?.name ?? '',
+    description: p?.description ?? '',
+    reorder_point: qtyInput(p?.reorder_point),
     unit: p?.unit ?? 'stk.',
     whole_units: p ? !!p.whole_units : true,
     category: p?.category ?? '',
@@ -247,8 +258,9 @@ function productForm(v: ProductFormValues, d: { csrf: string; suppliers: Supplie
       <div class="field"><label for="sku">Varenummer</label><input id="sku" name="sku" required maxlength="40" value="${v.sku}"></div>
       <div class="field"><label for="name">Varenavn</label><input id="name" name="name" required maxlength="120" value="${v.name}"></div>
     </div>
+    <div class="field"><label for="description">Beskrivelse</label><textarea id="description" name="description" rows="3" maxlength="2000">${v.description}</textarea></div>
     <div class="fields fields-3">
-      <div class="field"><label for="unit">Enhed</label><input id="unit" name="unit" required maxlength="20" value="${v.unit}"><p class="hint">Fx stk., m, L, pk.</p></div>
+      <div class="field"><label for="unit">Enhed</label><input id="unit" name="unit" required maxlength="20" value="${v.unit}"><p class="hint">Fx stk., m, L, pk. Enhed og hele enheder låses, når varen får beholdning eller historik. Pakninger skal omregnes før varemodtagelse.</p></div>
       <div class="field"><label for="category">Kategori</label><input id="category" name="category" maxlength="60" value="${v.category}"></div>
       <div class="field"><label for="supplier_id">Leverandør</label><select id="supplier_id" name="supplier_id">
         <option value="">Ingen</option>
@@ -262,7 +274,8 @@ function productForm(v: ProductFormValues, d: { csrf: string; suppliers: Supplie
   </fieldset>
   <fieldset class="card stack">
     <legend>Genbestilling</legend>
-    <p class="muted small">Genbestillingspunkt = dagligt forbrug × leveringstid + sikkerhedslager. Alt regnes i kalenderdage. Tomme felter vises som "Mangler opsætning".</p>
+    <p class="muted small">Genbestillingspunkt = dagligt forbrug × leveringstid + sikkerhedslager. Alt regnes i kalenderdage. Sikkerhedslager indgår én gang. Angiv et manuelt punkt nedenfor, eller brug beregningen, når forbrug, leveringstid og sikkerhedslager kendes.</p>
+    <div class="field"><label for="reorder_point">Manuelt genbestillingspunkt (${v.unit || 'varens enhed'})</label><input id="reorder_point" class="in-num" name="reorder_point" inputmode="decimal" value="${v.reorder_point}"><p class="hint">Den samlede grænse inklusive sikkerhedslager. Tom = beregnet forslag. Det manuelle punkt virker også uden forbrugshistorik og leveringstid.</p></div>
     <div class="fields fields-3">
       <div class="field"><label for="avg_daily_usage">Gennemsnitligt dagligt forbrug</label><input id="avg_daily_usage" class="in-num" name="avg_daily_usage" inputmode="decimal" value="${v.avg_daily_usage}"><p class="hint">Pr. kalenderdag, i varens enhed.</p></div>
       <div class="field"><label for="lead_time_days">Leveringstid i dage</label><input id="lead_time_days" class="in-num" name="lead_time_days" inputmode="numeric" value="${v.lead_time_days}"><p class="hint">Tom = leverandørens leveringstid.</p></div>
@@ -282,7 +295,7 @@ function productForm(v: ProductFormValues, d: { csrf: string; suppliers: Supplie
   <fieldset class="card stack">
     <legend>Priser</legend>
     <div class="fields fields-2">
-      <div class="field"><label for="purchase_price">Indkøbspris pr. enhed (kr.)</label><input id="purchase_price" class="in-num" name="purchase_price" inputmode="decimal" value="${v.purchase_price}"><p class="hint">Opdateres med den faktiske pris ved varemodtagelse.</p></div>
+      <div class="field"><label for="purchase_price">Indkøbspris pr. enhed (kr.)</label><input id="purchase_price" class="in-num" name="purchase_price" inputmode="decimal" value="${v.purchase_price}"><p class="hint">Manuel kostpris. Faktiske indkøbspriser bevares særskilt på varemodtagelsen og overskriver ikke denne pris.</p></div>
       <div class="field"><label for="sale_price">Salgspris pr. enhed (kr.)</label><input id="sale_price" class="in-num" name="sale_price" inputmode="decimal" value="${v.sale_price}"><p class="hint">Tom = indkøbspris plus jobbets påslag.</p></div>
     </div>
     <p class="muted small">Priser vises kun for ejer og indkøber.</p>
@@ -329,14 +342,16 @@ export function productPage(d: {
   const p = d.p;
   const u = p.unit;
   const plan = p.plan;
-  const formula =
-    plan.rop !== null
+  const formula = plan.ropSource === 'manuel'
+    ? `${formatQty(plan.rop)} ${u} (manuelt, inklusive sikkerhedslager)`
+    : plan.rop !== null
       ? `${formatQty(plan.avgDaily)} × ${plan.leadDays} + ${formatQty(plan.safety)} = ${formatQty(plan.rop)} ${u}`
       : `Mangler opsætning: ${plan.missing.join(', ')}`;
   const kinds: AdjustKind[] = ['modtagelse', 'returvare', 'optaelling', 'svind', 'leverandorretur'];
   return html`<div class="stack-lg">
   ${pageHead('Varer og lager', html`${p.name} <span class="sku" style="font-size:16px">${p.sku}</span>`, html`<a class="btn btn-ghost" href="/lager/varer">← Alle varer</a><form method="post" action="/lager/varer/${p.id}/slet" class="inline" data-confirm="Slet varen? Har den historik eller beholdning, bliver den i stedet gjort inaktiv.">${csrfField(d.csrf)}<button class="btn btn-danger" type="submit">Slet vare</button></form>`)}
   ${flash(d.flashCode)}
+  ${p.description ? html`<p class="muted">${p.description}</p>` : ''}
   ${p.catalog_product_id ? html`<p class="hint" style="margin:0">Knyttet til produktkataloget: <a href="/katalog/${p.catalog_product_id}">${veyroId(p.catalog_product_id)}</a>. Kataloget ændrer aldrig beholdningen.</p>` : ''}
   <div class="layout-side">
     <div class="stack-lg">
@@ -350,10 +365,14 @@ export function productPage(d: {
         <dl class="kv">
           <dt>Sikkerhedslager</dt><dd>${qtyOrMissing(plan.safety, u)} <span class="muted small">(${safetyText(p)})</span></dd>
           <dt>Genbestillingspunkt</dt><dd>${formula}</dd>
+          ${plan.ropSource === 'manuel' ? html`<dt>Beregnet forslag</dt><dd>${plan.suggestedRop !== null ? html`${formatQty(plan.avgDaily)} × ${plan.leadDays} + ${formatQty(plan.safety)} = ${qtyUnit(plan.suggestedRop, u)} (erstatter ikke det manuelle punkt)` : html`Mangler data: ${plan.missing.join(', ')}`}</dd>` : ''}
           <dt>Leveringstid</dt><dd>${plan.leadDays === null ? html`<span class="miss">Mangler opsætning</span>` : `${plan.leadDays} dage${plan.leadFromSupplier ? ' (leverandørens)' : ''}`}</dd>
+          <dt>Indkøbspris pr. ${u}</dt><dd>${formatKr(p.purchase_price)}${p.purchase_price !== null ? html` <small>${priceOrigin(p.purchase_price_source, p.purchase_price_at)}</small>` : ''}</dd>
+          <dt>Salgspris pr. ${u}</dt><dd>${formatKr(p.sale_price)}${p.sale_price !== null ? html` <small>${priceOrigin(p.sale_price_source, p.sale_price_at)}</small>` : ''}</dd>
           <dt>Leverandør</dt><dd>${p.supplier_name ?? '–'}</dd>
           <dt>Bestilt, ikke modtaget</dt><dd>${p.on_order ? html`${qtyUnit(p.on_order, u)}${p.next_date ? `, første forventet ${formatDay(p.next_date)}` : ''}` : '–'}</dd>
         </dl>
+        ${plan.safety !== null && plan.available <= plan.safety ? alert('warn', 'Sikkerhedslageret er nået. Denne advarsel gælder uafhængigt af genbestillingspunktet.') : ''}
         ${LEVEL[plan.status] > 0 && p.refill_ordered > 0 ? alert('warn', 'Der er oprettet en genbestilling, men varerne er ikke modtaget endnu, så advarslen er stadig aktiv.') : ''}
       </div>
       <div class="card stack">

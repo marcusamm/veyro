@@ -85,8 +85,9 @@ function upsertMaterial(tx: Tx, jobId: number, productId: number, set: Partial<R
   );
 }
 
-function requireActiveJob(job: JobRow): void {
+function requireActiveJob(tx: Tx, job: JobRow): void {
   if (job.status !== 'aktiv') throw new Conflict('Jobbet er afsluttet. Genåbn jobbet for at registrere materialer.');
+  tx.guardActiveJob(job.id);
 }
 
 function wholeCheck(p: ProductRow, q: number): void {
@@ -105,7 +106,7 @@ function noStock(p: ProductRow, q: number, available: number): Conflict {
  * fysiske beholdning. Kan kun tage det, der er disponibelt (reservationer til andre job røres ikke).
  */
 export function consumeDirect(tx: Tx, job: JobRow, p: ProductRow, q: number, reason = ''): void {
-  requireActiveJob(job);
+  requireActiveJob(tx, job);
   wholeCheck(p, q);
   const available = p.stock - p.reserved;
   if (q > available) throw noStock(p, q, available);
@@ -120,7 +121,7 @@ export function consumeDirect(tx: Tx, job: JobRow, p: ProductRow, q: number, rea
  * (se reconcile), uden at lageret nogensinde bliver negativt.
  */
 export async function planMaterial(tx: Tx, job: JobRow, p: ProductRow, add: number, reason = ''): Promise<{ reserved: number; short: number }> {
-  requireActiveJob(job);
+  requireActiveJob(tx, job);
   wholeCheck(p, add);
   const m = await getMaterial(tx.db, job.id, p.id);
   const cov = await coverage(tx.db, job.id, p.id);
@@ -143,7 +144,7 @@ export async function setPlanned(tx: Tx, job: JobRow, p: ProductRow, next: numbe
     await planMaterial(tx, job, p, next - m.planned, `Behov ændret fra ${formatQty(m.planned)} til ${formatQty(next)}`);
     return;
   }
-  requireActiveJob(job);
+  requireActiveJob(tx, job);
   wholeCheck(p, next);
   if (next < usedSoFar(m)) throw new Conflict(`Behovet kan ikke være mindre end de ${formatQty(usedSoFar(m))} ${p.unit}, der allerede er brugt på jobbet.`);
   const cov = await coverage(tx.db, job.id, p.id);
@@ -167,7 +168,7 @@ export async function setPlanned(tx: Tx, job: JobRow, p: ProductRow, next: numbe
 
 /** Udlevering af reserverede varer: trækkes fra det fysiske lager, og reservationen fjernes samtidig. */
 export async function issueReserved(tx: Tx, job: JobRow, p: ProductRow, q: number, reason = ''): Promise<void> {
-  requireActiveJob(job);
+  requireActiveJob(tx, job);
   wholeCheck(p, q);
   const m = await getMaterial(tx.db, job.id, p.id);
   if (q > m.reserved) throw new Conflict(`Der er kun ${formatQty(m.reserved)} ${p.unit} reserveret til jobbet.`);
@@ -217,7 +218,7 @@ export async function returnToStock(tx: Tx, job: JobRow, p: ProductRow, q: numbe
 
 /** Forbrug af varer, der er leveret direkte til arbejdsstedet (påvirker ikke hovedlageret). */
 export async function useFromSite(tx: Tx, job: JobRow, p: ProductRow, q: number, reason = ''): Promise<void> {
-  requireActiveJob(job);
+  requireActiveJob(tx, job);
   wholeCheck(p, q);
   const m = await getMaterial(tx.db, job.id, p.id);
   const onSite = m.site_received - m.site_used - m.site_returned;
@@ -248,24 +249,21 @@ export async function siteToStock(tx: Tx, job: JobRow, p: ProductRow, q: number,
 
 /** Afslutter et job: reservationer, der ikke er udleveret, frigives, og automatiske kladder fjernes. */
 export async function closeJob(tx: Tx, job: JobRow, status: 'afsluttet' | 'annulleret'): Promise<void> {
-  const { results } = await tx.db
-    .prepare('SELECT product_id, reserved FROM job_materials WHERE job_id = ? AND reserved > 0')
-    .bind(job.id)
-    .all<{ product_id: number; reserved: number }>();
-  for (const r of results) {
-    tx.add(
-      tx.db.prepare('UPDATE products SET reserved = reserved - ?, updated_at = ? WHERE id = ?').bind(r.reserved, tx.now, r.product_id),
-      tx.db
-        .prepare('UPDATE job_materials SET reserved = 0, planned = issued - returned + site_used, updated_at = ? WHERE job_id = ? AND product_id = ?')
-        .bind(tx.now, job.id, r.product_id),
-    );
-    tx.move({ product_id: r.product_id, job_id: job.id, kind: 'job_afsluttet', qty: r.reserved, reserved_delta: -r.reserved });
-  }
+  // Læs reservationerne inde i batchen. En reservation, der blev oprettet efter
+  // formularens læsning, skal også frigives; senere reservationer afvises af aktiv-job-guard.
   tx.add(
-    tx.db.prepare(`UPDATE job_materials SET planned = issued - returned + site_used, updated_at = ? WHERE job_id = ?`).bind(tx.now, job.id),
+    tx.db.prepare(`INSERT INTO movements (product_id, job_id, kind, qty, stock_delta, reserved_delta, stock_after, reserved_after, reason, actor, actor_name, op, created_at)
+      SELECT m.product_id, m.job_id, 'job_afsluttet', m.reserved, 0, -m.reserved, p.stock, p.reserved - m.reserved,
+        'Reservation frigivet ved afslutning', ?3, ?4, ?5, ?2
+      FROM job_materials m JOIN products p ON p.id = m.product_id WHERE m.job_id = ?1 AND m.reserved > 0`)
+      .bind(job.id, tx.now, tx.actor.email, tx.actor.name, tx.op),
+    tx.db.prepare(`UPDATE products SET reserved = reserved - COALESCE((SELECT reserved FROM job_materials WHERE job_id = ?1 AND product_id = products.id), 0), updated_at = ?2
+      WHERE id IN (SELECT product_id FROM job_materials WHERE job_id = ?1 AND reserved > 0)`).bind(job.id, tx.now),
+    tx.db.prepare('UPDATE job_materials SET reserved = 0, planned = issued - returned + site_used, updated_at = ? WHERE job_id = ?').bind(tx.now, job.id),
     tx.db.prepare('DELETE FROM purchase_lines WHERE job_id = ? AND auto = 1 AND ordered = 0 AND ready = 0 AND cancelled = 0').bind(job.id),
     tx.db.prepare("UPDATE jobs SET status = ?1, stage = ?1, stage_auto = 0, stage_prev = '', updated_at = ?2 WHERE id = ?3").bind(status, tx.now, job.id),
   );
+  tx.trackJobProducts(job.id);
   tx.jobs.add(job.id);
 }
 
@@ -408,7 +406,7 @@ export function materialStatus(mats: Pick<MaterialView, 'waiting'>[]): 'klar' | 
  * resten direkte fra den disponible beholdning. Mere end det kan ikke tages fra lageret.
  */
 export async function registerUse(tx: Tx, job: JobRow, p: ProductRow, q: number, reason = ''): Promise<void> {
-  requireActiveJob(job);
+  requireActiveJob(tx, job);
   wholeCheck(p, q);
   const m = await getMaterial(tx.db, job.id, p.id);
   const fromReserved = Math.min(q, m.reserved);

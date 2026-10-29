@@ -85,12 +85,16 @@ export async function syncStage(db: D1Database, jobId: number, now: number, acto
     prev = '';
   }
   if (stage === job.stage && prev === job.stage_prev && auto === job.stage_auto) return;
-  const stmts = [db.prepare('UPDATE jobs SET stage = ?, stage_prev = ?, stage_auto = ?, updated_at = ? WHERE id = ?').bind(stage, prev, auto, now, jobId)];
+  // A user may close the job or change its stage while the automatic checks
+  // are reading materials. Never overwrite that newer decision with this snapshot.
+  const changed = await db.prepare(`UPDATE jobs SET stage = ?, stage_prev = ?, stage_auto = ?, updated_at = ?
+    WHERE id = ? AND status = 'aktiv' AND stage = ? AND stage_prev = ? AND stage_auto = ? RETURNING id`)
+    .bind(stage, prev, auto, now, jobId, job.stage, job.stage_prev, job.stage_auto).first<{ id: number }>();
+  if (!changed) return;
   if (stage !== job.stage) {
     const why = stage === 'afventer' ? 'der mangler materialer' : job.stage === 'afventer' ? 'materialerne er på plads' : 'der er registreret forbrug eller timer';
-    stmts.push(logStmt(db, jobId, 'status', `Status ændret fra ${STAGE_LABEL[job.stage]} til ${STAGE_LABEL[stage]}, fordi ${why}.`, actor ?? { email: 'system', name: 'Systemet' }, now));
+    await logStmt(db, jobId, 'status', `Status ændret fra ${STAGE_LABEL[job.stage]} til ${STAGE_LABEL[stage]}, fordi ${why}.`, actor ?? { email: 'system', name: 'Systemet' }, now).run();
   }
-  await db.batch(stmts);
 }
 
 export function logStmt(db: D1Database, jobId: number, kind: string, text: string, actor: Actor, now: number): D1PreparedStatement {

@@ -343,14 +343,15 @@ export function receiveLine(tx: Tx, line: PurchaseLineRow, q: number, actualPric
     const reserve = line.job_id ? q : 0;
     tx.add(
       tx.db
-        .prepare('UPDATE products SET stock = stock + ?1, reserved = reserved + ?2, purchase_price = COALESCE(?3, purchase_price), updated_at = ?4 WHERE id = ?5')
-        .bind(q, reserve, actualPrice, tx.now, pid),
+        .prepare(`UPDATE products SET stock = stock + ?1, reserved = reserved + CASE WHEN EXISTS (SELECT 1 FROM jobs WHERE id = ?2 AND status = 'aktiv') THEN ?1 ELSE 0 END, updated_at = ?3 WHERE id = ?4`)
+        .bind(q, line.job_id, tx.now, pid),
     );
     if (line.job_id) {
       tx.add(
         tx.db
           .prepare(
-            `INSERT INTO job_materials (job_id, product_id, planned, reserved, updated_at) VALUES (?1, ?2, ?3, ?3, ?4)
+            `INSERT INTO job_materials (job_id, product_id, planned, reserved, updated_at)
+             SELECT ?1, ?2, ?3, ?3, ?4 FROM jobs WHERE id = ?1 AND status = 'aktiv'
              ON CONFLICT(job_id, product_id) DO UPDATE SET reserved = reserved + ?3, planned = MAX(planned, issued - returned + reserved + ?3 + site_received - site_returned), updated_at = ?4`,
           )
           .bind(line.job_id, pid, q, tx.now),
@@ -364,8 +365,9 @@ export function receiveLine(tx: Tx, line: PurchaseLineRow, q: number, actualPric
       qty: q,
       stock_delta: q,
       reserved_delta: reserve,
+      reserve_if_active: !!line.job_id,
       unit_cost: price,
-      reason: line.job_id ? 'Reserveret til jobbet' : 'Lageropfyldning',
+      reason: line.job_id ? 'Varemodtagelse til job' : 'Lageropfyldning',
     });
   } else if (pid && line.job_id) {
     tx.add(

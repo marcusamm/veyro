@@ -1,5 +1,7 @@
 # Lagerstyring – skabelon
 
+Seneste videreudvikling: [logistik, kontrol og OCR-kontrakt, 29. oktober 2026](../docs/LOGISTIK-2026-10-29.md).
+
 Et internt system til lagerstyring, vareforbrug på job og indkøbsplanlægning for håndværks- og servicevirksomheder. Kunderne bestiller ikke selv; systemet bruges af virksomhedens egne folk. Hver virksomhed får sin egen kopi, database og adresse (fx `lager.kundensdomæne.dk`), og udseendet følger designsystemet fra veyro.dk og varebestillingsdemoen.
 
 Systemet har to portaler med de samme data:
@@ -46,7 +48,7 @@ Teknik: Cloudflare Workers + D1, Hono og Resend til e-mail. Kan lægges på hjem
 ## Sikkerhedslager og genbestillingspunkt
 
 - Sikkerhedslager pr. vare: enten et fast antal eller dagligt forbrug × bufferdage. Det vises, hvilken metode der bruges, og der rundes op for varer i hele enheder.
-- Genbestillingspunkt = dagligt forbrug × leveringstid + sikkerhedslager. Leveringstiden kan sættes på varen eller arves fra leverandøren. Alle tider er kalenderdage.
+- Genbestillingspunkt kan sættes manuelt og bruges da direkte uden at lægge sikkerhedslager til igen. Ellers foreslås dagligt forbrug × leveringstid + sikkerhedslager. Leveringstiden kan sættes på varen eller arves fra leverandøren. Alle tider er kalenderdage.
 - Mangler et tal, vises "Mangler opsætning" i stedet for 0.
 - Genbestillingspunktet siger hvornår, ikke hvor meget. Indkøberen godkender mængden; forslaget fylder op til maksimumbeholdningen, hvis den er sat.
 
@@ -70,7 +72,7 @@ Advarsler vises i lagerportalen og sendes på e-mail til de valgte modtagere. Sa
 
 Indkøbslisterne viser et vejledende estimat ud fra offentlige priser hos byggemarkeder og trælaster (STARK, BAUHAUS, Silvan, XL-BYG, Bygma, Davidsen og jem & fix). Der bruges aldrig kundens egne aftaler, rabatter eller priser bag login.
 
-- **Hvor priserne kommer fra:** en officiel prisfil fra forhandleren (CSV, indlæses eller hentes fra et feed på serveren højst hver 6. time), butikkens offentlige produktsider eller en manuelt indtastet pris med link til produktsiden. Ved undersøgelsen i oktober 2026 blev der ikke fundet en offentlig API eller et offentligt produktfeed hos nogen af forhandlerne. STARK, BAUHAUS, Silvan, Davidsen og jem & fix læser offentlige produktsider (afprøvet; robots.txt og vilkår tillader det) og står som **Aktiv**. XL-BYG (vilkårene kræver en aftale) og Bygma (ingen pris i produktdataene) står som **Kommer senere** og bruger produktlink og manuel pris.
+- **Hvor priserne kommer fra:** importerede prisfiler og manuelt indtastede priser, med kilde og dato. Ingen liveleverandørintegration er automatisk bekræftet fra skabelonen. Den gamle skabelongodkendelse fjernes af migration 0055; virksomhedens egne bekræftelser og importerede filer bevares. Produktsider eller et officielt feed kan først bruges som automatisk kilde efter konkret opsætning og kontrol. Uden en brugbar kilde vises "Pris mangler".
 - **Læsning af produktsider:** på varens side knyttes et link til varen hos hver butik. Prisen læses automatisk kun hos butikker, hvor nogen har tjekket vilkårene og slået "Læser offentlige produktsider" til (hvem og hvornår gemmes). Butikkens robots.txt følges, siderne hentes én ad gangen på serveren højst hver 6. time (og ved "Opdatér priser"), og prisen tages kun fra sidens strukturerede produktdata (schema.org/JSON-LD eller Open Graph) i kroner. Login, CAPTCHA, 401/403/429 og adgangsbegrænsninger omgås aldrig; så vises fejlen ved linket, og der er ingen pris. En side med flere forskellige priser giver heller ingen pris. En butik læses kun, når den står som Aktiv.
 - **Match:** 1) samme EAN/GTIN, 2) producentens varenummer + mærke + variant, 3) navn og mål. Kun 1) og 2) er **Præcist match**; et navnematch er **Alternativ – kræver godkendelse** og erstatter aldrig varen på listen. Forhandlernes egne varenumre sammenlignes aldrig på tværs.
 - **Mængde:** den manglende mængde omregnes til forhandlerens salgsenhed med hele pakker og mindstekøb (12 stk. i pakker á 10 til 100 kr. = 2 pakker, 20 stk., 200 kr.). Tilbud bruges kun, når betingelserne er opfyldt, og de vises.
@@ -110,7 +112,7 @@ Et fælles katalog for begge portaler (Lager → Produktkatalog og Job → Produ
 
 ## Bilag, betalinger, returer og eksport
 
-- **Bilag** (Lager → Bilag og Job → Bilag): upload af kvitteringer, leverandørfakturaer og kreditnotaer (PDF, JPG, PNG, HEIC; flere filer eller kamera). Originalen gemmes uændret i databasen. PDF'er med tekst aflæses af en indbygget PDF-læser; usikre værdier markeres. Fotos og indskannede PDF'er kræver OCR, som ikke er sat op, og registreres manuelt.
+- **Bilag** (Lager → Bilag og Job → Bilag): upload af kvitteringer, leverandørfakturaer og kreditnotaer (PDF, JPG, PNG, HEIC; flere filer eller kamera). Originalen gemmes uændret i databasen. PDF'er med tekst aflæses af en indbygget PDF-læser; usikre værdier markeres. Fotos og indskannede PDF'er bruger kun OCR, hvis virksomhedens særskilte `RECEIPT_OCR`-forbindelse er sat op. Ellers registreres de manuelt. OCR-forslag skal bekræftes mod originalen før godkendelse eller lagerhandling.
 - **Digital visning af originalbilag** vises ved siden af originalen og kan hentes som PDF. Interne oplysninger (betaling, fordeling, godkendelse) står for sig.
 - **Fordeling** på job, lageropfyldning eller drift. En ny varemodtagelse eller et direkte køb til et job registreres kun ved et bevidst tryk og kun én gang; et eksisterende køb knyttes uden at tælle igen. Upload og godkendelse ændrer aldrig lageret, salgspriser, overslag eller udstedte fakturaer.
 - **Dubletter** markeres (samme fil eller samme leverandør, nummer og beløb) og slås aldrig sammen. **Udlæg** fra medarbejdere følges til de er refunderet.

@@ -115,7 +115,7 @@ export async function jobSources(db: D1Database, job: JobRow, items: ItemView[],
     let price: number | null;
     let note = '';
     if (it) ({ price, note } = itemPrice(it));
-    else price = c.sale_price ?? (c.unit_cost > 0 ? Math.round(c.unit_cost * (1 + markup / 100)) : null);
+    else price = c.sale_price ?? (c.unit_cost !== null ? Math.round(c.unit_cost * (1 + markup / 100)) : null);
     if (price === null && !note) note = 'Pris mangler.';
     sources.push({
       key: c.source === 'lager' ? `lager:${c.product_id}` : c.source === 'arbejdssted' ? `sted:${c.product_id}` : `indkob:${c.purchase_line_id}`,
@@ -124,7 +124,7 @@ export async function jobSources(db: D1Database, job: JobRow, items: ItemView[],
       qty: c.qty,
       unit: c.unit,
       unit_price: price,
-      unit_cost: c.unit_cost || null,
+      unit_cost: c.unit_cost ?? null,
       extra: false,
       note,
     });

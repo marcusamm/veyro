@@ -152,6 +152,7 @@ export function settingsPage(d: {
     <h2>Brugere og e-mail-modtagere</h2>
     <p class="muted small">Administratorer kan skifte logo og gøre andre til administratorer. En invitation er en e-mail med et link til login-siden, hvor brugeren logger ind med sin e-mailadresse.</p>
     <p class="muted small">Ejer og indkøber kan se priser og bruge lagerportalen. Medarbejdere bruger forbrugsportalen og ser ingen priser, heller ikke i e-mails.</p>
+    <p class="hint">Lageradvarsler sendes kun til aktive ejere og indkøbere, der er valgt som modtagere.</p>
     <div class="table-wrap"><table class="list stackable dense">
       <thead><tr><th>Navn</th><th>E-mail</th><th>Rolle</th><th>E-mails</th><th>Aktiv</th><th></th></tr></thead>
       <tbody>${d.users.map(

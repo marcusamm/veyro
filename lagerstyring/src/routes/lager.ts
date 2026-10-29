@@ -82,6 +82,8 @@ lager.get('/varer', async (c) => {
 interface ProductInput {
   sku: string;
   name: string;
+  description: string;
+  reorder_point: number | null;
   unit: string;
   whole_units: number;
   category: string;
@@ -107,6 +109,8 @@ function formValues(body: Record<string, unknown>): ProductFormValues {
   return {
     sku: s('sku', 40),
     name: s('name'),
+    description: str(body['description'], 2000, { multiline: true }),
+    reorder_point: s('reorder_point', 20),
     unit: s('unit', 20),
     whole_units: body['whole_units'] === '1',
     category: s('category', 60),
@@ -146,6 +150,8 @@ function parseProduct(v: ProductFormValues, isNew: boolean): { input?: ProductIn
   const input: ProductInput = {
     sku: v.sku,
     name: v.name,
+    description: v.description,
+    reorder_point: opt(v.reorder_point, parseQty, 'Genbestillingspunkt'),
     unit: v.unit,
     whole_units: v.whole_units ? 1 : 0,
     category: v.category,
@@ -191,13 +197,15 @@ lager.post('/varer/ny', async (c) => {
   try {
     const row = await db
       .prepare(
-        `INSERT INTO products (sku, name, unit, whole_units, category, supplier_id, lead_time_days, avg_daily_usage, safety_method, safety_qty, buffer_days,
-           max_stock, purchase_price, sale_price, ean, mpn, brand, variant, stock, active, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?) RETURNING id`,
+        `INSERT INTO products (sku, name, description, reorder_point, unit, whole_units, category, supplier_id, lead_time_days, avg_daily_usage, safety_method, safety_qty, buffer_days,
+           max_stock, purchase_price, sale_price, ean, mpn, brand, variant, stock, active, created_at, updated_at, purchase_price_source, sale_price_source, purchase_price_at, sale_price_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?) RETURNING id`,
       )
       .bind(
         input.sku,
         input.name,
+        input.description,
+        input.reorder_point,
         input.unit,
         input.whole_units,
         input.category,
@@ -217,6 +225,10 @@ lager.post('/varer/ny', async (c) => {
         input.initial_stock,
         tx.now,
         tx.now,
+        input.purchase_price === null ? '' : 'manuel',
+        input.sale_price === null ? '' : 'manuel',
+        input.purchase_price === null ? null : tx.now,
+        input.sale_price === null ? null : tx.now,
       )
       .first<{ id: number }>();
     tx.move({ product_id: row!.id, kind: 'oprettet', qty: input.initial_stock, stock_delta: input.initial_stock, unit_cost: input.purchase_price, reason: 'Startbeholdning' });
@@ -285,13 +297,23 @@ lager.post('/varer/:id{[0-9]+}', async (c) => {
   if (!input) return showProduct(c, id, { values: v, errs, status: 400 });
   try {
     await c.env.DB.prepare(
-      `UPDATE products SET sku = ?, name = ?, unit = ?, whole_units = ?, category = ?, supplier_id = ?, lead_time_days = ?, avg_daily_usage = ?,
+      `UPDATE products SET
+         purchase_price_source = CASE WHEN ?1 IS NULL THEN '' WHEN purchase_price IS NOT ?1 THEN 'manuel' ELSE purchase_price_source END,
+         purchase_price_at = CASE WHEN ?1 IS NULL THEN NULL WHEN purchase_price IS NOT ?1 THEN ?2 ELSE purchase_price_at END,
+         sale_price_source = CASE WHEN ?3 IS NULL THEN '' WHEN sale_price IS NOT ?3 THEN 'manuel' ELSE sale_price_source END,
+         sale_price_at = CASE WHEN ?3 IS NULL THEN NULL WHEN sale_price IS NOT ?3 THEN ?2 ELSE sale_price_at END,
+         sku = ?, name = ?, description = ?, reorder_point = ?, unit = ?, whole_units = ?, category = ?, supplier_id = ?, lead_time_days = ?, avg_daily_usage = ?,
          safety_method = ?, safety_qty = ?, buffer_days = ?, max_stock = ?, purchase_price = ?, sale_price = ?,
          ean = ?, mpn = ?, brand = ?, variant = ?, active = ?, updated_at = ? WHERE id = ?`,
     )
       .bind(
+        input.purchase_price,
+        Math.floor(Date.now() / 1000),
+        input.sale_price,
         input.sku,
         input.name,
+        input.description,
+        input.reorder_point,
         input.unit,
         input.whole_units,
         input.category,
@@ -314,6 +336,7 @@ lager.post('/varer/:id{[0-9]+}', async (c) => {
       )
       .run();
   } catch (err) {
+    if (String((err as Error).message).includes('LAGER_UNIT_LOCKED')) return showProduct(c, id, { values: v, errs: ['Enhed og hele enheder kan ikke ændres, når varen har beholdning eller historik. Opret en ny vare for en anden enhed eller pakningsstørrelse.'], status: 400 });
     if (String((err as Error).message).includes('UNIQUE')) return showProduct(c, id, { values: v, errs: [`Varenummeret ${input.sku} findes allerede.`], status: 400 });
     throw err;
   }

@@ -7,7 +7,7 @@
 
 import type { Env, PurchaseListRow, User } from '../env';
 import { formatDateTime, formatKr, formatQty, lineAmount, todayDk } from './format';
-import { nowSec } from './crypto';
+import { nowSec, randomToken } from './crypto';
 import { deliver, button, escapeHtml, table, wrapHtml, type DeliveryStatus } from './email';
 import { listEstimate, type EstimatedLine } from './estimates';
 import { PRODUCT_SQL, type ProductWithSupplier } from './materials';
@@ -21,7 +21,7 @@ export function appUrl(env: Env): string {
 }
 
 export async function recipients(db: D1Database, flag: 'alert_mail' | 'purchase_mail'): Promise<User[]> {
-  const { results } = await db.prepare(`SELECT * FROM users WHERE active = 1 AND ${flag} = 1 ORDER BY name`).all<User>();
+  const { results } = await db.prepare(`SELECT * FROM users WHERE active = 1 AND ${flag} = 1 ${flag === 'alert_mail' ? "AND role IN ('ejer', 'indkober')" : ''} ORDER BY name`).all<User>();
   return results;
 }
 
@@ -85,45 +85,61 @@ export function alertEmail(alerts: AlertInfo[], s: Settings, link: string): { su
  * sendes på e-mail, hvis det er slået til), og løste advarsler lukkes.
  */
 export async function evaluateProducts(env: Env, s: Settings, ids: Iterable<number>, actor = 'system'): Promise<AlertInfo[]> {
-  const list = [...new Set(ids)];
-  if (!list.length) return [];
-  const { results } = await env.DB.prepare(`${PRODUCT_SQL} WHERE p.id IN (${list.map(() => '?').join(',')})`)
-    .bind(...list)
-    .all<ProductWithSupplier>();
+  let pending = [...new Set(ids)];
+  if (!pending.length) return [];
   const now = nowSec();
-  const stmts: D1PreparedStatement[] = [];
   const fresh: AlertInfo[] = [];
-  for (const p of results) {
-    const plan = stockPlan(p);
-    const level = LEVEL[plan.status];
-    if (level > p.alert_level) {
+  const claimed: string[] = [];
+  // A stock change can arrive between the read and the claim. Retry the losing
+  // snapshot with fresh values; only the transaction that owns a claim may mail.
+  for (let attempt = 0; attempt < 3 && pending.length; attempt++) {
+    const { results } = await env.DB.prepare(`${PRODUCT_SQL} WHERE p.id IN (${pending.map(() => '?').join(',')})`)
+      .bind(...pending).all<ProductWithSupplier>();
+    pending = [];
+    for (const p of results) {
+      const plan = stockPlan(p);
+      const level = LEVEL[plan.status];
+      if (level === p.alert_level) continue;
+      const token = randomToken(24);
       const msg = `${STATUS_LABEL[plan.status]}: disponibel ${formatQty(plan.available)} ${p.unit}, genbestillingspunkt ${formatQty(plan.rop)} ${p.unit}`;
-      stmts.push(
-        env.DB.prepare("UPDATE notices SET open = 0, resolved_at = ? WHERE kind = 'lager' AND open = 1 AND product_id = ?").bind(now, p.id),
-        env.DB.prepare("INSERT INTO notices (kind, level, product_id, message, created_at) VALUES ('lager', ?, ?, ?, ?)").bind(level, p.id, msg, now),
-        env.DB.prepare('UPDATE products SET alert_level = ? WHERE id = ?').bind(level, p.id),
-      );
-      fresh.push({ product: p, plan, open: await openPurchasesFor(env.DB, p.id) });
-    } else if (level < p.alert_level) {
-      stmts.push(env.DB.prepare('UPDATE products SET alert_level = ? WHERE id = ?').bind(level, p.id));
-      if (level === 0) {
-        stmts.push(env.DB.prepare("UPDATE notices SET open = 0, resolved_at = ? WHERE kind = 'lager' AND open = 1 AND product_id = ?").bind(now, p.id));
+      const stmts = [env.DB.prepare(`UPDATE products SET alert_level = ?, alert_claim = ?
+        WHERE id = ? AND alert_level = ? AND stock = ? AND reserved = ?
+          AND reorder_point IS ? AND safety_method IS ? AND safety_qty IS ? AND buffer_days IS ?
+          AND avg_daily_usage IS ? AND lead_time_days IS ?
+          AND (SELECT lead_time_days FROM suppliers WHERE id = products.supplier_id) IS ?`)
+        .bind(level, token, p.id, p.alert_level, p.stock, p.reserved, p.reorder_point, p.safety_method,
+          p.safety_qty, p.buffer_days, p.avg_daily_usage, p.lead_time_days, p.supplier_lead_time)];
+      const owns = 'EXISTS (SELECT 1 FROM products WHERE id = ? AND alert_claim = ?)';
+      if (level > p.alert_level) {
+        stmts.push(
+          env.DB.prepare(`UPDATE notices SET open = 0, resolved_at = ? WHERE kind = 'lager' AND open = 1 AND product_id = ? AND ${owns}`)
+            .bind(now, p.id, p.id, token),
+          env.DB.prepare(`INSERT INTO notices (kind, level, product_id, message, transition_key, created_at)
+            SELECT 'lager', ?, ?, ?, ?, ? WHERE ${owns}`).bind(level, p.id, msg, token, now, p.id, token),
+        );
+      } else if (level === 0) {
+        stmts.push(env.DB.prepare(`UPDATE notices SET open = 0, resolved_at = ? WHERE kind = 'lager' AND open = 1 AND product_id = ? AND ${owns}`)
+          .bind(now, p.id, p.id, token));
       } else {
-        stmts.push(env.DB.prepare("UPDATE notices SET level = ? WHERE kind = 'lager' AND open = 1 AND product_id = ?").bind(level, p.id));
+        stmts.push(env.DB.prepare(`UPDATE notices SET level = ?, message = ? WHERE kind = 'lager' AND open = 1 AND product_id = ? AND ${owns}`)
+          .bind(level, msg, p.id, p.id, token));
+      }
+      const outcome = await env.DB.batch(stmts);
+      if (outcome[0]!.meta.changes !== 1) { pending.push(p.id); continue; }
+      if (level > p.alert_level) {
+        fresh.push({ product: p, plan, open: await openPurchasesFor(env.DB, p.id) });
+        claimed.push(token);
       }
     }
   }
-  if (stmts.length) await env.DB.batch(stmts);
   if (fresh.length && s.alert_mail_enabled) {
     const to = await recipients(env.DB, 'alert_mail');
     const msg = alertEmail(fresh, s, `${appUrl(env)}/lager`);
     for (const u of to) {
       const { id } = await deliver(env, s, { to: u.email, ...msg }, { kind: 'lageradvarsel', actor });
-      await env.DB.prepare(
-        `UPDATE notices SET mail_id = ? WHERE kind = 'lager' AND open = 1 AND mail_id IS NULL AND product_id IN (${fresh.map(() => '?').join(',')})`,
-      )
-        .bind(id, ...fresh.map((f) => f.product.id))
-        .run();
+      // A later transition may already be open. Associate only our own notices.
+      await env.DB.prepare(`UPDATE notices SET mail_id = ? WHERE mail_id IS NULL AND transition_key IN (${claimed.map(() => '?').join(',')})`)
+        .bind(id, ...claimed).run();
     }
   }
   return fresh;
