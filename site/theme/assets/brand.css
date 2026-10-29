@@ -1,0 +1,19 @@
+/* The original favicon asset is the single source for Veyro's brand symbol. */
+.veyro-brand-mark { display: block; width: 38px; height: 38px; aspect-ratio: 1; object-fit: contain; flex: none; }
+.site-header .logo .veyro-brand-mark { width: 38px; height: 38px; }
+.site-header .logo__wordmark { display: none; }
+.logo--footer { align-items: center; gap: .65rem; }
+.logo--footer .veyro-brand-mark { width: 36px; height: 36px; }
+.logo__wordmark { display: inline-flex; align-items: baseline; gap: 0; }
+.logo .logo__wordmark .logo__dot { margin-left: 0; }
+.studio-introduction__identity .veyro-brand-mark { width: 78px; height: 78px; }
+.plan-art__picture .veyro-brand-mark { width: 70px; height: 70px; }
+
+/* Portal, login and admin share the same asset and keep their existing wordmark. */
+.logo.veyro-brand-lockup { display: inline-flex; align-items: center; gap: .6rem; flex: none; }
+.logo.veyro-brand-lockup .veyro-brand-wordmark { color: inherit; }
+.logo.veyro-brand-lockup .veyro-brand-dot { color: var(--accent); }
+
+@media (max-width: 599px) {
+  .studio-introduction__identity .veyro-brand-mark { order: -1; width: 56px; height: 56px; }
+}

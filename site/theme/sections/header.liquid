@@ -12,6 +12,7 @@
 <header class="site-header{% if section.settings.sticky %} site-header--sticky{% endif %}" data-header>
   <div class="container site-header__inner">
     <a class="logo" href="{{ routes.root_url }}" aria-label="{{ company | escape }} – {{ 'general.home' | t }}">
+      {%- render 'brand-mark', class: 'logo__mark' -%}
       {%- if settings.logo != blank -%}
         {%- assign logo_height = settings.logo_width | divided_by: settings.logo.aspect_ratio | round -%}
         {{
@@ -20,7 +21,7 @@
           | image_tag: class: 'logo__image', width: settings.logo_width, height: logo_height, alt: company, loading: 'eager'
         }}
       {%- else -%}
-        <svg class="logo__mark" viewBox="0 0 32 28" fill="none" aria-hidden="true"><path d="M4 4 16 24 28 4" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="logo__text">{{ company | escape }}</span><span class="logo__dot" aria-hidden="true">.</span>
+        <span class="logo__wordmark"><span class="logo__text">{{ company | escape }}</span><span class="logo__dot" aria-hidden="true">.</span></span>
       {%- endif -%}
     </a>
 

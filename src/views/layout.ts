@@ -1,4 +1,5 @@
 import { html } from 'hono/html';
+import { brandMark } from './brand-mark';
 
 export type H = ReturnType<typeof html>;
 
@@ -76,7 +77,7 @@ ${opts.refresh ? html`<meta http-equiv="refresh" content="${String(opts.refresh)
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/icon.png">
 <link rel="preload" href="/static/inter-tight.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/static/app.css?v=7">
+<link rel="stylesheet" href="/static/app.css?v=8">
 <script src="/static/app.js?v=2" defer></script>
 ${opts.kasse ? html`<link rel="stylesheet" href="/static/kasse.css?v=1">
 <script src="/static/kasse.js?v=1" defer></script>` : ''}
@@ -85,7 +86,7 @@ ${opts.kasse ? html`<link rel="stylesheet" href="/static/kasse.css?v=1">
 <a class="skip" href="#indhold">Spring til indhold</a>
 <header class="site-header">
   <div class="wrap">
-    <a class="logo" href="${loggedIn ? '/konto' : '/login'}" aria-label="Veyro kundepanel – forside">Veyro<span>.</span></a>
+    <a class="logo veyro-brand-lockup" href="${loggedIn ? '/konto' : '/login'}" aria-label="Veyro kundepanel – forside">${brandMark()}<span class="veyro-brand-wordmark">Veyro<span class="veyro-brand-dot">.</span></span></a>
     <div class="header-right">
       ${loggedIn
         ? html`<span class="who" title="${opts.email}">${opts.email}</span>

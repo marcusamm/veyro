@@ -17,7 +17,8 @@
     <div class="site-footer__grid">
       <div class="site-footer__brand">
         <a class="logo logo--footer" href="{{ routes.root_url }}" aria-label="{{ company | escape }} – {{ 'general.home' | t }}">
-          <span class="logo__text">{{ company | escape }}</span><span class="logo__dot" aria-hidden="true">.</span>
+          {%- render 'brand-mark' -%}
+          <span class="logo__wordmark"><span class="logo__text">{{ company | escape }}</span><span class="logo__dot" aria-hidden="true">.</span></span>
         </a>
         {%- if section.settings.text != blank -%}
           <p class="site-footer__tagline">{{ section.settings.text | escape }}</p>

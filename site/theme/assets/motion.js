@@ -83,7 +83,7 @@
       const graphic = document.createElement('div');
       graphic.className = 'process-orbit';
       graphic.setAttribute('aria-hidden', 'true');
-      graphic.innerHTML = '<svg viewBox="0 0 240 240" fill="none"><circle class="process-orbit__track" cx="120" cy="120" r="96"/><circle class="process-orbit__fill" cx="120" cy="120" r="96"/><path d="m81 92 39 63 39-63"/><circle class="process-orbit__dot" cx="120" cy="24" r="5"/></svg><span class="process-orbit__count">01</span>';
+      graphic.innerHTML = '<svg viewBox="0 0 240 240" fill="none"><circle class="process-orbit__track" cx="120" cy="120" r="96"/><circle class="process-orbit__fill" cx="120" cy="120" r="96"/><image href="/assets/favicon.svg" x="82" y="76" width="76" height="76"/><circle class="process-orbit__dot" cx="120" cy="24" r="5"/></svg><span class="process-orbit__count">01</span>';
       head.append(graphic);
     });
     function measure() {
@@ -97,7 +97,7 @@
       const y = scrollY;
       const documentProgress = clamp(y / Math.max(1, document.documentElement.scrollHeight - innerHeight));
       if (progress) progress.style.transform = `scaleX(${documentProgress})`;
-      const heroProgress = hero ? clamp(y / Math.max(1, hero.offsetHeight)) : 0;
+      const heroProgress = hero ? clamp(-hero.getBoundingClientRect().top / Math.max(1, hero.offsetHeight)) : 0;
       if (hero && enabled()) {
         hero.style.setProperty('--hero-scroll', String(heroProgress));
         hero.style.setProperty('--wordmark-shift', `${heroProgress * 65}px`);
@@ -125,20 +125,24 @@
     document.fonts?.ready.then(measure);
     if ('ResizeObserver' in window) new ResizeObserver(() => { if (!scrollFrame) scrollFrame = requestAnimationFrame(measure); }).observe(document.querySelector('main') || body);
 
-    // One original 3D point sculpture. Visible only in the hero, paused off-screen.
+    // Original tubular V coordinates; only presentation and temporary offsets change.
     function createScene(canvas) {
       const ctx = canvas.getContext('2d', { alpha: true });
       if (!ctx) return null;
       const host = canvas.parentElement;
+      const lowPower = (navigator.hardwareConcurrency || 8) <= 2 || (navigator.deviceMemory || 8) <= 2;
       let width = 0, height = 0, dpr = 1;
       let visible = true, raf = 0, last = 0, elapsed = 0, totalFrames = 0;
-      let scroll = 0, targetX = 0, targetY = 0, pointerX = 0, pointerY = 0;
-      let points = [], projected = [];
+      let scroll = 0, pointerX = 0, pointerY = 0, targetX = 0, targetY = 0;
+      let pointerU = .5, pointerV = .5, targetU = .5, targetV = .5, strength = 0, targetStrength = 0;
+      let entranceStart = null, formed = false, rippleStart = -10, rippleU = .5, rippleV = .5;
+      let points = [], projected = [], readingAreas = [];
+      let clientX = null, clientY = null;
       canvas.dataset.frames = '0';
       function buildPoints() {
         points = [];
-        const rings = width < 500 ? 45 : 68;
-        const sides = width < 500 ? 19 : 27;
+        const rings = lowPower ? (width < 500 ? 36 : 54) : (width < 500 ? 45 : 68);
+        const sides = lowPower ? (width < 500 ? 17 : 23) : (width < 500 ? 19 : 27);
         const norm = Math.hypot(1.2, 2.15);
         for (const arm of [-1, 1]) {
           for (let ring = 0; ring < rings; ring++) {
@@ -147,58 +151,114 @@
               const angle = side / sides * Math.PI * 2;
               const co = Math.cos(angle), si = Math.sin(angle);
               const nx = 2.15 / norm, ny = -arm * 1.2 / norm;
-              const orbit = u * Math.PI * 2 + (arm === 1 ? Math.PI : 0);
               points.push({
                 x: arm * 1.2 * u + nx * co * .205,
                 y: -1.05 + 2.15 * u + ny * co * .205,
                 z: si * .205,
                 nx: nx * co, ny: ny * co, nz: si,
-                ox: (1.05 + .26 * co) * Math.cos(orbit),
-                oy: (1.05 + .26 * co) * Math.sin(orbit), oz: si * .26,
+                // Deterministic assembly offsets never mutate the source geometry.
+                ex: arm * (.09 + .1 * u) + Math.sin(angle * 3 + u * 17) * .045,
+                ey: Math.cos(angle * 2 + u * 13) * .12,
+                ez: Math.sin(angle + u * 11) * .15,
                 u, angle,
               });
             }
           }
         }
         projected = points.map(() => ({}));
+        canvas.dataset.particles = String(points.length);
       }
       function resize() {
         const rect = host.getBoundingClientRect();
         if (!rect.width || !rect.height) return;
-        width = rect.width; height = rect.height;
-        dpr = Math.min(devicePixelRatio || 1, 1.7);
+        // Cache text bounds outside the render loop. Silver recedes under copy,
+        // especially where the unchanged mobile composition overlaps the sculpture.
+        const areas = [...(hero?.querySelectorAll('.studio-message > p, .studio-message h1, .studio-specialties, .studio-action > *') || [])].map(el => {
+          const r = el.getBoundingClientRect();
+          return { left: r.left - rect.left, right: r.right - rect.left, top: r.top - rect.top, bottom: r.bottom - rect.top };
+        });
+        const readingChanged = JSON.stringify(areas) !== JSON.stringify(readingAreas);
+        readingAreas = areas;
+        const resolution = Math.min(devicePixelRatio || 1, lowPower ? 1.2 : rect.width < 500 ? 1.5 : 1.7);
+        if (width === rect.width && height === rect.height && dpr === resolution) {
+          if (readingChanged && !enabled()) draw(0);
+          return;
+        }
+        width = rect.width; height = rect.height; dpr = resolution;
         canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr);
         canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         buildPoints();
-        draw(0);
+        if (entranceStart === null) entranceStart = performance.now();
+        if (!enabled() || (hero && hero.getBoundingClientRect().top < -80)) formed = true;
+        draw(elapsed);
       }
       function draw(t) {
-        ctx.clearRect(0, 0, width, height);
-        const morph = clamp((scroll - .12) / .65);
-        const m = morph * morph * (3 - 2 * morph);
-        const ay = Math.sin(t * .29) * .45 + .18 + pointerX * .35 + m * 1.5;
-        const ax = -.1 + Math.sin(t * .23) * .13 - pointerY * .2;
-        const az = -.16 + Math.sin(t * .17) * .09 + m * .8;
+        if (!width || !height) return;
+        const moving = enabled();
+        const entry = formed || !moving ? 1 : clamp((performance.now() - entranceStart) / 1850);
+        if (entry === 1) formed = true;
+        canvas.dataset.formation = formed ? 'formed' : 'assembling';
+        const settle = 1 - Math.pow(1 - entry, 3);
+        const s = moving ? scroll : 0;
+        const idle = moving ? t : 0;
+        const ay = .18 + Math.sin(idle * .22) * .16 + pointerX * .22 + s * .32 + (1 - settle) * .16;
+        const ax = -.1 + Math.sin(idle * .18) * .045 - pointerY * .12 - s * .09;
+        const az = -.16 + Math.sin(idle * .15) * .025 + s * .055 - (1 - settle) * .07;
         const cy = Math.cos(ay), sy = Math.sin(ay), cx = Math.cos(ax), sx = Math.sin(ax), cz = Math.cos(az), sz = Math.sin(az);
-        const scale = Math.min(width / 3.6, height / 3.1);
-        const shimmer = t * .8;
+        const scale = Math.min(width / 3.6, height / 3.1) * (1.025 - s * .045);
+        const camera = 4.6 - s * .22;
+        const localRadius = Math.min(width * .2, 145);
+        const pointerScreenX = pointerU * width, pointerScreenY = pointerV * height;
+        const rippleAge = moving ? t - rippleStart : 10;
+        const rippleRadius = rippleAge * Math.max(width, height) * .75;
+        const idleSweep = moving ? (t % 9) / 2.4 - .35 : .6;
+        ctx.clearRect(0, 0, width, height);
         points.forEach((p, i) => {
-          const wave = Math.sin(p.u * 8 - t * .7) * .012;
-          const x = lerp(p.x, p.ox, m), y = lerp(p.y, p.oy, m) + wave, z = lerp(p.z, p.oz, m);
+          const assembled = formed ? 1 : clamp((entry - p.u * .11) / .89);
+          const offset = Math.pow(1 - assembled, 3);
+          const wave = moving ? Math.sin(p.u * 8 - t * .65) * .004 : 0;
+          const x = p.x + p.ex * offset + p.nx * wave;
+          const y = p.y + p.ey * offset + p.ny * wave;
+          const z = p.z + p.ez * offset + p.nz * wave;
           const rx = x * cy + z * sy, rz = -x * sy + z * cy;
           const ry = y * cx - rz * sx, depth = y * sx + rz * cx;
           const px = rx * cz - ry * sz, py = rx * sz + ry * cz;
-          const perspective = 4.6 / (4.6 - depth);
-          const normalZ = p.nx * -sy + p.nz * cy;
-          const spec = Math.pow(Math.max(0, Math.cos(p.angle + ay + .8)), 7);
-          const sweep = Math.pow(Math.max(0, Math.sin(p.u * 4.5 - shimmer)), 12) * .3;
-          const brightness = clamp(.2 + normalZ * .3 + spec * .6 + sweep, .1, 1);
-          Object.assign(projected[i], { x: width * .49 + px * scale * perspective, y: height * .49 - py * scale * perspective, depth, brightness, size: (width < 500 ? .9 : 1.05) * perspective + spec * .45 });
+          const perspective = camera / (camera - depth);
+          let screenX = width * .49 + px * scale * perspective - s * width * .018;
+          let screenY = height * .49 - py * scale * perspective - s * 10;
+          const dx = screenX - pointerScreenX, dy = screenY - pointerScreenY;
+          const distance = strength > .001 ? Math.hypot(dx, dy) : localRadius;
+          const near = strength > .001 ? Math.pow(clamp(1 - distance / localRadius), 2) * strength : 0;
+          // Five CSS pixels at most: the local response cannot break the silhouette.
+          screenX += dx / Math.max(distance, 1) * near * 5;
+          screenY += dy / Math.max(distance, 1) * near * 5;
+          const rippleActive = rippleAge >= 0 && rippleAge < 1.25;
+          const rippleDistance = rippleActive ? Math.hypot(screenX - rippleU * width, screenY - rippleV * height) : 0;
+          const ripple = rippleActive ? Math.exp(-Math.pow((rippleDistance - rippleRadius) / 40, 2)) * (1 - rippleAge / 1.25) : 0;
+          screenX += p.nx * ripple * 2;
+          screenY -= p.ny * ripple * 2;
+          // Rotate the surface normal with the same camera as the point.
+          const nrx = p.nx * cy + p.nz * sy, nrz = -p.nx * sy + p.nz * cy;
+          const nry = p.ny * cx - nrz * sx, normalZ = p.ny * sx + nrz * cx;
+          const normalX = nrx * cz - nry * sz, normalY = nrx * sz + nry * cz;
+          const diffuse = Math.max(0, normalX * -.32 + normalY * .38 + normalZ * .86);
+          const spec = Math.pow(Math.max(0, normalX * -.2 + normalY * .2 + normalZ * .96), 9);
+          const openingSweep = !formed ? Math.exp(-Math.pow((p.u - (entry * 1.7 - .35)) / .13, 2)) * .42 : 0;
+          const sweep = Math.exp(-Math.pow((p.u - idleSweep - s * .35) / .095, 2)) * .2;
+          const depthLight = clamp((depth + .7) / 1.4);
+          let legibility = 1;
+          for (const area of readingAreas) {
+            const gapX = Math.max(area.left - screenX, 0, screenX - area.right);
+            const gapY = Math.max(area.top - screenY, 0, screenY - area.bottom);
+            if (gapX < 26 && gapY < 26) legibility = Math.min(legibility, .34 + .66 * clamp(Math.hypot(gapX, gapY) / 26));
+          }
+          const brightness = legibility * clamp(.21 + diffuse * .38 + spec * .29 + depthLight * .1 + sweep + openingSweep + near * .22 + ripple * .15, .17, .96);
+          Object.assign(projected[i], { x: screenX, y: screenY, depth, brightness, size: (width < 500 ? .88 : 1.02) * perspective + diffuse * .19 + spec * .25 + near * .14 });
         });
         projected.sort((a, b) => a.depth - b.depth);
         for (const p of projected) {
-          ctx.fillStyle = `rgba(244,244,237,${p.brightness.toFixed(2)})`;
+          ctx.fillStyle = `rgba(229,234,239,${p.brightness.toFixed(2)})`;
           ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
         }
         host.classList.add('has-canvas');
@@ -207,14 +267,16 @@
         raf = 0;
         if (!visible || document.hidden || !enabled()) {
           canvas.dataset.paused = 'true';
-          // Some browsers update matches before delivering the media-query event.
           if (!enabled() && body.classList.contains('studio-motion-ready')) syncMotion();
           return;
         }
-        if (now - last >= 1000 / 30) {
-          elapsed += Math.min(now - (last || now), 60) / 1000;
-          last = now;
-          pointerX = lerp(pointerX, targetX, .065); pointerY = lerp(pointerY, targetY, .065);
+        if (!last || now - last >= 1000 / 30) {
+          const dt = last ? Math.min((now - last) / 1000, .1) : 1 / 30;
+          elapsed += dt; last = now;
+          const follow = 1 - Math.exp(-dt * 6);
+          pointerX = lerp(pointerX, targetX, follow); pointerY = lerp(pointerY, targetY, follow);
+          pointerU = lerp(pointerU, targetU, follow); pointerV = lerp(pointerV, targetV, follow);
+          strength = lerp(strength, targetStrength, follow);
           draw(elapsed);
           canvas.dataset.frames = String(++totalFrames);
         }
@@ -226,19 +288,36 @@
         const running = visible && !document.hidden && enabled();
         canvas.dataset.paused = String(!running);
         if (running) raf = requestAnimationFrame(tick);
-        else if (!enabled()) { scroll = 0; pointerX = 0; pointerY = 0; draw(0); }
+        else {
+          // Leaving, pausing or reducing motion completes the entrance permanently.
+          formed = true;
+          targetX = targetY = pointerX = pointerY = strength = targetStrength = 0;
+          rippleStart = -10;
+          if (!enabled()) draw(0);
+        }
       }
       const observer = 'IntersectionObserver' in window ? new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; sync(); }, { threshold: 0 }) : null;
-      observer?.observe(hero || host);
+      observer?.observe(host);
+      function locatePointer() {
+        if (clientX === null) return;
+        const r = host.getBoundingClientRect();
+        targetU = (clientX - r.left) / r.width; targetV = (clientY - r.top) / r.height;
+        targetStrength = targetU >= 0 && targetU <= 1 && targetV >= 0 && targetV <= 1 ? 1 : 0;
+        targetX = clamp(targetU - .5, -.5, .5); targetY = clamp(targetV - .5, -.5, .5);
+      }
       hero?.addEventListener('pointermove', event => {
-        if (!finePointer.matches || !enabled()) return;
-        const r = hero.getBoundingClientRect();
-        targetX = (event.clientX - r.left) / r.width - .5;
-        targetY = (event.clientY - r.top) / r.height - .5;
+        if (!finePointer.matches || event.pointerType === 'touch' || !enabled()) return;
+        clientX = event.clientX; clientY = event.clientY;
+        locatePointer();
       }, { passive: true });
-      hero?.addEventListener('pointerleave', () => { targetX = 0; targetY = 0; });
-      document.addEventListener('visibilitychange', sync);
-      return { resize, sync, setScroll(p) { scroll = p; } };
+      hero?.addEventListener('pointerleave', () => { clientX = clientY = null; targetX = targetY = targetStrength = 0; });
+      hero?.addEventListener('click', event => {
+        if (!enabled() || event.defaultPrevented || event.target.closest('a,button,summary,input,select,textarea,label,[role="button"],[role="tab"],[contenteditable]')) return;
+        const r = host.getBoundingClientRect();
+        rippleU = (event.clientX - r.left) / r.width; rippleV = (event.clientY - r.top) / r.height;
+        rippleStart = elapsed;
+      });
+      return { resize, sync, setScroll(p) { scroll = p; locatePointer(); } };
     }
     const canvas = document.querySelector('[data-particle-scene]');
     const scene = canvas ? createScene(canvas) : null;
