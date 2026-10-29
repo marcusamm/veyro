@@ -187,6 +187,7 @@ export function bygKonfiguration(skabelon, inst, databaseId, { standardAfsender 
     if (inst.ocrService) {
       if (!SLUG.test(inst.ocrService) || inst.ocrService.length > 63) throw new Error('OCR-workerens navn er ugyldigt');
       t += `\n# Særskilt, udtrykkeligt konfigureret OCR-tjeneste for denne virksomhed\n[[services]]\nbinding = "RECEIPT_OCR"\nservice = "${inst.ocrService}"\n`;
+      t += '\n# Køen indeholder kun henvisninger til virksomhedens egne bilag.\n[[durable_objects.bindings]]\nname = "BILAG_OCR_QUEUE"\nclass_name = "BilagOcrQueue"\n\n[[migrations]]\ntag = "v1-bilag-ocr-queue"\nnew_sqlite_classes = ["BilagOcrQueue"]\n';
     }
   }
   if (inst.domaene) {

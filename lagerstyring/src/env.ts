@@ -4,6 +4,8 @@ export interface Env {
   DB: D1Database;
   /** Valgfri, særskilt OCR-worker. Ingen aflæsning af billeder uden denne binding. */
   RECEIPT_OCR?: Fetcher;
+  /** Én privat OCR-kø pr. virksomheds Worker/database. Kun metadata gemmes i køen. */
+  BILAG_OCR_QUEUE?: DurableObjectNamespace;
 
   // Offentlige indstillinger ([vars] i wrangler.toml)
   APP_URL: string;

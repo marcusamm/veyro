@@ -4,12 +4,14 @@ import type { Env } from '../env';
 
 export type OcrResult =
   | { status: 'ok'; pages: string[]; provider: string }
-  | { status: 'unavailable' | 'failed'; message: string };
+  | { status: 'unavailable' | 'failed'; message: string; retryable?: boolean };
 
 const MAX_FILE = 15 * 1024 * 1024;
 const MAX_RESPONSE = 500_000;
 const MAX_TEXT = 100_000;
-const TIMEOUT_MS = 15_000;
+// A CPU container may need to start and load its baked-in models first.
+// Background processing keeps this bounded wait out of the upload request.
+const TIMEOUT_MS = 120_000;
 const TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/heic']);
 
 async function boundedJson(response: Response): Promise<unknown> {
@@ -53,7 +55,13 @@ export async function extractReceiptText(
       body: input.bytes.slice().buffer,
       signal: controller.signal,
     }));
-    if (!response.ok) throw new Error('provider');
+    if (!response.ok) return {
+      status: 'failed',
+      message: response.status === 429
+        ? 'OCR-tjenestens grænse er nået. Prøv igen senere, eller registrér oplysningerne manuelt ud fra originalen.'
+        : 'OCR-tjenesten kunne ikke behandle bilaget. Originalen er bevaret; prøv igen senere eller registrér oplysningerne manuelt.',
+      retryable: [502, 503, 504].includes(response.status),
+    };
     const data = await boundedJson(response) as { pages?: unknown; provider?: unknown } | null;
     if (!data || !Array.isArray(data.pages) || !data.pages.length || data.pages.length > 10) throw new Error('pages');
     const pages: string[] = [];
@@ -74,8 +82,8 @@ export async function extractReceiptText(
       work(),
       new Promise<OcrResult>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('timeout')); }, TIMEOUT_MS); }),
     ]);
-  } catch {
-    return { status: 'failed', message: 'OCR kunne ikke aflæse bilaget. Originalen er bevaret uændret; kontrollér og registrér oplysningerne manuelt, eller prøv igen.' };
+  } catch (error) {
+    return { status: 'failed', message: 'OCR kunne ikke aflæse bilaget. Originalen er bevaret uændret; kontrollér og registrér oplysningerne manuelt, eller prøv igen.', retryable: controller.signal.aborted || (!(error instanceof SyntaxError) && !['size', 'pages', 'text', 'empty'].includes(String((error as Error)?.message))) };
   } finally {
     if (timer !== undefined) clearTimeout(timer);
   }

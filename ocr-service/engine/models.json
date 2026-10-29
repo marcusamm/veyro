@@ -1,0 +1,15 @@
+{
+  "source": "https://www.paddleocr.ai/latest/en/version3.x/pipeline_usage/OCR.html",
+  "models": [
+    {
+      "name": "PP-OCRv6_small_det",
+      "url": "https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/PP-OCRv6_small_det_infer.tar",
+      "sha256": "bfb7c1e59f0faa6b540ebdca93aea3f4b1f2477805b389fbee117820d68fe9f5"
+    },
+    {
+      "name": "PP-OCRv6_small_rec",
+      "url": "https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/PP-OCRv6_small_rec_infer.tar",
+      "sha256": "da460f968ce9f88325ac3a34fa302077d6e9b0dcefb16ba3137cd7796f879d06"
+    }
+  ]
+}

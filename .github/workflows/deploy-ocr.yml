@@ -1,0 +1,78 @@
+name: Test og deploy OCR
+
+on:
+  pull_request:
+    paths:
+      - 'ocr-service/**'
+      - '.github/workflows/deploy-ocr.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'ocr-service/**'
+      - '.github/workflows/deploy-ocr.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: veyro-receipt-ocr
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: ocr-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ocr-service/package-lock.json
+      - name: Kontrollér privat OCR-gateway
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+      - name: Byg CPU-image med lokale modelvægte
+        run: docker build -t veyro-ocr-ci -f engine/Dockerfile engine
+      - name: Afprøv TESTDATA uden internet og med ressourcegrænser
+        run: |
+          docker run -d --name veyro-ocr-test --network none --memory 6g --cpus 1 --read-only --tmpfs /tmp:rw,size=256m veyro-ocr-ci
+          docker exec -i veyro-ocr-test python - <<'PY'
+          import time, urllib.request
+          for attempt in range(60):
+              try:
+                  with urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2) as response:
+                      if response.status == 200:
+                          break
+              except Exception:
+                  pass
+              time.sleep(1)
+          else:
+              raise SystemExit('OCR-image blev ikke klar')
+          PY
+          docker exec veyro-ocr-test python smoke.py --url http://127.0.0.1:8080 > /tmp/veyro-ocr-smoke.json
+          cat /tmp/veyro-ocr-smoke.json
+          OCR_SMOKE_REPORT=/tmp/veyro-ocr-smoke.json npx vitest run tests/receipt-parser.test.ts
+      - name: Deploy privat OCR-service
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
+      - name: Gem resultat fra syntetiske testbilag
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ocr-testdata-smoke
+          path: /tmp/veyro-ocr-smoke.json
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Stop testcontainer
+        if: always()
+        run: docker rm -f veyro-ocr-test || true

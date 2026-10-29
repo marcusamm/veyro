@@ -23,6 +23,7 @@ import {
   type ExportState,
 } from '../lib/bilag';
 import { FILE_MAX_BYTES, UPLOAD_MAX_FILES } from '../lib/files';
+import type { OcrJob } from '../lib/bilagqueue';
 import { formatDateTime, formatDay, formatKr, formatQty, oereToInput, qtyInput } from '../lib/format';
 import type { PurchaseLineRow } from '../env';
 import { errors, pageHead } from './common';
@@ -42,7 +43,7 @@ export function exportTag(s: ExportState): H {
 }
 
 const BILAG_FLASH: Record<string, [kind: 'ok' | 'info' | 'warn', text: string]> = {
-  uploadet: ['ok', 'Bilaget er uploadet. Kontrollér den digitale visning mod originalen.'],
+  uploadet: ['ok', 'Bilaget er uploadet, og originalen er gemt. Se aflæsningsstatus nedenfor, og kontrollér oplysningerne mod originalen.'],
   gemt: ['ok', 'Ændringerne er gemt og logget i historikken.'],
   godkendt: ['ok', 'Bilaget er godkendt. Det er klar til eksport til bogholderen. Lageret er ikke ændret af godkendelsen.'],
   fordelt: ['ok', 'Fordelingen er gemt. Lageret er ikke ændret.'],
@@ -89,6 +90,7 @@ export function uploadPage(d: UploadData): H {
       <p class="hint">Åbner kameraet på telefonen.</p></div>
     <div class="field"><label for="files">Eller vælg filer</label><input id="files" type="file" name="files" accept="application/pdf,image/jpeg,image/png,image/heic,.pdf,.jpg,.jpeg,.png,.heic" multiple>
       <p class="hint">PDF, JPG, PNG eller HEIC. Højst ${UPLOAD_MAX_FILES} filer og ${Math.round(FILE_MAX_BYTES / 1024 / 1024)} MB pr. fil. En PDF med flere sider er ét bilag.</p></div>
+    <p class="hint">Når OCR er tilsluttet, aflæses billeder og scannede PDF'er automatisk i baggrunden. Du kan fortsætte arbejdet, mens bilagene står i kø. PDF'er med læsbar tekst aflæses straks.</p>
     <div class="fields fields-2">
       <div class="field"><label for="doc_type">Type</label><select id="doc_type" name="doc_type">
         ${(['kvittering', 'faktura', 'kreditnota', 'andet'] as const).map((t) => html`<option value="${t}">${DOC_TYPE_LABEL[t]}</option>`)}
@@ -234,6 +236,7 @@ export interface DetailData {
   lines: BilagLineRow[];
   allocs: AllocationView[];
   events: BilagEventRow[];
+  ocr?: OcrJob | null;
   checks: Checks;
   canEdit: boolean;
   canDelete: boolean;
@@ -373,6 +376,13 @@ export function detailPage(d: DetailData): H {
     html`${DOC_TYPE_LABEL[b.doc_type]} · uploadet ${formatDateTime(b.created_at)} af ${b.uploader ?? b.uploaded_name} · ${b.file_name} · ${exportTag(es)}`)}
   ${bflash(d.flashCode, d.message)}
   ${errors(d.errs)}
+  ${d.ocr && ['queued', 'processing'].includes(d.ocr.state)
+    ? alert('info', html`<strong>${d.ocr.state === 'processing' ? 'OCR aflæser bilaget' : 'Bilaget er i OCR-kø'}</strong><p>Originalen er gemt. Aflæsningen kører i baggrunden, og resultatet kræver din kontrol. Retter og gemmer du oplysningerne imens, afbrydes aflæsningen.</p><p><a href="${d.base}/${b.id}">Opdatér status</a></p>`)
+    : d.ocr?.state === 'failed'
+      ? alert('warn', html`<strong>OCR kunne ikke afsluttes</strong><p>${d.ocr.last_error}</p><p>Originalen er bevaret. Brug Aflæs igen, eller registrér oplysningerne manuelt.</p>`)
+      : d.ocr?.state === 'cancelled'
+        ? alert('info', html`Aflæsningen er afbrudt, fordi bilaget er ændret. Dine ændringer er bevaret.`)
+        : ''}
   ${b.reading_note && b.status === 'modtaget' ? alert('info', b.reading_note) : ''}
   ${b.status === 'afklaring' ? alert('warn', html`<strong>Kræver afklaring:</strong> ${b.clarify || 'Ingen begrundelse angivet.'}`) : ''}
   ${d.dupOf && !b.dup_cleared_by
@@ -398,7 +408,7 @@ export function detailPage(d: DetailData): H {
     ${c.errors.length ? html`<ul class="check-list err">${c.errors.map((e) => html`<li>${e}</li>`)}</ul>` : html`<p class="ok-text">Alle krav til godkendelse er opfyldt.</p>`}
     ${c.warnings.length ? html`<ul class="check-list warn">${c.warnings.map((e) => html`<li>${e}</li>`)}</ul>` : ''}
     <div class="row">
-      ${d.canEdit && b.status !== 'godkendt' ? act('laes', "Aflæs igen", 'btn-ghost') : ''}
+      ${d.canEdit && b.status !== 'godkendt' && !b.reading_token ? act('laes', "Aflæs igen", 'btn-ghost') : ''}
       ${d.manager && b.status !== 'arkiveret' && !(b.status === 'godkendt' && b.approved_version === b.version) ? act('godkend', 'Godkend bilag', c.errors.length ? 'btn-secondary' : 'btn-primary') : ''}
       ${d.manager && b.status !== 'afklaring' && b.status !== 'arkiveret' ? html`<form method="post" action="${d.base}/${b.id}" class="row">${csrfField(d.csrf)}<input type="hidden" name="do" value="afklaring"><input name="clarify" maxlength="300" placeholder="Hvad skal afklares?" aria-label="Hvad skal afklares"><button class="btn btn-ghost btn-small" type="submit">Kræver afklaring</button></form>` : ''}
       ${d.manager && (b.status === 'afklaring' || b.status === 'arkiveret') ? act('klar', b.status === 'arkiveret' ? 'Genåbn' : 'Afklaret') : ''}
