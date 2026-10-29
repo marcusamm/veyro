@@ -15,6 +15,8 @@ import {
   createBilag,
   getBilag,
   getBilagEvidence,
+  ensureBilagEvidence,
+  BilagEvidenceError,
   isDocType,
   isPayment,
   listBilag,
@@ -314,8 +316,8 @@ export function bilagRoutes(portal: Portal) {
         events,
         ocr,
         ocrConfigured: !!c.env.RECEIPT_OCR && !!c.env.BILAG_OCR_QUEUE,
-        chat: { available: !!c.env.RECEIPT_CHAT && !!evidence && !b.reading_token,
-          message: !c.env.RECEIPT_CHAT ? 'Bilagschatten er ikke tilsluttet på denne installation.' : b.reading_token ? 'Aflæsningen er i gang. Chatten bliver klar, når den er færdig.' : !evidence ? 'Klik Aflæs igen for at gemme bilagets tekst til chatten.' : undefined,
+        chat: { available: !!c.env.RECEIPT_CHAT, ready: !!evidence,
+          message: !c.env.RECEIPT_CHAT ? 'Bilagschatten er ikke tilsluttet på denne installation.' : !evidence ? 'Skriv dit spørgsmål. Chatten henter selv bilagets tekst første gang; det kan tage op til to minutter. De gemte felter ændres ikke.' : undefined,
           ...chatResult },
         checks: checkBilag(b, lines, allocs, s),
         canEdit: canEditData(b, user(c)),
@@ -342,6 +344,19 @@ export function bilagRoutes(portal: Portal) {
     return b ? showDetail(c, b) : c.notFound();
   });
 
+  // Read-only status for support/polling, with the same document access check.
+  // No tokens, actors or document text are returned, and no work is enqueued.
+  r.get('/:id{[0-9]+}/ocr-status', async (c) => {
+    const b = await load(c);
+    if (!b) return c.notFound();
+    const job = await ocrJob(c.env.DB, b.id);
+    return c.json({ ready: !!(await getBilagEvidence(c.env.DB, b.id)), job: job ? {
+      state: job.state, attempts: job.attempts, queued_at: job.queued_at,
+      available_at: job.available_at, started_at: job.started_at, lease_until: job.lease_until,
+      finished_at: job.finished_at, last_error: job.last_error,
+    } : null });
+  });
+
   // Questions are read-only. The existing per-document authorization and CSRF
   // middleware also apply here; neither the model nor its reply can post data.
   r.post('/:id{[0-9]+}/spoerg', async (c) => {
@@ -351,18 +366,17 @@ export function bilagRoutes(portal: Portal) {
     const question = typeof body.question === 'string' ? body.question.trim() : '';
     try {
       if (!question || question.length > 1000) throw new BilagChatError('Skriv et spørgsmål på højst 1.000 tegn.', 400);
-      if (String(body.file_id) !== String(b.file_id) || String(body.version) !== String(b.version) || b.reading_token) throw new BilagChatError('Bilaget er ændret eller under aflæsning. Genindlæs siden før du spørger igen.', 409);
+      if (String(body.file_id) !== String(b.file_id) || String(body.version) !== String(b.version)) throw new BilagChatError('Bilaget er ændret. Genindlæs siden før du spørger igen.', 409);
       if (!c.env.RECEIPT_CHAT) throw new BilagChatError('Bilagschatten er ikke tilsluttet på denne installation.', 503);
       const history = chatHistory(typeof body.history === 'string' ? body.history : '');
-      const evidence = await getBilagEvidence(c.env.DB, b.id);
-      if (!evidence) throw new BilagChatError('Bilagets tekst mangler. Klik Aflæs igen og vent på aflæsningen, før du bruger chatten.', 409);
       await reserveChatRequest(c.env.DB, user(c).email, now());
+      const evidence = await ensureBilagEvidence(c.env, b, now());
       const reply = await askBilag(c.env, b, evidence, question, history);
       const [current, currentEvidence] = await Promise.all([getBilag(c.env.DB, b.id), getBilagEvidence(c.env.DB, b.id)]);
-      if (!current || !canSee(current, user(c)) || current.file_id !== b.file_id || current.version !== b.version || current.data_revision !== b.data_revision || current.reading_token || currentEvidence?.read_at !== evidence.read_at) throw new BilagChatError('Bilaget blev ændret, mens chatten svarede. Genindlæs siden og stil spørgsmålet igen.', 409);
+      if (!current || !canSee(current, user(c)) || current.file_id !== b.file_id || current.version !== b.version || current.data_revision !== b.data_revision || currentEvidence?.read_at !== evidence.read_at) throw new BilagChatError('Bilaget blev ændret, mens chatten svarede. Genindlæs siden og stil spørgsmålet igen.', 409);
       return c.req.header('Accept')?.includes('application/json') ? c.json(reply) : showDetail(c, current, [], undefined, { ...reply, question });
     } catch (error) {
-      const known = error instanceof BilagChatError ? error : new BilagChatError('Chatten kunne ikke svare. Dit bilag er uændret; prøv igen senere.', 503);
+      const known = error instanceof BilagChatError || error instanceof BilagEvidenceError ? error : new BilagChatError('Chatten kunne ikke svare. Dit bilag er uændret; prøv igen senere.', 503);
       if (c.req.header('Accept')?.includes('application/json')) return c.json({ error: known.message }, known.status);
       return showDetail(c, b, [known.message]);
     }

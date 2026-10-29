@@ -422,6 +422,10 @@ export interface BilagEvidence {
   truncated: boolean;
 }
 
+export class BilagEvidenceError extends Error {
+  constructor(message: string, readonly status: 409 | 503) { super(message); }
+}
+
 const MAX_EVIDENCE_TEXT = 100_000;
 const MAX_EVIDENCE_PAGES = 20;
 
@@ -476,6 +480,60 @@ export async function getBilagEvidence(db: D1Database, id: number): Promise<Bila
     const { pages_json: _, truncated, ...value } = row;
     return { ...value, pages: pages as string[][], truncated: !!truncated };
   } catch { return null; }
+}
+
+/**
+ * First-question source preparation for legacy documents. This does not run
+ * the normal reading/replacement flow: approved fields, lines, allocations,
+ * queue state and original bytes stay untouched. The caller must authorize
+ * access and reserve the per-company chat request before starting this work.
+ */
+export async function ensureBilagEvidence(env: Env, b: BilagRow, now: number): Promise<BilagEvidence> {
+  const changed = 'Originalbilaget er ændret imens. Genindlæs siden, og stil spørgsmålet igen.';
+  const failed = 'Bilagets tekst kunne ikke hentes til chatten. Originalen og dine oplysninger er uændrede; prøv igen senere.';
+  try {
+    const current = await getBilag(env.DB, b.id);
+    if (!current || current.file_id !== b.file_id) throw new BilagEvidenceError(changed, 409);
+    const existing = await getBilagEvidence(env.DB, b.id);
+    if (existing && existing.file_id === b.file_id) return existing;
+    const file = await getFile(env.DB, b.file_id);
+    if (!file) throw new BilagEvidenceError(failed, 503);
+    const bytes = await fileBytes(env.DB, file);
+    if (!bytes?.length) throw new BilagEvidenceError(failed, 503);
+    let pages: string[][] = [];
+    let source: BilagEvidence['source'] = 'pdf-tekst';
+    let provider = '';
+    if (file.mime === 'application/pdf') {
+      const text = await pdfText(bytes);
+      if (text.hasText) pages = text.pages;
+    }
+    if (!pages.length) {
+      const ocr = await extractReceiptText(env, { bytes, mime: file.mime });
+      if (ocr.status !== 'ok') throw new BilagEvidenceError(failed, 503);
+      pages = ocr.pages.map(page => page.split(/\r?\n/));
+      source = 'ocr'; provider = ocr.provider;
+    }
+    if (!pages.some(page => page.some(line => line.trim()))) throw new BilagEvidenceError(failed, 503);
+    const evidence = boundedEvidence(pages);
+    // Only the same immutable original may receive this source. Manual edits
+    // are independent of OCR text and may advance the document's version while
+    // work is running. Never overwrite source from a concurrent normal read.
+    await env.DB.prepare(`INSERT INTO bilag_ocr_evidence
+        (bilag_id,file_id,version,pages_json,text_chars,source,provider,read_at,truncated)
+      SELECT id,file_id,?,?,?,?,?,?,? FROM bilag WHERE id=? AND file_id=? AND version>=?
+      ON CONFLICT(bilag_id,file_id,version) DO NOTHING`)
+      .bind(b.version, JSON.stringify(evidence.pages), evidence.textChars, source, provider, now, evidence.truncated ? 1 : 0, b.id, b.file_id, b.version).run();
+    const result = await getBilagEvidence(env.DB, b.id);
+    if (!result || result.file_id !== b.file_id) {
+      const latest = await getBilag(env.DB, b.id);
+      throw new BilagEvidenceError(!latest || latest.file_id !== b.file_id ? changed : failed, !latest || latest.file_id !== b.file_id ? 409 : 503);
+    }
+    return result;
+  } catch (error) {
+    // Service/DB errors must not expose internal URLs, request bodies or SQL.
+    if (error instanceof BilagEvidenceError) throw error;
+    throw new BilagEvidenceError(failed, 503);
+  }
 }
 
 export async function readBilag(env: Env, s: Settings, id: number, actor: Actor, now: number, opts: { deferOcr?: boolean; backgroundToken?: string } = {}): Promise<ReadBilagResult> {

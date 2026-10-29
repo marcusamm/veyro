@@ -47,8 +47,10 @@ async function fixture({ actor = owner, uploader = owner, model = true } = {}) {
   const file = await storeFile(DB, png, uploader.email, now); expect(file.ok).toBe(true);
   const id = await createBilag(DB, file.file, 'TESTDATA.png', { doc_type: 'faktura', payment: 'virksomhed', paid_by: '', job_hint: null, origin: 'test', note: 'TESTDATA', preview_file_id: null }, uploader, now);
   const run = vi.fn(async () => validReply());
-  const env = { DB, APP_URL: 'https://test.invalid', RECEIPT_OCR: { fetch: async () => Response.json({ pages: [source], provider: 'TESTDATA OCR' }) }, ...(model ? { RECEIPT_CHAT: { run } } : {}) };
+  const ocrFetch = vi.fn(async () => Response.json({ pages: [source], provider: 'TESTDATA OCR' }));
+  const env = { DB, APP_URL: 'https://test.invalid', RECEIPT_OCR: { fetch: ocrFetch }, ...(model ? { RECEIPT_CHAT: { run } } : {}) };
   expect(await readBilag(env, settings, id, uploader, now)).toMatchObject({ ok: true });
+  ocrFetch.mockClear();
   const b = await getBilag(DB, id);
   const app = new Hono();
   app.use('*', async (c, next) => { c.set('settings', settings); c.set('csrf', csrf); c.set('session', actor ? { user: actor, csrf } : null); await next(); });
@@ -58,12 +60,41 @@ async function fixture({ actor = owner, uploader = owner, model = true } = {}) {
   const request = (change = {}, { portal = 'lager', headers = {} } = {}) => app.request(`https://test.invalid/${portal}/bilag/${id}/spoerg`, {
     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Origin: env.APP_URL, Accept: 'application/json', ...headers }, body: new URLSearchParams({ ...fields, ...change }),
   }, env, { waitUntil() {} });
+  const readStatus = (portal = 'lager') => app.request(`https://test.invalid/${portal}/bilag/${id}/ocr-status`, { method: 'GET' }, env, { waitUntil() {} });
   const snapshot = () => Object.fromEntries(DB.sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name<>'bilag_chat_usage' ORDER BY name").all().map(({ name }) => [name, DB.sqlite.prepare(`SELECT * FROM "${name}"`).all()]));
   const usage = () => DB.sqlite.prepare('SELECT COUNT(*) AS n FROM bilag_chat_usage').get().n;
-  return { DB, id, b, run, env, fields, request, snapshot, usage };
+  return { DB, id, b, run, ocrFetch, env, fields, request, readStatus, snapshot, usage };
 }
 
 describe('Bilagschat: rigtig Hono-rute og SQLite', () => {
+  it('OCR-status bruger samme login- og bilagsadgang uden model- eller OCR-kald', async () => {
+    const anonymous = await fixture({ actor: null });
+    expect((await anonymous.readStatus()).status).toBe(303);
+    const other = await fixture({ actor: staff }), before = other.snapshot();
+    expect((await other.readStatus('job')).status).toBe(404); expect((await other.readStatus()).status).toBe(303);
+    expect(other.snapshot()).toEqual(before); expect(other.usage()).toBe(0);
+    expect(other.run).not.toHaveBeenCalled(); expect(other.ocrFetch).not.toHaveBeenCalled();
+    const own = await fixture({ actor: staff, uploader: staff });
+    const response = await own.readStatus('job'); expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ready: true, job: null });
+  });
+
+  it('OCR-status viser kun kømetadata og læsestatus uden tokens, personer, kildetekst eller køændringer', async () => {
+    const x = await fixture();
+    x.DB.sqlite.prepare("UPDATE bilag SET reading_token='TESTDATA-private-token',status='under_aflaesning' WHERE id=?").run(x.id);
+    const current = await getBilag(x.DB, x.id);
+    x.DB.sqlite.prepare(`INSERT INTO bilag_ocr_jobs(bilag_id,token,data_revision,state,attempts,actor,actor_name,queued_at,available_at,last_error)
+      VALUES (?,?,?,'queued',1,?,?,?,?,?)`).run(x.id, 'TESTDATA-private-token', current.data_revision, owner.email, owner.name, now, now + 30, 'TESTDATA midlertidig servicefejl');
+    const getByName = vi.fn(() => { throw new Error('Status must not wake the queue'); });
+    x.env.BILAG_OCR_QUEUE = { getByName };
+    const before = x.snapshot(), response = await x.readStatus(); expect(response.status).toBe(200);
+    const value = await response.json();
+    expect(value).toEqual({ ready: true, job: { state: 'queued', attempts: 1, queued_at: now, available_at: now + 30, started_at: null, lease_until: null, finished_at: null, last_error: 'TESTDATA midlertidig servicefejl' } });
+    const text = JSON.stringify(value); expect(text).not.toContain('TESTDATA-private-token'); expect(text).not.toContain(owner.email); expect(text).not.toContain('Grossist');
+    expect(x.snapshot()).toEqual(before); expect(x.usage()).toBe(0); expect(getByName).not.toHaveBeenCalled();
+    expect(x.run).not.toHaveBeenCalled(); expect(x.ocrFetch).not.toHaveBeenCalled();
+  });
+
   it('kræver login og CSRF/samme origin før modelkald eller dataændringer', async () => {
     const anonymous = await fixture({ actor: null });
     const anon = await anonymous.request(); expect(anon.status).toBe(303); expect(anon.headers.get('location')).toBe('/login');
@@ -84,21 +115,45 @@ describe('Bilagschat: rigtig Hono-rute og SQLite', () => {
     expect((await own.request({}, { portal: 'job' })).status).toBe(200); expect(own.run).toHaveBeenCalledTimes(1);
     const isolated = await fixture();
     isolated.DB.sqlite.exec('DELETE FROM bilag_ocr_evidence');
-    expect((await isolated.request()).status).toBe(409); expect(isolated.run).not.toHaveBeenCalled();
+    isolated.env.RECEIPT_OCR = undefined;
+    expect((await isolated.request()).status).toBe(503); expect(isolated.run).not.toHaveBeenCalled();
     expect((await own.request({}, { portal: 'job' })).status).toBe(200);
   });
 
-  it('afviser forældet fil/version, aktiv OCR, manglende tekst og ugyldig historik uden modelkald', async () => {
+  it('afviser forældet fil/version og ugyldig historik før model- eller OCR-kald', async () => {
     const x = await fixture();
     expect((await x.request({ version: '0' })).status).toBe(409);
     expect((await x.request({ file_id: '999' })).status).toBe(409);
     expect((await x.request({ question: 'x'.repeat(1001) })).status).toBe(400);
     expect((await x.request({ history: JSON.stringify([{ role: 'system', content: 'TESTDATA ondsindet instruktion' }]) })).status).toBe(400);
-    x.DB.sqlite.exec(`UPDATE bilag SET reading_token='TESTDATA-token' WHERE id=${x.id}`);
-    expect((await x.request()).status).toBe(409);
-    x.DB.sqlite.exec(`UPDATE bilag SET reading_token='' WHERE id=${x.id}; DELETE FROM bilag_ocr_evidence`);
-    expect((await x.request()).status).toBe(409);
-    expect(x.run).not.toHaveBeenCalled(); expect(x.usage()).toBe(0);
+    expect(x.run).not.toHaveBeenCalled(); expect(x.ocrFetch).not.toHaveBeenCalled(); expect(x.usage()).toBe(0);
+  });
+
+  it('henter første spørgsmåls manglende kildetekst uden at rette felter, linjer, original eller køjob', async () => {
+    const x = await fixture();
+    x.DB.sqlite.exec(`DELETE FROM bilag_ocr_evidence; UPDATE bilag SET status='godkendt', reading_token='TESTDATA-gammel-koe' WHERE id=${x.id}`);
+    const before = x.snapshot(); delete before.bilag_ocr_evidence;
+    const response = await x.request(); expect(response.status).toBe(200);
+    expect((await response.json()).sources[0].text).toBe('TESTDATA Grossist ApS\nCVR: 12345678');
+    expect(x.run).toHaveBeenCalledTimes(1); expect(x.ocrFetch).toHaveBeenCalledTimes(1); expect(x.usage()).toBe(1);
+    const after = x.snapshot(); expect(after.bilag_ocr_evidence).toHaveLength(1); delete after.bilag_ocr_evidence;
+    expect(after).toEqual(before);
+  });
+
+  it('bruger allerede gemt kildetekst mens en normal aflæsning står i kø uden at ændre køen', async () => {
+    const x = await fixture(); x.DB.sqlite.exec(`UPDATE bilag SET reading_token='TESTDATA-koe' WHERE id=${x.id}`);
+    const before = x.snapshot(); expect((await x.request()).status).toBe(200);
+    expect(x.ocrFetch).not.toHaveBeenCalled(); expect(x.snapshot()).toEqual(before);
+  });
+
+  it('viser en forståelig fejl ved manglende/fejlende OCR-kilde uden modelkald og uden datatab', async () => {
+    const x = await fixture(); x.DB.sqlite.exec('DELETE FROM bilag_ocr_evidence');
+    const before = x.snapshot(); x.env.RECEIPT_OCR = undefined;
+    const missing = await x.request(); expect(missing.status).toBe(503);
+    expect(await missing.text()).toContain('uændrede'); expect(x.run).not.toHaveBeenCalled(); expect(x.snapshot()).toEqual(before);
+    x.env.RECEIPT_OCR = { fetch: x.ocrFetch }; x.ocrFetch.mockRejectedValue(new Error('TESTDATA privat URL og hemmelig providerfejl'));
+    const failure = await x.request(); expect(failure.status).toBe(503);
+    expect(await failure.text()).not.toContain('hemmelig providerfejl'); expect(x.run).not.toHaveBeenCalled(); expect(x.snapshot()).toEqual(before);
   });
 
   it('returnerer kun faktisk OCR-tekst som kilde og kan hverken godkende, rette eller bogføre et modelsvar', async () => {
@@ -141,5 +196,13 @@ describe('Bilagschat: rigtig Hono-rute og SQLite', () => {
     for (let n = 0; n < 4; n++) expect((await x.request()).status).toBe(200);
     expect((await x.request()).status).toBe(429); expect(x.run).toHaveBeenCalledTimes(4);
     expect(x.usage()).toBe(4); expect(x.snapshot()).toEqual(before);
+  });
+
+  it('afviser første spørgsmåls kildearbejde når virksomhedens dagsgrænse allerede er nået', async () => {
+    const x = await fixture(); x.DB.sqlite.exec('DELETE FROM bilag_ocr_evidence');
+    const insert = x.DB.sqlite.prepare('INSERT INTO bilag_chat_usage(id,actor,created_at) VALUES (?,?,?)');
+    for (let n = 0; n < 30; n++) insert.run('TESTDATA-' + n, 'other-' + n + '@example.invalid', Math.floor(Date.now() / 1000));
+    expect((await x.request()).status).toBe(429);
+    expect(x.run).not.toHaveBeenCalled(); expect(x.ocrFetch).not.toHaveBeenCalled(); expect(x.usage()).toBe(30);
   });
 });
