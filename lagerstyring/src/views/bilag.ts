@@ -241,6 +241,8 @@ export interface DetailData {
   ocrConfigured?: boolean;
   chat?: {
     available: boolean;
+    /** Source text is already available; a first question can prepare it otherwise. */
+    ready?: boolean;
     message?: string;
     question?: string;
     answer?: string;
@@ -272,7 +274,8 @@ function original(d: DetailData): H {
 
 /** Dialogen er læsende: svar og citater er aldrig rettelser eller godkendelser. */
 function chatSection(d: DetailData): H {
-  const ready = d.chat?.available === true;
+  const available = d.chat?.available === true;
+  const ready = d.chat?.ready !== false;
   const sources = d.chat?.sources ?? [];
   return html`<section class="card stack" aria-labelledby="bilag-chat-title" data-bilag-chat>
     <div class="row-between"><h2 id="bilag-chat-title">Spørg til bilaget</h2><a class="small" href="${d.base}/${d.b.id}/fil" target="_blank" rel="noopener">Åbn originalen</a></div>
@@ -281,12 +284,13 @@ function chatSection(d: DetailData): H {
       ${d.chat?.question ? html`<div class="stack-sm"><strong>Dig</strong><p style="white-space:pre-wrap">${d.chat.question}</p></div>` : ''}
       ${d.chat?.answer ? html`<div class="stack-sm"><strong>Bilagsassistent</strong><p style="white-space:pre-wrap">${d.chat.answer}</p>${sources.map((s) => html`<blockquote class="small" style="margin:8px 0;padding-left:12px;border-left:2px solid var(--line-strong)"><strong>Side ${s.page}, ${s.lineStart === s.lineEnd ? `linje ${s.lineStart}` : `linje ${s.lineStart}–${s.lineEnd}`}</strong><p style="white-space:pre-wrap">${s.text}</p></blockquote>`)}</div>` : ''}
     </div>
-    ${!ready ? html`<p class="hint" role="status">${d.chat?.message || 'Chatten er ikke klar til dette bilag endnu. Aflæs bilaget igen for at hente teksten til gennemgangen.'}</p>` : ''}
-    <form class="stack" method="post" action="${d.base}/${d.b.id}/spoerg" data-chat-form data-multi>
+    ${d.chat?.message || !available ? html`<p class="hint" role="status">${d.chat?.message || 'Bilagschatten er ikke tilsluttet på denne installation.'}</p>` : ''}
+    ${available && !ready ? html`<p class="hint">Skriv dit spørgsmål nu. Første spørgsmål kan tage et par minutter, mens originalen aflæses. Dit spørgsmål bliver på siden.</p>` : ''}
+    <form class="stack" method="post" action="${d.base}/${d.b.id}/spoerg" data-chat-form data-chat-ready="${ready ? '1' : '0'}" data-multi>
       ${csrfField(d.csrf)}<input type="hidden" name="version" value="${d.b.version}"><input type="hidden" name="file_id" value="${d.b.file_id}"><input type="hidden" name="history" value="[]" data-chat-history>
-      <div class="field"><label for="bilag-question">Dit spørgsmål</label><textarea id="bilag-question" name="question" rows="3" maxlength="1000" required aria-describedby="bilag-chat-help" placeholder="Fx: Hvad står der på varelinjerne?"${!ready ? html` disabled` : ''}></textarea><p class="hint" id="bilag-chat-help">Du kan stille opfølgende spørgsmål i samme samtale. Kildeuddrag vises under svaret.</p></div>
-      <div class="row"><button class="btn btn-primary" type="submit"${!ready ? html` disabled` : ''}>Spørg til bilaget</button><span class="hint" role="status" data-chat-status></span></div>
-      <div class="row" aria-label="Forslag til spørgsmål">${['Hvad står der på varelinjerne?', 'Hvor står totalbeløbet?', 'Hvilke felter bør jeg kontrollere?'].map((q) => html`<button class="btn btn-ghost btn-small" type="button" data-chat-question="${q}"${!ready ? html` disabled` : ''}>${q}</button>`)}</div>
+      <div class="field"><label for="bilag-question">Dit spørgsmål</label><textarea id="bilag-question" name="question" rows="3" maxlength="1000" required aria-describedby="bilag-chat-help" placeholder="Fx: Hvad står der på varelinjerne?"${!available ? html` disabled` : ''}></textarea><p class="hint" id="bilag-chat-help">Du kan stille opfølgende spørgsmål i samme samtale. Kildeuddrag vises under svaret.</p></div>
+      <div class="row"><button class="btn btn-primary" type="submit"${!available ? html` disabled` : ''}>Spørg til bilaget</button><span class="hint" role="status" data-chat-status></span></div>
+      <div class="row" aria-label="Forslag til spørgsmål">${['Hvad står der på varelinjerne?', 'Hvor står totalbeløbet?', 'Hvilke felter bør jeg kontrollere?'].map((q) => html`<button class="btn btn-ghost btn-small" type="button" data-chat-question="${q}"${!available ? html` disabled` : ''}>${q}</button>`)}</div>
       <p class="err-text small" role="alert" data-chat-error hidden></p>
       <noscript><p class="hint">Svaret vises på en ny side, når du sender dit spørgsmål.</p></noscript>
     </form>

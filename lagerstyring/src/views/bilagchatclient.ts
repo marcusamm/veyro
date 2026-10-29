@@ -12,6 +12,7 @@ export const BILAG_CHAT_JS = `
     var submit = form.querySelector('button[type=submit]');
     var history = [];
     var busy = false;
+    var ready = form.getAttribute('data-chat-ready') !== '0';
     function trimHistory() {
       history = history.slice(-6);
       while (history.length && (history.reduce(function (size, turn) { return size + turn.content.length; }, 0) > 12000 || JSON.stringify(history).length > 16000)) history.splice(0, 2);
@@ -47,10 +48,10 @@ export const BILAG_CHAT_JS = `
       var text = question.value.trim();
       if (!text || text.length > 1000) { question.focus(); return; }
       busy = true; submit.disabled = true; error.hidden = true; error.textContent = '';
-      status.textContent = 'Læser bilaget og finder kildeuddrag…'; form.setAttribute('aria-busy', 'true');
+      status.textContent = ready ? 'Læser bilaget og finder kildeuddrag…' : 'Henter bilagets tekst og finder kildeuddrag…'; form.setAttribute('aria-busy', 'true');
       trimHistory(); historyInput.value = JSON.stringify(history);
       var body = new URLSearchParams(new FormData(form));
-      var controller = new AbortController(); var timer = setTimeout(function () { controller.abort(); }, 60000);
+      var controller = new AbortController(); var timer = setTimeout(function () { controller.abort(); }, 180000);
       addMessage('Dig', text);
       try {
         var response = await fetch(form.action, { method: 'POST', body: body, credentials: 'same-origin', headers: { Accept: 'application/json' }, signal: controller.signal });
@@ -59,8 +60,10 @@ export const BILAG_CHAT_JS = `
         catch (_) { throw new Error('Chatten kunne ikke svare. Genindlæs bilaget, kontrollér at du er logget ind, og prøv igen.'); }
         if (!response.ok || typeof data.answer !== 'string' || !data.answer.trim()) throw new Error(data.error || data.message || 'Chatten kunne ikke svare. Prøv igen.');
         var entry = addMessage('Bilagsassistent', data.answer); addSources(entry, data.sources);
+        ready = true; form.setAttribute('data-chat-ready', '1');
         history.push({ role: 'user', content: text }, { role: 'assistant', content: data.answer.slice(0, 4000) }); trimHistory();
-        question.value = ''; historyInput.value = JSON.stringify(history); status.textContent = 'Svaret er klar. Kontrollér kildeuddragene mod originalen.';
+        if (question.value.trim() === text) question.value = '';
+        historyInput.value = JSON.stringify(history); status.textContent = 'Svaret er klar. Kontrollér kildeuddragene mod originalen.';
         messages.scrollTop = messages.scrollHeight;
       } catch (failure) {
         error.textContent = failure.name === 'AbortError' ? 'Svaret tog for lang tid. Dit spørgsmål er bevaret; prøv igen.' : (failure.message || 'Forbindelsen til chatten blev afbrudt. Prøv igen.');

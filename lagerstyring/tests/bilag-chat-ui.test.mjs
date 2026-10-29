@@ -16,10 +16,11 @@ class Element {
   focus() { this.focused = true; }
   set innerHTML(_value) { throw new Error('Untrusted chat content must never be parsed as HTML'); }
 }
-function client(fetch) {
+function client(fetch, { ready = true } = {}) {
   const panel = new Element(), form = new Element(), question = new Element(), messages = new Element();
   const status = new Element(), error = new Element(), history = new Element(), submit = new Element();
   form.action = 'https://test.invalid/lager/bilag/7/spoerg';
+  form.setAttribute('data-chat-ready', ready ? '1' : '0');
   const bySelector = {
     '[data-chat-form]': form, '[name=question]': question, '[data-chat-messages]': messages,
     '[data-chat-status]': status, '[data-chat-error]': error, '[data-chat-history]': history, 'button[type=submit]': submit,
@@ -105,6 +106,17 @@ describe('Bilagschat i browseren', () => {
     expect(c.error.textContent).not.toContain('private HTML'); expect(c.submit.disabled).toBe(false);
     expect(c.question.value).toBe('Hvad står der?');
   });
+
+  it('bevarer første spørgsmål mens kildeteksten hentes og fortsætter samtalen uden reload', async () => {
+    let release;
+    const c = client(async () => { await new Promise(resolve => { release = resolve; }); return ok('TESTDATA kildebaseret svar'); }, { ready: false });
+    const running = c.send('Hvad står der på bonen?');
+    expect(c.status.textContent).toBe('Henter bilagets tekst og finder kildeuddrag…');
+    expect(c.question.value).toBe('Hvad står der på bonen?'); expect(c.question.disabled).toBe(false);
+    release(); await running;
+    expect(c.form.getAttribute('data-chat-ready')).toBe('1'); expect(c.question.value).toBe('');
+    expect(c.messages.children[1].children[1].textContent).toBe('TESTDATA kildebaseret svar');
+  });
 });
 
 function detail(chat) {
@@ -128,9 +140,17 @@ describe('Bilagschat på detaljesiden', () => {
     expect(html).toContain('Chatten ændrer ikke bilaget.'); expect(html).toContain('href="/lager/bilag/7/fil"');
     expect(html).toContain('src="/static/bilag-chat.js?v=1"'); expect(html).not.toMatch(/<script>(?!<\/script>)/);
   });
-  it('blokerer afsendelse når kilde/model mangler og HTML-escaper et eventuelt serversvar', async () => {
+  it('blokerer afsendelse når chatten ikke er tilsluttet og HTML-escaper et eventuelt serversvar', async () => {
     const html = String(await detailPage(detail({ available: false, message: 'TESTDATA kilde mangler', question: '<b>spørgsmål</b>', answer: '<script>bad()</script>', sources: [{ page: 1, lineStart: 2, lineEnd: 2, text: '<img>' }] })));
     expect(html).toContain('TESTDATA kilde mangler'); expect(html).toMatch(/name="question"[^>]+disabled/);
     expect(html).toContain('&lt;script&gt;bad()&lt;/script&gt;'); expect(html).toContain('&lt;img&gt;');
+  });
+
+  it('lader brugeren skrive og sende første spørgsmål selv om kildeteksten endnu ikke er gemt', async () => {
+    const html = String(await detailPage(detail({ available: true, ready: false, message: 'TESTDATA teksten hentes ved første spørgsmål' })));
+    const form = html.match(/<form[^>]+data-chat-form[\s\S]*?<\/form>/)[0];
+    expect(form).toContain('data-chat-ready="0"'); expect(form).not.toContain(' disabled');
+    expect(html).toContain('Skriv dit spørgsmål nu.'); expect(html).toContain('Dit spørgsmål bliver på siden.');
+    expect(html).toContain('TESTDATA teksten hentes ved første spørgsmål'); expect(form).not.toContain('name="do" value="laes"');
   });
 });

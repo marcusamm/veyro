@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createBilag, getBilag, getBilagEvidence, readBilag, saveBilag } from '../src/lib/bilag.ts';
+import { createBilag, ensureBilagEvidence, getBilag, getBilagEvidence, readBilag, saveBilag } from '../src/lib/bilag.ts';
 import { fileBytes, storeFile } from '../src/lib/files.ts';
 import * as pdfReader from '../src/lib/pdftext.ts';
 import { samplePdf } from '../src/lib/samplepdf.ts';
@@ -123,5 +123,73 @@ describe('OCR-kilder til bilagsgennemgang', () => {
     expect(evidence).toMatchObject({source:'pdf-tekst',provider:'',truncated:true});
     expect(evidence.pages.flat().join('\n')).toHaveLength(100_000);
     expect(x.env.RECEIPT_OCR.fetch).not.toHaveBeenCalled();
+  });
+
+  it('forbereder kilden ved første spørgsmål på et godkendt gammelt bilag uden at rette status, felter eller lager', async () => {
+    const x = await setup();
+    await x.DB.prepare("UPDATE bilag SET status='godkendt',approved_version=version,approved_by=?,approved_at=?,supplier_name='TESTDATA kontrolleret leverandør' WHERE id=?").bind(actor.email,time,x.id).run();
+    const b = await getBilag(x.DB,x.id);
+    const evidence = await ensureBilagEvidence(x.env,b,time+1);
+    expect(evidence).toMatchObject({pages,source:'ocr',read_at:time+1});
+    expect(await getBilag(x.DB,x.id)).toEqual(b);
+    expect(await fileBytes(x.DB,x.stored.file)).toEqual(png);
+    for (const table of ['bilag_lines','bilag_allocations','bilag_ocr_jobs','movements','purchase_lines']) expect(x.DB.sqlite.prepare(`SELECT COUNT(*) n FROM ${table}`).get().n).toBe(0);
+    expect(x.env.RECEIPT_OCR.fetch).toHaveBeenCalledTimes(1);
+    expect(await ensureBilagEvidence(x.env,b,time+2)).toEqual(evidence);
+    expect(x.env.RECEIPT_OCR.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('første spørgsmål bruger tekst-PDF direkte uden OCR-service eller kø', async () => {
+    const pdf = await samplePdf({kind:'faktura',supplier:'TESTDATA PDF',address:'Testvej 1',cvr:'12345678',number:'TEST-CHAT-PDF',date:'2026-10-29',buyer:'TESTDATA',lines:[]});
+    const x = await setup(pdf,'TESTDATA.pdf'), b = await getBilag(x.DB,x.id);
+    const evidence = await ensureBilagEvidence({...x.env,RECEIPT_OCR:undefined},b,time);
+    expect(evidence.source).toBe('pdf-tekst');
+    expect(evidence.pages.flat().join('\n')).toContain('TEST-CHAT-PDF');
+    expect(await getBilag(x.DB,x.id)).toEqual(b);
+    expect(x.env.RECEIPT_OCR.fetch).not.toHaveBeenCalled();
+  });
+
+  it('manuelle rettelser under kildelæsning bevares og ødelægger ikke kilden til den uændrede original', async () => {
+    const x = await setup(), b = await getBilag(x.DB,x.id);
+    let release, began; const started = new Promise(resolve => { began=resolve; });
+    x.env.RECEIPT_OCR.fetch.mockImplementation(() => { began(); return new Promise(resolve => { release=()=>resolve(Response.json({pages:pages.map(p=>p.join('\n')),provider:'TESTDATA kilde'})); }); });
+    const source = ensureBilagEvidence(x.env,b,time); await started;
+    await x.DB.prepare("UPDATE bilag SET version=version+1,supplier_name='TESTDATA min rettelse',reading_token='TESTDATA uafhængig kø' WHERE id=?").bind(x.id).run();
+    const edited = await getBilag(x.DB,x.id); release();
+    expect(await source).toMatchObject({pages,sourceVersion:1,currentVersion:2});
+    expect(await getBilag(x.DB,x.id)).toEqual(edited);
+  });
+
+  it('filskift under første spørgsmåls kildelæsning afviser kilden uden at gemme den tidligere filtekst', async () => {
+    const x = await setup(), b = await getBilag(x.DB,x.id);
+    let release, began; const started = new Promise(resolve => { began=resolve; });
+    x.env.RECEIPT_OCR.fetch.mockImplementation(() => { began(); return new Promise(resolve => { release=()=>resolve(Response.json({pages:pages.map(p=>p.join('\n')),provider:'TESTDATA gammel fil'})); }); });
+    const source = ensureBilagEvidence(x.env,b,time); await started;
+    const pdf = await samplePdf({kind:'kvittering',supplier:'TESTDATA ny original',address:'Testvej 1',cvr:'12345678',number:'TEST-NY',date:'2026-10-29',buyer:'TESTDATA',lines:[]});
+    const replacement = await storeFile(x.DB,pdf,actor.email,time+1);
+    await x.DB.prepare('UPDATE bilag SET file_id=? WHERE id=?').bind(replacement.file.id,x.id).run();
+    const changed = await getBilag(x.DB,x.id); release();
+    await expect(source).rejects.toMatchObject({status:409,message:expect.stringContaining('Originalbilaget er ændret')});
+    expect(await getBilag(x.DB,x.id)).toEqual(changed);
+    expect(x.DB.sqlite.prepare('SELECT COUNT(*) n FROM bilag_ocr_evidence').get().n).toBe(0);
+  });
+
+  it('overskriver aldrig kilde fra en samtidig normal aflæsning', async () => {
+    const x = await setup(), b = await getBilag(x.DB,x.id);
+    let release, began; const started = new Promise(resolve => { began=resolve; });
+    x.env.RECEIPT_OCR.fetch.mockImplementationOnce(() => { began(); return new Promise(resolve => { release=()=>resolve(Response.json({pages:['TESTDATA gammelt kildesvar'],provider:'TESTDATA gammel kilde'})); }); });
+    const source = ensureBilagEvidence(x.env,b,time); await started;
+    await readBilag(x.env,x.settings,x.id,actor,time+1);
+    const fresh = await getBilagEvidence(x.DB,x.id); release();
+    expect(await source).toEqual(fresh);
+    expect(await getBilagEvidence(x.DB,x.id)).toMatchObject({pages,provider:'TESTDATA OCR',read_at:time+1});
+  });
+
+  it('viser en fast fejl uden interne servicedetaljer, når kilden ikke kan læses', async () => {
+    const x = await setup(), b = await getBilag(x.DB,x.id);
+    x.env.RECEIPT_OCR.fetch.mockImplementation(async()=>{ throw new Error('TESTDATA internal https://private.invalid/secret-and-body'); });
+    await expect(ensureBilagEvidence(x.env,b,time)).rejects.toMatchObject({status:503,message:'Bilagets tekst kunne ikke hentes til chatten. Originalen og dine oplysninger er uændrede; prøv igen senere.'});
+    expect(await getBilag(x.DB,x.id)).toEqual(b);
+    expect(await getBilagEvidence(x.DB,x.id)).toBeNull();
   });
 });
