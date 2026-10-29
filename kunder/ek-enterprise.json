@@ -6,7 +6,8 @@
       "admins": [
         "marcus.ammitzboell@gmail.com"
       ],
-      "ocr_service": "veyro-receipt-ocr"
+      "ocr_service": "veyro-receipt-ocr",
+      "receipt_chat": true
     }
   }
 }

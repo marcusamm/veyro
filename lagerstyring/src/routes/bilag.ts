@@ -14,6 +14,7 @@ import {
   checkBilag,
   createBilag,
   getBilag,
+  getBilagEvidence,
   isDocType,
   isPayment,
   listBilag,
@@ -35,6 +36,7 @@ import {
   type LineInput,
 } from '../lib/bilag';
 import { ocrJob, requestBilagRead, wakeOcrQueue } from '../lib/bilagqueue';
+import { askBilag, BilagChatError, chatHistory, reserveChatRequest, type ChatReply } from '../lib/bilagchat';
 import { buildExport, bilagViewPdf } from '../lib/bilagexport';
 import { FILE_MAX_BYTES, UPLOAD_MAX_FILES, fileBytes, getFile, safeName, storeFile } from '../lib/files';
 import { normalizeEmail, parseDay, parseKr, parseQty, str } from '../lib/format';
@@ -278,7 +280,7 @@ export function bilagRoutes(portal: Portal) {
     return b && canSee(b, user(c)) ? b : null;
   }
 
-  async function showDetail(c: Context<AppEnv>, b: BilagRow, errs: string[] = [], message?: string) {
+  async function showDetail(c: Context<AppEnv>, b: BilagRow, errs: string[] = [], message?: string, chatResult?: ChatReply & { question: string }) {
     const db = c.env.DB;
     const s = c.get('settings');
     const [full, f, lines, allocs, events, jobs, users, { results: products }, ocr] = await Promise.all([
@@ -297,6 +299,7 @@ export function bilagRoutes(portal: Portal) {
     ]);
     const suggestions = manager(c) ? await purchaseSuggestions(db, b, lines) : [];
     const dupOf = b.dup_of ? await db.prepare('SELECT id, supplier_name, total FROM bilag WHERE id = ?').bind(b.dup_of).first<{ id: number; supplier_name: string; total: number | null }>() : null;
+    const evidence = c.env.RECEIPT_CHAT ? await getBilagEvidence(db, b.id) : null;
     return render(
       c,
       bilagNo(b.id),
@@ -310,6 +313,10 @@ export function bilagRoutes(portal: Portal) {
         allocs,
         events,
         ocr,
+        ocrConfigured: !!c.env.RECEIPT_OCR && !!c.env.BILAG_OCR_QUEUE,
+        chat: { available: !!c.env.RECEIPT_CHAT && !!evidence && !b.reading_token,
+          message: !c.env.RECEIPT_CHAT ? 'Bilagschatten er ikke tilsluttet på denne installation.' : b.reading_token ? 'Aflæsningen er i gang. Chatten bliver klar, når den er færdig.' : !evidence ? 'Klik Aflæs igen for at gemme bilagets tekst til chatten.' : undefined,
+          ...chatResult },
         checks: checkBilag(b, lines, allocs, s),
         canEdit: canEditData(b, user(c)),
         canDelete: (canEditData(b, user(c)) || manager(c)) && !(await deleteBlocker(db, b)),
@@ -333,6 +340,32 @@ export function bilagRoutes(portal: Portal) {
     const b = await load(c);
     if (b?.reading_token) c.executionCtx.waitUntil(wakeOcrQueue(c.env));
     return b ? showDetail(c, b) : c.notFound();
+  });
+
+  // Questions are read-only. The existing per-document authorization and CSRF
+  // middleware also apply here; neither the model nor its reply can post data.
+  r.post('/:id{[0-9]+}/spoerg', async (c) => {
+    const b = await load(c);
+    if (!b) return c.notFound();
+    const body = await c.req.parseBody();
+    const question = typeof body.question === 'string' ? body.question.trim() : '';
+    try {
+      if (!question || question.length > 1000) throw new BilagChatError('Skriv et spørgsmål på højst 1.000 tegn.', 400);
+      if (String(body.file_id) !== String(b.file_id) || String(body.version) !== String(b.version) || b.reading_token) throw new BilagChatError('Bilaget er ændret eller under aflæsning. Genindlæs siden før du spørger igen.', 409);
+      if (!c.env.RECEIPT_CHAT) throw new BilagChatError('Bilagschatten er ikke tilsluttet på denne installation.', 503);
+      const history = chatHistory(typeof body.history === 'string' ? body.history : '');
+      const evidence = await getBilagEvidence(c.env.DB, b.id);
+      if (!evidence) throw new BilagChatError('Bilagets tekst mangler. Klik Aflæs igen og vent på aflæsningen, før du bruger chatten.', 409);
+      await reserveChatRequest(c.env.DB, user(c).email, now());
+      const reply = await askBilag(c.env, b, evidence, question, history);
+      const [current, currentEvidence] = await Promise.all([getBilag(c.env.DB, b.id), getBilagEvidence(c.env.DB, b.id)]);
+      if (!current || !canSee(current, user(c)) || current.file_id !== b.file_id || current.version !== b.version || current.data_revision !== b.data_revision || current.reading_token || currentEvidence?.read_at !== evidence.read_at) throw new BilagChatError('Bilaget blev ændret, mens chatten svarede. Genindlæs siden og stil spørgsmålet igen.', 409);
+      return c.req.header('Accept')?.includes('application/json') ? c.json(reply) : showDetail(c, current, [], undefined, { ...reply, question });
+    } catch (error) {
+      const known = error instanceof BilagChatError ? error : new BilagChatError('Chatten kunne ikke svare. Dit bilag er uændret; prøv igen senere.', 503);
+      if (c.req.header('Accept')?.includes('application/json')) return c.json({ error: known.message }, known.status);
+      return showDetail(c, b, [known.message]);
+    }
   });
 
   // Originalfilen (uændret). Må vises i en ramme på appens egne sider, men kan aldrig køre kode.

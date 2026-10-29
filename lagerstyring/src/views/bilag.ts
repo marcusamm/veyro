@@ -237,6 +237,15 @@ export interface DetailData {
   allocs: AllocationView[];
   events: BilagEventRow[];
   ocr?: OcrJob | null;
+  /** Begge OCR-bindings er til stede; det er ikke en kontrol af tjenestens drift. */
+  ocrConfigured?: boolean;
+  chat?: {
+    available: boolean;
+    message?: string;
+    question?: string;
+    answer?: string;
+    sources?: { page: number; lineStart: number; lineEnd: number; text: string }[];
+  };
   checks: Checks;
   canEdit: boolean;
   canDelete: boolean;
@@ -259,6 +268,29 @@ function original(d: DetailData): H {
     : d.file.mime === 'image/heic'
       ? html`<p class="muted">HEIC-billeder kan ikke vises i alle browsere. <a href="${src}?hent=1">Hent originalen</a>.</p>`
       : html`<a href="${src}" target="_blank" rel="noopener"><img class="orig-img" src="${src}" alt="Originalbilag"></a>`;
+}
+
+/** Dialogen er læsende: svar og citater er aldrig rettelser eller godkendelser. */
+function chatSection(d: DetailData): H {
+  const ready = d.chat?.available === true;
+  const sources = d.chat?.sources ?? [];
+  return html`<section class="card stack" aria-labelledby="bilag-chat-title" data-bilag-chat>
+    <div class="row-between"><h2 id="bilag-chat-title">Spørg til bilaget</h2><a class="small" href="${d.base}/${d.b.id}/fil" target="_blank" rel="noopener">Åbn originalen</a></div>
+    <p class="hint">Stil spørgsmål til den aflæste tekst, og gennemgå forslagene. Sammenhold svarene med originalen. Chatten ændrer ikke bilaget.</p>
+    <div class="stack" data-chat-messages role="log" aria-label="Samtale om bilaget" aria-live="polite" aria-relevant="additions" style="max-height:32rem;overflow-y:auto;overflow-wrap:anywhere">
+      ${d.chat?.question ? html`<div class="stack-sm"><strong>Dig</strong><p style="white-space:pre-wrap">${d.chat.question}</p></div>` : ''}
+      ${d.chat?.answer ? html`<div class="stack-sm"><strong>Bilagsassistent</strong><p style="white-space:pre-wrap">${d.chat.answer}</p>${sources.map((s) => html`<blockquote class="small" style="margin:8px 0;padding-left:12px;border-left:2px solid var(--line-strong)"><strong>Side ${s.page}, ${s.lineStart === s.lineEnd ? `linje ${s.lineStart}` : `linje ${s.lineStart}–${s.lineEnd}`}</strong><p style="white-space:pre-wrap">${s.text}</p></blockquote>`)}</div>` : ''}
+    </div>
+    ${!ready ? html`<p class="hint" role="status">${d.chat?.message || 'Chatten er ikke klar til dette bilag endnu. Aflæs bilaget igen for at hente teksten til gennemgangen.'}</p>` : ''}
+    <form class="stack" method="post" action="${d.base}/${d.b.id}/spoerg" data-chat-form data-multi>
+      ${csrfField(d.csrf)}<input type="hidden" name="version" value="${d.b.version}"><input type="hidden" name="file_id" value="${d.b.file_id}"><input type="hidden" name="history" value="[]" data-chat-history>
+      <div class="field"><label for="bilag-question">Dit spørgsmål</label><textarea id="bilag-question" name="question" rows="3" maxlength="1000" required aria-describedby="bilag-chat-help" placeholder="Fx: Hvad står der på varelinjerne?"${!ready ? html` disabled` : ''}></textarea><p class="hint" id="bilag-chat-help">Du kan stille opfølgende spørgsmål i samme samtale. Kildeuddrag vises under svaret.</p></div>
+      <div class="row"><button class="btn btn-primary" type="submit"${!ready ? html` disabled` : ''}>Spørg til bilaget</button><span class="hint" role="status" data-chat-status></span></div>
+      <div class="row" aria-label="Forslag til spørgsmål">${['Hvad står der på varelinjerne?', 'Hvor står totalbeløbet?', 'Hvilke felter bør jeg kontrollere?'].map((q) => html`<button class="btn btn-ghost btn-small" type="button" data-chat-question="${q}"${!ready ? html` disabled` : ''}>${q}</button>`)}</div>
+      <p class="err-text small" role="alert" data-chat-error hidden></p>
+      <noscript><p class="hint">Svaret vises på en ny side, når du sender dit spørgsmål.</p></noscript>
+    </form>
+  </section>`;
 }
 
 function editForm(d: DetailData): H {
@@ -371,6 +403,16 @@ export function detailPage(d: DetailData): H {
   const es = exportState(b);
   const act = (doName: string, label: string, cls = 'btn-secondary', extra: H | '' = '') =>
     html`<form method="post" action="${d.base}/${b.id}" class="inline">${csrfField(d.csrf)}<input type="hidden" name="do" value="${doName}">${extra}<button class="btn ${cls} btn-small" type="submit">${label}</button></form>`;
+  const activeOcr = d.ocr && ['queued', 'processing'].includes(d.ocr.state);
+  const oldUnavailableNote = b.reading_note.startsWith('OCR er ikke tilsluttet.');
+  const canRestartOcr = d.canEdit && b.status === 'modtaget' && !b.reading_token && !activeOcr && d.allocs.length === 0;
+  const readingNotice = b.reading_note && b.status === 'modtaget'
+    ? oldUnavailableNote && d.ocrConfigured
+      ? alert('info', html`<strong>Bilaget blev uploadet før OCR blev tilsluttet.</strong><p>${canRestartOcr
+        ? 'Start en ny aflæsning for at sende originalen til OCR. Resultatet kræver din kontrol.'
+        : 'Beskeden i historikken stammer fra den tidligere aflæsning. Ingen ny aflæsning er startet.'}</p>${canRestartOcr ? act('laes', 'Start ny aflæsning', 'btn-primary') : ''}`)
+      : alert('info', b.reading_note)
+    : '';
   return html`<div class="stack-lg">
   ${pageHead(html`<a href="${d.base}">Bilag</a> · ${bilagNo(b.id)}`, html`${b.supplier_name || DOC_TYPE_LABEL[b.doc_type]} ${bilagTag(b)}`, html`<a class="btn btn-secondary" href="${d.base}/${b.id}/visning.pdf">Digital visning (PDF)</a><a class="btn btn-ghost" href="${d.base}/${b.id}/fil?hent=1">Hent original</a>`,
     html`${DOC_TYPE_LABEL[b.doc_type]} · uploadet ${formatDateTime(b.created_at)} af ${b.uploader ?? b.uploaded_name} · ${b.file_name} · ${exportTag(es)}`)}
@@ -383,14 +425,14 @@ export function detailPage(d: DetailData): H {
       : d.ocr?.state === 'cancelled'
         ? alert('info', html`Aflæsningen er afbrudt, fordi bilaget er ændret. Dine ændringer er bevaret.`)
         : ''}
-  ${b.reading_note && b.status === 'modtaget' ? alert('info', b.reading_note) : ''}
+  ${readingNotice}
   ${b.status === 'afklaring' ? alert('warn', html`<strong>Kræver afklaring:</strong> ${b.clarify || 'Ingen begrundelse angivet.'}`) : ''}
   ${d.dupOf && !b.dup_cleared_by
     ? alert('warn', html`<strong>Mulig dublet</strong> af <a href="${d.base}/${d.dupOf.id}">${bilagNo(d.dupOf.id)}</a> (${b.dup_reason}). Intet er slået sammen. ${d.manager ? html`${act('dublet_ok', 'Ikke en dublet')} ${act('arkiver', 'Arkivér som dublet', 'btn-ghost')}` : ''}`)
     : ''}
   <div class="bilag-split">
     <section class="card stack"><h2>Originalbilag</h2>${original(d)}<p class="hint">${d.file.mime}${d.file.pages ? `, ${d.file.pages} ${d.file.pages === 1 ? 'side' : 'sider'}` : ''}, ${Math.ceil(d.file.size / 1024)} KB. Originalen ændres aldrig.</p></section>
-    <section class="stack">${digitalView(b, d.lines)}
+    <section class="stack">${chatSection(d)}${digitalView(b, d.lines)}
       <div class="card stack-sm">
         <h3>Intern information</h3>
         <dl class="kv">
@@ -423,7 +465,7 @@ export function detailPage(d: DetailData): H {
   <section class="card stack-sm"><h2>Historik</h2><ol class="timeline">${d.events.map(
     (e) => html`<li><strong>${formatDateTime(e.created_at)}</strong> · ${e.actor_name || e.actor} · v${e.version}<div>${e.text}</div></li>`,
   )}</ol></section>
-</div>`;
+</div><script src="/static/bilag-chat.js?v=1" defer></script>`;
 }
 
 // --- Eksport --------------------------------------------------------------------------------------
