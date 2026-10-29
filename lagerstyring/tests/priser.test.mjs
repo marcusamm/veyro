@@ -47,6 +47,13 @@ describe('Prisestimat', () => {
     await new Promise((r) => feed?.close(r));
   });
 
+  it('opfinder ikke aktive leverandørintegrationer fra skabelonens standarddata', () => {
+    const real = stack.sql("SELECT key, access, terms_confirmed_by, terms_confirmed_at FROM retailers WHERE access <> 'demo'");
+    expect(real).toHaveLength(7);
+    expect(real.every(r => r.access === 'manuel' && r.terms_confirmed_by === null && r.terms_confirmed_at === null)).toBe(true);
+    expect(hits).toEqual([]);
+  });
+
   it('viser præcist match, hele pakker, alternativ, manglende pris og et korrekt estimat med demodata', async () => {
     const { html } = await page();
     expect(html).toContain('Præcist match');

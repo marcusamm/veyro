@@ -74,7 +74,7 @@ export function laesKunder(dir = KUNDER_DIR, kundeDomaene = process.env.KUNDE_DO
     }
     const systemer = Object.entries(data.systemer).map(([system, opsaetning]) => {
       if (!SYSTEMER[system]) fejl(fil, `ukendt system "${system}" (brug ${Object.keys(SYSTEMER).join(' eller ')})`);
-      const { domaene = '', admins = [], afsender = '' } = opsaetning ?? {};
+      const { domaene = '', admins = [], afsender = '', ocr_service = '' } = opsaetning ?? {};
       if (domaene && !DOMAENE.test(domaene)) fejl(fil, `${system}: ugyldigt domæne "${domaene}"`);
       if (!Array.isArray(admins) || !admins.length || !admins.every((a) => EMAIL.test(a))) {
         fejl(fil, `${system}: "admins" skal være en liste med mindst én e-mailadresse`);
@@ -82,12 +82,15 @@ export function laesKunder(dir = KUNDER_DIR, kundeDomaene = process.env.KUNDE_DO
       if (afsender && (/["\\\n]/.test(afsender) || !/<[^<>@\s]+@[^<>@\s]+>$/.test(afsender))) {
         fejl(fil, `${system}: "afsender" skal have formen "Navn <adresse@domæne.dk>"`);
       }
+      if (typeof ocr_service !== 'string' || (ocr_service && (system !== 'lagerstyring' || !SLUG.test(ocr_service) || ocr_service.length > 63))) {
+        fejl(fil, `${system}: "ocr_service" skal være navnet på en eksisterende OCR-worker (små bogstaver, tal og bindestreger), kun til lagerstyring`);
+      }
       const navn = `${slug}-${SYSTEMER[system].kort}`;
       // Uden eget domæne: <adresse>.<KUNDE_DOMAENE> til lagerstyringen, <adresse>-bestilling.<…> til varebestillingen
       const standardDomaene = kundeDomaene
         ? `${adresse}${system === 'lagerstyring' ? '' : `-${SYSTEMER[system].kort}`}.${kundeDomaene}`
         : '';
-      return { system, navn, domaene: domaene || standardDomaene, admins, afsender };
+      return { system, navn, domaene: domaene || standardDomaene, admins, afsender, ocrService: ocr_service };
     });
     const udseende = laesUdseende(fil, dir, data.udseende);
     if (data.demo !== undefined && typeof data.demo !== 'boolean') fejl(fil, '"demo" skal være true eller false');
@@ -181,6 +184,10 @@ export function bygKonfiguration(skabelon, inst, databaseId, { standardAfsender 
     if (!/^[0-9a-f]{32}$/.test(KUNDEKATALOG_ID)) throw new Error('KUNDEKATALOG_ID er ugyldigt');
     t = erstat(t, /^DEV_MODE = .*$/m, `DEV_MODE = "0"\nKATALOG_ID = "${inst.navn}"`);
     t += `\n# Kundekataloget, så Kundelogin på kunde.veyro.dk kan sende brugerne hertil\n[[kv_namespaces]]\nbinding = "KATALOG"\nid = "${KUNDEKATALOG_ID}"\n`;
+    if (inst.ocrService) {
+      if (!SLUG.test(inst.ocrService) || inst.ocrService.length > 63) throw new Error('OCR-workerens navn er ugyldigt');
+      t += `\n# Særskilt, udtrykkeligt konfigureret OCR-tjeneste for denne virksomhed\n[[services]]\nbinding = "RECEIPT_OCR"\nservice = "${inst.ocrService}"\n`;
+    }
   }
   if (inst.domaene) {
     t = erstat(

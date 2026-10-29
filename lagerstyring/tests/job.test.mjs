@@ -106,7 +106,7 @@ describe('Jobportal: materialer, timer, prisoverslag og faktura', () => {
   it('medarbejderens timer afventer godkendelse, før de kan faktureres', async () => {
     const j = job('2026-014');
     const page = await staff.get(`/job/${j.id}/timer`);
-    const res = await staff.post(`/job/${j.id}/timer`, { _csrf: csrfFrom(page.html), phase: 'faktisk', type: 'tid', qty: '4', description: 'Isolering' });
+    const res = await staff.post(`/job/${j.id}/timer`, { _csrf: csrfFrom(page.html), op: opFrom(page.html), phase: 'faktisk', type: 'tid', qty: '4', description: 'Isolering' });
     expect(res.status).toBe(303);
     const e = stack.sql(`SELECT * FROM job_entries WHERE job_id = ${j.id} AND description = 'Isolering'`)[0];
     expect(e).toMatchObject({ qty: 4 * K, worker_email: 'jonas@nordlysbyg.example', approved_at: null, unit_price: 59500, internal_cost: 38500 });

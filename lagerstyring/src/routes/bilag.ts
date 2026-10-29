@@ -38,6 +38,7 @@ import {
 import { buildExport, bilagViewPdf } from '../lib/bilagexport';
 import { FILE_MAX_BYTES, UPLOAD_MAX_FILES, fileBytes, getFile, safeName, storeFile } from '../lib/files';
 import { normalizeEmail, parseDay, parseKr, parseQty, str } from '../lib/format';
+import { Conflict } from '../lib/ledger';
 import { canManage, requireUser } from '../lib/session';
 import { actorOf, idParam, isDemo, newOp, render, runTx } from '../render';
 import { bilagTabs, detailPage, exportPage, listPage, uploadPage, type ExportRow } from '../views/bilag';
@@ -458,7 +459,12 @@ export function bilagRoutes(portal: Portal) {
         });
       }
       if (errs.length) return showDetail(c, b, errs);
-      await saveBilag(db, b, { ...data, payment: pay, paid_by: paidBy, note: str(one('note'), 1000, { multiline: true }) }, lines, actor, t);
+      try {
+        await saveBilag(db, b, { ...data, payment: pay, paid_by: paidBy, note: str(one('note'), 1000, { multiline: true }) }, lines, actor, t, { confirmOCR: editable && one('confirm_ocr') === '1' });
+      } catch (error) {
+        if (error instanceof Conflict) return showDetail(c, b, [error.message]);
+        throw error;
+      }
       return go('gemt');
     }
 

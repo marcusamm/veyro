@@ -35,7 +35,7 @@ export const STATUS_TAG: Record<StockStatus, string> = {
 type PlanInput = Pick<
   ProductRow,
   'stock' | 'reserved' | 'whole_units' | 'avg_daily_usage' | 'lead_time_days' | 'safety_method' | 'safety_qty' | 'buffer_days' | 'max_stock'
-> & { supplier_lead_time?: number | null };
+> & { supplier_lead_time?: number | null; reorder_point?: number | null };
 
 export interface StockPlan {
   available: number;
@@ -46,6 +46,8 @@ export interface StockPlan {
   safety: number | null;
   safetyMethod: 'antal' | 'dage' | null;
   rop: number | null;
+  ropSource: 'manuel' | 'beregnet' | null;
+  suggestedRop: number | null;
   /** Hvad der mangler for at kunne beregne genbestillingspunktet */
   missing: string[];
   status: StockStatus;
@@ -71,16 +73,20 @@ export function stockPlan(p: PlanInput): StockPlan {
     missing.push('sikkerhedslager');
   }
 
-  const rop = avgDaily !== null && leadDays !== null && safety !== null ? roundUpUnits(avgDaily * leadDays + safety, whole) : null;
+  const suggestedRop = avgDaily !== null && leadDays !== null && safety !== null ? roundUpUnits(avgDaily * leadDays + safety, whole) : null;
+  // Et manuelt punkt er allerede den samlede grænse: sikkerhedslager lægges ikke til igen.
+  const manual = p.reorder_point !== null && p.reorder_point !== undefined;
+  const rop = manual ? roundUpUnits(p.reorder_point!, whole) : suggestedRop;
+  const ropSource = manual ? 'manuel' : suggestedRop !== null ? 'beregnet' : null;
 
   let status: StockStatus;
   if (available <= 0) status = 'ingen';
-  else if (rop === null || safety === null) status = 'mangler';
-  else if (available <= safety) status = 'kritisk';
+  else if (safety !== null && available <= safety) status = 'kritisk';
+  else if (rop === null) status = 'mangler';
   else if (available <= rop) status = 'genbestil';
   else status = 'normal';
 
-  return { available, avgDaily, leadDays, leadFromSupplier: p.lead_time_days === null && leadDays !== null, safety, safetyMethod: p.safety_method, rop, missing, status };
+  return { available, avgDaily, leadDays, leadFromSupplier: p.lead_time_days === null && leadDays !== null, safety, safetyMethod: p.safety_method, rop, ropSource, suggestedRop, missing, status };
 }
 
 /**
@@ -89,7 +95,7 @@ export function stockPlan(p: PlanInput): StockPlan {
  * ellers foreslås et genbestillingspunkt plus én leveringstids forbrug.
  */
 export function suggestQty(p: PlanInput, plan: StockPlan, onOrder: number): number {
-  const target = p.max_stock ?? (plan.rop !== null && plan.avgDaily !== null && plan.leadDays !== null ? plan.rop + plan.avgDaily * plan.leadDays : null);
+  const target = p.max_stock ?? (plan.rop !== null ? plan.rop + (plan.avgDaily !== null && plan.leadDays !== null ? plan.avgDaily * plan.leadDays : 0) : null);
   if (target === null) return 0;
   return Math.max(0, roundUpUnits(target - plan.available - onOrder, !!p.whole_units));
 }

@@ -10,6 +10,7 @@
 import type { InvoiceBasisRow, InvoiceLineRow, JobRow } from '../env';
 import { formatKr, formatQty, lineAmount } from './format';
 import type { Settings } from './settings';
+import { Conflict } from './ledger';
 
 export interface ConsumptionLine {
   source: InvoiceLineRow['source'];
@@ -19,7 +20,7 @@ export interface ConsumptionLine {
   name: string;
   unit: string;
   qty: number;
-  unit_cost: number;
+  unit_cost: number | null;
   sale_price: number | null;
 }
 
@@ -45,19 +46,19 @@ export async function jobConsumption(db: D1Database, jobId: number): Promise<Con
       .all<{ product_id: number; issued: number; returned: number; site_used: number; sku: string; name: string; unit: string; purchase_price: number | null; sale_price: number | null }>(),
     db
       .prepare(
-        `SELECT product_id, kind, SUM(qty) AS qty, SUM(qty * COALESCE(unit_cost, 0)) AS cost FROM movements
+        `SELECT product_id, kind, SUM(qty) AS qty, SUM(qty * unit_cost) AS cost, SUM(CASE WHEN unit_cost IS NULL THEN qty ELSE 0 END) AS unknown_qty FROM movements
          WHERE job_id = ? AND product_id IS NOT NULL AND kind IN ('forbrug', 'udlevering', 'retur', 'arbejdssted_modtaget')
          GROUP BY product_id, kind`,
       )
       .bind(jobId)
-      .all<{ product_id: number; kind: string; qty: number; cost: number }>(),
+      .all<{ product_id: number; kind: string; qty: number; cost: number | null; unknown_qty: number }>(),
     db
       .prepare(
-        `SELECT id, sku, name, unit, received, COALESCE(actual_price, unit_price, 0) AS price FROM purchase_lines
+        `SELECT id, sku, name, unit, received, COALESCE(actual_price, unit_price) AS price FROM purchase_lines
          WHERE job_id = ? AND product_id IS NULL AND received > 0 ORDER BY name`,
       )
       .bind(jobId)
-      .all<{ id: number; sku: string; name: string; unit: string; received: number; price: number }>(),
+      .all<{ id: number; sku: string; name: string; unit: string; received: number; price: number | null }>(),
   ]);
   const mv = (pid: number, kind: string) => moves.find((m) => m.product_id === pid && m.kind === kind);
   const out: ConsumptionLine[] = [];
@@ -67,12 +68,13 @@ export async function jobConsumption(db: D1Database, jobId: number): Promise<Con
       const out1 = [mv(m.product_id, 'forbrug'), mv(m.product_id, 'udlevering')];
       const qtyOut = out1.reduce((s, x) => s + (x?.qty ?? 0), 0);
       const costOut = out1.reduce((s, x) => s + (x?.cost ?? 0), 0);
-      const unitCost = qtyOut ? avg(costOut / 1000, qtyOut) : (m.purchase_price ?? 0);
+      const unknown = out1.some((x) => x && x.unknown_qty > 0);
+      const unitCost = qtyOut > 0 && !unknown ? avg(costOut / 1000, qtyOut) : null;
       out.push({ source: 'lager', product_id: m.product_id, purchase_line_id: null, sku: m.sku, name: m.name, unit: m.unit, qty: net, unit_cost: unitCost, sale_price: m.sale_price });
     }
     if (m.site_used > 0) {
       const rec = mv(m.product_id, 'arbejdssted_modtaget');
-      const unitCost = rec && rec.qty ? avg(rec.cost / 1000, rec.qty) : (m.purchase_price ?? 0);
+      const unitCost = rec && rec.qty > 0 && rec.unknown_qty === 0 && rec.cost !== null ? avg(rec.cost / 1000, rec.qty) : null;
       out.push({ source: 'arbejdssted', product_id: m.product_id, purchase_line_id: null, sku: m.sku, name: m.name, unit: m.unit, qty: m.site_used, unit_cost: unitCost, sale_price: m.sale_price });
     }
   }
@@ -92,7 +94,7 @@ export async function uninvoiced(db: D1Database, jobId: number): Promise<Consump
   const { results } = await db
     .prepare(
       `SELECT l.source, l.product_id, l.purchase_line_id, SUM(l.qty) AS qty FROM invoice_lines l JOIN invoice_bases b ON b.id = l.basis_id
-       WHERE b.job_id = ? AND b.status = 'godkendt' GROUP BY l.source, l.product_id, l.purchase_line_id`,
+       WHERE b.job_id = ? AND b.status = 'godkendt' AND l.include = 1 GROUP BY l.source, l.product_id, l.purchase_line_id`,
     )
     .bind(jobId)
     .all<{ source: InvoiceLineRow['source']; product_id: number | null; purchase_line_id: number | null; qty: number }>();
@@ -100,8 +102,8 @@ export async function uninvoiced(db: D1Database, jobId: number): Promise<Consump
   return cons.map((c) => ({ ...c, qty: c.qty - (done.get(key(c)) ?? 0) })).filter((c) => c.qty > 0);
 }
 
-export function salePrice(c: Pick<ConsumptionLine, 'unit_cost' | 'sale_price'>, markupPct: number): number {
-  return c.sale_price ?? Math.round(c.unit_cost * (1 + markupPct / 100));
+export function salePrice(c: Pick<ConsumptionLine, 'unit_cost' | 'sale_price'>, markupPct: number): number | null {
+  return c.sale_price ?? (c.unit_cost === null ? null : Math.round(c.unit_cost * (1 + markupPct / 100)));
 }
 
 export function customerSnapshot(job: JobRow): string {
@@ -138,6 +140,9 @@ export function parseCustomer(raw: string): Customer {
 export async function createDraft(db: D1Database, job: JobRow, s: Settings, actor: string, now: number): Promise<number> {
   const lines = await uninvoiced(db, job.id);
   const markup = job.markup_pct ?? s.default_markup_pct;
+  if (lines.some((l) => l.unit_cost === null || salePrice(l, markup) === null)) {
+    throw new Conflict('Historisk kostpris mangler. Brug Job → Faktura, hvor manglende priser kan gennemgås i kladden.');
+  }
   const basis = await db
     .prepare(
       `INSERT INTO invoice_bases (job_id, customer, created_by, created_at) VALUES (?, ?, ?, ?)

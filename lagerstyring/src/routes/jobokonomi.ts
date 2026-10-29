@@ -18,11 +18,12 @@ import {
   remaining,
   settled,
 } from '../lib/invoicing';
-import { approveStmt, calcCtx, clearPriceStmt, getItem, itemCalc, jobItems, lookupItems, manualPriceStmt, preferredRetailerId, type ItemView } from '../lib/jobitems';
+import { approveStmt, calcCtx, clearPriceStmt, getItem, itemCalc, jobItems, lookupItems, manualPriceStmt, preferredRetailerId, syncItemPlan, type ItemView } from '../lib/jobitems';
 import { logStmt, syncStage } from '../lib/jobs';
 import { billRate, internalRate, jobEntries, labourTypes, summarizeEntries, userType } from '../lib/labour';
 import { Conflict } from '../lib/ledger';
-import { defaultJobList, getJob, getMaterial, getProduct, jobMaterials, setPlanned } from '../lib/materials';
+import { normUnit } from '../lib/prices';
+import { getJob, getMaterial, getProduct, jobMaterials } from '../lib/materials';
 import { invoicePdf, quotePdf } from '../lib/pdf';
 import { jobBilagCost } from '../lib/bilag';
 import { paymentsFor } from './betalinger';
@@ -96,10 +97,11 @@ export async function jobOverview(c: Context<AppEnv>, id: number, extra: { error
       quote: q ? { version: q.version, subtotal: q.subtotal, total: q.total, incomplete: q.incomplete, shared_at: q.shared_at, accepted_at: q.accepted_at } : null,
       estimate: { subtotal: calc.subtotal, incomplete: calc.incomplete },
       actualMaterials: matSources.some((x) => x.unit_price === null) && !matSources.some((x) => x.unit_price !== null) ? null : matSources.reduce((a, x) => a + lineAmount(x.unit_price, x.qty), 0),
+      actualMissing: sources.filter((x) => x.unit_price === null).length,
       actualLabour: lab.billableLabour + lab.actualOther,
       internalCost: matCost + lab.internalCost + bilagCost,
       bilagCost,
-      internalMissing: lab.internalMissing,
+      internalMissing: lab.internalMissing + matSources.filter((x) => x.unit_cost === null).length,
       hours: lab.actualHours,
       hoursExpected: lab.expectedHours,
       pendingHours: lab.pendingHours,
@@ -160,6 +162,7 @@ export async function showMaterials(c: Context<AppEnv>, id: number, extra: { err
       csrf: c.get('csrf'),
       ops: mats.map(() => newOp()),
       reserveOp: newOp(),
+      itemOps: items.map(() => ({ edit: newOp(), use: newOp() })),
       now,
       maxAgeDays: s.price_max_age_days,
       defaultMarkup: j.markup_pct ?? s.default_markup_pct,
@@ -279,12 +282,26 @@ okonomi.post('/:id{[0-9]+}/materialer/:item{[0-9]+}', async (c) => {
   }
   if (errs.length) return showMaterials(c, j.id, { error: errs.join(' '), status: 400 });
   const keys = Object.keys(upd) as (keyof JobItemRow)[];
-  const now = nowSec();
-  await db.batch([
-    db.prepare(`UPDATE job_items SET ${keys.map((k) => `${k} = ?`).join(', ')}, updated_at = ? WHERE id = ?`).bind(...keys.map((k) => upd[k] ?? null), now, it.id),
-    ...(qty !== it.qty ? [logStmt(db, j.id, 'materiale', `${name}: forventet mængde ændret fra ${qtyText(it.qty, it.unit)} til ${qtyText(qty, unit)}.`, actorOf(c), now)] : []),
-  ]);
-  return c.redirect(`/job/${j.id}/materialer?besked=gemt`, 303);
+  const pref = await preferredRetailerId(db, c.get('settings'));
+  const result = await runTx(c, 'materiale_rettet', body['op'], async (tx) => {
+    const fresh = await getItem(tx.db, it.id);
+    const currentJob = await getJob(tx.db, j.id);
+    if (!fresh || !currentJob) throw new Conflict('Materialet findes ikke længere.');
+    const planningChanged = fresh.qty !== qty || normUnit(fresh.unit) !== normUnit(unit) || (upd.pack_qty !== undefined && fresh.pack_qty !== upd.pack_qty);
+    if (planningChanged) tx.guardActiveJob(j.id);
+    const current = (await jobItems(tx.db, j.id, pref)).find((x) => x.id === it.id)!;
+    const next = { ...current, ...upd } as ItemView;
+    next.eff_retailer_id = next.retailer_id ?? currentJob.retailer_id ?? pref;
+    // Unit changes must not reinterpret an existing recorded quantity.
+    if (normUnit(next.unit) !== normUnit(fresh.unit) && (fresh.used_qty > 0 || fresh.price !== null || fresh.sale_price !== null || fresh.actual_cost !== null)) throw new Conflict('Enheden kan ikke ændres på en linje med forbrug eller priser. Opret en særskilt linje med det nye prisgrundlag.');
+    if (planningChanged) await syncItemPlan(tx, currentJob, next, c.get('settings'));
+    tx.add(tx.db.prepare(`UPDATE job_items SET ${keys.map((k) => `${k} = ?`).join(', ')}, updated_at = ? WHERE id = ?`).bind(...keys.map((k) => upd[k] ?? null), tx.now, it.id));
+    tx.add(logStmt(tx.db, j.id, 'materiale', planningChanged
+      ? `${name}: forventet mængde ændret fra ${qtyText(fresh.qty, fresh.unit)} til ${qtyText(qty, unit)}; reservation og indkøbsbehov ajourført.`
+      : `${name}: materialelinje rettet.`, tx.actor, tx.now));
+  });
+  if (!result.ok && !result.duplicate) return showMaterials(c, j.id, { error: result.error, status: 409 });
+  return c.redirect(`/job/${j.id}/materialer?besked=${result.ok ? 'gemt' : 'dublet'}`, 303);
 });
 
 okonomi.post('/:id{[0-9]+}/materialer/:item{[0-9]+}/pris', async (c) => {
@@ -340,24 +357,33 @@ okonomi.post('/:id{[0-9]+}/materialer/:item{[0-9]+}/forbrug', async (c) => {
   if (!found) return c.notFound();
   const { j, it } = found;
   if (it.product_id) return showMaterials(c, j.id, { error: 'Varer fra lageret registreres med "Registrér forbrug".', status: 400 });
-  if (j.status !== 'aktiv') return showMaterials(c, j.id, { error: 'Jobbet er afsluttet.', status: 409 });
   const body = await c.req.parseBody();
   const q = parseQty(body['qty']);
   if (!q) return showMaterials(c, j.id, { error: 'Angiv en mængde.', status: 400 });
   const back = body['retning'] === 'retur';
-  if (back && q > it.used_qty) return showMaterials(c, j.id, { error: `Der er kun registreret ${qtyText(it.used_qty, it.unit)} brugt.`, status: 409 });
-  // Er en del af forbruget allerede faktureret, kan det ikke fjernes her (det krediteres)
-  if (back) {
-    const done = (await settled(c.env.DB, j.id)).get(`item:${it.id}`) ?? 0;
-    if (it.used_qty - q < done) return showMaterials(c, j.id, { error: 'Den mængde er allerede faktureret. Lav en kreditnota i stedet.', status: 409 });
-  }
-  const now = nowSec();
-  await c.env.DB.batch([
-    c.env.DB.prepare(`UPDATE job_items SET used_qty = used_qty ${back ? '-' : '+'} ?, updated_at = ? WHERE id = ? AND used_qty ${back ? '>=' : '>='} ?`).bind(q, now, it.id, back ? q : 0),
-    logStmt(c.env.DB, j.id, 'forbrug', `${it.name}: ${qtyText(q, it.unit)} ${back ? 'returneret (ikke brugt)' : 'brugt'}.`, actorOf(c), now),
-  ]);
-  await syncStage(c.env.DB, j.id, now, actorOf(c));
-  return c.redirect(`/job/${j.id}/materialer?besked=forbrug_registreret`, 303);
+  const result = await runTx(c, back ? 'materiale_forbrug_retur' : 'materiale_forbrug', body['op'], async (tx) => {
+    const fresh = await getItem(tx.db, it.id);
+    const currentJob = await getJob(tx.db, j.id);
+    if (!fresh || !currentJob || fresh.product_id) throw new Conflict('Materialet findes ikke længere.');
+    if (currentJob.status !== 'aktiv') throw new Conflict('Jobbet er afsluttet.');
+    tx.guardActiveJob(j.id);
+    if (back && q > fresh.used_qty) throw new Conflict(`Der er kun registreret ${qtyText(fresh.used_qty, fresh.unit)} brugt.`);
+    if (back) {
+      const done = (await settled(tx.db, j.id)).get(`item:${it.id}`) ?? 0;
+      if (fresh.used_qty - q < done) throw new Conflict('Den mængde er allerede faktureret. Lav en kreditnota i stedet.');
+    }
+    const delta = back ? -q : q;
+    tx.add(tx.db.prepare(`UPDATE job_items SET used_qty = CASE WHEN used_qty + ?1 >= COALESCE((
+      SELECT SUM(CASE WHEN i.kind = 'faktura' THEN l.qty ELSE -l.qty END)
+      FROM invoice_items l JOIN invoices i ON i.id = l.invoice_id
+      WHERE i.job_id = ?2 AND i.status = 'udstedt' AND l.include = 1 AND l.source_key = ?3
+    ), 0) THEN used_qty + ?1 ELSE -1 END, updated_at = ?4 WHERE id = ?5`)
+      .bind(delta, j.id, `item:${it.id}`, tx.now, it.id));
+    tx.add(logStmt(tx.db, j.id, 'forbrug', `${fresh.name}: ${qtyText(q, fresh.unit)} ${back ? 'returneret (ikke brugt)' : 'brugt'}.`, tx.actor, tx.now));
+    tx.jobs.add(j.id);
+  });
+  if (!result.ok && !result.duplicate) return showMaterials(c, j.id, { error: result.error, status: 409 });
+  return c.redirect(`/job/${j.id}/materialer?besked=${result.ok ? 'forbrug_registreret' : 'dublet'}`, 303);
 });
 
 okonomi.post('/:id{[0-9]+}/materialer/:item{[0-9]+}/slet', async (c) => {
@@ -402,40 +428,14 @@ okonomi.post('/:id{[0-9]+}/materialer/reserver', async (c) => {
   const body = await c.req.parseBody();
   const j0 = await getJob(db, id);
   if (!j0) return c.notFound();
-  const listId = await defaultJobList(db, j0, nowSec());
   const pref = await preferredRetailerId(db, s);
   const res = await runTx(c, 'reserver', body['op'], async (tx) => {
     const j = await getJob(tx.db, id);
     if (!j) throw new Conflict('Jobbet findes ikke.');
     if (j.status !== 'aktiv') throw new Conflict('Jobbet er afsluttet.');
     const items = await jobItems(tx.db, id, pref);
-    const ctx = calcCtx(j, s, tx.now);
-    for (const it of items) {
-      if (it.product_id) {
-        const p = await getProduct(tx.db, it.product_id);
-        if (!p) continue;
-        const m = await getMaterial(tx.db, id, p.id);
-        if (it.qty > m.planned) await setPlanned(tx, j, p, it.qty);
-      } else if (it.qty > 0 && !it.purchase_line_id) {
-        const calc = itemCalc(it, it.qty, ctx);
-        const buyQty = calc.buy?.covered ?? it.qty;
-        const note = calc.buy && it.pack_qty && it.pack_qty !== Q ? `Køb ${qtyText(calc.buy.buy, it.sales_unit || 'pk.')} á ${qtyText(it.pack_qty, it.unit)}` : 'Købes til jobbet';
-        tx.add(
-          tx.db
-            .prepare(
-              `INSERT INTO purchase_lines (list_id, job_id, product_id, sku, name, unit, qty, unit_price, deliver_to, note, retailer_id, created_at, updated_at)
-               VALUES (?, ?, NULL, '', ?, ?, ?, ?, 'arbejdssted', ?, ?, ?, ?)`,
-            )
-            .bind(listId, id, it.name, it.unit, buyQty, calc.unitCost, note, it.eff_retailer_id, tx.now, tx.now),
-          tx.db
-            .prepare(`UPDATE job_items SET purchase_line_id = (SELECT MAX(id) FROM purchase_lines WHERE list_id = ? AND job_id = ? AND product_id IS NULL AND name = ?), updated_at = ? WHERE id = ?`)
-            .bind(listId, id, it.name, tx.now, it.id),
-        );
-        tx.touchList(listId);
-        tx.jobs.add(id);
-      }
-      if (!it.planned_at) tx.add(tx.db.prepare('UPDATE job_items SET planned_at = ? WHERE id = ?').bind(tx.now, it.id));
-    }
+    tx.guardActiveJob(j.id);
+    for (const it of items) await syncItemPlan(tx, j, it, s, true);
     tx.add(logStmt(tx.db, id, 'materiale', 'Materialer reserveret; det, der mangler, er sat på indkøbslisten.', tx.actor, tx.now));
     tx.jobs.add(id);
   });
@@ -470,6 +470,7 @@ async function showHours(c: Context<AppEnv>, id: number, errs: string[] = []) {
       me: me(c),
       manager,
       csrf: c.get('csrf'),
+      entryOps: { actual: newOp(), expected: newOp(), other: newOp() },
       rate: billRate(j, null, s),
       internalDefault: internalRate(null, s),
       today: todayDk(),
@@ -501,10 +502,10 @@ okonomi.post('/:id{[0-9]+}/timer', async (c) => {
   else if (type === 'tid' && phase === 'faktisk' && qty > 24 * Q) errs.push('Højst 24 timer pr. registrering.');
   const date = parseDay(body['work_date'] ?? '');
   if (date === null) errs.push('Datoen er ikke gyldig.');
-  const priceRaw = str(body['unit_price'], 15);
+  const priceRaw = manager ? str(body['unit_price'], 15) : '';
   const price = priceRaw ? parseKr(priceRaw) : null;
   if (priceRaw && price === null) errs.push('Prisen er ikke et gyldigt beløb.');
-  const costRaw = str(body['internal_cost'], 15);
+  const costRaw = manager ? str(body['internal_cost'], 15) : '';
   const cost = costRaw ? parseKr(costRaw) : null;
   if (costRaw && cost === null) errs.push('Den interne omkostning er ikke et gyldigt beløb.');
   const description = str(body['description'], 200);
@@ -533,8 +534,13 @@ okonomi.post('/:id{[0-9]+}/timer', async (c) => {
   }
   const billable = manager ? (body['billable'] === '1' ? 1 : 0) : 1;
   const approve = manager && phase === 'faktisk' && (type === 'omkostning' || body['approve'] === '1');
-  await db.batch([
-    db
+  const result = await runTx(c, 'job_registrering', body['op'], async (tx) => {
+    if (phase === 'faktisk') {
+      const current = await getJob(tx.db, id);
+      if (!current || current.status !== 'aktiv') throw new Conflict('Jobbet er afsluttet. Genåbn det for at registrere timer.');
+      tx.guardActiveJob(id);
+    }
+    tx.add(db
       .prepare(
         `INSERT INTO job_entries (job_id, type, phase, worker_email, worker_name, worker_type, work_date, description, qty, unit, internal_cost, unit_price, billable, extra,
            approved_by, approved_at, created_by, created_at, updated_at)
@@ -571,9 +577,11 @@ okonomi.post('/:id{[0-9]+}/timer', async (c) => {
       actor,
       now,
     ),
-  ]);
-  if (phase === 'faktisk') await syncStage(db, id, now, actor);
-  return c.redirect(`/job/${id}/timer?besked=${phase === 'faktisk' && type === 'tid' ? (approve ? 'timer_godkendt' : 'timer_registreret') : 'gemt'}`, 303);
+    );
+    tx.jobs.add(id);
+  });
+  if (!result.ok && !result.duplicate) return showHours(c, id, [result.error]);
+  return c.redirect(`/job/${id}/timer?besked=${!result.ok ? 'dublet' : phase === 'faktisk' && type === 'tid' ? (approve ? 'timer_godkendt' : 'timer_registreret') : 'gemt'}`, 303);
 });
 
 /** Er en registrering med på en udstedt faktura? Så kan den ikke ændres (rettes med kreditnota). */

@@ -80,9 +80,13 @@ export async function ensureDemo(env: Env): Promise<void> {
 
 /** Sletter alle registreringer og lægger demodata ind igen (brugere og logins bevares). */
 export async function resetDemo(env: Env): Promise<void> {
+  if (env.DEMO_MODE !== '1') throw new Error('Nulstilling er kun mulig i demoen.');
   const db = env.DB;
   await db.batch(
     [
+      // Only this demo-only transaction may discard completed demo postings.
+      // The flag is removed in the same atomic batch, including on rollback.
+      "INSERT OR REPLACE INTO settings (key, value) VALUES ('_internal_demo_reset', '1')",
       'DELETE FROM export_items',
       'UPDATE bilag SET export_id = NULL',
       'UPDATE invoices SET export_id = NULL',
@@ -131,6 +135,7 @@ export async function resetDemo(env: Env): Promise<void> {
       'DELETE FROM suppliers',
       'DELETE FROM ops',
       "DELETE FROM settings WHERE key = 'last_digest_at'",
+      "DELETE FROM settings WHERE key = '_internal_demo_reset'",
     ].map((s) => db.prepare(s)),
   );
   await ensureDemo(env);

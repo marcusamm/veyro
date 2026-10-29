@@ -83,7 +83,8 @@ export function summarizeEntries(entries: JobEntryRow[]): LabourSummary {
       else s.pendingHours += e.qty;
       if (e.billable && e.approved_at) s.billableLabour += lineAmount(e.unit_price, e.qty);
     } else {
-      if (e.internal_cost !== null) s.internalCost += lineAmount(e.internal_cost, e.qty);
+      if (e.internal_cost === null) s.internalMissing++;
+      else s.internalCost += lineAmount(e.internal_cost, e.qty);
       if (e.billable) s.actualOther += lineAmount(e.unit_price, e.qty);
     }
   }

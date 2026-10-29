@@ -30,6 +30,8 @@ export interface MoveInput {
   reason?: string;
   /** Sæt til et tal for at gemme beholdningen efter bevægelsen direkte (ellers læses den fra varen) */
   stock_after?: number;
+  /** Varemodtagelser til et afsluttet job lægges på frit lager uden reservation. */
+  reserve_if_active?: boolean;
 }
 
 export const MOVE_LABEL: Record<string, string> = {
@@ -59,6 +61,8 @@ export class Tx {
   readonly products = new Set<number>();
   readonly jobs = new Set<number>();
   readonly lists = new Set<number>();
+  private readonly activeJobs = new Set<number>();
+  private readonly productJobs = new Set<number>();
 
   constructor(
     readonly db: D1Database,
@@ -72,6 +76,18 @@ export class Tx {
     return this;
   }
 
+  /** Kontrollen udføres inde i samme batch som lagerændringen, ikke kun ved læsningen. */
+  guardActiveJob(jobId: number): this {
+    this.activeJobs.add(jobId);
+    return this;
+  }
+
+  /** Registrér også varer, der blev knyttet til jobbet lige inden denne batch. */
+  trackJobProducts(jobId: number): this {
+    this.productJobs.add(jobId);
+    return this;
+  }
+
   /** Lagerbevægelse til historikken. Beholdning og reservationer efter læses fra varen. */
   move(m: MoveInput): this {
     const pid = m.product_id ?? null;
@@ -81,7 +97,7 @@ export class Tx {
       this.db
         .prepare(
           `INSERT INTO movements (product_id, job_id, purchase_line_id, kind, qty, stock_delta, reserved_delta, stock_after, reserved_after, unit_cost, reason, actor, actor_name, op, created_at)
-           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7,
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ${m.reserve_if_active ? "CASE WHEN EXISTS (SELECT 1 FROM jobs WHERE id = ?2 AND status = 'aktiv') THEN ?7 ELSE 0 END" : '?7'},
              COALESCE(?8, (SELECT stock FROM products WHERE id = ?1)), (SELECT reserved FROM products WHERE id = ?1),
              ?9, ?10, ?11, ?12, ?13, ?14)`,
         )
@@ -116,11 +132,18 @@ export class Tx {
 
   async commit(kind = 'registrering'): Promise<void> {
     if (!this.stmts.length) return;
+    const guards = [...this.activeJobs].map(id => this.db.prepare(
+      "UPDATE jobs SET status = CASE WHEN status = 'aktiv' THEN status ELSE 'lager_konflikt' END WHERE id = ?",
+    ).bind(id));
     const all = this.op
-      ? [this.db.prepare('INSERT INTO ops (token, kind, actor, created_at) VALUES (?, ?, ?, ?)').bind(this.op, kind, this.actor.email, this.now), ...this.stmts]
-      : this.stmts;
+      ? [this.db.prepare('INSERT INTO ops (token, kind, actor, created_at) VALUES (?, ?, ?, ?)').bind(this.op, kind, this.actor.email, this.now), ...guards, ...this.stmts]
+      : [...guards, ...this.stmts];
     try {
       await this.db.batch(all);
+      for (const jobId of this.productJobs) {
+        const { results } = await this.db.prepare('SELECT product_id FROM job_materials WHERE job_id = ?').bind(jobId).all<{ product_id: number }>();
+        for (const row of results) this.products.add(row.product_id);
+      }
     } catch (err) {
       const msg = String((err as Error)?.message ?? err);
       if (msg.includes('ops.token')) throw new Duplicate('Registreringen er allerede gennemført.');

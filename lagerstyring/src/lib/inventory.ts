@@ -29,8 +29,8 @@ export function adjustStock(tx: Tx, p: ProductRow, kind: AdjustKind, q: number, 
     if (q <= 0) throw new Conflict('Angiv den modtagne mængde.');
     tx.add(
       tx.db
-        .prepare('UPDATE products SET stock = stock + ?, purchase_price = COALESCE(?, purchase_price), updated_at = ? WHERE id = ?')
-        .bind(q, unitPrice, tx.now, p.id),
+        .prepare('UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ?')
+        .bind(q, tx.now, p.id),
     );
     tx.move({ product_id: p.id, kind, qty: q, stock_delta: q, unit_cost: unitPrice ?? p.purchase_price, reason });
     return;

@@ -2,6 +2,8 @@ import type { Settings } from './lib/settings';
 
 export interface Env {
   DB: D1Database;
+  /** Valgfri, særskilt OCR-worker. Ingen aflæsning af billeder uden denne binding. */
+  RECEIPT_OCR?: Fetcher;
 
   // Offentlige indstillinger ([vars] i wrangler.toml)
   APP_URL: string;
@@ -61,6 +63,9 @@ export interface ProductRow {
   id: number;
   sku: string;
   name: string;
+  description: string;
+  /** Manuelt genbestillingspunkt, inklusive sikkerhedslager, i tusindedele. */
+  reorder_point: number | null;
   unit: string;
   whole_units: number;
   category: string;
@@ -73,6 +78,10 @@ export interface ProductRow {
   max_stock: number | null;
   purchase_price: number | null;
   sale_price: number | null;
+  purchase_price_source: string;
+  sale_price_source: string;
+  purchase_price_at: number | null;
+  sale_price_at: number | null;
   ean: string;
   mpn: string;
   brand: string;

@@ -115,6 +115,7 @@ export interface JobSummary {
   quote: { version: number; subtotal: number; total: number; incomplete: number; shared_at: number | null; accepted_at: number | null } | null;
   estimate: { subtotal: number; incomplete: boolean };
   actualMaterials: number | null;
+  actualMissing: number;
   actualLabour: number;
   internalCost: number;
   /** Godkendte udgifter fra bilag uden lagerpåvirkning (indgår i internCost) */
@@ -157,9 +158,9 @@ export function overviewPage(d: {
   ${s
     ? html`<div class="stats">
         <div class="stat"><span class="l">Prisoverslag ekskl. moms</span><span class="n">${s.quote ? formatKr(s.quote.subtotal) : formatKr(s.estimate.subtotal)}</span><span class="l">${s.quote ? `Version ${s.quote.version}${s.quote.accepted_at ? ', accepteret' : s.quote.shared_at ? ', sendt' : ', ikke sendt'}` : 'Aktuel beregning, ikke gemt'}${(s.quote ? s.quote.incomplete : s.estimate.incomplete) ? ' · ufuldstændigt' : ''}</span></div>
-        <div class="stat"><span class="l">Faktisk til fakturering</span><span class="n">${formatKr((s.actualMaterials ?? 0) + s.actualLabour)}</span><span class="l">Materialer ${s.actualMaterials === null ? 'mangler pris' : formatKr(s.actualMaterials)} · arbejdsløn ${formatKr(s.actualLabour)}</span></div>
+        <div class="stat"><span class="l">${s.actualMissing ? 'Kendt delsum til fakturering' : 'Faktisk til fakturering'}</span><span class="n">${formatKr((s.actualMaterials ?? 0) + s.actualLabour)}</span><span class="l">${s.actualMissing ? `${s.actualMissing} linjer mangler pris · ` : ''}Materialer ${s.actualMaterials === null ? 'mangler pris' : formatKr(s.actualMaterials)} · arbejdsløn ${formatKr(s.actualLabour)}</span></div>
         <div class="stat"><span class="l">Timer</span><span class="n">${formatQty(s.hours)} t.</span><span class="l">${formatQty(s.hoursExpected)} t. forventet${s.pendingHours ? ` · ${formatQty(s.pendingHours)} t. venter på godkendelse` : ''}</span></div>
-        <div class="stat"><span class="l">Intern omkostning</span><span class="n">${formatKr(s.internalCost)}</span><span class="l">${s.internalMissing ? `${s.internalMissing} registreringer mangler intern sats` : 'Materialer (kostpris) og timer'}${s.bilagCost ? ` · heraf ${formatKr(s.bilagCost)} fra godkendte bilag` : ''}</span></div>
+        <div class="stat"><span class="l">Intern omkostning</span><span class="n">${formatKr(s.internalCost)}</span><span class="l">${s.internalMissing ? `${s.internalMissing} registreringer mangler kostpris eller intern sats` : 'Materialer (kostpris) og timer'}${s.bilagCost ? ` · heraf ${formatKr(s.bilagCost)} fra godkendte bilag` : ''}</span></div>
       </div>
       <p class="row">Fakturastatus: ${billingTag(s.billing)} <a href="/job/${j.id}/faktura">Til faktura</a></p>`
     : ''}

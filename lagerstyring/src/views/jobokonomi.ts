@@ -5,7 +5,7 @@ import type { InvoiceItemRow, InvoiceRow, JobEntryRow, JobQuoteRow, LabourTypeRo
 import type { RetailerView } from '../lib/estimates';
 import { formatDate, formatDateTime, formatDay, formatKr, formatQty, lineAmount, oereToInput, qtyInput, qtyUnit } from '../lib/format';
 import { MODE_LABEL, TYPE_LABEL, invoiceTotals, itemAmount, parseJson, type CustomerInfo, type InvoiceTotals, type Source } from '../lib/invoicing';
-import { COST_BASIS_LABEL, SALE_MODE_LABEL, findUrl, otherRetailer, retailerLive, usedQty, type ItemCalc, type ItemView } from '../lib/jobitems';
+import { COST_BASIS_LABEL, SALE_MODE_LABEL, findUrl, otherRetailer, retailerLive, sidePriceUnconfirmed, usedQty, type ItemCalc, type ItemView } from '../lib/jobitems';
 import type { JobLogRow } from '../lib/jobs';
 import type { LabourSummary } from '../lib/labour';
 import type { MaterialView } from '../lib/materials';
@@ -22,12 +22,13 @@ const krIn = (o: number | null | undefined) => (o === null || o === undefined ? 
 // --- Materialer --------------------------------------------------------------------------------
 
 function priceInfo(it: ItemView, c: ItemCalc, now: number, maxAgeDays: number): H {
-  if (otherRetailer(it)) return html`<span class="tag tag-low">Pris mangler</span><small>Prisen er fra et andet byggemarked. Slå prisen op igen.</small>`;
+  const differentRetailer = otherRetailer(it);
   if (it.price === null) {
     return html`${it.cost_basis === 'lager' && it.product_id ? html`<span class="muted">Ingen byggemarkedspris</span>` : html`<span class="tag tag-low">Pris mangler</span>`}${it.lookup_note ? html`<small>${it.lookup_note}</small>` : ''}`;
   }
-  const stale = it.checked_at !== null && it.price_source !== 'manuel' && now - it.checked_at > maxAgeDays * 86400;
-  const match =
+  const unconfirmed = sidePriceUnconfirmed(it);
+  const stale = unconfirmed || differentRetailer || it.checked_at !== null && it.price_source !== 'manuel' && now - it.checked_at > maxAgeDays * 86400;
+  const match = unconfirmed || differentRetailer ? html`<span class="tag tag-off">${STALE_LABEL}</span>` :
     it.match === 'alternativ'
       ? it.approved_at
         ? html`<span class="tag tag-ready">Alternativ – godkendt</span>`
@@ -36,9 +37,11 @@ function priceInfo(it: ItemView, c: ItemCalc, now: number, maxAgeDays: number): 
   const pack = it.pack_qty && it.pack_qty !== 1000 ? `${it.sales_unit} á ${formatQty(it.pack_qty)} ${it.unit}` : `pr. ${it.sales_unit || it.unit}`;
   const src = SOURCE_LABEL[it.price_source as keyof typeof SOURCE_LABEL] ?? it.price_source;
   return html`${match}${it.price_source === 'demodata' ? html` <span class="tag tag-demo">Demodata</span>` : ''}
-    <small>${it.url ? html`<a href="${it.url}" target="_blank" rel="noopener noreferrer">${it.found_name || 'Produktside'}</a>` : it.found_name}${it.retailer_name && it.price_source !== 'manuel' ? ` · ${it.retailer_name}` : ''}</small>
+    <small>${it.url ? html`<a href="${it.url}" target="_blank" rel="noopener noreferrer">${it.found_name || 'Produktside'}</a>` : it.found_name}${(it.price_retailer_name || it.retailer_name) && it.price_source !== 'manuel' ? ` · ${it.price_retailer_name || it.retailer_name}` : ''}</small>
     <small><strong>${formatKr(it.price)}</strong> ${pack} · ${it.vat === 'inkl' ? 'inkl.' : 'ekskl.'} moms${it.match_basis ? ` · ${BASIS_LABEL[it.match_basis as MatchBasis] ?? it.match_basis}` : ''}</small>
     <small>${src}, ${stale ? html`<span class="miss">${STALE_LABEL}</span> ` : ''}${formatDateTime(it.checked_at)}</small>
+    ${differentRetailer ? html`<small>Prisen er fra et andet byggemarked end det valgte og indgår ikke i nye beregninger.</small>` : ''}
+    ${unconfirmed ? html`<small>Historisk pris${it.price_retailer_name ? ` fra ${it.price_retailer_name}` : ''}. Kilden er ikke bekræftet; prisen indgår ikke i nye beregninger. Brug prisfil eller manuel pris.</small>` : ''}
     ${it.lookup_note ? html`<small>${it.lookup_note}</small>` : ''}
     ${c.publicUnit !== null && it.pack_qty !== 1000 ? html`<small>= ${formatKr(c.publicUnit)} pr. ${it.unit} ekskl. moms</small>` : ''}`;
 }
@@ -61,9 +64,9 @@ function stockState(it: ItemView): H {
   return html`<span class="muted">Ikke på indkøbsliste</span>`;
 }
 
-function itemEditForm(it: ItemView, d: { csrf: string; retailers: RetailerView[]; manager: boolean; jobId: number; jobRetailer: string; defaultMarkup: number }): H {
+function itemEditForm(it: ItemView, d: { csrf: string; retailers: RetailerView[]; manager: boolean; jobId: number; jobRetailer: string; defaultMarkup: number; op: string }): H {
   return html`<form method="post" action="/job/${d.jobId}/materialer/${it.id}" class="stack-sm">
-    ${csrfField(d.csrf)}
+    ${csrfField(d.csrf)}${opField(d.op)}
     <div class="fields fields-2">
       <div class="field"><label>Forventet mængde (${it.unit})</label><input class="in-num" name="qty" inputmode="decimal" value="${qtyInput(it.qty)}" required></div>
       ${it.product_id ? html`<input type="hidden" name="unit" value="${it.unit}">` : html`<div class="field"><label>Enhed</label><input name="unit" maxlength="20" value="${it.unit}"></div>`}
@@ -117,6 +120,7 @@ export function materialsPage(d: {
   csrf: string;
   ops: string[];
   reserveOp: string;
+  itemOps: { edit: string; use: string }[];
   now: number;
   maxAgeDays: number;
   defaultMarkup: number;
@@ -150,7 +154,7 @@ export function materialsPage(d: {
   <div class="card card-flush"><div class="table-wrap"><table class="list stackable dense items-table">
     <thead><tr><th>Materiale</th><th class="num">Forventet</th><th class="num">Brugt</th><th>Lager og indkøb</th>${d.manager ? html`<th>Pris hos byggemarked</th><th class="num">Køb</th><th class="num">Kostpris</th><th class="num">Salgspris</th>` : ''}<th></th></tr></thead>
     <tbody>${d.items.length
-      ? d.items.map(({ it, c }) => {
+      ? d.items.map(({ it, c }, index) => {
           const used = usedQty(it);
           return html`<tr${c.saleUnit === null && d.manager ? html` class="is-low"` : ''}>
         <td class="cell-main"><strong>${it.name}</strong>${it.sku ? html`<span class="sku">${it.sku}</span>` : html`<small>Uden varenummer</small>`}${d.manager ? html`<small>${COST_BASIS_LABEL[it.cost_basis]}${it.retailer_id ? ` · ${it.retailer_name}` : ''}</small>` : ''}${it.catalog_product_id ? html`<small><a href="/katalog/${it.catalog_product_id}?job=${j.id}">Fra produktkataloget</a></small>` : ''}${it.note ? html`<small>${it.note}</small>` : ''}</td>
@@ -169,13 +173,13 @@ export function materialsPage(d: {
                 <form method="post" action="/job/${j.id}/materialer/${it.id}/afvis">${csrfField(d.csrf)}<button class="btn btn-secondary btn-small" type="submit">Afvis</button></form></div>`
             : ''}
           ${!it.product_id && active
-            ? html`<form method="post" action="/job/${j.id}/materialer/${it.id}/forbrug" class="row">${csrfField(d.csrf)}<input class="in-num in-sm" name="qty" inputmode="decimal" aria-label="Brugt nu" placeholder="0"><span class="xs muted">${it.unit}</span>
+            ? html`<form method="post" action="/job/${j.id}/materialer/${it.id}/forbrug" class="row">${csrfField(d.csrf)}${opField(d.itemOps[index]!.use)}<input class="in-num in-sm" name="qty" inputmode="decimal" aria-label="Brugt nu" placeholder="0"><span class="xs muted">${it.unit}</span>
                 <select name="retning" class="in-sm" aria-label="Brugt eller retur"><option value="brugt">brugt</option><option value="retur">retur (ikke brugt)</option></select><button class="btn btn-secondary btn-small" type="submit">Registrér</button></form>`
             : ''}
           ${d.manager && it.eff_retailer_id && it.retailer_key && it.retailer_website
             ? html`<p class="small"><a href="${findUrl({ key: it.retailer_key, website: it.retailer_website }, it.name)}" target="_blank" rel="noopener noreferrer">Find varen hos ${it.retailer_name} ↗</a></p>`
             : ''}
-          <details><summary>Ret linjen</summary>${itemEditForm(it, { csrf: d.csrf, retailers: d.retailers, manager: d.manager, jobId: j.id, jobRetailer: r?.name ?? 'intet', defaultMarkup: d.defaultMarkup })}</details>
+          <details><summary>Ret linjen</summary>${itemEditForm(it, { csrf: d.csrf, retailers: d.retailers, manager: d.manager, jobId: j.id, jobRetailer: r?.name ?? 'intet', defaultMarkup: d.defaultMarkup, op: d.itemOps[index]!.edit })}</details>
           ${d.manager ? html`<details><summary>Indtast pris manuelt</summary>${manualPriceForm(it, { csrf: d.csrf, jobId: j.id })}</details>` : ''}
           ${used === 0 && !it.planned_at ? html`<form method="post" action="/job/${j.id}/materialer/${it.id}/slet" data-confirm="Fjern ${it.name} fra jobbet?">${csrfField(d.csrf)}<button class="btn btn-danger btn-small" type="submit">Fjern</button></form>` : ''}
         </div></details></td>
@@ -203,6 +207,7 @@ export function hoursPage(d: {
   me: User;
   manager: boolean;
   csrf: string;
+  entryOps: { actual: string; expected: string; other: string };
   rate: number | null;
   internalDefault: number | null;
   today: string;
@@ -263,7 +268,7 @@ export function hoursPage(d: {
     ? html`<section class="card stack" id="registrer">
     <h2>Registrér timer</h2>
     <form method="post" action="/job/${j.id}/timer" class="stack-sm">
-      ${csrfField(d.csrf)}<input type="hidden" name="phase" value="faktisk"><input type="hidden" name="type" value="tid">
+      ${csrfField(d.csrf)}${opField(d.entryOps.actual)}<input type="hidden" name="phase" value="faktisk"><input type="hidden" name="type" value="tid">
       <div class="fields fields-3">
         ${d.manager
           ? html`<div class="field"><label for="worker">Medarbejder</label><select id="worker" name="worker">${d.users.map((u) => html`<option value="${u.email}"${u.email === d.me.email ? html` selected` : ''}>${u.name}</option>`)}</select></div>`
@@ -299,7 +304,7 @@ export function hoursPage(d: {
     </table></div></div>
     <div class="grid grid-2">
       <form method="post" action="/job/${j.id}/timer" class="card stack-sm">
-        ${csrfField(d.csrf)}<input type="hidden" name="phase" value="forventet"><input type="hidden" name="type" value="tid">
+        ${csrfField(d.csrf)}${opField(d.entryOps.expected)}<input type="hidden" name="phase" value="forventet"><input type="hidden" name="type" value="tid">
         <h3>Forventede timer</h3>
         <div class="fields fields-2">
           <div class="field"><label for="ft">Medarbejdertype</label><select id="ft" name="labour_type"><option value="">Standard</option>${d.types.filter((t) => t.active).map((t) => html`<option value="${t.id}">${t.name}</option>`)}</select></div>
@@ -310,7 +315,7 @@ export function hoursPage(d: {
         <button class="btn btn-secondary" type="submit">Tilføj forventede timer</button>
       </form>
       <form method="post" action="/job/${j.id}/timer" class="card stack-sm">
-        ${csrfField(d.csrf)}<input type="hidden" name="type" value="omkostning">
+        ${csrfField(d.csrf)}${opField(d.entryOps.other)}<input type="hidden" name="type" value="omkostning">
         <h3>Anden omkostning</h3>
         <div class="field"><label for="od">Beskrivelse</label><input id="od" name="description" maxlength="200" required placeholder="Fx Kørsel, containerleje, levering"></div>
         <div class="fields fields-3">

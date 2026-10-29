@@ -422,6 +422,7 @@ async function candidates(db: D1Database, w: WantedLine): Promise<CandRow[]> {
     .prepare(
       `SELECT p.*, r.access AS retailer_access FROM retailer_products p JOIN retailers r ON r.id = p.retailer_id
        WHERE r.active = 1 AND r.access IN ('prisfil', 'side', 'demo')
+         AND (p.source <> 'side' OR (r.access = 'side' AND r.terms_confirmed_at IS NOT NULL))
          AND (p.ean = ?1 OR (p.mpn <> '' AND p.brand = ?2 COLLATE NOCASE) OR p.name LIKE ?3 OR p.name LIKE ?4 OR p.product_id = ?5)
        LIMIT 500`,
     )

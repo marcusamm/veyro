@@ -6,7 +6,8 @@
 // job fra et bilag registreres kun, når nogen bevidst trykker på knappen for det.
 
 import type { Env, JobRow, PurchaseLineRow, Role } from '../env';
-import { readText } from './bilagread';
+import { readText, type ReadField } from './bilagread';
+import { extractReceiptText } from './ocr';
 import { fileBytes, getFile, type FileRow } from './files';
 import { formatKr, formatQty, todayDk } from './format';
 import { logStmt } from './jobs';
@@ -45,6 +46,7 @@ export interface BilagRow {
   payment_info: string;
   uncertain: string;
   reading_source: '' | 'pdf-tekst' | 'manuel' | 'simuleret';
+  ocr_provider: string;
   reading_note: string;
   payment: BilagPayment;
   paid_by: string;
@@ -314,6 +316,7 @@ export function checkBilag(b: BilagRow, lines: BilagLineRow[], allocs: Allocatio
     if (bad.length) warnings.push(`${bad.length} ${bad.length === 1 ? 'linje' : 'linjer'}: antal × pris − rabat giver ikke linjens beløb.`);
   }
   const unc = uncertainOf(b);
+  if (b.ocr_provider && (unc.length || lines.some((l) => l.uncertain))) errors.push('Kontrollér alle OCR-forslag mod originalen, markér kontrollen og gem, før bilaget godkendes eller påvirker lageret.');
   if (unc.length) warnings.push(`Usikre værdier fra aflæsningen: ${unc.map((f) => FIELD_LABEL[f] ?? f).join(', ')}. Kontrollér dem mod originalen.`);
   if (lines.some((l) => l.uncertain)) warnings.push('Nogle varelinjer er usikre. Kontrollér dem mod originalen.');
   if (lines.some((l) => l.product_state === 'forslag')) errors.push('Godkend eller fjern de foreslåede varematch på linjerne.');
@@ -331,21 +334,21 @@ export function checkBilag(b: BilagRow, lines: BilagLineRow[], allocs: Allocatio
 // --- Dubletter ------------------------------------------------------------------------------------
 
 export async function findDuplicate(db: D1Database, b: Pick<BilagRow, 'id' | 'file_id' | 'supplier_name' | 'supplier_cvr' | 'doc_number' | 'doc_date' | 'total' | 'doc_type'>): Promise<{ id: number; reason: string } | null> {
-  const same = await db.prepare('SELECT id FROM bilag WHERE file_id = ? AND id <> ? ORDER BY id LIMIT 1').bind(b.file_id, b.id).first<{ id: number }>();
+  const same = await db.prepare('SELECT id FROM bilag WHERE file_id = ? AND id < ? ORDER BY id LIMIT 1').bind(b.file_id, b.id).first<{ id: number }>();
   if (same) return { id: same.id, reason: 'identisk fil' };
   const who = b.supplier_cvr ? 'supplier_cvr = ?2' : "supplier_name = ?2 COLLATE NOCASE AND supplier_name <> ''";
   const whoVal = b.supplier_cvr || b.supplier_name;
   if (!whoVal) return null;
   if (b.doc_number) {
     const r = await db
-      .prepare(`SELECT id FROM bilag WHERE id <> ?1 AND ${who} AND doc_number = ?3 AND doc_type = ?4 AND status <> 'arkiveret' ORDER BY id LIMIT 1`)
+      .prepare(`SELECT id FROM bilag WHERE id < ?1 AND ${who} AND doc_number = ?3 AND doc_type = ?4 AND status <> 'arkiveret' ORDER BY id LIMIT 1`)
       .bind(b.id, whoVal, b.doc_number, b.doc_type)
       .first<{ id: number }>();
     if (r) return { id: r.id, reason: 'samme leverandør og bilagsnummer' };
   }
   if (b.doc_date && b.total !== null) {
     const r = await db
-      .prepare(`SELECT id FROM bilag WHERE id <> ?1 AND ${who} AND doc_date = ?3 AND total = ?4 AND doc_type = ?5 AND status <> 'arkiveret' ORDER BY id LIMIT 1`)
+      .prepare(`SELECT id FROM bilag WHERE id < ?1 AND ${who} AND doc_date = ?3 AND total = ?4 AND doc_type = ?5 AND status <> 'arkiveret' ORDER BY id LIMIT 1`)
       .bind(b.id, whoVal, b.doc_date, b.total, b.doc_type)
       .first<{ id: number }>();
     if (r) return { id: r.id, reason: 'samme leverandør, dato og beløb' };
@@ -386,36 +389,56 @@ export async function createBilag(db: D1Database, file: FileRow, name: string, i
     .first<{ id: number }>();
   const id = row!.id;
   await eventStmt(db, id, 1, 'upload', `Uploadet: ${name} (${file.mime}${file.pages ? `, ${file.pages} ${file.pages === 1 ? 'side' : 'sider'}` : ''}, ${Math.ceil(file.size / 1024)} KB).`, actor, now).run();
+  await refreshDuplicate(db, id, actor, now);
   return id;
 }
 
 /**
  * Aflæser et bilag. En PDF med tekst læses med den indbyggede PDF-læser. Billeder og indskannede
- * PDF'er kræver OCR, som ikke er sat op: de registreres manuelt.
+ * PDF'er kan bruge en særskilt OCR-servicebinding. Uden binding registreres de manuelt.
  */
 export async function readBilag(env: Env, s: Settings, id: number, actor: Actor, now: number): Promise<{ ok: boolean; message: string }> {
   const db = env.DB;
   const b = await getBilag(db, id);
   if (!b) return { ok: false, message: 'Bilaget findes ikke.' };
+  if (b.status === 'godkendt' || b.status === 'arkiveret') return { ok: false, message: 'Godkendte eller arkiverede bilag aflæses ikke igen. Ret oplysningerne manuelt, så historikken bevares.' };
+  const allocated = await db.prepare('SELECT 1 FROM bilag_allocations WHERE bilag_id = ? LIMIT 1').bind(id).first();
+  if (allocated) return { ok: false, message: 'Bilaget er allerede fordelt. Ret oplysningerne manuelt; genaflæsning må ikke fjerne fordeling eller registrerede varemodtagelser.' };
   const f = await getFile(db, b.file_id);
   if (!f) return { ok: false, message: 'Filen findes ikke.' };
   await db.prepare("UPDATE bilag SET status = 'under_aflaesning', updated_at = ? WHERE id = ? AND status IN ('modtaget', 'klar', 'afklaring')").bind(now, id).run();
-  let message: string;
+  let message = 'Originalen er gemt. Kontrollér og registrér oplysningerne manuelt.';
   let ok = false;
+  let pages: string[][] = [];
+  let source: BilagRow['reading_source'] = '';
+  let provider = '';
+  const bytes = await fileBytes(db, f);
+  if (f.mime === 'application/pdf' && bytes) {
+    const text = await pdfText(bytes);
+    if (text.hasText) { pages = text.pages; source = 'pdf-tekst'; }
+  }
+  if (!pages.length && bytes) {
+    const ocr = await extractReceiptText(env, { bytes, mime: f.mime });
+    if (ocr.status === 'ok') {
+      pages = ocr.pages.map((page) => page.split(/\r?\n/));
+      provider = ocr.provider;
+    } else message = ocr.message;
+  }
   const stmts: D1PreparedStatement[] = [];
-  if (f.mime === 'application/pdf') {
-    const bytes = await fileBytes(db, f);
-    const text = bytes ? await pdfText(bytes) : { pages: [], hasText: false };
-    if (text.hasText) {
+  if (pages.length) {
       const { results: sups } = await db.prepare('SELECT id, name FROM suppliers').all<{ id: number; name: string }>();
-      const r = readText(text.pages, { ownCvr: s.company_cvr, ownName: s.company_name, suppliers: sups });
+      const r = readText(pages, { ownCvr: s.company_cvr, ownName: s.company_name, suppliers: sups });
       const v = r.values;
+      if (provider) {
+        r.uncertain = [...new Set([...r.uncertain, ...Object.keys(v) as ReadField[]])];
+        r.lines.forEach((line) => { line.uncertain = true; });
+      }
       const sup = sups.find((x) => x.name.toLowerCase() === String(v.supplier_name ?? '').toLowerCase());
       stmts.push(
         db
           .prepare(
             `UPDATE bilag SET doc_type = COALESCE(?, doc_type), supplier_name = ?, supplier_cvr = ?, supplier_id = ?, doc_number = ?, doc_date = ?, due_date = ?,
-               currency = ?, net = ?, vat = ?, total = ?, rounding = ?, line_prices = ?, payment_info = ?, uncertain = ?, reading_source = 'pdf-tekst', reading_note = ?, updated_at = ?
+               currency = ?, net = ?, vat = ?, total = ?, rounding = ?, line_prices = ?, payment_info = ?, uncertain = ?, reading_source = ?, ocr_provider = ?, reading_note = ?, updated_at = ?
              WHERE id = ?`,
           )
           .bind(
@@ -434,6 +457,8 @@ export async function readBilag(env: Env, s: Settings, id: number, actor: Actor,
             v.line_prices === 'inkl' ? 'inkl' : 'ekskl',
             String(v.payment_info ?? ''),
             JSON.stringify(r.uncertain),
+            source,
+            provider,
             r.notes.join(' '),
             now,
             id,
@@ -448,23 +473,18 @@ export async function readBilag(env: Env, s: Settings, id: number, actor: Actor,
         ),
       );
       const found = Object.keys(v).filter((k) => k !== 'line_prices' && k !== 'doc_type').length;
-      message = `Aflæst fra PDF'ens tekst: ${found} felter og ${r.lines.length} varelinjer foreslået${r.uncertain.length ? `, ${r.uncertain.length} usikre` : ''}. Kontrollér mod originalen.`;
+      message = provider
+        ? `OCR-forslag fra ${provider}: ${found} felter og ${r.lines.length} varelinjer. Alle forslag kræver kontrol mod originalen før godkendelse.`
+        : `Aflæst fra PDF'ens tekst: ${found} felter og ${r.lines.length} varelinjer foreslået${r.uncertain.length ? `, ${r.uncertain.length} usikre` : ''}. Kontrollér mod originalen.`;
       ok = true;
-    } else {
-      message = "PDF'en har ingen læsbar tekst (fx et indskannet dokument). Automatisk aflæsning kræver OCR, som ikke er sat op. Registrér oplysningerne manuelt.";
-    }
-  } else {
-    message = 'Automatisk aflæsning af billeder kræver OCR, som ikke er sat op. Registrér oplysningerne manuelt ud fra originalen.';
   }
   stmts.push(
     db.prepare(`UPDATE bilag SET status = ?, reading_note = CASE WHEN ? THEN reading_note ELSE ? END, updated_at = ? WHERE id = ?`).bind(ok ? 'klar' : 'modtaget', ok ? 1 : 0, message, now, id),
     eventStmt(db, id, b.version, 'aflaesning', message, actor, now),
   );
   await db.batch(stmts);
-  if (ok) {
-    await suggestProducts(db, id);
-    await refreshDuplicate(db, id, actor, now);
-  }
+  if (ok) await suggestProducts(db, id);
+  await refreshDuplicate(db, id, actor, now);
   return { ok, message };
 }
 
@@ -539,7 +559,7 @@ function reopenStmts(db: D1Database, b: BilagRow, why: string, actor: Actor, now
 
 const show = (v: unknown) => (v === null || v === undefined || v === '' ? '(tom)' : typeof v === 'number' ? formatKr(v, { decimals: true }) : String(v));
 
-export async function saveBilag(db: D1Database, b: BilagRow, d: BilagData, lines: LineInput[] | null, actor: Actor, now: number): Promise<string[]> {
+export async function saveBilag(db: D1Database, b: BilagRow, d: BilagData, lines: LineInput[] | null, actor: Actor, now: number, opts: { confirmOCR?: boolean } = {}): Promise<string[]> {
   const changes: string[] = [];
   const keys: (keyof BilagData)[] = ['doc_type', 'supplier_name', 'supplier_cvr', 'doc_number', 'doc_date', 'due_date', 'currency', 'net', 'vat', 'total', 'rounding', 'line_prices', 'payment_info', 'payment', 'paid_by', 'note'];
   for (const k of keys) {
@@ -549,7 +569,15 @@ export async function saveBilag(db: D1Database, b: BilagRow, d: BilagData, lines
     }
   }
   const old = await bilagLines(db, b.id);
+  const confirmedOCR = !!b.ocr_provider && !!opts.confirmOCR && (uncertainOf(b).length > 0 || old.some((line) => !!line.uncertain));
+  if (confirmedOCR) changes.push('OCR-forslag kontrolleret mod originalen.');
   const stmts: D1PreparedStatement[] = [];
+  if (lines) {
+    const keep = new Set(lines.map((line) => line.id));
+    const linked = await db.prepare('SELECT line_id FROM bilag_allocations WHERE bilag_id = ? AND line_id IS NOT NULL AND (done_at IS NOT NULL OR purchase_line_id IS NOT NULL)').bind(b.id).all<{ line_id: number }>();
+    if (linked.results.some((allocation) => !keep.has(allocation.line_id))) throw new Conflict('En linje knyttet til et registreret køb eller en varemodtagelse kan ikke fjernes. Bevar linjen, og registrér korrektioner under Indkøb eller Returer.');
+  }
+  if (confirmedOCR && !lines) stmts.push(db.prepare('UPDATE bilag_lines SET uncertain = 0 WHERE bilag_id = ?').bind(b.id));
   if (lines) {
     const keep = new Set(lines.map((l) => l.id).filter((x): x is number => x !== null));
     for (const o of old) if (!keep.has(o.id)) {
@@ -568,7 +596,7 @@ export async function saveBilag(db: D1Database, b: BilagRow, d: BilagData, lines
                  product_state = CASE WHEN ? IS NULL THEN '' WHEN product_id IS ? AND product_state = 'forslag' THEN 'forslag' ELSE 'godkendt' END,
                  uncertain = CASE WHEN ? THEN uncertain ELSE 0 END WHERE id = ?`,
             )
-            .bind(i + 1, l.name, l.qty, l.unit, l.unit_price, l.discount, l.amount, l.vat_rate, l.product_id, l.product_id, l.product_id, same ? 1 : 0, o.id),
+            .bind(i + 1, l.name, l.qty, l.unit, l.unit_price, l.discount, l.amount, l.vat_rate, l.product_id, l.product_id, l.product_id, confirmedOCR ? 0 : b.ocr_provider ? 1 : same ? 1 : 0, o.id),
         );
       } else {
         changes.push(`Linje tilføjet: ${l.name}`);
@@ -584,7 +612,7 @@ export async function saveBilag(db: D1Database, b: BilagRow, d: BilagData, lines
   // Et felt, som brugeren har rettet eller bekræftet, er ikke længere usikkert
   const onlyInternal = changes.every((c) => /^(Betaling:|Udlæg af:|Intern bemærkning:)/.test(c));
   // Gemmes oplysningerne, har brugeren kontrolleret dem mod originalen
-  const unc = onlyInternal ? uncertainOf(b) : [];
+  const unc = b.ocr_provider && !confirmedOCR ? uncertainOf(b) : onlyInternal ? uncertainOf(b) : [];
   stmts.unshift(
     db
       .prepare(
@@ -598,7 +626,11 @@ export async function saveBilag(db: D1Database, b: BilagRow, d: BilagData, lines
   // Betaling og interne bemærkninger ændrer ikke selve bilaget og kræver ikke ny godkendelse
   if (!onlyInternal) stmts.push(...reopenStmts(db, b, 'Oplysningerne er rettet.', actor, now));
   stmts.push(eventStmt(db, b.id, b.version + (onlyInternal || (b.status !== 'godkendt' && b.status !== 'arkiveret') ? 0 : 1), 'rettelse', changes.join(' · ').slice(0, 2000), actor, now));
-  await db.batch(stmts);
+  try { await db.batch(stmts); }
+  catch (error) {
+    if (String((error as Error).message).includes('BILAG_LINE_POSTED')) throw new Conflict('Linjen er knyttet til et registreret køb eller en varemodtagelse og kan ikke fjernes. Genindlæs siden.');
+    throw error;
+  }
   await refreshDuplicate(db, b.id, actor, now);
   return changes;
 }
@@ -716,60 +748,66 @@ export async function purchaseSuggestions(db: D1Database, b: BilagRow, lines: Bi
  */
 export async function performAllocation(env: Env, s: Settings, b: BilagRow, allocId: number, actor: Actor, now: number, run: (build: (tx: Tx) => Promise<void> | void) => Promise<{ ok: boolean; error?: string }>): Promise<string | null> {
   const db = env.DB;
-  const a = await db.prepare('SELECT * FROM bilag_allocations WHERE id = ? AND bilag_id = ?').bind(allocId, b.id).first<AllocationRow>();
-  if (!a) return 'Fordelingen findes ikke.';
-  if (a.action !== 'ny_modtagelse' && a.action !== 'direkte_job') return 'Denne fordeling påvirker ikke lageret.';
-  if (a.done_at) return 'Den er allerede registreret.';
-  if (!a.qty) return 'Mængden mangler.';
-  // Gør krav på fordelingen, så et dobbeltklik ikke registrerer to gange
-  const claim = await db.prepare('UPDATE bilag_allocations SET done_at = ?, done_by = ? WHERE id = ? AND done_at IS NULL').bind(now, actor.email, a.id).run();
-  if (!claim.meta.changes) return 'Den er allerede registreret.';
-  const release = () => db.prepare('UPDATE bilag_allocations SET done_at = NULL, done_by = NULL WHERE id = ?').bind(a.id).run();
+  // Duplicate checks apply to photos and scans too, before any inventory action.
+  await refreshDuplicate(db, b.id, actor, now);
   try {
-    const job = a.job_id ? await getJob(db, a.job_id) : null;
-    if (a.job_id && !job) throw new Conflict('Jobbet findes ikke.');
-    const product = a.product_id ? await db.prepare('SELECT * FROM products WHERE id = ?').bind(a.product_id).first<{ id: number; sku: string; name: string; unit: string; whole_units: number }>() : null;
-    const line = a.line_id ? await db.prepare('SELECT * FROM bilag_lines WHERE id = ?').bind(a.line_id).first<BilagLineRow>() : null;
-    const name = product?.name ?? line?.name ?? (b.supplier_name || 'Køb fra bilag');
-    const unit = product?.unit ?? (line?.unit || 'stk.');
-    const unitPrice = Math.round((a.amount * 1000) / a.qty);
-    const listId = job ? await defaultJobList(db, job as JobRow, now) : await stockList(db, now);
-    const deliver = a.action === 'direkte_job' ? 'arbejdssted' : 'lager';
-    const ref = `${bilagNo(b.id)}${b.doc_number ? ` / ${b.doc_number}` : ''}`;
-    const pl = await db
-      .prepare(
-        `INSERT INTO purchase_lines (list_id, job_id, product_id, sku, name, unit, supplier_id, qty, ordered, unit_price, order_ref, deliver_to, note, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
-      )
-      .bind(listId, job?.id ?? null, product?.id ?? null, product?.sku ?? '', name, unit, b.supplier_id, a.qty, a.qty, unitPrice, ref, deliver, `Fra bilag ${bilagNo(b.id)}`, now, now)
-      .first<PurchaseLineRow>();
-    const res = await run(async (tx) => {
-      receiveLine(tx, pl!, a.qty!, unitPrice, !!product?.whole_units);
+    const result = await run(async (tx) => {
+      const current = await getBilag(db, b.id);
+      if (!current) throw new Conflict('Bilaget findes ikke.');
+      const a = await db.prepare('SELECT * FROM bilag_allocations WHERE id = ? AND bilag_id = ?').bind(allocId, b.id).first<AllocationRow>();
+      if (!a) throw new Conflict('Fordelingen findes ikke.');
+      if (a.action !== 'ny_modtagelse' && a.action !== 'direkte_job') throw new Conflict('Denne fordeling påvirker ikke lageret.');
+      if (a.done_at) throw new Conflict('Den er allerede registreret.');
+      if (current.status === 'arkiveret') throw new Conflict('Et arkiveret bilag kan ikke registrere en ny varemodtagelse.');
+      if (current.doc_type === 'kreditnota') throw new Conflict('En kreditnota registrerer ikke en ny positiv varemodtagelse. Brug Returer.');
+      if (!a.qty) throw new Conflict('Mængden mangler.');
+      const [lines, allocs] = await Promise.all([bilagLines(db, b.id), allocations(db, b.id)]);
+      const checked = checkBilag(current, lines, allocs, s);
+      if (checked.errors.length) throw new Conflict(checked.errors.join(' '));
+      const job = a.job_id ? await getJob(db, a.job_id) : null;
+      if (a.job_id && !job) throw new Conflict('Jobbet findes ikke.');
+      const product = a.product_id ? await db.prepare('SELECT * FROM products WHERE id = ?').bind(a.product_id).first<{ id: number; sku: string; name: string; unit: string; whole_units: number }>() : null;
+      if (a.product_id && !product) throw new Conflict('Varen findes ikke.');
+      const line = a.line_id ? lines.find((l) => l.id === a.line_id) : null;
+      const name = product?.name ?? line?.name ?? (current.supplier_name || 'Køb fra bilag');
+      const unit = product?.unit ?? (line?.unit || 'stk.');
+      const unitPrice = Math.round((a.amount * 1000) / a.qty);
+      const listId = job ? await defaultJobList(db, job as JobRow, now) : await stockList(db, now);
+      const deliver = a.action === 'direkte_job' ? 'arbejdssted' : 'lager';
+      const ref = `${bilagNo(b.id)}${current.doc_number ? ` / ${current.doc_number}` : ''}`;
+      // A concurrent integer-ID insert rolls this entire batch back. The ledger
+      // retries the builder with a fresh ID; deleted IDs are not reused.
+      const next = await db.prepare("SELECT MAX(COALESCE((SELECT seq FROM sqlite_sequence WHERE name = 'purchase_lines'), 0), COALESCE(MAX(id), 0)) + 1 AS id FROM purchase_lines").first<{ id: number }>();
+      const pl: PurchaseLineRow = {
+        id: next!.id, list_id: listId, job_id: job?.id ?? null, product_id: product?.id ?? null,
+        sku: product?.sku ?? '', name, unit, supplier_id: current.supplier_id,
+        qty: a.qty, ordered: a.qty, received: 0, unit_price: unitPrice, actual_price: null,
+        expected_date: '', order_ref: ref, deliver_to: deliver, ready: 0, cancelled: 0, auto: 0,
+        note: `Fra bilag ${bilagNo(b.id)}`, price_checked_at: null, retailer_id: null, created_at: now, updated_at: now,
+      };
+      tx.add(
+        // This durable key is independent of the browser's one-use form token.
+        // Purchase, receipt, linkage, completion and history commit together.
+        db.prepare("INSERT INTO ops (token, kind, actor, created_at) VALUES (?, 'bilag-fordeling', ?, ?)").bind(`bilag-fordeling:${a.id}`, actor.email, now),
+        db.prepare(`INSERT INTO purchase_lines (id, list_id, job_id, product_id, sku, name, unit, supplier_id, qty, ordered, unit_price, order_ref, deliver_to, note, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(pl.id, pl.list_id, pl.job_id, pl.product_id, pl.sku, pl.name, pl.unit, pl.supplier_id, pl.qty, pl.ordered, pl.unit_price, pl.order_ref, pl.deliver_to, pl.note, now, now),
+      );
+      receiveLine(tx, pl, a.qty, unitPrice, !!product?.whole_units);
       if (!product && job && a.action === 'direkte_job') {
-        // Vare uden varenummer: følges som materialelinje på jobbet; forbrug registreres for sig
-        tx.add(
-          tx.db
-            .prepare(
-              `INSERT INTO job_items (job_id, name, unit, qty, actual_cost, purchase_line_id, price_source, note, sort_order, created_by, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, 'bilag', ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM job_items WHERE job_id = ?), ?, ?, ?)`,
-            )
-            .bind(job.id, name, unit, a.qty, unitPrice, pl!.id, `Købt direkte til jobbet (${ref}). Registrér forbruget, når det er brugt.`, job.id, actor.email, now, now),
-        );
+        tx.add(db.prepare(`INSERT INTO job_items (job_id, name, unit, qty, actual_cost, purchase_line_id, price_source, note, sort_order, created_by, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, 'bilag', ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM job_items WHERE job_id = ?), ?, ?, ?)`)
+          .bind(job.id, name, unit, a.qty, unitPrice, pl.id, `Købt direkte til jobbet (${ref}). Registrér forbruget, når det er brugt.`, job.id, actor.email, now, now));
       }
-      if (job) tx.add(logStmt(tx.db, job.id, 'bilag', `${a.action === 'direkte_job' ? 'Direkte køb til jobbet' : 'Varemodtagelse'} fra ${ref}: ${formatQty(a.qty!)} ${unit} ${name}.`, actor, now));
+      tx.add(
+        db.prepare('UPDATE bilag_allocations SET purchase_line_id = ?, done_at = ?, done_by = ? WHERE id = ?').bind(pl.id, now, actor.email, a.id),
+        eventStmt(db, b.id, current.version, 'lager', `${a.action === 'direkte_job' ? `Direkte køb til job ${job?.number} registreret (leveret til arbejdsstedet, ikke på hovedlageret og ikke registreret som brugt)` : `Varemodtagelse registreret på lageret${job ? `, til ${job.number}` : ''}`}: ${formatQty(a.qty)} ${unit} ${name}.`, actor, now),
+      );
+      if (job) tx.add(logStmt(db, job.id, 'bilag', `${a.action === 'direkte_job' ? 'Direkte køb til jobbet' : 'Varemodtagelse'} fra ${ref}: ${formatQty(a.qty)} ${unit} ${name}.`, actor, now));
     });
-    if (!res.ok) {
-      await db.prepare('DELETE FROM purchase_lines WHERE id = ? AND received = 0').bind(pl!.id).run();
-      await release();
-      return res.error ?? 'Registreringen kunne ikke gennemføres.';
-    }
-    await db.batch([
-      db.prepare('UPDATE bilag_allocations SET purchase_line_id = ? WHERE id = ?').bind(pl!.id, a.id),
-      eventStmt(db, b.id, b.version, 'lager', `${a.action === 'direkte_job' ? `Direkte køb til job ${job?.number} registreret (leveret til arbejdsstedet, ikke på hovedlageret og ikke registreret som brugt)` : `Varemodtagelse registreret på lageret${job ? `, reserveret til ${job.number}` : ''}`}: ${formatQty(a.qty)} ${unit} ${name}.`, actor, now),
-    ]);
-    return null;
+    return result.ok ? null : result.error ?? 'Registreringen kunne ikke gennemføres.';
   } catch (err) {
-    await release();
+    // Never release completion after commit, even if a follow-up fails. The
+    // next attempt sees done_at/the durable marker and cannot receive again.
     if (err instanceof Conflict) return err.message;
     throw err;
   }

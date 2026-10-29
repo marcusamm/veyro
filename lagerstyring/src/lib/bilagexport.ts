@@ -64,7 +64,9 @@ export async function bilagViewPdf(b: BilagRow, lines: BilagLineRow[], s: Settin
     ],
     notes: [
       b.payment_info ? `Betalingsoplysninger: ${b.payment_info}` : '',
-      b.reading_source === 'pdf-tekst'
+      b.ocr_provider
+        ? `OCR-forslag fra ${b.ocr_provider}. Værdier markeret (usikker) er ikke bekræftet mod originalen.`
+        : b.reading_source === 'pdf-tekst'
         ? "Aflæst automatisk fra originalens PDF-tekst og kontrolleret af brugeren. Værdier markeret (usikker) er ikke bekræftet."
         : b.reading_source === 'simuleret'
           ? 'DEMODATA: aflæsningen er simuleret.'

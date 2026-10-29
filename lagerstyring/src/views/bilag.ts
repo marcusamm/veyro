@@ -219,7 +219,7 @@ export function digitalView(b: BilagRow, lines: BilagLineRow[]): H {
     <div class="sum"><dt>Total ${b.currency}</dt><dd>${v('total', b.total === null ? '' : `${sign}${kr(b.total)}`)}</dd></div>
   </dl>
   ${b.payment_info ? html`<p class="muted">Betaling: ${v('payment_info', b.payment_info)}</p>` : ''}
-  <p class="hint">${b.reading_source === 'pdf-tekst' ? "Aflæst automatisk fra PDF'ens tekst og kontrolleret/rettet af brugeren. ⚠ = usikker aflæsning." : b.reading_source === 'simuleret' ? 'DEMODATA: aflæsningen er simuleret.' : 'Registreret manuelt ud fra originalen.'} Originalen er uændret og har forrang.</p>
+  <p class="hint">${b.ocr_provider ? `OCR-forslag fra ${b.ocr_provider}. ⚠ = ikke kontrolleret mod originalen.` : b.reading_source === 'pdf-tekst' ? "Aflæst automatisk fra PDF'ens tekst og kontrolleret/rettet af brugeren. ⚠ = usikker aflæsning." : b.reading_source === 'simuleret' ? 'DEMODATA: aflæsningen er simuleret.' : 'Registreret manuelt ud fra originalen.'} Originalen er uændret og har forrang.</p>
 </article>`;
 }
 
@@ -297,6 +297,9 @@ function editForm(d: DetailData): H {
       <td>${l ? html`<input type="checkbox" name="l_del" value="${i}" aria-label="Fjern linjen"${dis}>` : ''}</td>
     </tr>`)}</tbody>
   </table></div>
+  ${b.ocr_provider && (uncertainOf(b).length || d.lines.some((line) => line.uncertain)) && !readonly
+    ? html`<label class="check"><input type="checkbox" name="confirm_ocr" value="1"> Jeg har kontrolleret alle OCR-forslag og varelinjer mod originalen.</label><p class="hint">OCR aflæser forslag. Godkendelse og lagerregistrering er blokeret, indtil du har kontrolleret og gemt dem.</p>`
+    : ''}
   <h3>Interne oplysninger</h3>
   <div class="fields fields-2">
     <div class="field"><label for="f-pay">Betaling</label><select id="f-pay" name="payment">${Object.entries(PAYMENT_LABEL).map(([k, v]) => html`<option value="${k}"${sel(b.payment === k)}>${v}</option>`)}</select></div>
@@ -349,7 +352,7 @@ function allocSection(d: DetailData): H {
         )}</select>${d.suggestions.length ? html`<p class="hint">Forslag ud fra leverandør, vare og mængde. Vælg selv det rigtige.</p>` : html`<p class="hint">Ingen oplagte køb fundet.</p>`}</div>
         <div class="field"><label for="a-l">Varelinje (valgfri)</label><select id="a-l" name="line_id"><option value="">Hele bilaget</option>${d.lines.map((l) => html`<option value="${l.id}">${l.name}</option>`)}</select></div>
         <div class="field"><label for="a-p">Vare (ny modtagelse/direkte køb)</label><select id="a-p" name="product_id"><option value="">Uden varenummer</option>${d.products.map((p) => html`<option value="${p.id}">${p.sku} ${p.name}</option>`)}</select></div>
-        <div class="field"><label for="a-q">Mængde</label><input id="a-q" name="qty" class="in-num" inputmode="decimal"></div>
+        <div class="field"><label for="a-q">Mængde i egen vares lagerenhed</label><input id="a-q" name="qty" class="in-num" inputmode="decimal"></div>
         <div class="field"><label for="a-n">Note</label><input id="a-n" name="note" maxlength="200"></div>
       </div>
       <p class="hint">Fordelingen ændrer ikke lageret. En ny varemodtagelse eller et direkte køb registreres først, når du trykker på knappen ud for fordelingen. Et køb, der allerede er modtaget, knyttes som "eksisterende" og tælles ikke igen.</p>
