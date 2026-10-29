@@ -269,7 +269,6 @@
           ctx.fillStyle = `rgba(229,234,239,${p.brightness.toFixed(2)})`;
           ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
         }
-        host.classList.add('has-canvas');
       }
       function tick(now) {
         raf = 0;
