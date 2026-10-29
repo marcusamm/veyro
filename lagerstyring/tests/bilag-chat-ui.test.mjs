@@ -38,7 +38,7 @@ function client(fetch, { ready = true } = {}) {
   const send = text => { question.value = text; return form.handlers.submit({ preventDefault() {} }); };
   return { form, question, messages, status, error, history, submit, send };
 }
-const ok = (answer, sources = []) => ({ ok: true, json: async () => ({ answer, sources }) });
+const ok = (answer, sources = [], imageReviewed = false) => ({ ok: true, json: async () => ({ answer, sources, imageReviewed }) });
 
 describe('Bilagschat i browseren', () => {
   it('sender kun til bilagets læserute med CSRF/version og viser svar og kilder som ren tekst', async () => {
@@ -117,6 +117,12 @@ describe('Bilagschat i browseren', () => {
     expect(c.form.getAttribute('data-chat-ready')).toBe('1'); expect(c.question.value).toBe('');
     expect(c.messages.children[1].children[1].textContent).toBe('TESTDATA kildebaseret svar');
   });
+
+  it.each([true, false])('mærker svarets faktiske grundlag uden at opfinde billedgennemgang (%s)', async imageReviewed => {
+    const c = client(async () => ok('TESTDATA svar', [], imageReviewed));
+    await c.send('Hvad ser du?');
+    expect(c.messages.children[1].children.at(-1).textContent).toBe(imageReviewed ? 'Grundlag: originalbillede og aflæst tekst' : 'Grundlag: aflæst tekst');
+  });
 });
 
 function detail(chat) {
@@ -138,7 +144,7 @@ describe('Bilagschat på detaljesiden', () => {
     expect(form).toContain('name="version" value="1"'); expect(form).toContain('name="file_id" value="9"');
     expect(form).toContain('maxlength="1000"'); expect(form).not.toContain(' disabled');
     expect(html).toContain('Chatten ændrer ikke bilaget.'); expect(html).toContain('href="/lager/bilag/7/fil"');
-    expect(html).toContain('src="/static/bilag-chat.js?v=1"'); expect(html).not.toMatch(/<script>(?!<\/script>)/);
+    expect(html).toContain('src="/static/bilag-chat.js?v=2"'); expect(html).not.toMatch(/<script>(?!<\/script>)/);
   });
   it('blokerer afsendelse når chatten ikke er tilsluttet og HTML-escaper et eventuelt serversvar', async () => {
     const html = String(await detailPage(detail({ available: false, message: 'TESTDATA kilde mangler', question: '<b>spørgsmål</b>', answer: '<script>bad()</script>', sources: [{ page: 1, lineStart: 2, lineEnd: 2, text: '<img>' }] })));
@@ -152,5 +158,11 @@ describe('Bilagschat på detaljesiden', () => {
     expect(form).toContain('data-chat-ready="0"'); expect(form).not.toContain(' disabled');
     expect(html).toContain('Skriv dit spørgsmål nu.'); expect(html).toContain('Dit spørgsmål bliver på siden.');
     expect(html).toContain('TESTDATA teksten hentes ved første spørgsmål'); expect(form).not.toContain('name="do" value="laes"');
+  });
+
+  it.each([true, false])('viser også svarets grundlag i no-JS-visningen (%s)', async imageReviewed => {
+    const html = String(await detailPage(detail({ available: true, ready: true, answer: 'TESTDATA svar', imageReviewed })));
+    expect(html).toContain(imageReviewed ? '>Grundlag: originalbillede og aflæst tekst</p>' : '>Grundlag: aflæst tekst</p>');
+    expect(html).toContain('PDF, HEIC og større billeder gennemgås ud fra aflæst tekst.');
   });
 });

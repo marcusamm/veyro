@@ -60,6 +60,7 @@ export const BILAG_CHAT_JS = `
         catch (_) { throw new Error('Chatten kunne ikke svare. Genindlæs bilaget, kontrollér at du er logget ind, og prøv igen.'); }
         if (!response.ok || typeof data.answer !== 'string' || !data.answer.trim()) throw new Error(data.error || data.message || 'Chatten kunne ikke svare. Prøv igen.');
         var entry = addMessage('Bilagsassistent', data.answer); addSources(entry, data.sources);
+        var basis = document.createElement('p'); basis.className = 'hint'; basis.textContent = data.imageReviewed === true ? 'Grundlag: originalbillede og aflæst tekst' : 'Grundlag: aflæst tekst'; entry.append(basis);
         ready = true; form.setAttribute('data-chat-ready', '1');
         history.push({ role: 'user', content: text }, { role: 'assistant', content: data.answer.slice(0, 4000) }); trimHistory();
         if (question.value.trim() === text) question.value = '';
