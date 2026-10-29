@@ -25,7 +25,7 @@
       <a class="studio-scroll" href="#studio-introduction"><span>Scroll og se mere</span><span aria-hidden="true">↓</span></a>
     </div>
     <div class="studio-introduction" id="studio-introduction">
-      <div class="studio-introduction__identity"><p class="studio-label">Din forretning.<br>Vores håndværk.</p><svg viewBox="0 0 100 100" fill="none" aria-hidden="true"><rect x="1" y="1" width="98" height="98" rx="28" stroke="currentColor" opacity=".25"/><path d="m23 31 27 43 27-43" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Et lille bureau.<br>En fast kontakt.</span></div>
+      <div class="studio-introduction__identity"><p class="studio-label">Din forretning.<br>Vores håndværk.</p>{% render 'brand-mark' %}<span>Et lille bureau.<br>En fast kontakt.</span></div>
       <div><h2>Du gør det, du er god til.<br><span>Vi tager os af hjemmesiden.</span></h2><div class="rte">{{ section.settings.text }}</div></div>
       <div class="studio-introduction__contact"><p>Lad os starte med jeres idé.</p><a href="mailto:{{ settings.company_email | escape }}">{{ settings.company_email | escape }}</a><a class="arrow-link" href="/pages/om-os">Mød Veyro</a></div>
       <ul class="studio-promises" role="list"><li><span aria-hidden="true">✳</span><div><strong>Design til jeres virksomhed</strong><p>Et udtryk, der tager afsæt i jer og det, kunderne skal kunne.</p></div></li><li><span aria-hidden="true">↗</span><div><strong>Teknikken er med</strong><p>Hosting, teknisk vedligeholdelse og hjælp til de små justeringer.</p></div></li><li><span aria-hidden="true">↔</span><div><strong>Vi finder formen sammen</strong><p>Tre korrekturrunder under opsætningen, så I kan give samlet feedback.</p></div></li></ul>

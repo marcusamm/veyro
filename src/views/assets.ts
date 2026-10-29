@@ -1,4 +1,5 @@
 // Statiske filer serveres fra Workeren selv (ingen tredjeparts-CDN eller skrifttyper).
+import { THEME_ASSETS } from '../site/theme.generated';
 
 export const CSS = `
 @font-face{font-family:"Inter Tight";src:url(/static/inter-tight.woff2) format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
@@ -312,6 +313,7 @@ details.card summary{font-size:16px;color:var(--ink)}
 .mail-msg summary{cursor:pointer;word-break:break-word}
 .mail-body{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:15px;background:var(--bg,#F4F2EC);padding:12px;border-radius:8px;max-height:480px;overflow:auto;margin:8px 0 0}
 .obs-list li{margin-bottom:6px}
+${THEME_ASSETS['brand.css']?.data ?? ''}
 `;
 
 export const JS = `
@@ -368,4 +370,5 @@ document.querySelectorAll('textarea[maxlength][data-counter]').forEach(function 
 });
 `;
 
-export const FAVICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0F0F0D"/><path d="M17 18h8l7 20 7-20h8L36 47h-8z" fill="#FBFAF7"/><circle cx="49" cy="45" r="4" fill="#FF5A1F"/></svg>`;
+// Serve the approved original SVG rather than maintaining a separately drawn copy.
+export const FAVICON = THEME_ASSETS['favicon.svg']!.data;
