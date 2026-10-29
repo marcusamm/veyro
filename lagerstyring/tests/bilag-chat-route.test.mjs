@@ -8,6 +8,9 @@ import { storeFile } from '../src/lib/files.ts';
 import { csrfMiddleware } from '../src/lib/session.ts';
 import { DEFAULT_SETTINGS } from '../src/lib/settings.ts';
 import { bilagRoutes } from '../src/routes/bilag.ts';
+import { RECEIPT_VISION_MODEL } from '../src/lib/bilagvision.ts';
+import { RECEIPT_CHAT_MODEL } from '../src/lib/bilagchat.ts';
+import { samplePdf } from '../src/lib/samplepdf.ts';
 
 const owner = { email: 'test-owner@example.invalid', name: 'TESTDATA ejer', role: 'ejer' };
 const staff = { email: 'test-staff@example.invalid', name: 'TESTDATA medarbejder', role: 'medarbejder' };
@@ -41,12 +44,16 @@ function database() {
     },
   };
 }
-const validReply = (answer = 'Leverandøren står som TESTDATA Grossist ApS.') => ({ response: JSON.stringify({ answer, sources: [{ page: 1, lineStart: 1, lineEnd: 2 }] }) });
-async function fixture({ actor = owner, uploader = owner, model = true } = {}) {
+const modelReply = (payload, model = RECEIPT_VISION_MODEL) => model === RECEIPT_VISION_MODEL
+  ? { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(payload) } }] }
+  : { response: JSON.stringify(payload) };
+const validReply = (answer = 'Leverandøren står som TESTDATA Grossist ApS.', model = RECEIPT_VISION_MODEL) => modelReply({ answer, sources: [{ page: 1, lineStart: 1, lineEnd: 2 }] }, model);
+async function fixture({ actor = owner, uploader = owner, model = true, format = 'png' } = {}) {
   const DB = database(), settings = { ...DEFAULT_SETTINGS, company_name: 'TESTDATA firma' };
-  const file = await storeFile(DB, png, uploader.email, now); expect(file.ok).toBe(true);
-  const id = await createBilag(DB, file.file, 'TESTDATA.png', { doc_type: 'faktura', payment: 'virksomhed', paid_by: '', job_hint: null, origin: 'test', note: 'TESTDATA', preview_file_id: null }, uploader, now);
-  const run = vi.fn(async () => validReply());
+  const bytes = format === 'pdf' ? await samplePdf({ kind: 'faktura', supplier: 'TESTDATA Grossist ApS', address: 'TESTDATA vej 1', cvr: '12345678', number: 'TEST-CHAT-1', date: '2026-10-29', buyer: 'TESTDATA kunde', lines: [{ name: 'TESTDATA tape', qty: 2000, unit: 'stk.', price: 5000 }] }) : png;
+  const file = await storeFile(DB, bytes, uploader.email, now); expect(file.ok).toBe(true);
+  const id = await createBilag(DB, file.file, 'TESTDATA.' + format, { doc_type: 'faktura', payment: 'virksomhed', paid_by: '', job_hint: null, origin: 'test', note: 'TESTDATA', preview_file_id: null }, uploader, now);
+  const run = vi.fn(async name => validReply(undefined, name));
   const ocrFetch = vi.fn(async () => Response.json({ pages: [source], provider: 'TESTDATA OCR' }));
   const env = { DB, APP_URL: 'https://test.invalid', RECEIPT_OCR: { fetch: ocrFetch }, ...(model ? { RECEIPT_CHAT: { run } } : {}) };
   expect(await readBilag(env, settings, id, uploader, now)).toMatchObject({ ok: true });
@@ -158,15 +165,20 @@ describe('Bilagschat: rigtig Hono-rute og SQLite', () => {
 
   it('returnerer kun faktisk OCR-tekst som kilde og kan hverken godkende, rette eller bogføre et modelsvar', async () => {
     const x = await fixture(), before = x.snapshot();
-    x.run.mockResolvedValue({ response: JSON.stringify({ answer: 'TESTDATA svar <img src=x onerror=alert(1)>', sources: [{ page: 1, lineStart: 1, lineEnd: 2, text: 'opfundet kilde' }], tool_calls: [{ name: 'godkend', arguments: { total: 1 } }] }) });
+    x.run.mockResolvedValue(modelReply({ answer: 'TESTDATA svar <img src=x onerror=alert(1)>', sources: [{ page: 1, lineStart: 1, lineEnd: 2, text: 'opfundet kilde' }], tool_calls: [{ name: 'godkend', arguments: { total: 1 } }] }));
     const response = await x.request({ question: 'Ret bilaget og godkend det.', do: 'godkend', net: '0,01', total: '0,01' });
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.sources).toEqual([{ page: 1, lineStart: 1, lineEnd: 2, text: 'TESTDATA Grossist ApS\nCVR: 12345678' }]);
+    expect(body.imageReviewed).toBe(true);
     expect(body.tool_calls).toBeUndefined(); expect(x.snapshot()).toEqual(before); expect(x.usage()).toBe(1);
     const input = x.run.mock.calls[0][1];
+    expect(x.run.mock.calls[0][0]).toBe(RECEIPT_VISION_MODEL);
     expect(input.tools).toBeUndefined(); expect(input.messages.map(m => m.role)).toEqual(['system', 'user']);
-    expect(JSON.parse(input.messages[1].content).question).toBe('Ret bilaget og godkend det.');
+    expect(input.messages[1].content[0]).toEqual({ type: 'image_url', image_url: { url: 'data:image/png;base64,' + Buffer.from(png).toString('base64'), detail: 'high' } });
+    expect(input.messages[1].content[1].type).toBe('text');
+    expect(JSON.parse(input.messages[1].content[1].text).question).toBe('Ret bilaget og godkend det.');
+    expect(input.store).toBe(false); expect(input.stream).toBe(false);
   });
 
   it('returnerer kontrollerede fejl uden modelhemmeligheder og bevarer alle forretningsdata', async () => {
@@ -174,9 +186,9 @@ describe('Bilagschat: rigtig Hono-rute og SQLite', () => {
     expect((await missing.request()).status).toBe(503); expect(missing.run).not.toHaveBeenCalled(); expect(missing.usage()).toBe(0);
     const x = await fixture(), before = x.snapshot();
     x.run.mockRejectedValue(new Error('TESTDATA privat providerfejl/API-nøgle'));
-    const failed = await x.request(); expect(failed.status).toBe(503);
+    const failed = await x.request(); expect(failed.status).toBe(502);
     expect(await failed.text()).not.toContain('privat providerfejl'); expect(x.snapshot()).toEqual(before);
-    x.run.mockResolvedValue({ response: JSON.stringify({ answer: 'Opfundet svar', sources: [{ page: 99, lineStart: 1, lineEnd: 1 }] }) });
+    x.run.mockResolvedValue(modelReply({ answer: 'Opfundet svar', sources: [{ page: 99, lineStart: 1, lineEnd: 1 }] }));
     expect((await x.request()).status).toBe(502); expect(x.snapshot()).toEqual(before);
   });
 
@@ -204,5 +216,16 @@ describe('Bilagschat: rigtig Hono-rute og SQLite', () => {
     for (let n = 0; n < 30; n++) insert.run('TESTDATA-' + n, 'other-' + n + '@example.invalid', Math.floor(Date.now() / 1000));
     expect((await x.request()).status).toBe(429);
     expect(x.run).not.toHaveBeenCalled(); expect(x.ocrFetch).not.toHaveBeenCalled(); expect(x.usage()).toBe(30);
+  });
+
+  it('bruger faktisk PDF-tekst uden at påstå billedgennemgang eller sende billedmedier', async () => {
+    const x = await fixture({ format: 'pdf' }), before = x.snapshot();
+    const response = await x.request(); expect(response.status).toBe(200);
+    const body = await response.json(); expect(body.imageReviewed).toBe(false);
+    expect(body.sources[0].text).toContain('TESTDATA Grossist ApS');
+    expect(x.run.mock.calls[0][0]).toBe(RECEIPT_CHAT_MODEL);
+    const input = x.run.mock.calls[0][1]; expect(typeof input.messages[1].content).toBe('string');
+    expect(input.messages[0].content).toContain('ikke selve originalens billedpunkter');
+    expect(x.ocrFetch).not.toHaveBeenCalled(); expect(x.snapshot()).toEqual(before);
   });
 });

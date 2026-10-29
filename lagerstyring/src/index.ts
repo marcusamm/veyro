@@ -19,6 +19,7 @@ import lager from './routes/lager';
 import { jobKatalog, katalog } from './routes/produktkatalog';
 import { KATALOG_JS } from './views/katalog-js';
 import { BILAG_CHAT_JS } from './views/bilagchatclient';
+import { BILAG_ASSISTANT_JS } from './views/bilagassistant';
 import { CSS, JS } from './views/assets';
 import { pageHead } from './views/common';
 import { INTER_TIGHT } from './views/font';
@@ -75,6 +76,7 @@ app.get('/static/app.css', (c) => c.body(CSS, 200, { 'Content-Type': 'text/css; 
 app.get('/static/app.js', (c) => c.body(JS, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
 app.get('/static/katalog.js', (c) => c.body(KATALOG_JS, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
 app.get('/static/bilag-chat.js', (c) => c.body(BILAG_CHAT_JS, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
+app.get('/static/bilag-assistant.js', (c) => c.body(BILAG_ASSISTANT_JS, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
 app.get('/static/inter-tight.woff2', (c) =>
   c.body(INTER_TIGHT, 200, { 'Content-Type': 'font/woff2', 'Cache-Control': 'public, max-age=31536000, immutable' }),
 );

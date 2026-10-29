@@ -2,6 +2,7 @@
 // Medarbejdere kan uploade og se egne bilag og udlæg; ejer og indkøber kan alt.
 
 import { Hono, type Context } from 'hono';
+import { bilagAssistantRoutes } from './bilagassistant';
 import type { AppEnv } from '../env';
 import {
   addAllocation,
@@ -65,6 +66,8 @@ export function bilagRoutes(portal: Portal) {
 
   const user = (c: Context<AppEnv>) => c.get('session')!.user;
   const manager = (c: Context<AppEnv>) => canManage(user(c));
+
+  r.route('/chat', bilagAssistantRoutes(portal));
 
   async function jobsList(db: D1Database) {
     const { results } = await db.prepare("SELECT id, number, name FROM jobs WHERE status <> 'annulleret' ORDER BY status = 'afsluttet', number DESC LIMIT 300").all<{ id: number; number: string; name: string }>();

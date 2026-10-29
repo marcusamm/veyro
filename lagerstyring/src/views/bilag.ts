@@ -139,7 +139,7 @@ export function bilagTabs(base: string, tab: string, counts: ListData['counts'],
 export function listPage(d: ListData): H {
   const f = d.f;
   return html`<div class="stack-lg">
-  ${pageHead('Bilag', 'Bilag', html`<a class="btn btn-primary" href="${d.base}/ny">Upload bilag</a>`, 'Kvitteringer, leverandørfakturaer og kreditnotaer. Upload → kontrollér → fordel → godkend → eksportér.')}
+  ${pageHead('Bilag', 'Bilag', html`<a class="btn btn-secondary" href="${d.base}/chat">Chat med et bilag</a><a class="btn btn-primary" href="${d.base}/ny">Upload bilag</a>`, 'Kvitteringer, leverandørfakturaer og kreditnotaer. Upload → kontrollér → fordel → godkend → eksportér.')}
   ${bflash(d.flashCode)}
   ${bilagTabs(d.base, d.tab, d.counts, d.manager)}
   <form class="card toolbar" method="get" action="${d.tab === 'udlaeg' ? `${d.base}/udlaeg` : d.base}">
@@ -246,6 +246,7 @@ export interface DetailData {
     message?: string;
     question?: string;
     answer?: string;
+    imageReviewed?: boolean;
     sources?: { page: number; lineStart: number; lineEnd: number; text: string }[];
   };
   checks: Checks;
@@ -279,10 +280,11 @@ function chatSection(d: DetailData): H {
   const sources = d.chat?.sources ?? [];
   return html`<section class="card stack" aria-labelledby="bilag-chat-title" data-bilag-chat>
     <div class="row-between"><h2 id="bilag-chat-title">Spørg til bilaget</h2><a class="small" href="${d.base}/${d.b.id}/fil" target="_blank" rel="noopener">Åbn originalen</a></div>
-    <p class="hint">Stil spørgsmål til den aflæste tekst, og gennemgå forslagene. Sammenhold svarene med originalen. Chatten ændrer ikke bilaget.</p>
+    <p class="hint">AI hjælper dig med at gennemgå bilaget. Kildeuddrag kommer fra den aflæste tekst. Sammenhold svarene med originalen. Chatten ændrer ikke bilaget.</p>
+    <p class="hint">PNG/JPG op til 6 MB kan gennemgås som billede. PDF, HEIC og større billeder gennemgås ud fra aflæst tekst.</p>
     <div class="stack" data-chat-messages role="log" aria-label="Samtale om bilaget" aria-live="polite" aria-relevant="additions" style="max-height:32rem;overflow-y:auto;overflow-wrap:anywhere">
       ${d.chat?.question ? html`<div class="stack-sm"><strong>Dig</strong><p style="white-space:pre-wrap">${d.chat.question}</p></div>` : ''}
-      ${d.chat?.answer ? html`<div class="stack-sm"><strong>Bilagsassistent</strong><p style="white-space:pre-wrap">${d.chat.answer}</p>${sources.map((s) => html`<blockquote class="small" style="margin:8px 0;padding-left:12px;border-left:2px solid var(--line-strong)"><strong>Side ${s.page}, ${s.lineStart === s.lineEnd ? `linje ${s.lineStart}` : `linje ${s.lineStart}–${s.lineEnd}`}</strong><p style="white-space:pre-wrap">${s.text}</p></blockquote>`)}</div>` : ''}
+      ${d.chat?.answer ? html`<div class="stack-sm"><strong>Bilagsassistent</strong><p style="white-space:pre-wrap">${d.chat.answer}</p>${sources.map((s) => html`<blockquote class="small" style="margin:8px 0;padding-left:12px;border-left:2px solid var(--line-strong)"><strong>Side ${s.page}, ${s.lineStart === s.lineEnd ? `linje ${s.lineStart}` : `linje ${s.lineStart}–${s.lineEnd}`}</strong><p style="white-space:pre-wrap">${s.text}</p></blockquote>`)}<p class="hint">${d.chat.imageReviewed === true ? 'Grundlag: originalbillede og aflæst tekst' : 'Grundlag: aflæst tekst'}</p></div>` : ''}
     </div>
     ${d.chat?.message || !available ? html`<p class="hint" role="status">${d.chat?.message || 'Bilagschatten er ikke tilsluttet på denne installation.'}</p>` : ''}
     ${available && !ready ? html`<p class="hint">Skriv dit spørgsmål nu. Første spørgsmål kan tage et par minutter, mens originalen aflæses. Dit spørgsmål bliver på siden.</p>` : ''}
@@ -469,7 +471,7 @@ export function detailPage(d: DetailData): H {
   <section class="card stack-sm"><h2>Historik</h2><ol class="timeline">${d.events.map(
     (e) => html`<li><strong>${formatDateTime(e.created_at)}</strong> · ${e.actor_name || e.actor} · v${e.version}<div>${e.text}</div></li>`,
   )}</ol></section>
-</div><script src="/static/bilag-chat.js?v=1" defer></script>`;
+</div><script src="/static/bilag-chat.js?v=2" defer></script>`;
 }
 
 // --- Eksport --------------------------------------------------------------------------------------

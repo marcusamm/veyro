@@ -3,9 +3,10 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { askBilag, BilagChatError, chatHistory, RECEIPT_CHAT_MODEL, reserveChatRequest } from '../src/lib/bilagchat.ts';
+import { RECEIPT_VISION_MODEL } from '../src/lib/bilagvision.ts';
 
 // All text, fields and model replies are synthetic. No live model or remote DB is used.
-const receipt = Object.freeze({ supplier_name: 'TESTDATA gemt leverandør', doc_date: '2026-10-29', doc_number: 'TEST-CHAT', net: null, vat: 2500, total: 12500, line_prices: 'inkl' });
+const receipt = Object.freeze({ id:1,file_id:2,version:2,supplier_name: 'TESTDATA gemt leverandør', doc_date: '2026-10-29', doc_number: 'TEST-CHAT', net: null, vat: 2500, total: 12500, line_prices: 'inkl' });
 const evidence = Object.freeze({ bilag_id: 1, file_id: 2, sourceVersion: 1, currentVersion: 2, pages: [['TESTDATA Original leverandør', 'TESTDATA vare', '2 x 50,00 100,00'], ['TESTDATA Heraf moms 25,00', 'TESTDATA Total 125,00']], source: 'ocr', provider: 'TESTDATA OCR', read_at: 1793291400, truncated: false });
 const validAnswer = { answer: 'TESTDATA svar', sources: [{ page: 1, lineStart: 1, lineEnd: 2 }] };
 const open = [];
@@ -13,8 +14,32 @@ afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); for (const sqlite of
 
 function model(reply = validAnswer) {
   const run = vi.fn(async () => ({ response: reply }));
-  const DB = { prepare() { throw new Error('Chatten må ikke skrive i virksomhedsdata'); } };
+  const DB = readonlyOriginal();
   return { env: { RECEIPT_CHAT: { run }, DB }, run };
+}
+
+/** Permit only the actual original-document SELECTs, while failing any write. */
+function readonlyOriginal(mime='application/pdf',bytes=new Uint8Array()) {
+  function prepare(sql,params=[]) {
+    if (![
+      'SELECT * FROM bilag WHERE id = ?',
+      'SELECT * FROM files WHERE id = ?',
+      'SELECT idx, data FROM file_chunks WHERE file_id = ? ORDER BY idx',
+    ].includes(sql)) throw new Error('Chatten må kun læse det valgte originalbilag; ingen dataskrivninger');
+    return {
+      bind:(...p)=>prepare(sql,p),
+      first:async()=>{
+        expect(params).toEqual([sql.includes('FROM bilag')?receipt.id:receipt.file_id]);
+        return sql.includes('FROM bilag')?{...receipt}:{id:receipt.file_id,mime,size:bytes.length,chunks:1};
+      },
+      all:async()=>{
+        expect(sql).toContain('FROM file_chunks');expect(params).toEqual([receipt.file_id]);
+        return {results:[{idx:0,data:Array.from(bytes)}],success:true};
+      },
+      run:async()=>{throw new Error('Chatten må ikke skrive i virksomhedsdata');},
+    };
+  }
+  return {prepare:sql=>prepare(sql)};
 }
 
 function database() {
@@ -64,8 +89,27 @@ describe('Bilagschat: kun læst kilde og utroværdig kontekst', () => {
     const x = model(format === 'string' ? JSON.stringify(reply) : reply);
     const before = JSON.stringify({ receipt, evidence });
     const result = await askBilag(x.env, receipt, evidence, 'TESTDATA hvad står der?', []);
-    expect(result).toEqual({ answer: 'TESTDATA svar med kilde', sources: [{ page: 1, lineStart: 2, lineEnd: 3, text: 'TESTDATA vare\n2 x 50,00 100,00' }] });
+    expect(result).toEqual({ answer: 'TESTDATA svar med kilde', sources: [{ page: 1, lineStart: 2, lineEnd: 3, text: 'TESTDATA vare\n2 x 50,00 100,00' }],imageReviewed:false });
     expect(JSON.stringify({ receipt, evidence })).toBe(before);
+  });
+
+  it('sender det valgte PNG-originalbillede til Gemma og verificerer fortsat citater fra den gemte OCR-tekst',async()=>{
+    const png=Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64'));
+    const x=model();x.env.DB=readonlyOriginal('image/png',png);
+    x.run.mockResolvedValue({choices:[{finish_reason:'stop',message:{content:JSON.stringify({answer:'TESTDATA sammenholdt svar',sources:[{page:1,lineStart:2,lineEnd:3,text:'TESTDATA ikke originalcitat'}]}),refusal:null}}]});
+    const result=await askBilag(x.env,receipt,evidence,'TESTDATA hvad står der på billedet?',[]);
+    expect(result).toEqual({answer:'TESTDATA sammenholdt svar',sources:[{page:1,lineStart:2,lineEnd:3,text:'TESTDATA vare\n2 x 50,00 100,00'}],imageReviewed:true});
+    const [name,payload]=x.run.mock.calls[0];
+    expect(name).toBe(RECEIPT_VISION_MODEL);
+    expect(payload.messages[0].content).toContain('Du modtager originalens billede');
+    expect(payload.messages[1].content).toEqual([
+      {type:'image_url',image_url:{url:`data:image/png;base64,${Buffer.from(png).toString('base64')}`,detail:'high'}},
+      {type:'text',text:expect.any(String)},
+    ]);
+    const data=JSON.parse(payload.messages[1].content[1].text);
+    expect(data.question).toBe('TESTDATA hvad står der på billedet?');
+    expect(data.savedFields.supplier).toBe(receipt.supplier_name);
+    expect(payload.tools).toBeUndefined();expect(x.run).toHaveBeenCalledTimes(1);
   });
 
   it.each([
