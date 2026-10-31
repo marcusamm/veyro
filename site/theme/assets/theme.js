@@ -268,6 +268,7 @@
   }
 
   function validateField(el) {
+    if (el.disabled) return '';
     const value = (el.value || '').trim();
     const label = fieldLabel(el);
     if (el.type === 'checkbox') return el.required && !el.checked ? strings.consentMissing : '';
@@ -389,11 +390,29 @@
     // Forvælg ydelse fra URL (?ydelse=handle). Gamle nøgler fra tidligere links og mails virker stadig.
     const params = new URLSearchParams(window.location.search);
     root.querySelectorAll('select[data-preselect]').forEach((select) => {
+      if (select.hasAttribute('data-preserved-choice')) return;
       const raw = params.get(select.dataset.preselect);
       if (!raw) return;
       const key = ALIASES[raw] || raw;
       const opt = Array.from(select.options).find((o) => o.value && (o.dataset.key === key || slugify(o.value) === key));
       if (opt) select.value = opt.value;
+    });
+
+    // A webshop tier is an enquiry preference only. Keep it editable and do not submit it for other services.
+    root.querySelectorAll('[data-webshop-enquiry]').forEach((wrap) => {
+      const form = wrap.closest('form');
+      const service = form?.querySelector('select[name="contact[Ydelse]"]');
+      const tier = wrap.querySelector('[data-webshop-enquiry-select]');
+      if (!service || !tier) return;
+      const raw = params.get('webshop_niveau');
+      if (!service.hasAttribute('data-preserved-choice') && raw && [...tier.options].some(option => option.value === raw)) tier.value = raw;
+      const sync = () => {
+        const enabled = service.value === 'Pakke: Webshop';
+        wrap.hidden = !enabled;
+        tier.disabled = !enabled;
+      };
+      service.addEventListener('change', sync);
+      sync();
     });
 
     // Flyt fokus til succes-/fejlbesked efter afsendelse

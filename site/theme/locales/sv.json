@@ -405,5 +405,38 @@
   "pricing": {
     "conversion_note": "Ungefärlig omräkning från DKK. Slutligt pris och valuta bekräftas i offerten.",
     "conversion_source": "ECB, 30 okt. 2026"
+  },
+  "webshop_tiers": {
+    "label": "Webbutiksnivå",
+    "choose": "Välj webbutiksnivå",
+    "option_label": "{{ products }} produkter / {{ variants }} varianter — {{ price }}/mån.",
+    "capacity": "Upp till {{ products }} produkter och {{ variants }} varianter",
+    "import_capacity": "10 manuellt skapade produkter eller en standardimport av upp till {{ products }} produkter, inom totalt {{ variants }} varianter.",
+    "from": "Från",
+    "limits_note": "Båda gränserna måste följas. Variantgränsen gäller hela webbutiken, inte varje produkt.",
+    "example": "12 produkter med 80 varianter kräver nivån med 30 produkter och 120 varianter. En T-shirt i 3 storlekar och 2 färger räknas som en produkt med 6 varianter.",
+    "heading": "Plats för er webbutik.",
+    "introduction": "Samma webbutik och hjälp. Välj nivå utifrån antalet aktiva produkter och varianter i hela webbutiken.",
+    "larger": "Behöver ni fler produkter eller varianter? Kontakta oss så kommer vi överens om ett pris som passar er webbutik.",
+    "upgrade": "Kontakta oss när ni behöver en större nivå. Ändringar av abonnemang och pris avtalas med er. Fler än 50 produkter eller 200 varianter kräver en individuell offert.",
+    "products": "Aktiva produkter",
+    "variants": "Varianter totalt",
+    "monthly_price": "Per månad exkl. moms",
+    "import": "Manuell uppläggning eller import",
+    "enquiry": "Boka en demo",
+    "all_tiers": "Se alla tre webbutiksnivåer",
+    "comparison": "Webbutiksnivåer, priser och gränser",
+    "staff_table": "Månadspris efter antal användare och webbutiksnivå",
+    "scroll_hint": "Tabellen kan rullas i sidled på små skärmar.",
+    "tier_name": "Webbutik {{ products }}",
+    "setup_note": "Vi skapar de första 10 produkterna manuellt eller gör en standardimport inom era valda produkt- och variantgränser. Ni levererar bilder och produktdata i vår CSV- eller Excel-mall.",
+    "setup_extra": "Det är antingen manuell uppläggning eller en standardimport. Extra import, rensning av produktdata och övrigt katalogarbete avtalas separat.",
+    "contact_larger": "Få en individuell offert"
+  },
+  "webshop_enquiry": {
+    "custom": "Större webbutik – individuell offert",
+    "help": "Gäller endast Webbutik. Båda gränserna måste följas. Vi bekräftar nivå, pris och valuta i offerten; valet ändrar inte ett befintligt abonnemang.",
+    "invalid": "Välj en giltig webbutiksnivå eller en individuell offert.",
+    "per_month_ex_vat": "per månad exkl. moms"
   }
 }

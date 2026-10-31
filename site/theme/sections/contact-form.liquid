@@ -75,16 +75,30 @@
             <div class="field field--full">
               <label for="{{ fid }}-service">{{ 'forms.fields.service' | t }} <span class="req" aria-hidden="true">*</span></label>
               <div class="select">
-                <select id="{{ fid }}-service" name="contact[Ydelse]" required data-label="{{ 'forms.fields.service' | t }}" aria-describedby="{{ fid }}-service-error" data-preselect="ydelse">
+                <select id="{{ fid }}-service" name="contact[Ydelse]" required data-label="{{ 'forms.fields.service' | t }}" aria-describedby="{{ fid }}-service-error" data-preselect="ydelse"{% if form.service != blank %} data-preserved-choice{% endif %}>
                   <option value="">{{ 'forms.choose' | t }}</option>
                   {%- for s in services -%}
                     {%- assign option = s | strip -%}
-                    {%- if option != blank -%}<option value="{{ option | escape }}" data-key="{{ option | handle }}">{{ option | content_t | escape }}</option>{%- endif -%}
+                    {%- if option != blank -%}<option value="{{ option | escape }}" data-key="{{ option | handle }}"{% if form.service == option %} selected{% endif %}>{{ option | content_t | escape }}</option>{%- endif -%}
                   {%- endfor -%}
                 </select>
                 {% render 'icon', name: 'arrow-down', size: 18 %}
               </div>
               <p class="field__error" id="{{ fid }}-service-error" hidden></p>
+            </div>
+            <div class="field field--full" data-webshop-enquiry>
+              <label for="{{ fid }}-webshop-tier">{{ 'webshop_tiers.label' | t }}</label>
+              <div class="select">
+                <select id="{{ fid }}-webshop-tier" name="contact[Webshopniveau]" data-webshop-enquiry-select data-label="{{ 'webshop_tiers.label' | t }}" aria-describedby="{{ fid }}-webshop-tier-help {{ fid }}-webshop-tier-error">
+                  {%- for tier in webshop_tiers -%}
+                    <option value="{{ tier.id }}"{% if form.webshop_tier == tier.id %} selected{% endif %}>{{ 'webshop_tiers.option_label' | t: products: tier.products, variants: tier.variants, price: tier.price | escape }}</option>
+                  {%- endfor -%}
+                  <option value="custom"{% if form.webshop_tier == 'custom' %} selected{% endif %}>{{ 'webshop_enquiry.custom' | t }}</option>
+                </select>
+                {% render 'icon', name: 'arrow-down', size: 18 %}
+              </div>
+              <p class="small muted" id="{{ fid }}-webshop-tier-help">{{ 'webshop_enquiry.help' | t }}</p>
+              <p class="field__error" id="{{ fid }}-webshop-tier-error"{% unless form.errors contains 'webshop_tier' %} hidden{% endunless %}>{{ form.errors.messages.webshop_tier | escape }}</p>
             </div>
             <div class="field field--full">
               <label for="{{ fid }}-body">{{ 'forms.fields.message' | t }} <span class="req" aria-hidden="true">*</span></label>

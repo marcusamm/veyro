@@ -42,6 +42,7 @@ export function build() {
   hash.update(JSON.stringify(translations));
   // Display exchange rates are part of the cached HTML as well as the theme text.
   hash.update(fs.readFileSync(path.join(ROOT, 'src/site/currency.ts')));
+  hash.update(fs.readFileSync(path.join(ROOT, 'src/site/webshop-tiers.ts')));
   const v = hash.digest('hex').slice(0, 12);
   return `// AUTOGENERERET af scripts/build-site.mjs – redigér site/theme og site/content.json i stedet.
 /* eslint-disable */

@@ -129,6 +129,8 @@ export interface FormState {
   name?: string;
   email?: string;
   body?: string;
+  service?: string;
+  webshop_tier?: string;
 }
 
 /** Data, som de særlige tags ({% sections %}, {% form %}) skal bruge under gengivelsen */
@@ -233,7 +235,7 @@ function createEngine(): Liquid {
       const h: Record<string, unknown> = (yield new Hash(rest).render(ctx)) as Record<string, unknown>;
       const hooks = ctx.globals.__hooks as RenderHooks;
       const id = String(h.id ?? '');
-      const state: FormState = hooks.forms[id] ?? { 'posted_successfully?': false, errors: null };
+      const state: FormState = hooks.forms[id] ?? (kind === 'contact' ? hooks.forms.__contact : undefined) ?? { 'posted_successfully?': false, errors: null };
       ctx.push({ form: state });
       const action = kind === 'product' ? '/cart/add' : `/contact#${escAttr(id)}`;
       emitter.write(

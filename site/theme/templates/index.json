@@ -84,12 +84,12 @@
             "title": "Webshop",
             "status": "available",
             "text": "En webshop til jeres varer, som vi sætter op og holder ved lige.",
-            "price": "499 kr.",
+            "price": "299 kr.",
             "interval": "/md.",
             "vat": "ekskl. moms",
-            "price_label": "",
+            "price_label": "Fra",
             "badge": "",
-            "features": "Webshop tilpasset jeres virksomhed\nOp til 50 aktive produkter og 200 varianter\nVi opretter de første 10 produkter eller importerer op til 50\nOp til 3 administratorbrugere\nHosting og teknisk vedligeholdelse",
+            "features": "Webshop tilpasset jeres virksomhed\nVirker på mobil, tablet og computer\nI kan selv rette og oprette produkter inden for det valgte niveau\nOp til 3 administratorbrugere\nHosting og teknisk vedligeholdelse\nMindre løbende justeringer",
             "features_label": "Det er med",
             "button_label": "Aftal en demo",
             "button_link": "/pages/kontakt?ydelse=pakke-webshop#formular",
@@ -231,7 +231,7 @@
           "type": "question",
           "settings": {
             "question": "Hvad er med i pakkerne?",
-            "answer": "<p>Hjemmeside (199 kr./md.) er en hjemmeside med op til 5 sider, jeres eget design, kontaktformular, hosting og vedligeholdelse. Booking (299 kr./md.) lægger online booking oven i. Webshop (499 kr./md.) er en webshop med op til 50 aktive produkter. Alle priser er ekskl. moms. <a href=\"/pages/priser\">Se alt indhold på prissiden</a>.</p>"
+            "answer": "<p>Hjemmeside (199 kr./md.) er en hjemmeside med op til 5 sider, jeres eget design, kontaktformular, hosting og vedligeholdelse. Booking (299 kr./md.) lægger online booking oven i. Webshop starter fra 299 kr./md. med op til 15 aktive produkter og 60 varianter i alt. Vælg 30 produkter / 120 varianter til 399 kr./md. eller 50 produkter / 200 varianter til 499 kr./md., hvis I har et større sortiment. Alle priser er ekskl. moms. <a href=\"/pages/priser\">Se alt indhold på prissiden</a>.</p>"
           }
         },
         "question_2": {

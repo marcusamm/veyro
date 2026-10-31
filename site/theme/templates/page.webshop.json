@@ -7,12 +7,12 @@
         "parent_label": "Løsninger",
         "parent_link": "/pages/ydelser",
         "heading": "En webshop til jeres varer",
-        "text": "<p>Vi sætter webshoppen op, opretter de første produkter og holder den ved lige. I kan selv rette og oprette produkter bagefter.</p>",
+        "text": "<p>Vi sætter webshoppen op, opretter de første produkter og holder den ved lige. Start med op til 15 produkter og 60 varianter, og vælg et større niveau, når sortimentet kræver det. I kan selv rette og oprette produkter inden for jeres valgte niveau.</p>",
         "primary_label": "Aftal en demo",
         "primary_link": "/pages/kontakt?ydelse=pakke-webshop#formular",
         "secondary_label": "Se priser",
         "secondary_link": "/pages/priser#pakke-webshop",
-        "note": "499 kr./md. ekskl. moms · Gratis oprettelse · Første måned gratis · Ingen binding",
+        "note": "Fra 299 kr./md. ekskl. moms · Op til 15 produkter og 60 varianter · Gratis oprettelse · Første måned gratis · Ingen binding",
         "concept": "shop",
         "concept_caption": "Produktside hos Lerværk med varianter, lager og antal."
       }
@@ -22,14 +22,14 @@
       "settings": {
         "anchor": "indhold",
         "layout": "split",
-        "label": "Webshop · 499 kr./md. ekskl. moms",
+        "label": "Webshop · Fra 299 kr./md. ekskl. moms · Op til 15 produkter og 60 varianter",
         "title": "Det får I",
         "intro": "<p>En webshop til jeres varer, som vi sætter op og holder ved lige.</p>",
         "audience": "<p>Til mindre virksomheder, der vil sælge et overskueligt sortiment online, fx et værksted, en specialbutik eller en producent.</p>",
-        "helps": "Opsætning af webshop i jeres udtryk\nProduktsider, kurv og bestilling\nOprettelse af de første 10 produkter eller én import af op til 50\nAfklaring af betaling og levering med jer før opstart",
-        "included": "Webshop tilpasset jeres virksomhed\nVirker på mobil, tablet og computer\nOp til 50 aktive produkter og op til 200 varianter i alt\nVi opretter de første 10 produkter, eller vi laver én standardimport af op til 50 produkter\nI kan selv rette og oprette produkter inden for rammerne\nOp til 3 administratorbrugere\nHosting og teknisk vedligeholdelse\nMindre løbende justeringer",
-        "separate": "Flere end 50 aktive produkter eller 200 varianter\nImport ud over den ene standardimport\nIntegrationer, fx til lager eller bogføring\nNye funktioner og større ændringer",
-        "next": "<p>Aftal en demo. Fortæl, hvor mange produkter I har, og hvordan I sender varer i dag. Så afklarer vi betaling og levering, før vi går i gang.</p>",
+        "helps": "Opsætning af webshop i jeres udtryk\nProduktsider, kurv og bestilling\nOprettelse af de første 10 produkter eller én standardimport inden for det valgte niveau\nAfklaring af betaling og levering med jer før opstart",
+        "included": "Webshop tilpasset jeres virksomhed\nVirker på mobil, tablet og computer\nI kan selv rette og oprette produkter inden for det valgte niveau\nOp til 3 administratorbrugere\nHosting og teknisk vedligeholdelse\nMindre løbende justeringer",
+        "separate": "Flere end 50 aktive produkter eller 200 varianter i alt\nEkstra import, oprydning i produktdata og øvrigt katalogarbejde\nIntegrationer, fx til lager eller bogføring\nNye funktioner og større ændringer",
+        "next": "<p>Aftal en demo. Fortæl, hvor mange aktive produkter og varianter I har, og hvordan I sender varer i dag. Så finder vi det rette niveau og afklarer betaling og levering, før vi går i gang.</p>",
         "button_label": "Aftal en demo",
         "button_link": "/pages/kontakt?ydelse=pakke-webshop#formular",
         "secondary_label": "Se alle priser og vilkår",
@@ -49,21 +49,21 @@
           "type": "item",
           "settings": {
             "title": "Produkter og varianter",
-            "text": "<p>Et produkt med varianter tæller som ét produkt. En T-shirt i 3 størrelser og 2 farver er 1 produkt med 6 varianter. Pakken har op til 50 aktive produkter og op til 200 varianter i alt.</p>"
+            "text": "<p>Et produkt med varianter tæller som ét produkt. En T-shirt i 3 størrelser og 2 farver er 1 produkt med 6 varianter.</p><p>Begge grænser skal være overholdt inden for det valgte niveau, og variantgrænsen gælder hele webshoppen, ikke hvert produkt. Derfor kræver 12 produkter med 80 varianter niveauet til 399 kr./md. ekskl. moms, selv om der er færre end 15 produkter.</p>"
           }
         },
         "item_2": {
           "type": "item",
           "settings": {
             "title": "Oprettelse eller import",
-            "text": "<p>Vi opretter de første 10 produkter i hånden, eller vi laver én standardimport af op til 50 produkter fra en korrekt udfyldt CSV- eller Excel-skabelon. Det er enten det ene eller det andet.</p>"
+            "text": "<p>Vi opretter de første 10 produkter eller laver én standardimport inden for jeres valgte produkt- og variantgrænser. I leverer billeder og produktdata i vores CSV- eller Excel-skabelon.</p><p>Importen omfatter op til 15 produkter / 60 varianter på niveauet til 299 kr., 30 produkter / 120 varianter til 399 kr. eller 50 produkter / 200 varianter til 499 kr. Alle priser er pr. måned ekskl. moms. Det er enten manuel oprettelse eller én standardimport.</p><p>Ekstra import, oprydning i produktdata og øvrigt katalogarbejde aftales særskilt.</p>"
           }
         },
         "item_3": {
           "type": "item",
           "settings": {
             "title": "Det leverer I",
-            "text": "<p>Billeder og produktdata. I kan selv rette og oprette produkter inden for rammerne. Produktkataloget tæller ikke som indholdssider.</p>"
+            "text": "<p>Billeder og produktdata i vores CSV- eller Excel-skabelon. I kan selv rette og oprette produkter inden for jeres valgte produkt- og variantgrænser. Produktkataloget tæller ikke som indholdssider.</p>"
           }
         },
         "item_4": {
@@ -79,6 +79,13 @@
             "title": "Betaling, fragt og tredjepart",
             "text": "<p>Gebyrer til betalingsudbyderen, fragt og eventuelle abonnementer hos tredjepart betaler I selv.</p>"
           }
+        },
+        "item_6": {
+          "type": "item",
+          "settings": {
+            "title": "Når sortimentet vokser",
+            "text": "<p>Kontakt os, når I har brug for et større niveau. Vi aftaler ændringen af abonnement og pris med jer, før den træder i kraft.</p><p>Har I brug for flere produkter eller varianter? Kontakt os, så aftaler vi en pris, der passer til jeres webshop. Ved mere end 50 aktive produkter eller 200 varianter i alt giver vi et individuelt tilbud.</p>"
+          }
         }
       },
       "block_order": [
@@ -86,7 +93,8 @@
         "item_2",
         "item_3",
         "item_4",
-        "item_5"
+        "item_5",
+        "item_6"
       ]
     },
     "faq": {
@@ -105,21 +113,21 @@
           "type": "question",
           "settings": {
             "question": "Hvad er forskellen på et produkt og en variant?",
-            "answer": "<p>En variant er en udgave af samme produkt, fx en størrelse eller en farve. En T-shirt i 3 størrelser og 2 farver er 1 produkt med 6 varianter.</p>"
+            "answer": "<p>Et produkt med varianter tæller som ét produkt. En T-shirt i 3 størrelser og 2 farver er 1 produkt med 6 varianter.</p><p>Begge grænser skal være overholdt inden for det valgte niveau, og variantgrænsen gælder hele webshoppen, ikke hvert produkt. Derfor kræver 12 produkter med 80 varianter niveauet til 399 kr./md. ekskl. moms, selv om der er færre end 15 produkter.</p>"
           }
         },
         "question_2": {
           "type": "question",
           "settings": {
             "question": "Hvordan kommer vores produkter ind i webshoppen?",
-            "answer": "<p>Vi opretter de første 10 produkter, eller vi importerer op til 50 produkter én gang fra vores skabelon. I leverer billeder og produktdata.</p>"
+            "answer": "<p>Vi opretter de første 10 produkter eller laver én standardimport inden for jeres valgte produkt- og variantgrænser. I leverer billeder og produktdata i vores CSV- eller Excel-skabelon.</p><p>Importen omfatter op til 15 produkter / 60 varianter på niveauet til 299 kr., 30 produkter / 120 varianter til 399 kr. eller 50 produkter / 200 varianter til 499 kr. Alle priser er pr. måned ekskl. moms. Det er enten manuel oprettelse eller én standardimport.</p><p>Ekstra import, oprydning i produktdata og øvrigt katalogarbejde aftales særskilt.</p>"
           }
         },
         "question_3": {
           "type": "question",
           "settings": {
-            "question": "Hvad hvis vi har flere end 50 produkter?",
-            "answer": "<p>Så aftaler vi det særskilt, og I får et tilbud først.</p>"
+            "question": "Hvad hvis vi har flere end 50 produkter eller 200 varianter?",
+            "answer": "<p>Kontakt os, når I har brug for et større niveau. Vi aftaler ændringen af abonnement og pris med jer, før den træder i kraft.</p><p>Har I brug for flere produkter eller varianter? Kontakt os, så aftaler vi en pris, der passer til jeres webshop. Ved mere end 50 aktive produkter eller 200 varianter i alt giver vi et individuelt tilbud.</p>"
           }
         },
         "question_4": {
@@ -135,9 +143,17 @@
             "question": "Hvordan får vi flere brugere?",
             "answer": "<p>Kontakt os, så tilføjer vi dem. Booking og Webshop har 3 brugere med, og hver ekstra bruger koster 99 kr./md. ekskl. moms. I Booking tæller en person med egen bruger eller bookingkalender, og en person med begge dele tæller kun én gang. Ejeren tæller med, hvis ejeren har adgang. Medarbejdere, der kun vises på hjemmesiden med navn eller billede, er gratis.</p>"
           }
+        },
+        "question_tier": {
+          "type": "question",
+          "settings": {
+            "question": "Hvilket webshopniveau skal vi vælge?",
+            "answer": "<p>Vælg det mindste niveau, der rummer både jeres aktive produkter og alle jeres varianter: 15 produkter / 60 varianter til 299 kr., 30 produkter / 120 varianter til 399 kr. eller 50 produkter / 200 varianter til 499 kr. pr. måned ekskl. moms.</p><p>12 produkter med 80 varianter kræver niveauet til 399 kr. Variantgrænsen gælder hele webshoppen. Skal I senere op på et større niveau, kontakter I os, så aftaler vi ændringen.</p>"
+          }
         }
       },
       "block_order": [
+        "question_tier",
         "question_1",
         "question_2",
         "question_3",
@@ -158,10 +174,15 @@
         "show_email": true,
         "email_prefix": "Eller skriv til"
       }
+    },
+    "niveauer": {
+      "type": "webshop-tiers",
+      "settings": {}
     }
   },
   "order": [
     "hero",
+    "niveauer",
     "indhold",
     "forklaring",
     "faq",
