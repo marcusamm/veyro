@@ -66,9 +66,9 @@ html[lang="en"] .staff__table .num, html[lang="sv"] .staff__table .num { white-s
 .webshop-tiers__inner { display: grid; gap: 2rem 4rem; align-items: start; }
 .webshop-tiers__intro .h2 { margin-block: .75rem 1.25rem; }
 .webshop-tiers__intro > p:last-child { color: var(--muted); max-width: 42ch; line-height: 1.7; }
-.webshop-tiers__table { min-width: 540px; }
+.webshop-tiers__table { min-width: 0; }
 .webshop-tiers__table tbody th a { display: inline-flex; align-items: center; gap: .6rem; min-height: 44px; text-underline-offset: .3em; white-space: nowrap; }
-.webshop-tiers__table td { font-variant-numeric: tabular-nums; }
+.webshop-tiers__table td { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .webshop-tiers__limits, .webshop-tiers__setup, .webshop-tiers__larger { margin-top: 1.5rem; font-size: .875rem; line-height: 1.75; }
 .webshop-tiers__limits p + p, .webshop-tiers__setup p + p, .webshop-tiers__larger p + p { margin-top: .65rem; color: var(--muted); }
 .webshop-tiers__setup, .webshop-tiers__larger { border-top: var(--border); padding-top: 1.5rem; }

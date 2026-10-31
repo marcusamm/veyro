@@ -38,7 +38,7 @@ function fixture(lang = 'da', count = 1) {
       Object.assign(card, { radio, amount, primary, details, label });
       if (index === 2) {
         const input = node();
-        input.options = [15, 30, 50].map((p, n) => ({ value: String(p), dataset: { price: prices[lang][n], capacity: `${lang}: ${p} products / ${p * 4} variants`, import: `${lang}: 10 manual or ${p} imported products` } }));
+        input.options = [60, 120, 200].map((p, n) => ({ value: String(p), dataset: { price: prices[lang][n], capacity: `${lang}: ${p} items and variants in total`, import: `${lang}: 10 manual products or ${p} imported items and variants` } }));
         input.selectedIndex = 0;
         Object.defineProperty(input, 'selectedOptions', { get: () => [input.options[input.selectedIndex]] });
         Object.assign(nodes, { '[data-webshop-tier]': input, '[data-webshop-picker]': node({ hidden: true }), '[data-webshop-capacity]': node(), '[data-webshop-import]': node(), '[data-webshop-art-capacity]': node(), '[data-plan-from]': node() });
@@ -125,6 +125,6 @@ describe('Webshop picker state and enquiry propagation', () => {
   it('announces the selected amount and capacity in the existing polite status', () => {
     const { pickers: [picker] } = fixture('sv');
     picker.chooseTier(1);
-    expect(picker.fields.status.textContent).toBe(`webshop: ${prices.sv[1]} sv: 30 products / 120 variants`);
+    expect(picker.fields.status.textContent).toBe(`webshop: ${prices.sv[1]} sv: 120 items and variants in total`);
   });
 });

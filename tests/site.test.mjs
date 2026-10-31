@@ -248,6 +248,23 @@ describe('Offentlige sprogversioner', () => {
 });
 
 describe('Pakker og priser', () => {
+  it('viser én samlet salgbar kapacitet på alle sprog uden tidligere produktgrænser eller niveaunavne', async () => {
+    for (const prefix of ['', '/en', '/sv']) {
+      for (const route of ['/', '/pages/priser', '/pages/webshop', '/pages/ydelser', '/pages/eksempler', '/pages/kontakt']) {
+        const r = await site.get(prefix + route);
+        expect(r.status).toBe(200);
+        expect(r.html, prefix + route).not.toMatch(/(?:Op til|Up to|Upp till) (?:15|30|50) (?:aktive |active |aktiva )?(?:produkter|products)\b/);
+        expect(r.html, prefix + route).not.toMatch(/(?:Webshop|Online [Ss]tore|Webbutik) (?:15|30|50)\b/);
+        expect(r.html, prefix + route).not.toMatch(/<option value="(?:15|30|50)"/);
+        if (route === '/' || route === '/pages/priser') {
+          for (const id of ['60', '120', '200']) expect(r.html).toContain(`<option value="${id}" data-price=`);
+        }
+      }
+    }
+    const webshop = (await site.get('/pages/webshop')).html;
+    for (const text of ['En vare uden valgmuligheder tæller som én.', 'Antallet gælder samlet for hele webshoppen.', 'Har I brug for mere end 200 varer og varianter?']) expect(webshop).toContain(text);
+  });
+
   // Kortene i en pakkeliste: [id, html] for hvert <li class="pc ...">
   const cards = (html) => {
     const parts = html.split('<li class="pc ').slice(1);
@@ -273,7 +290,7 @@ describe('Pakker og priser', () => {
     // Pakkernes indhold og rammer
     for (const t of ['Op til 5 sider', '3 korrekturrunder', 'En korrekturrunde er én samlet tilbagemelding på det aftalte design og indhold']) expect(hjemmeside).toContain(t);
     for (const t of ['Alt i Hjemmeside', 'Kunden kan selv booke, flytte og aflyse', 'Op til 3 medarbejdere med egen bruger eller bookingkalender', 'SMS, påmindelser og onlinebetaling er ikke en del af pakken']) expect(booking).toContain(t);
-    for (const t of ['Op til 15 produkter og 60 varianter', 'Op til 3 administratorbrugere', 'En T-shirt i 3 størrelser og 2 farver er 1 produkt med 6 varianter', 'Det er enten manuel oprettelse eller én standardimport']) expect(webshop).toContain(t);
+    for (const t of ['Op til 60 varer og varianter i alt.', 'Op til 3 administratorbrugere', '10 produkter', 'én standardimport']) expect(webshop).toContain(t);
     for (const [card, key] of [[drift, 'drift'], [alt, 'alt-inkl']]) {
       expect(card).toContain('pc--coming');
       expect(card).toContain('På vej');
@@ -550,25 +567,48 @@ describe('Kurv og forespørgsel', () => {
 });
 
 describe('Kontaktformularer', () => {
+  it('gamle links og indsendelser bevarer niveauet med nye samlede grænser, uden de gamle produktgrænser', async () => {
+    for (const [oldId, currentId] of [['15', '60'], ['30', '120'], ['50', '200']]) {
+      const page = await site.get(`/pages/kontakt?ydelse=pakke-webshop&webshop_niveau=${oldId}`);
+      expect(page.html).toContain(`value="${currentId}" selected`);
+      expect(page.html).not.toMatch(/<option value="(?:15|30|50)"/);
+    }
+    const visitor = new Client(stack.site);
+    const page = await visitor.get('/pages/kontakt');
+    const formId = page.html.match(/id="(Contact-[^"]+)"/)[1];
+    const result = await visitor.post('/contact', contactForm(page.html, formId, {
+      'contact[name]': 'LOCAL TEST Legacy link', 'contact[email]': 'local-legacy-tier@example.test',
+      'contact[Samtykke]': 'Ja', 'contact[Ydelse]': 'Pakke: Webshop', 'contact[Webshopniveau]': '30',
+      'contact[body]': 'LOCAL TEST A previous page remains open during a release.',
+    }));
+    expect(result.status).toBe(303);
+    const [lead] = sql("SELECT fields FROM leads WHERE email = 'local-legacy-tier@example.test'");
+    expect(JSON.parse(lead.fields)).toMatchObject({
+      'Webshopniveau-id': '120', Webshopniveau: 'Webshop – op til 120 varer og varianter i alt',
+      'Webshoppris DKK ekskl. moms': '399 kr./md. ekskl. moms',
+      Webshopgrænser: 'Op til 120 salgbare varer og varianter i alt',
+    });
+  });
+
   it('webshopniveauet følger kontaktlinket på alle sprog uden JavaScript og uden at lække via sidecachen', async () => {
     for (const prefix of ['', '/en', '/sv']) {
-      const page = await site.get(`${prefix}/pages/kontakt?ydelse=pakke-webshop&webshop_niveau=30`);
+      const page = await site.get(`${prefix}/pages/kontakt?ydelse=pakke-webshop&webshop_niveau=120`);
       expect(page.status).toBe(200);
       expect(page.html).toMatch(/value="Pakke: Webshop"[^>]* selected/);
       const tiers = page.html.match(/<select[^>]+name="contact\[Webshopniveau\]"[^>]*>([\s\S]*?)<\/select>/)[1];
-      expect(tiers).toContain('value="30" selected');
+      expect(tiers).toContain('value="120" selected');
       const plain = await site.get(`${prefix}/pages/kontakt`);
-      expect(plain.html).not.toMatch(/value="30" selected/);
+      expect(plain.html).not.toMatch(/value="120" selected/);
       const defaults = await site.get(`${prefix}/pages/kontakt?ydelse=pakke-webshop`);
-      expect(defaults.html).toContain('value="15" selected');
+      expect(defaults.html).toContain('value="60" selected');
     }
   });
 
   it('gemmer og mailer det valgte webshopniveau med kanonisk DKK og korrekt lokal visningspris', async () => {
     const cases = [
-      { prefix: '', id: '15', price: 299, variants: 60, shown: '299 kr.' },
-      { prefix: '/en', id: '30', price: 399, variants: 120, shown: '≈ EUR 53.39' },
-      { prefix: '/sv', id: '50', price: 499, variants: 200, shown: '≈ 732,99 SEK' },
+      { prefix: '', id: '60', price: 299, shown: '299 kr.' },
+      { prefix: '/en', id: '120', price: 399, shown: '≈ EUR 53.39' },
+      { prefix: '/sv', id: '200', price: 499, shown: '≈ 732,99 SEK' },
     ];
     const billingBefore = sql('SELECT id, status, price_id, amount, currency FROM subscriptions ORDER BY id');
     for (const test of cases) {
@@ -588,15 +628,15 @@ describe('Kontaktformularer', () => {
       const [lead] = sql(`SELECT * FROM leads WHERE email = '${email}'`);
       expect(lead.service).toBe('Pakke: Webshop');
       expect(JSON.parse(lead.fields)).toMatchObject({
-        'Webshopniveau-id': test.id, Webshopniveau: `Webshop ${test.id}`,
+        'Webshopniveau-id': test.id, Webshopniveau: `Webshop – op til ${test.id} varer og varianter i alt`,
         'Webshoppris DKK ekskl. moms': `${test.price} kr./md. ekskl. moms`,
-        Webshopgrænser: `Op til ${test.id} aktive produkter og ${test.variants} varianter i alt`,
+        Webshopgrænser: `Op til ${test.id} salgbare varer og varianter i alt`,
       });
       const mail = await waitFor(async () => (await emails()).slice(before).find(e => e.reply_to === email));
-      expect(mail.text).toContain(`Webshopniveau: Webshop ${test.id}`);
+      expect(mail.text).toContain(`Webshopniveau: Webshop – op til ${test.id} varer og varianter i alt`);
       expect(mail.text).toContain(`${test.price} kr./md. ekskl. moms`);
       expect(mail.text).toContain(test.shown);
-      expect(mail.text).toContain(`op til ${test.id} produkter og ${test.variants} varianter i alt`);
+      expect(mail.text).toContain(`op til ${test.id} salgbare varer og varianter i alt`);
       expect(mail.text).not.toContain('9999 produkter');
     }
     expect(sql('SELECT id, status, price_id, amount, currency FROM subscriptions ORDER BY id')).toEqual(billingBefore);
@@ -606,11 +646,11 @@ describe('Kontaktformularer', () => {
     const visitor = new Client(stack.site);
     const page = await visitor.get('/en/pages/kontakt');
     const formId = page.html.match(/id="(Contact-[^"]+)"/)[1];
-    const fields = { 'contact[name]': 'LOCAL TEST Valg', 'contact[email]': 'not-email', 'contact[Ydelse]': 'Pakke: Webshop', 'contact[Webshopniveau]': '30', 'contact[Samtykke]': 'Ja', 'contact[body]': 'LOCAL TEST Preserve this enquiry.' };
+    const fields = { 'contact[name]': 'LOCAL TEST Valg', 'contact[email]': 'not-email', 'contact[Ydelse]': 'Pakke: Webshop', 'contact[Webshopniveau]': '120', 'contact[Samtykke]': 'Ja', 'contact[body]': 'LOCAL TEST Preserve this enquiry.' };
     const invalidEmail = await visitor.post('/contact', contactForm(page.html, formId, fields));
     expect(invalidEmail.status).toBe(422);
     expect(invalidEmail.html).toMatch(/value="Pakke: Webshop"[^>]* selected/);
-    expect(invalidEmail.html).toContain('value="30" selected');
+    expect(invalidEmail.html).toContain('value="120" selected');
     expect(invalidEmail.html).toContain('data-preserved-choice');
     const invalidTier = await visitor.post('/contact', contactForm(page.html, formId, { ...fields, 'contact[email]': 'local-tier-invalid@example.test', 'contact[Webshopniveau]': '1000' }));
     expect(invalidTier.status).toBe(422);
@@ -621,7 +661,7 @@ describe('Kontaktformularer', () => {
     expect(customFields).toMatchObject({ 'Webshopniveau-id': 'custom', Webshopniveau: 'Større webshop – individuelt tilbud' });
     expect(customFields).not.toHaveProperty('Webshoppris DKK ekskl. moms');
     expect(customFields).not.toHaveProperty('Vist webshoppris');
-    const other = await visitor.post('/contact', contactForm(page.html, formId, { ...fields, 'contact[email]': 'local-tier-other@example.test', 'contact[Ydelse]': 'Pakke: Booking', 'contact[Webshopniveau]': '50' }));
+    const other = await visitor.post('/contact', contactForm(page.html, formId, { ...fields, 'contact[email]': 'local-tier-other@example.test', 'contact[Ydelse]': 'Pakke: Booking', 'contact[Webshopniveau]': '200' }));
     expect(other.status).toBe(303);
     expect(JSON.parse(sql("SELECT fields FROM leads WHERE email = 'local-tier-other@example.test'")[0].fields)).not.toHaveProperty('Webshopniveau');
   });

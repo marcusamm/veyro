@@ -20,7 +20,7 @@
           <tr>
             <th scope="col">{{ 'public.users' | t }}</th>
             {%- if section.settings.a_label != blank -%}<th scope="col" class="num">{{ section.settings.a_label | escape }}</th>{%- endif -%}
-            {%- for tier in webshop_tiers -%}<th scope="col" class="num">{{ 'webshop_tiers.tier_name' | t: products: tier.products }}</th>{%- endfor -%}
+            {%- for tier in webshop_tiers -%}<th scope="col" class="num">{{ 'webshop_tiers.tier_name' | t: capacity: tier.capacity }}</th>{%- endfor -%}
           </tr>
         </thead>
         <tbody>
@@ -35,6 +35,7 @@
         </tbody>
       </table>
       </div>
+      <p class="staff__note">{{ 'webshop_tiers.staff_capacity_note' | t }}</p>
       <p class="pricing-table-hint">{{ 'webshop_tiers.scroll_hint' | t }}</p>
       {% render 'currency-note' %}
       {%- if section.settings.table_note != blank -%}<p class="staff__note">{{ section.settings.table_note | escape }}</p>{%- endif -%}

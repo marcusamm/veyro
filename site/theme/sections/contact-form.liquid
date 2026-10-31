@@ -91,7 +91,7 @@
               <div class="select">
                 <select id="{{ fid }}-webshop-tier" name="contact[Webshopniveau]" data-webshop-enquiry-select data-label="{{ 'webshop_tiers.label' | t }}" aria-describedby="{{ fid }}-webshop-tier-help {{ fid }}-webshop-tier-error">
                   {%- for tier in webshop_tiers -%}
-                    <option value="{{ tier.id }}"{% if form.webshop_tier == tier.id %} selected{% endif %}>{{ 'webshop_tiers.option_label' | t: products: tier.products, variants: tier.variants, price: tier.price | escape }}</option>
+                    <option value="{{ tier.id }}"{% if form.webshop_tier == tier.id %} selected{% endif %}>{{ 'webshop_tiers.option_label' | t: capacity: tier.capacity, price: tier.price | escape }}</option>
                   {%- endfor -%}
                   <option value="custom"{% if form.webshop_tier == 'custom' %} selected{% endif %}>{{ 'webshop_enquiry.custom' | t }}</option>
                 </select>
