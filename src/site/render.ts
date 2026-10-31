@@ -1,6 +1,7 @@
 // Bygger Shopify-lignende Liquid-objekter ud fra indholdet og gengiver en hel side.
 import type { SiteData, SitePage, SiteProduct, SectionData, TemplateData } from './content';
-import { Color, engine, parsedFile, sectionSchema, themeSettingsSchema, type FormState, type RenderHooks, type SettingDef } from './engine';
+import { Color, translate, engine, parsedFile, sectionSchema, themeSettingsSchema, type FormState, type RenderHooks, type SettingDef } from './engine';
+import { contentText, localizedContent, localizedPath, localizeLinks, SITE_LANGUAGES, type SiteLanguage } from './localization';
 import { THEME_FILES } from './theme.generated';
 
 export type PageType = 'index' | 'page' | 'product' | 'cart' | '404';
@@ -12,6 +13,7 @@ export interface CartLine {
 
 export interface RenderRequest {
   type: PageType;
+  language?: SiteLanguage;
   /** Stien uden forespørgsel, fx /pages/kontakt */
   path: string;
   /** Værten, siden vises på (fx veyro.dk eller ny.veyro.dk) */
@@ -116,10 +118,11 @@ function linklists(site: SiteData, path: string) {
   return out;
 }
 
-function resolveSettings(site: SiteData, defs: SettingDef[] | undefined, vals: Record<string, unknown> | undefined, ctx: { pages: Record<string, unknown>; linklists: Record<string, unknown> }) {
+function resolveSettings(site: SiteData, defs: SettingDef[] | undefined, vals: Record<string, unknown> | undefined, ctx: { pages: Record<string, unknown>; linklists: Record<string, unknown>; language?: SiteLanguage }) {
   const out: Record<string, unknown> = {};
   for (const d of defs ?? []) if (d.id) out[d.id] = d.default ?? (d.type === 'checkbox' ? false : d.type === 'range' ? (d.min ?? 0) : '');
   Object.assign(out, vals ?? {});
+  for (const d of defs ?? []) if (d.id && !['services', 'options', 'subscription_type'].includes(d.id) && ['text', 'textarea', 'richtext', 'inline_richtext'].includes(d.type) && typeof out[d.id] === 'string') out[d.id] = contentText(out[d.id] as string, ctx.language ?? 'da');
   for (const d of defs ?? []) {
     if (!d.id) continue;
     const v = out[d.id];
@@ -159,11 +162,16 @@ export function templateFor(req: RenderRequest): string {
 }
 
 export function renderSitePage(site: SiteData, req: RenderRequest): string {
+  const language = req.language ?? 'da';
+  const originalPageContent = req.page?.body;
+  site = localizedContent(site, language);
+  req = { ...req, page: req.page ? site.pages.find(p => p.handle === req.page!.handle) : undefined, product: req.product ? site.products.find(p => p.handle === req.product!.handle) : undefined };
+  const publicPath = language === 'da' ? req.path : `/${language}${req.path}`;
   const pages: Record<string, unknown> = {};
   for (const p of site.pages) if (p.published) pages[p.handle] = pageDrop(p);
   const lists = linklists(site, req.path);
   const settingsDefs = themeSettingsSchema().flatMap((g) => g.settings ?? []);
-  const settings = resolveSettings(site, settingsDefs, site.settings, { pages, linklists: lists });
+  const settings = resolveSettings(site, settingsDefs, site.settings, { pages, linklists: lists, language });
 
   const tplName = templateFor(req);
   const tpl: TemplateData | undefined = site.templates[tplName] ?? site.templates[req.type === 'page' ? 'page' : '404'];
@@ -175,13 +183,14 @@ export function renderSitePage(site: SiteData, req: RenderRequest): string {
         : req.type === 'product'
           ? (req.product?.title ?? '')
           : req.type === 'cart'
-            ? 'Din kurv'
-            : 'Siden findes ikke';
+            ? translate('cart.title', {}, language)
+            : translate('not_found.title', {}, language);
   const description = req.type === 'page' ? req.page?.description || '' : req.type === 'product' ? (req.product?.description ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160) : '';
 
   const hooks: RenderHooks = {
     forms: req.forms ?? {},
-    path: req.path,
+    path: publicPath,
+    language,
     host: req.host,
     renderGroup: (name) => {
       const g = site.groups[name];
@@ -199,19 +208,21 @@ export function renderSitePage(site: SiteData, req: RenderRequest): string {
     linklists: lists,
     cart: cartDrop(site, req.cart),
     shop: { name: site.shop.name, email: site.shop.email, url: req.canonicalOrigin, domain: req.host, currency: 'DKK' },
-    routes: { root_url: '/', cart_url: '/cart', cart_add_url: '/cart/add', cart_change_url: '/cart/change', cart_update_url: '/cart/update', cart_clear_url: '/cart/clear', search_url: '/search', account_url: 'https://kunde.veyro.dk/login' },
-    request: { locale: { iso_code: 'da' }, page_type: req.type, design_mode: false, origin: req.canonicalOrigin, host: req.host, path: req.path },
+    routes: { root_url: localizedPath('/', language), cart_url: '/cart', cart_add_url: '/cart/add', cart_change_url: '/cart/change', cart_update_url: '/cart/update', cart_clear_url: '/cart/clear', search_url: '/search', account_url: 'https://kunde.veyro.dk/login' },
+    request: { locale: { iso_code: language }, page_type: req.type, design_mode: false, origin: req.canonicalOrigin, host: req.host, path: publicPath },
     template: { name: req.type, suffix: tplName.startsWith('page.') ? tplName.slice(5) : null, directory: null },
-    page_title: title,
+    page_title: contentText(title, language),
     page_description: description || null,
-    canonical_url: req.canonicalOrigin + (req.path === '/' ? '/' : req.path),
+    canonical_url: req.canonicalOrigin + publicPath,
+    site_languages: SITE_LANGUAGES.map(code => ({ code, label: { da: 'Dansk', en: 'English', sv: 'Svenska' }[code], url: localizedPath(req.type === '404' ? '/' : req.path, code), canonical: req.canonicalOrigin + localizedPath(req.type === '404' ? '/' : req.path, code), current: language === code })),
+    language_label: { da: 'Vælg sprog', en: 'Choose language', sv: 'Välj språk' }[language],
     current_page: 1,
     current_tags: null,
     content_for_header: '',
-    localization: { language: { iso_code: 'da' }, country: { iso_code: 'DK' } },
+    localization: { language: { iso_code: language }, country: { iso_code: 'DK' } },
     customer: null,
   };
-  if (req.page) globals.page = pageDrop(req.page);
+  if (req.page) globals.page = { ...pageDrop(req.page), original_content: originalPageContent };
   if (req.product) globals.product = productDrop(req.product);
 
   // Synkron gengivelse: markant hurtigere end liquidjs' asynkrone (ingen promise pr. trin)
@@ -224,10 +235,10 @@ export function renderSitePage(site: SiteData, req: RenderRequest): string {
         const b = data.blocks?.[bid];
         if (!b || b.disabled) return null;
         const bdef = (schema.blocks ?? []).find((x) => x.type === b.type);
-        return { id: bid, type: b.type, settings: resolveSettings(site, bdef?.settings, b.settings, { pages, linklists: lists }), shopify_attributes: '' };
+        return { id: bid, type: b.type, settings: resolveSettings(site, bdef?.settings, b.settings, { pages, linklists: lists, language }), shopify_attributes: '' };
       })
       .filter(Boolean);
-    const section = { id, type: data.type, settings: resolveSettings(site, schema.settings, data.settings, { pages, linklists: lists }), blocks };
+    const section = { id, type: data.type, settings: resolveSettings(site, schema.settings, data.settings, { pages, linklists: lists, language }), blocks };
     const html = engine().renderSync(parsedFile(`sections/${data.type}.liquid`), { section }, { globals }) as string;
     const tag = schema.tag || 'section';
     return `<${tag} id="shopify-section-${id}" class="shopify-section ${schema.class ?? ''}">${html}</${tag}>`;
@@ -235,5 +246,5 @@ export function renderSitePage(site: SiteData, req: RenderRequest): string {
 
   let main = '';
   if (tpl) for (const id of tpl.order) if (tpl.sections[id]) main += renderSection(id, tpl.sections[id]);
-  return engine().renderSync(parsedFile('layout/theme.liquid'), { content_for_layout: main }, { globals }) as string;
+  return localizeLinks(engine().renderSync(parsedFile('layout/theme.liquid'), { content_for_layout: main }, { globals }) as string, language);
 }

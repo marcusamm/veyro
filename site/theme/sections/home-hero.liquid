@@ -5,27 +5,27 @@
         <canvas class="studio-particles" data-particle-scene></canvas>
       </div>
       <div class="studio-message">
-        <p class="studio-label">Et lille digitalt bureau. Tæt på din forretning.</p>
+        <p class="studio-label">{{ 'public.agency_intro' | t }}</p>
         <h1 class="home-hero__title">{{ section.settings.heading }}</h1>
-        <p class="studio-message__description">Hjemmeside, booking og webshop til mindre virksomheder. Vi designer, sætter op og hjælper jer videre i hverdagen.</p>
-        <nav class="studio-specialties" aria-label="Vores løsninger"><a href="/pages/hjemmeside">Hjemmeside <span aria-hidden="true">↗</span></a><a href="/pages/booking">Booking <span aria-hidden="true">↗</span></a><a href="/pages/webshop">Webshop <span aria-hidden="true">↗</span></a></nav>
+        <p class="studio-message__description">{{ 'public.agency_services' | t }}</p>
+        <nav class="studio-specialties" aria-label="{{ 'public.our_solutions' | t | escape }}"><a href="/pages/hjemmeside">{{ 'public.website' | t }} <span aria-hidden="true">↗</span></a><a href="/pages/booking">{{ 'public.booking' | t }} <span aria-hidden="true">↗</span></a><a href="/pages/webshop">{{ 'public.online_shop' | t }} <span aria-hidden="true">↗</span></a></nav>
       </div>
       <div class="studio-action">
-        <p class="studio-price"><span>Hjemmesider fra</span><strong>199 <small>kr./md.</small></strong><span>ekskl. moms</span></p>
+        <p class="studio-price"><span>{{ 'public.websites_from' | t }}</span>{% if request.locale.iso_code == 'da' %}<strong>199 <small>{{ 'public.dkk_per_month' | t }}</small></strong>{% else %}<strong class="studio-price__converted">{{ 199 | display_money }}<small>{{ 'subscriptions.per_month' | t }}</small></strong>{% endif %}<span>{{ 'public.excluding_vat' | t }}</span></p>
         <div class="actions">
           {% render 'button', label: section.settings.primary_label, url: section.settings.primary_link, style: 'primary' %}
           {% render 'button', label: section.settings.secondary_label, url: section.settings.secondary_link, style: 'secondary' %}
         </div>
-        <p class="home-hero__facts">Første måned gratis · Ingen binding</p>
+        <p class="home-hero__facts">{{ 'public.first_month_free_no_commitment' | t }}</p>
       </div>
       <div class="studio-wordmark" aria-hidden="true">VEYRO</div>
-      <a class="studio-scroll" href="#studio-introduction"><span>Scroll og se mere</span><span aria-hidden="true">↓</span></a>
+      <a class="studio-scroll" href="#studio-introduction"><span>{{ 'public.scroll_more' | t }}</span><span aria-hidden="true">↓</span></a>
     </div>
     <div class="studio-introduction" id="studio-introduction">
-      <div class="studio-introduction__identity"><p class="studio-label">Din forretning.<br>Vores håndværk.</p>{% render 'brand-mark' %}<span>Et lille bureau.<br>En fast kontakt.</span></div>
-      <div><h2>Du gør det, du er god til.<br><span>Vi tager os af hjemmesiden.</span></h2><div class="rte">{{ section.settings.text }}</div></div>
-      <div class="studio-introduction__contact"><p>Lad os starte med jeres idé.</p><a href="mailto:{{ settings.company_email | escape }}">{{ settings.company_email | escape }}</a><a class="arrow-link" href="/pages/om-os">Mød Veyro</a></div>
-      <ul class="studio-promises" role="list"><li><span aria-hidden="true"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2.5 14.5 9.5 21.5 12 14.5 14.5 12 21.5 9.5 14.5 2.5 12 9.5 9.5Z"/></svg></span><div><strong>Design til jeres virksomhed</strong><p>Et udtryk, der tager afsæt i jer og det, kunderne skal kunne.</p></div></li><li><span aria-hidden="true">↗</span><div><strong>Teknikken er med</strong><p>Hosting, teknisk vedligeholdelse og hjælp til de små justeringer.</p></div></li><li><span aria-hidden="true">↔</span><div><strong>Vi finder formen sammen</strong><p>Tre korrekturrunder under opsætningen, så I kan give samlet feedback.</p></div></li></ul>
+      <div class="studio-introduction__identity"><p class="studio-label">{{ 'public.your_business' | t }}<br>{{ 'public.our_craft' | t }}</p>{% render 'brand-mark' %}<span>{{ 'public.small_agency' | t }}<br>{{ 'public.dedicated_contact' | t }}</span></div>
+      <div><h2>{{ 'public.do_what_you_do_best' | t }}<br><span>{{ 'public.we_handle_the_website' | t }}</span></h2><div class="rte">{{ section.settings.text }}</div></div>
+      <div class="studio-introduction__contact"><p>{{ 'public.start_with_your_idea' | t }}</p><a href="mailto:{{ settings.company_email | escape }}">{{ settings.company_email | escape }}</a><a class="arrow-link" href="/pages/om-os">{{ 'public.meet_veyro' | t }}</a></div>
+      <ul class="studio-promises" role="list"><li><span aria-hidden="true"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2.5 14.5 9.5 21.5 12 14.5 14.5 12 21.5 9.5 14.5 2.5 12 9.5 9.5Z"/></svg></span><div><strong>{{ 'public.design_for_your_business' | t }}</strong><p>{{ 'public.design_starting_point' | t }}</p></div></li><li><span aria-hidden="true">↗</span><div><strong>{{ 'public.technology_included' | t }}</strong><p>{{ 'public.hosting_support' | t }}</p></div></li><li><span aria-hidden="true">↔</span><div><strong>{{ 'public.find_the_form_together' | t }}</strong><p>{{ 'public.three_feedback_rounds' | t }}</p></div></li></ul>
     </div>
   </div>
 </section>

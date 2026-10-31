@@ -6,6 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="{{ settings.color_bg }}">
     <link rel="canonical" href="{{ canonical_url }}">
+    {%- unless request.page_type == '404' -%}
+      {%- for language in site_languages -%}
+        <link rel="alternate" hreflang="{{ language.code }}" href="{{ language.canonical }}">
+        {%- if language.code == 'da' -%}<link rel="alternate" hreflang="x-default" href="{{ language.canonical }}">{%- endif -%}
+      {%- endfor -%}
+    {%- endunless -%}
 
     {%- if settings.favicon != blank -%}
       <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 96, height: 96 }}">
@@ -60,6 +66,7 @@
     {{ 'brand.css' | asset_url | stylesheet_tag }}
 
     <script>document.documentElement.className = document.documentElement.className.replace('no-js', 'js');</script>
+    <script src="{{ 'language-switch.js' | asset_url }}" defer="defer"></script>
     <script src="{{ 'theme.js' | asset_url }}" defer="defer"></script>
     <script src="{{ 'motion.js' | asset_url }}" defer="defer"></script>
     <script src="{{ 'plan-picker.js' | asset_url }}" defer="defer"></script>

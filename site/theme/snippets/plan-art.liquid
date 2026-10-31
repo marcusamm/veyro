@@ -2,13 +2,13 @@
 <div class="plan-art plan-art--{{ key }}" aria-hidden="true">
   {%- case key -%}
   {%- when 'booking' -%}
-    <div class="plan-art__calendar"><div class="plan-art__bar"><span>Din kalender</span><span>← &nbsp; →</span></div><div class="plan-art__week"><span>Ma</span><span>Ti</span><span>On</span><span>To</span><span>Fr</span><span>Lø</span><span>Sø</span><i>1</i><i>2</i><i class="plan-art__day">3</i><i>4</i><i>5</i><i>6</i><i>7</i></div><div class="plan-art__slot"><span>10.30</span><b>En tid i kalenderen</b><span>✓</span></div></div>
-    <p class="plan-art__fact">Mailbekræftelser · Op til 3 medarbejdere</p>
+    <div class="plan-art__calendar"><div class="plan-art__bar"><span>{{ 'public.your_calendar' | t }}</span><span>← &nbsp; →</span></div><div class="plan-art__week"><span>{{ 'public.monday_short' | t }}</span><span>{{ 'public.tuesday_short' | t }}</span><span>{{ 'public.wednesday_short' | t }}</span><span>{{ 'public.thursday_short' | t }}</span><span>{{ 'public.friday_short' | t }}</span><span>{{ 'public.saturday_short' | t }}</span><span>{{ 'public.sunday_short' | t }}</span><i>1</i><i>2</i><i class="plan-art__day">3</i><i>4</i><i>5</i><i>6</i><i>7</i></div><div class="plan-art__slot"><span>10.30</span><b>{{ 'public.appointment_in_calendar' | t }}</b><span>✓</span></div></div>
+    <p class="plan-art__fact">{{ 'public.confirmation_staff' | t }}</p>
   {%- when 'webshop' -%}
-    <div class="plan-art__shop"><div class="plan-art__product"><svg viewBox="0 0 110 85" fill="none"><path d="M26 20h48v33c0 14-9 23-24 23S26 67 26 53V20Z" fill="currentColor" opacity=".5"/><path d="M74 27h8c21 0 21 26 0 26h-8" stroke="currentColor" stroke-width="7"/><ellipse cx="50" cy="20" rx="24" ry="6" stroke="currentColor" stroke-width="2"/></svg><span>Et produkt. Flere varianter.</span><div><i></i><i></i><i></i></div></div><div class="plan-art__order"><span>Webshop</span><b>Jeres varer,<br>jeres udtryk.</b><i></i><i></i><small>Produkter · Varianter · Kurv</small></div></div>
-    <p class="plan-art__fact">Op til 50 produkter · 200 varianter</p>
+    <div class="plan-art__shop"><div class="plan-art__product"><svg viewBox="0 0 110 85" fill="none"><path d="M26 20h48v33c0 14-9 23-24 23S26 67 26 53V20Z" fill="currentColor" opacity=".5"/><path d="M74 27h8c21 0 21 26 0 26h-8" stroke="currentColor" stroke-width="7"/><ellipse cx="50" cy="20" rx="24" ry="6" stroke="currentColor" stroke-width="2"/></svg><span>{{ 'public.one_product_variants' | t }}</span><div><i></i><i></i><i></i></div></div><div class="plan-art__order"><span>{{ 'public.online_shop' | t }}</span><b>{{ 'public.your_products' | t }}<br>{{ 'public.your_expression' | t }}</b><i></i><i></i><small>{{ 'public.product_menu' | t }}</small></div></div>
+    <p class="plan-art__fact">{{ 'public.product_limits' | t }}</p>
   {%- else -%}
-    <div class="plan-art__browser"><div class="plan-art__bar"><span>● ● ●</span><span>jeresnavn.veyro.dk</span></div><div class="plan-art__web"><div><span>Jeres virksomhed</span><b>Et sted at<br>møde jer.</b><i></i></div><div class="plan-art__picture">{% render 'brand-mark' %}</div></div><div class="plan-art__tabs"><span>Forside</span><span>Ydelser</span><span>Om jer</span><span>Kontakt</span></div></div>
-    <p class="plan-art__fact">Op til 5 sider · 3 korrekturrunder</p>
+    <div class="plan-art__browser"><div class="plan-art__bar"><span>● ● ●</span><span>{{ 'public.example_domain' | t }}</span></div><div class="plan-art__web"><div><span>{{ 'public.your_company' | t }}</span><b>{{ 'public.a_place_to' | t }}<br>{{ 'public.meet_you' | t }}</b><i></i></div><div class="plan-art__picture">{% render 'brand-mark' %}</div></div><div class="plan-art__tabs"><span>{{ 'public.home' | t }}</span><span>{{ 'public.services' | t }}</span><span>{{ 'public.about_you' | t }}</span><span>{{ 'public.contact' | t }}</span></div></div>
+    <p class="plan-art__fact">{{ 'public.page_revision_limits' | t }}</p>
   {%- endcase -%}
 </div>

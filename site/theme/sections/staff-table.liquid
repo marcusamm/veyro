@@ -17,7 +17,7 @@
         <caption>{{ section.settings.caption | escape }}</caption>
         <thead>
           <tr>
-            <th scope="col">Brugere</th>
+            <th scope="col">{{ 'public.users' | t }}</th>
             {%- if section.settings.a_label != blank -%}<th scope="col" class="num">{{ section.settings.a_label | escape }}</th>{%- endif -%}
             {%- if section.settings.b_label != blank -%}<th scope="col" class="num">{{ section.settings.b_label | escape }}</th>{%- endif -%}
           </tr>
@@ -27,13 +27,14 @@
             {%- assign add = n | minus: inc | times: extra -%}
             {%- assign a = section.settings.a_price | plus: add -%}
             {%- assign b = section.settings.b_price | plus: add -%}
-            <tr><th scope="row">{{ n }}{% if n == inc %} (inkluderet){% endif %}</th>
-              {%- if section.settings.a_label != blank -%}<td class="num">{% if a >= 1000 %}{{ a | divided_by: 1000 }}.{{ a | modulo: 1000 | prepend: '00' | slice: -3, 3 }}{% else %}{{ a }}{% endif %} kr.</td>{%- endif -%}
-              {%- if section.settings.b_label != blank -%}<td class="num">{% if b >= 1000 %}{{ b | divided_by: 1000 }}.{{ b | modulo: 1000 | prepend: '00' | slice: -3, 3 }}{% else %}{{ b }}{% endif %} kr.</td>{%- endif -%}
+            <tr><th scope="row">{{ n }}{% if n == inc %} {{ 'public.included_parentheses' | t }}{% endif %}</th>
+              {%- if section.settings.a_label != blank -%}<td class="num">{{ a | display_money }}</td>{%- endif -%}
+              {%- if section.settings.b_label != blank -%}<td class="num">{{ b | display_money }}</td>{%- endif -%}
             </tr>
           {%- endfor -%}
         </tbody>
       </table>
+      {% render 'currency-note' %}
       {%- if section.settings.table_note != blank -%}<p class="staff__note">{{ section.settings.table_note | escape }}</p>{%- endif -%}
     </div>
   </div>

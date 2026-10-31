@@ -5,6 +5,7 @@
 {%- endcomment -%}
 {%- liquid
   assign parts = page.content | split: '<h2>'
+  assign source_parts = page.original_content | default: page.content | split: '<h2>'
   assign intro = parts[0]
   assign version = ''
   assign intro_start = intro | strip | slice: 0, 7
@@ -36,11 +37,12 @@
       {%- if show_toc -%}
         <nav class="doc__toc" aria-labelledby="Toc-{{ section.id }}">
           <details class="doc__toc-box" open data-toc>
-            <summary id="Toc-{{ section.id }}">Indhold</summary>
+            <summary id="Toc-{{ section.id }}">{{ 'public.contents' | t }}</summary>
             <ol role="list">
               {%- for part in parts offset: 1 -%}
                 {%- assign heading = part | split: '</h2>' | first | strip_html | strip -%}
-                <li><a href="#{{ heading | handle }}">{{ heading }}</a></li>
+                {%- assign source_heading = source_parts[forloop.index] | split: '</h2>' | first | strip_html | strip -%}
+                <li><a href="#{{ source_heading | handle }}">{{ heading }}</a></li>
               {%- endfor -%}
             </ol>
           </details>
@@ -49,8 +51,8 @@
       <div class="rte rte--long doc__body">
         {{ intro }}
         {%- for part in parts offset: 1 -%}
-          {%- assign heading = part | split: '</h2>' | first | strip_html | strip -%}
-          <h2 id="{{ heading | handle }}">{{ part }}
+          {%- assign source_heading = source_parts[forloop.index] | split: '</h2>' | first | strip_html | strip -%}
+          <h2 id="{{ source_heading | handle }}">{{ part }}
         {%- endfor -%}
       </div>
     </div>

@@ -13,6 +13,7 @@
     <h1 class="h1">{{ 'cart.title' | t }}</h1>
     {%- if cart.item_count > 0 -%}
       <form action="{{ routes.cart_url }}" method="post" novalidate class="cart__form">
+        <input type="hidden" name="site_language" value="{{ request.locale.iso_code }}">
         <table class="cart__table">
           <thead>
             <tr><th scope="col">{{ 'cart.item' | t }}</th><th scope="col">{{ 'products.quantity' | t }}</th><th scope="col" class="cart__right">{{ 'cart.total' | t }}</th></tr>
@@ -45,6 +46,7 @@
           <button type="submit" name="update" class="btn btn--secondary btn--sm">{{ 'cart.update' | t }}</button>
         </div>
       </form>
+      {% render 'currency-note' %}
 
       <div class="cart__request card" id="forespoergsel">
         {%- form 'contact', id: fid, class: 'form js-validate', novalidate: 'novalidate' -%}
@@ -55,7 +57,7 @@
             <div class="form__error-summary" role="alert" tabindex="-1" hidden data-error-summary></div>
             <input type="hidden" name="contact[Formular]" value="{{ section.settings.form_name | escape }}">
             {%- capture cart_lines -%}
-              {%- for item in cart.items -%}{{ item.quantity }} × {{ item.product.title }}{% unless item.product.has_only_default_variant %} ({{ item.variant.title }}){% endunless %} – {{ item.final_line_price | money_without_trailing_zeros }}{% if item.product.type == section.settings.subscription_type %} pr. md.{% endif %}{% unless forloop.last %}; {% endunless %}{%- endfor -%}
+              {%- for item in cart.items -%}{{ item.quantity }} × {{ item.product.title }}{% unless item.product.has_only_default_variant %} ({{ item.variant.title }}){% endunless %} – {{ item.final_line_price | money_without_trailing_zeros }}{% if item.product.type == section.settings.subscription_type %} {{ 'public.per_month' | t }}{% endif %}{% unless forloop.last %}; {% endunless %}{%- endfor -%}
             {%- endcapture -%}
             <input type="hidden" name="contact[Kurv]" value="{{ cart_lines | strip | escape }}">
             <p class="form__legend small muted">{{ 'forms.required_legend' | t }}</p>

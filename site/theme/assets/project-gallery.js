@@ -1,6 +1,7 @@
 /* Original three-dimensional revolving showcase. Native links stay usable. */
 (() => {
   'use strict';
+  const strings = (() => { try { return JSON.parse(document.getElementById('ThemeStrings')?.textContent || '{}'); } catch (_) { return {}; } })();
   function init() {
     const reduce = matchMedia('(prefers-reduced-motion: reduce)');
     document.querySelectorAll('[data-project-gallery]').forEach(gallery => {
@@ -156,7 +157,7 @@
       pauseButton?.addEventListener('click', () => {
         localPaused = !localPaused;
         pauseButton.setAttribute('aria-pressed', String(localPaused));
-        pauseButton.setAttribute('aria-label', localPaused ? 'Start rotationen' : 'Sæt rotationen på pause');
+        pauseButton.setAttribute('aria-label', localPaused ? strings.resumeRotation : strings.pauseRotation);
         pauseButton.querySelector('[data-gallery-pause-icon]').textContent = localPaused ? '▷' : 'Ⅱ';
         startStop();
       });

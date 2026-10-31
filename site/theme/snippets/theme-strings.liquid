@@ -1,10 +1,13 @@
 {%- comment -%}
-  Danske tekster til JavaScript (validering, status). Holdes i locales/da.default.json.
+  Lokaliserede tekster til JavaScript (validering, status og effekter). Holdes i locales/.
 {%- endcomment -%}
 {%- liquid
   assign ph_field = '{' | append: 'field' | append: '}'
   assign ph_min = '{' | append: 'min' | append: '}'
   assign ph_max = '{' | append: 'max' | append: '}'
+  assign ph_title = '{' | append: 'title' | append: '}'
+  assign ph_price = '{' | append: 'price' | append: '}'
+  assign ph_qty = '{' | append: 'qty' | append: '}'
 -%}
 <script type="application/json" id="ThemeStrings">
   {
@@ -20,6 +23,19 @@
     "sending": {{ 'forms.sending' | t | json }},
     "openMenu": {{ 'general.open_menu' | t | json }},
     "closeMenu": {{ 'general.close_menu' | t | json }},
+    "menu": {{ 'general.menu' | t | json }},
+    "close": {{ 'general.close' | t | json }},
+    "pauseEffects": {{ 'general.pause_effects' | t | json }},
+    "resumeEffects": {{ 'general.resume_effects' | t | json }},
+    "soundOn": {{ 'general.sound_on' | t | json }},
+    "soundOff": {{ 'general.sound_off' | t | json }},
+    "pauseRotation": {{ 'public.pause_rotation' | t | json }},
+    "resumeRotation": {{ 'public.resume_rotation' | t | json }},
+    "planSelected": {{ 'public.plan_selected' | t: title: ph_title, price: ph_price | json }},
+    "usageRecorded": {{ 'public.usage_recorded' | t | json }},
+    "glovesUsed": {{ 'public.gloves_used' | t: qty: ph_qty | json }},
+    "stockUpdated": {{ 'public.stock_updated' | t: qty: ph_qty | json }},
+    "exampleReset": {{ 'public.example_reset' | t | json }},
     "cookiesSaved": {{ 'cookies.saved' | t | json }}
   }
 </script>

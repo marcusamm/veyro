@@ -25,13 +25,13 @@
 
           <div class="form__grid">
             <div class="field field--full">
-              <label for="{{ fid }}-package">Hvilken løsning er I interesserede i? <span class="req" aria-hidden="true">*</span></label>
+              <label for="{{ fid }}-package">{{ 'public.interested_solution' | t }} <span class="req" aria-hidden="true">*</span></label>
               <div class="select">
-                <select id="{{ fid }}-package" name="contact[Ydelse]" required data-label="Løsning" aria-describedby="{{ fid }}-package-error" data-preselect="pakke">
+                <select id="{{ fid }}-package" name="contact[Ydelse]" required data-label="{{ 'public.solution' | t | escape }}" aria-describedby="{{ fid }}-package-error" data-preselect="pakke">
                   <option value="">{{ 'forms.choose' | t }}</option>
                   {%- for o in options -%}
                     {%- assign option = o | strip -%}
-                    {%- if option != blank -%}<option value="Testkunde: {{ option | escape }}" data-key="{{ option | handle }}">{{ option | escape }}</option>{%- endif -%}
+                    {%- if option != blank -%}<option value="Testkunde: {{ option | escape }}" data-key="{{ option | handle }}">{{ option | content_t | escape }}</option>{%- endif -%}
                   {%- endfor -%}
                 </select>
                 {% render 'icon', name: 'arrow-down', size: 18 %}
@@ -39,13 +39,13 @@
               <p class="field__error" id="{{ fid }}-package-error" hidden></p>
             </div>
             <div class="field">
-              <label for="{{ fid }}-company">Virksomhedsnavn <span class="req" aria-hidden="true">*</span></label>
-              <input type="text" id="{{ fid }}-company" name="contact[Virksomhed]" autocomplete="organization" required maxlength="120" placeholder="{{ 'forms.placeholders.company' | t }}" data-label="Virksomhedsnavn" aria-describedby="{{ fid }}-company-error">
+              <label for="{{ fid }}-company">{{ 'public.company_name' | t }} <span class="req" aria-hidden="true">*</span></label>
+              <input type="text" id="{{ fid }}-company" name="contact[Virksomhed]" autocomplete="organization" required maxlength="120" placeholder="{{ 'forms.placeholders.company' | t }}" data-label="{{ 'public.company_name' | t | escape }}" aria-describedby="{{ fid }}-company-error">
               <p class="field__error" id="{{ fid }}-company-error" hidden></p>
             </div>
             <div class="field">
-              <label for="{{ fid }}-name">Kontaktperson <span class="req" aria-hidden="true">*</span></label>
-              <input type="text" id="{{ fid }}-name" name="contact[name]" autocomplete="name" required maxlength="120" value="{{ form.name | escape }}" placeholder="{{ 'forms.placeholders.name' | t }}" data-label="Kontaktperson" aria-describedby="{{ fid }}-name-error">
+              <label for="{{ fid }}-name">{{ 'public.contact_person' | t }} <span class="req" aria-hidden="true">*</span></label>
+              <input type="text" id="{{ fid }}-name" name="contact[name]" autocomplete="name" required maxlength="120" value="{{ form.name | escape }}" placeholder="{{ 'forms.placeholders.name' | t }}" data-label="{{ 'public.contact_person' | t | escape }}" aria-describedby="{{ fid }}-name-error">
               <p class="field__error" id="{{ fid }}-name-error" hidden></p>
             </div>
             <div class="field">
@@ -58,14 +58,14 @@
               <input type="tel" id="{{ fid }}-phone" name="contact[Telefon]" autocomplete="tel" inputmode="tel" maxlength="30">
             </div>
             <div class="field">
-              <label for="{{ fid }}-industry">Branche <span class="req" aria-hidden="true">*</span></label>
-              <input type="text" id="{{ fid }}-industry" name="contact[Branche]" required maxlength="120" placeholder="F.eks. tømrer, murer eller VVS" data-label="Branche" aria-describedby="{{ fid }}-industry-error">
+              <label for="{{ fid }}-industry">{{ 'public.industry' | t }} <span class="req" aria-hidden="true">*</span></label>
+              <input type="text" id="{{ fid }}-industry" name="contact[Branche]" required maxlength="120" placeholder="{{ 'public.industry_example' | t | escape }}" data-label="{{ 'public.industry' | t | escape }}" aria-describedby="{{ fid }}-industry-error">
               <p class="field__error" id="{{ fid }}-industry-error" hidden></p>
             </div>
             <div class="field">
-              <label for="{{ fid }}-size">Antal medarbejdere <span class="req" aria-hidden="true">*</span></label>
+              <label for="{{ fid }}-size">{{ 'public.staff_count' | t }} <span class="req" aria-hidden="true">*</span></label>
               <div class="select">
-                <select id="{{ fid }}-size" name="contact[Antal medarbejdere]" required data-label="Antal medarbejdere" aria-describedby="{{ fid }}-size-error">
+                <select id="{{ fid }}-size" name="contact[Antal medarbejdere]" required data-label="{{ 'public.staff_count' | t | escape }}" aria-describedby="{{ fid }}-size-error">
                   <option value="">{{ 'forms.choose' | t }}</option>
                   {%- for s in sizes -%}
                     {%- assign size = s | strip -%}
@@ -77,8 +77,8 @@
               <p class="field__error" id="{{ fid }}-size-error" hidden></p>
             </div>
             <div class="field field--full">
-              <label for="{{ fid }}-body">Hvad vil I gerne have hjælp til? <span class="req" aria-hidden="true">*</span></label>
-              <textarea id="{{ fid }}-body" name="contact[body]" rows="4" required minlength="10" maxlength="3000" placeholder="F.eks. overblik over materialer på jobs, lager i bilen eller bilag." data-label="Hvad vil I gerne have hjælp til?" aria-describedby="{{ fid }}-body-error">{{ form.body | escape }}</textarea>
+              <label for="{{ fid }}-body">{{ 'public.help_question' | t }} <span class="req" aria-hidden="true">*</span></label>
+              <textarea id="{{ fid }}-body" name="contact[body]" rows="4" required minlength="10" maxlength="3000" placeholder="{{ 'public.help_example' | t | escape }}" data-label="{{ 'public.help_question' | t | escape }}" aria-describedby="{{ fid }}-body-error">{{ form.body | escape }}</textarea>
               <p class="field__error" id="{{ fid }}-body-error" hidden></p>
             </div>
           </div>

@@ -25,7 +25,7 @@
   </div>
   </div>
   <div class="pc__content">
-  {%- if layout == 'summary' -%}<details class="pc__scope"{% if selectable %} open{% endif %}><summary>{% if selectable %}Det er med{% else %}Se hvad der er med{% endif %}</summary>{%- endif -%}
+  {%- if layout == 'summary' -%}<details class="pc__scope"{% if selectable %} open{% endif %}><summary>{% if selectable %}{{ 'public.included' | t }}{% else %}{{ 'public.see_included' | t }}{% endif %}</summary>{%- endif -%}
   {%- if features.size > 0 and s.features != blank -%}
     {%- if layout == 'detail' and s.features_label != blank -%}<p class="pc__list-title">{{ s.features_label | escape }}</p>{%- endif -%}
     <ul class="pc__list ticks" role="list">
@@ -49,8 +49,8 @@
   </div>
   {%- if selectable and s.status == 'available' -%}
     <label class="pc__select" for="{{ card_id }}-choice" data-plan-label hidden>
-      <input id="{{ card_id }}-choice" type="radio" name="plan-{{ group | handle }}" value="{{ key }}" data-plan-radio aria-label="Vælg pakken {{ s.title | escape }}"{% if selected %} checked{% endif %}>
-      <span class="pc__select-text"><span class="pc__select-off">Vælg pakken</span><span class="pc__select-on">Valgt</span></span>
+      <input id="{{ card_id }}-choice" type="radio" name="plan-{{ group | handle }}" value="{{ key }}" data-plan-radio aria-label="{{ 'public.choose_named_plan' | t: title: s.title | escape }}"{% if selected %} checked{% endif %}>
+      <span class="pc__select-text"><span class="pc__select-off">{{ 'public.choose_plan' | t }}</span><span class="pc__select-on">{{ 'public.selected' | t }}</span></span>
       <span class="pc__switch" aria-hidden="true"></span>
     </label>
   {%- endif -%}

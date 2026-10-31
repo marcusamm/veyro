@@ -1,6 +1,7 @@
 /* Veyro studio motion. Decorative canvas, native scroll, no dependencies. */
 (() => {
   'use strict';
+  const strings = (() => { try { return JSON.parse(document.getElementById('ThemeStrings')?.textContent || '{}'); } catch (_) { return {}; } })();
   const boot = () => {
     const body = document.body;
     const reduce = matchMedia('(prefers-reduced-motion: reduce)');
@@ -365,7 +366,7 @@
       if (pauseButton) {
         pauseButton.hidden = !body.classList.contains('has-motion') || reduce.matches;
         pauseButton.setAttribute('aria-pressed', String(paused));
-        const label = paused ? 'Start effekter' : 'Sæt effekter på pause';
+        const label = paused ? strings.resumeEffects : strings.pauseEffects;
         pauseButton.setAttribute('aria-label', label); pauseButton.title = label;
         pauseButton.querySelector('[data-motion-icon]').textContent = paused ? '▷' : 'Ⅱ';
       }

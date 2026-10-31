@@ -16,7 +16,7 @@
 <meta property="og:url" content="{{ canonical_url }}">
 <meta property="og:title" content="{{ page_title | escape }}">
 <meta property="og:type" content="{{ og_type }}">
-<meta property="og:locale" content="da_DK">
+<meta property="og:locale" content="{% case request.locale.iso_code %}{% when 'en' %}en_GB{% when 'sv' %}sv_SE{% else %}da_DK{% endcase %}">
 <meta property="og:description" content="{{ page_description | default: settings.company_tagline | escape }}">
 {%- if og_image -%}
   <meta property="og:image" content="https:{{ og_image | image_url: width: 1200 }}">

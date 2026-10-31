@@ -19,30 +19,30 @@
     <div class="service__body">
       {%- if s.audience != blank -%}
         <div class="service__part service__part--audience">
-          <h3 class="service__q">Hvem er det til?</h3>
+          <h3 class="service__q">{{ 'public.who_is_it_for' | t }}</h3>
           <div class="rte">{{ s.audience }}</div>
         </div>
       {%- endif -%}
       {%- if s.helps != blank -%}
         <div class="service__part">
-          <h3 class="service__q">Det hjælper vi med</h3>
+          <h3 class="service__q">{{ 'public.how_we_help' | t }}</h3>
           <ul class="ticks" role="list">{%- for l in helps -%}{%- assign line = l | strip -%}{%- if line != blank -%}<li>{{ line | escape }}</li>{%- endif -%}{%- endfor -%}</ul>
         </div>
       {%- endif -%}
       {%- if s.included != blank -%}
         <div class="service__part">
-          <h3 class="service__q">Det er med</h3>
+          <h3 class="service__q">{{ 'public.included' | t }}</h3>
           <ul class="ticks" role="list">{%- for l in included -%}{%- assign line = l | strip -%}{%- if line != blank -%}<li>{{ line | escape }}</li>{%- endif -%}{%- endfor -%}</ul>
         </div>
       {%- endif -%}
       {%- if s.separate != blank -%}
         <div class="service__part">
-          <h3 class="service__q">Kræver en særskilt aftale</h3>
+          <h3 class="service__q">{{ 'public.separate_agreement' | t }}</h3>
           <ul class="dashes" role="list">{%- for l in separate -%}{%- assign line = l | strip -%}{%- if line != blank -%}<li>{{ line | escape }}</li>{%- endif -%}{%- endfor -%}</ul>
         </div>
       {%- endif -%}
       <div class="service__part service__part--next">
-        <h3 class="service__q">Sådan kommer du videre</h3>
+        <h3 class="service__q">{{ 'public.next_steps' | t }}</h3>
         {%- if s.next != blank -%}<div class="rte">{{ s.next }}</div>{%- endif -%}
         <div class="actions">
           {% render 'button', label: s.button_label, url: s.button_link, style: 'primary' %}

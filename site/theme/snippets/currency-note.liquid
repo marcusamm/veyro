@@ -1,0 +1,3 @@
+{%- unless request.locale.iso_code == 'da' -%}
+  <p class="currency-note">{{ 'pricing.conversion_note' | t }} <a href="{{ '' | exchange_rate_source | escape }}" target="_blank" rel="noopener">{{ 'pricing.conversion_source' | t }}<span class="visually-hidden"> ({{ 'general.new_window' | t }})</span></a>.</p>
+{%- endunless -%}

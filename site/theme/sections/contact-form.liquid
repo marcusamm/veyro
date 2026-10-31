@@ -79,7 +79,7 @@
                   <option value="">{{ 'forms.choose' | t }}</option>
                   {%- for s in services -%}
                     {%- assign option = s | strip -%}
-                    {%- if option != blank -%}<option value="{{ option | escape }}" data-key="{{ option | handle }}">{{ option | escape }}</option>{%- endif -%}
+                    {%- if option != blank -%}<option value="{{ option | escape }}" data-key="{{ option | handle }}">{{ option | content_t | escape }}</option>{%- endif -%}
                   {%- endfor -%}
                 </select>
                 {% render 'icon', name: 'arrow-down', size: 18 %}

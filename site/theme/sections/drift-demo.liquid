@@ -10,9 +10,9 @@
     <div class="drift__copy">
       {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
       <ul class="drift__legend" role="list">
-        <li class="drift__legend-m"><strong>Fysisk</strong> er det, der står på lageret.</li>
-        <li class="drift__legend-m"><strong>Reserveret</strong> er varer på bekræftede ordrer.</li>
-        <li class="drift__legend-m"><strong>Disponibel</strong> er fysisk minus reserveret: det, der reelt kan bruges eller sælges.</li>
+        <li class="drift__legend-m"><strong>{{ 'public.physical' | t }}</strong> {{ 'public.physical_definition' | t }}</li>
+        <li class="drift__legend-m"><strong>{{ 'public.reserved' | t }}</strong> {{ 'public.reserved_definition' | t }}</li>
+        <li class="drift__legend-m"><strong>{{ 'public.available' | t }}</strong> {{ 'public.available_definition' | t }}</li>
         {%- for r in rules -%}
           {%- assign line = r | strip -%}
           {%- if line != blank -%}{%- assign parts = line | split: '|' -%}
@@ -23,35 +23,35 @@
     </div>
     <figure class="demo__figure drift__demo">
       <div class="app">
-        <div class="app__bar"><span>Lagerportal</span><span class="badge badge--on-dark">{{ section.settings.demo_badge | escape }}</span></div>
+        <div class="app__bar"><span>{{ 'public.warehouse_portal' | t }}</span><span class="badge badge--on-dark">{{ section.settings.demo_badge | escape }}</span></div>
         <table class="app__table">
-          <caption class="visually-hidden">Eksempel på lagerstatus med fiktive varer</caption>
+          <caption class="visually-hidden">{{ 'public.inventory_demo_caption' | t }}</caption>
           <thead>
             <tr>
-              <th scope="col">Vare</th>
-              <th scope="col" class="num">Fysisk<small class="app__note">på lageret</small></th>
-              <th scope="col" class="num">Reserveret<small class="app__note">på bekræftede ordrer</small></th>
-              <th scope="col" class="num">Disponibel<small class="app__note">kan bruges</small></th>
+              <th scope="col">{{ 'public.item' | t }}</th>
+              <th scope="col" class="num">{{ 'public.physical' | t }}<small class="app__note">{{ 'public.in_warehouse' | t }}</small></th>
+              <th scope="col" class="num">{{ 'public.reserved' | t }}<small class="app__note">{{ 'public.on_confirmed_orders' | t }}</small></th>
+              <th scope="col" class="num">{{ 'public.available' | t }}<small class="app__note">{{ 'public.ready_to_use' | t }}</small></th>
             </tr>
           </thead>
           <tbody>
-            <tr data-demo-row><td>Arbejdshandsker, str. L<small>VN-1001</small></td><td class="num"><span data-demo-physical>120</span></td><td class="num"><span data-demo-reserved>24</span></td><td class="num"><b data-demo-available>96</b></td></tr>
-            <tr><td>Skruer 4×40, 200 stk.<small>VN-1022</small></td><td class="num">64</td><td class="num">8</td><td class="num"><b>56</b></td></tr>
-            <tr class="is-low"><td>Malertape 25 mm<small>VN-1014</small><small class="app__note app__note--low">Lav beholdning: under minimum på 10</small></td><td class="num">18</td><td class="num">12</td><td class="num"><b>6</b></td></tr>
+            <tr data-demo-row><td>{{ 'public.work_gloves' | t }}<small>VN-1001</small></td><td class="num"><span data-demo-physical>120</span></td><td class="num"><span data-demo-reserved>24</span></td><td class="num"><b data-demo-available>96</b></td></tr>
+            <tr><td>{{ 'public.screws' | t }}<small>VN-1022</small></td><td class="num">64</td><td class="num">8</td><td class="num"><b>56</b></td></tr>
+            <tr class="is-low"><td>{{ 'public.masking_tape' | t }}<small>VN-1014</small><small class="app__note app__note--low">{{ 'public.low_stock' | t }}</small></td><td class="num">18</td><td class="num">12</td><td class="num"><b>6</b></td></tr>
           </tbody>
         </table>
         <div class="app__action">
           <div>
-            <p class="app__what">Job #214: 3 par arbejdshandsker brugt</p>
-            <p class="app__note app__note--action">Registreret forbrug trækker fra fysisk og disponibel. Reserveret er uændret.</p>
+            <p class="app__what">{{ 'public.job_usage' | t }}</p>
+            <p class="app__note app__note--action">{{ 'public.usage_explainer' | t }}</p>
           </div>
           <div class="app__try" data-demo-try data-qty="3" hidden>
-            <button type="button" class="btn btn--primary btn--sm" data-demo-play data-label-reset="Nulstil eksempel">Registrér forbrug</button>
+            <button type="button" class="btn btn--primary btn--sm" data-demo-play data-label-reset="{{ 'public.reset_example' | t | escape }}">{{ 'public.record_usage' | t }}</button>
             <p class="app__status" role="status" data-demo-status></p>
           </div>
         </div>
       </div>
-      <figcaption class="concept__cap"><span class="badge">Demo</span>Eksempel – Drift er på vej. Varer og tal er fiktive.</figcaption>
+      <figcaption class="concept__cap"><span class="badge">Demo</span>{{ 'public.operations_demo_note' | t }}</figcaption>
     </figure>
   </div>
 </section>

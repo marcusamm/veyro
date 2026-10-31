@@ -37,8 +37,19 @@
 
     <div class="site-header__actions">
       <!--cart-count-->
-      <button class="effect-control" type="button" data-motion-toggle hidden aria-pressed="false" aria-label="Sæt effekter på pause" title="Sæt effekter på pause"><span data-motion-icon aria-hidden="true">Ⅱ</span></button>
-      <button class="effect-control effect-control--sound" type="button" data-sound-toggle hidden aria-pressed="false" aria-label="Slå lyde til" title="Slå lyde til"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path class="sound-wave" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/><path class="sound-mute" d="m16 10 5 5m0-5-5 5"/></svg></button>
+      <details class="language-switch" data-language-switch>
+        <summary aria-label="{{ language_label }}: {{ localization.language.iso_code | upcase }}">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18Z"/></svg>
+          <span>{{ localization.language.iso_code | upcase }}</span>
+        </summary>
+        <nav class="language-switch__options" aria-label="{{ language_label }}">
+          {%- for language in site_languages -%}
+            <a href="{{ language.url }}" lang="{{ language.code }}" hreflang="{{ language.code }}" data-language-link{% if language.current %} aria-current="true"{% endif %}>{{ language.label }}<span aria-hidden="true">{{ language.code | upcase }}</span></a>
+          {%- endfor -%}
+        </nav>
+      </details>
+      <button class="effect-control" type="button" data-motion-toggle hidden aria-pressed="false" aria-label="{{ 'general.pause_effects' | t }}" title="{{ 'general.pause_effects' | t }}"><span data-motion-icon aria-hidden="true">Ⅱ</span></button>
+      <button class="effect-control effect-control--sound" type="button" data-sound-toggle hidden aria-pressed="false" aria-label="{{ 'general.sound_on' | t }}" title="{{ 'general.sound_on' | t }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path class="sound-wave" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/><path class="sound-mute" d="m16 10 5 5m0-5-5 5"/></svg></button>
       {%- if section.settings.login_label != blank -%}
         <a class="nav__link site-header__login" href="{{ login_url }}">{{ section.settings.login_label | escape }}</a>
       {%- endif -%}

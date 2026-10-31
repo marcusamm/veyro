@@ -46,7 +46,7 @@
         {%- elsif tp_id != blank and tp_template != blank -%}
           <div class="trustpilot__widget" data-trustpilot data-trustpilot-consent="{{ settings.trustpilot_consent }}">
             <div class="trustpilot-widget"
-              data-locale="da-DK"
+              data-locale="{% case request.locale.iso_code %}{% when 'en' %}en-GB{% when 'sv' %}sv-SE{% else %}da-DK{% endcase %}"
               data-template-id="{{ tp_template | escape }}"
               data-businessunit-id="{{ tp_id | escape }}"
               data-style-height="{{ tp_height }}"

@@ -1,6 +1,7 @@
 /* Small, optional UI sounds. User activation stays in charge of navigation and forms. */
 (() => {
   'use strict';
+  const strings = (() => { try { return JSON.parse(document.getElementById('ThemeStrings')?.textContent || '{}'); } catch (_) { return {}; } })();
   const boot = () => {
     const button = document.querySelector('[data-sound-toggle]');
     const Audio = window.AudioContext || window.webkitAudioContext;
@@ -16,7 +17,7 @@
     const sync = () => {
       button.hidden = false;
       button.setAttribute('aria-pressed', String(enabled));
-      const label = enabled ? 'Slå lyde fra' : 'Slå lyde til';
+      const label = enabled ? strings.soundOff : strings.soundOn;
       button.setAttribute('aria-label', label);
       button.title = label;
     };

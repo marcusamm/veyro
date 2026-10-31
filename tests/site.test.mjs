@@ -158,6 +158,95 @@ describe('Hjemmesiden vises uden Shopify', () => {
   });
 });
 
+describe('Offentlige sprogversioner', () => {
+  it('viser alle publicerede sider på engelsk og svensk uden at ændre dansk', async () => {
+    const content = JSON.parse(readFileSync(path.join(ROOT, 'site/content.json'), 'utf8'));
+    for (const language of ['en', 'sv']) {
+      for (const route of ['/', ...content.pages.filter(p => p.published).map(p => `/pages/${p.handle}`), '/cart']) {
+        const r = await site.get(`/${language}${route}`);
+        expect(r.status, `${language}${route}`).toBe(200);
+        expect(r.headers.get('content-language')).toBe(language);
+        expect(r.html).toContain(`lang="${language}"`);
+        expect(r.html).toContain(`href="/${language}/pages/kontakt"`);
+        expect(r.html).toContain(`hreflang="${language}" href="${stack.site}/${language}${route}"`);
+        expect(r.html).not.toMatch(/Liquid error|MISSING:|>public\.[a-z_]+</);
+      }
+    }
+    const [en, sv, da] = await Promise.all(['/en/', '/sv/', '/'].map(p => site.get(p)));
+    expect(en.html).toContain('Your business.');
+    expect(en.html).toContain('≈ EUR 26.63');
+    expect(en.html).not.toContain('DKK 199');
+    expect(en.html).not.toContain('Din forretning.');
+    expect(sv.html).toContain('Ditt företag.');
+    expect(sv.html).toContain('≈ 292,32 SEK');
+    expect(sv.html).not.toContain('199 DKK');
+    expect(sv.html).not.toContain('Din forretning.');
+    expect(da.html).toContain('Din forretning.');
+    expect(da.headers.get('content-language')).toBe('da');
+    for (const language of ['en', 'sv']) {
+      const r = await site.get(`/${language}/pages/findes-ikke`);
+      expect(r.status).toBe(404);
+      expect(r.headers.get('content-language')).toBe(language);
+    }
+  });
+
+  it('bevarer sproget i interne links, prisvælger og formularer samt faste integrationsværdier', async () => {
+    const en = await site.get('/en/');
+    expect(en.html).toContain('data-plan-link="/en/pages/kontakt?ydelse=pakke-booking#formular"');
+    expect(en.html).toContain('href="/demo/holm-tomrer/"');
+    expect(en.html).toContain('href="https://kunde.veyro.dk/login"');
+    expect(en.html).toContain('id="pakke-hjemmeside-forside"');
+    expect(en.html).toContain('href="/sv/" lang="sv"');
+    const r = await site.get('/sv/pages/kontakt?ydelse=pakke-hjemmeside');
+    expect(r.html).toContain('name="return_to" value="/sv/pages/kontakt"');
+    expect(r.html).toContain('name="contact[Samtykke]"');
+    expect(r.html).toMatch(/data-key="pakke-hjemmeside"[^>]*>[^<]*Webbplats/);
+    expect(r.html).toContain('name="contact[Ydelse]"');
+  });
+
+  it('bevarer dokumenters afsnitsankre på tværs af sprog', async () => {
+    const ids = html => [...html.matchAll(/<h2 id="([^"]+)">/g)].map(m => m[1]);
+    const da = await site.get('/pages/privatlivspolitik');
+    expect(ids(da.html).length).toBeGreaterThan(5);
+    for (const language of ['en', 'sv']) {
+      const r = await site.get(`/${language}/pages/privatlivspolitik`);
+      expect(ids(r.html)).toEqual(ids(da.html));
+      for (const id of ids(da.html)) expect(r.html).toContain(`href="#${id}"`);
+    }
+  });
+
+  it('giver lokaliseret servervalidering og takkeside efter en reel lokal formularindsendelse', async () => {
+    for (const language of ['en', 'sv']) {
+      const visitor = new Client(stack.site);
+      const page = await visitor.get(`/${language}/pages/kontakt`);
+      const id = page.html.match(/id="(Contact-[^"]+)"/)[1];
+      const invalid = await visitor.post('/contact', contactForm(page.html, id, { 'contact[email]': 'invalid' }));
+      expect(invalid.status).toBe(422);
+      expect(invalid.headers.get('content-language')).toBe(language);
+      expect(invalid.html).not.toContain('er ugyldig');
+      const sent = await visitor.post('/contact', contactForm(page.html, id, { 'contact[name]': `LOCAL TEST ${language}`, 'contact[email]': `locale-${language}@example.test`, 'contact[body]': 'LOCAL TEST language flow', 'contact[Samtykke]': 'Ja' }));
+      expect(sent.status).toBe(303);
+      expect(sent.headers.get('location')).toContain(`/${language}/pages/kontakt?kontakt=ok`);
+      const thanks = await visitor.get(sent.headers.get('location'));
+      expect(thanks.status).toBe(200);
+      expect(thanks.headers.get('content-language')).toBe(language);
+      expect(thanks.html).not.toContain('Tak for din henvendelse');
+      expect(thanks.html).toContain(language === 'en' ? 'Thank you' : 'Tack');
+    }
+  });
+
+  it('lister alle sprog i sitemap og normaliserer sprog-roden', async () => {
+    for (const language of ['en', 'sv']) {
+      const r = await site.get(`/${language}?ydelse=demo`);
+      expect(r.status).toBe(301);
+      expect(r.headers.get('location')).toBe(`/${language}/?ydelse=demo`);
+    }
+    const sitemap = await site.get('/sitemap.xml');
+    for (const route of ['/', '/en/', '/sv/', '/en/pages/priser', '/sv/pages/priser']) expect(sitemap.html).toContain(`<loc>${stack.site}${route}</loc>`);
+    expect(sitemap.html).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"');
+  });
+});
+
 describe('Pakker og priser', () => {
   // Kortene i en pakkeliste: [id, html] for hvert <li class="pc ...">
   const cards = (html) => {
@@ -392,6 +481,30 @@ describe('Kurv og forespørgsel', () => {
     expect(r.status).toBe(303);
     cart = await shopper.get('/cart');
     expect(cart.html).not.toContain('Business abonnement');
+  });
+
+  it('bevarer sproget gennem produkt, kurv, antal og fjernelse', async () => {
+    for (const language of ['en', 'sv']) {
+      const shopper = new Client(stack.site);
+      const product = await shopper.get(`/${language}/products/business`);
+      expect(product.status).toBe(200);
+      expect(product.html).toContain(`name="site_language" value="${language}"`);
+      expect(product.html).toContain('action="/cart/add"');
+      const added = await shopper.post('/cart/add', { id: 'business', site_language: language });
+      expect(added.headers.get('location')).toBe(`/${language}/cart`);
+      const cart = await shopper.get(`/${language}/cart`);
+      expect(cart.html).toContain(`name="site_language" value="${language}"`);
+      expect(cart.html).toContain(language === 'en' ? 'EUR' : 'SEK');
+      expect(cart.html).toContain(`href="/${language}/cart/change?line=1&quantity=0"`);
+      const changed = await shopper.post('/cart/update', { 'updates[]': '2', site_language: language });
+      expect(changed.headers.get('location')).toBe(`/${language}/cart`);
+      const updated = await shopper.get(`/${language}/cart`);
+      expect(updated.html).toMatch(/site-header__count[^>]*>2</);
+      const removed = await shopper.get(`/${language}/cart/change?line=1&quantity=0`);
+      expect(removed.headers.get('location')).toBe(`/${language}/cart`);
+      const empty = await shopper.get(`/${language}/cart`);
+      expect(empty.html).not.toContain('class="site-header__count"');
+    }
   });
 
   it('sender kurven som forespørgsel: gemmes, mail til Veyro, kurven tømmes, intet betales', async () => {
