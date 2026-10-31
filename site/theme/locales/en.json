@@ -405,5 +405,38 @@
   "pricing": {
     "conversion_note": "Approximate conversion from DKK. Final price and currency are confirmed in your quote.",
     "conversion_source": "ECB, 30 Oct 2026"
+  },
+  "webshop_tiers": {
+    "label": "Online store tier",
+    "choose": "Choose an online store tier",
+    "option_label": "{{ products }} products / {{ variants }} variants — {{ price }}/month",
+    "capacity": "Up to {{ products }} products and {{ variants }} variants",
+    "import_capacity": "10 manually created products or one standard import of up to {{ products }} products, within {{ variants }} variants in total.",
+    "from": "From",
+    "limits_note": "Both limits must be met. The variant limit applies to the entire store, not to each product.",
+    "example": "12 products with 80 variants require the tier with 30 products and 120 variants. A T-shirt in 3 sizes and 2 colours counts as one product with 6 variants.",
+    "heading": "Room for your online store.",
+    "introduction": "The same online store and support. Choose a tier based on active products and variants across the whole store.",
+    "larger": "Need more products or variants? Contact us and we will agree on a price that suits your online store.",
+    "upgrade": "Contact us when you need a larger tier. Subscription and price changes are agreed with you. More than 50 products or 200 variants require an individual quote.",
+    "products": "Active products",
+    "variants": "Total variants",
+    "monthly_price": "Per month excl. VAT",
+    "import": "Manual setup or import",
+    "enquiry": "Book a demo",
+    "all_tiers": "See all three online store tiers",
+    "comparison": "Online store tiers, prices and limits",
+    "staff_table": "Monthly price by number of users and online store tier",
+    "scroll_hint": "Scroll the table horizontally on small screens.",
+    "tier_name": "Online store {{ products }}",
+    "setup_note": "We create the first 10 products manually or carry out one standard import within your selected product and variant limits. You provide images and product data in our CSV or Excel template.",
+    "setup_extra": "Choose either manual setup or one standard import. Additional imports, product-data cleanup and other catalogue work are agreed separately.",
+    "contact_larger": "Get an individual quote"
+  },
+  "webshop_enquiry": {
+    "custom": "Larger online shop — individual quote",
+    "help": "Applies to Online shop only. Both limits must be met. We confirm the tier, price and currency in your quote; this choice does not change an existing subscription.",
+    "invalid": "Choose a valid online shop tier or an individual quote.",
+    "per_month_ex_vat": "per month excl. VAT"
   }
 }

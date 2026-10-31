@@ -46,7 +46,7 @@
       "template": "priser",
       "body": "",
       "published": true,
-      "description": "Priser på Hjemmeside (199 kr./md.), Booking (299 kr./md.) og Webshop (499 kr./md.) ekskl. moms. Gratis opsætning, første måned gratis og ingen binding."
+      "description": "Priser på Hjemmeside (199 kr./md.), Booking (299 kr./md.) og Webshop fra 299 kr./md. ekskl. moms med op til 15 produkter og 60 varianter. Gratis oprettelse, første måned gratis og ingen binding."
     },
     {
       "handle": "eksempler",
@@ -78,7 +78,7 @@
       "template": "webshop",
       "body": "",
       "published": true,
-      "description": "En lille webshop for 499 kr./md. ekskl. moms med op til 50 aktive produkter og 200 varianter."
+      "description": "Webshop fra 299 kr./md. ekskl. moms med op til 15 produkter og 60 varianter. Vælg mellem tre niveauer efter jeres sortiment, med hosting og vedligeholdelse inkluderet."
     },
     {
       "handle": "drift",

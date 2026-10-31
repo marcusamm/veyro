@@ -16,6 +16,8 @@ import { asset, THEME_VERSION, translate, warmUp, type FormState } from './engin
 import { blockEmailKey, countView, createLead, ipHash, isBlockedSender, LEAD_KIND_LABEL, markLeadNotified, type LeadCartLine, type LeadKind } from './leads';
 import { languagePath, localizedPath, SITE_LANGUAGES, type SiteLanguage } from './localization';
 import { cartDrop, renderSitePage, type CartLine, type RenderRequest } from './render';
+import { displayPrice } from './currency';
+import { webshopTier } from './webshop-tiers';
 
 warmUp();
 
@@ -394,8 +396,13 @@ async function respond(c: Context<SiteEnv>, path: string, forms: Record<string, 
 /** ?kontakt=ok&form=<id> efter en vellykket formular viser takkebeskeden i den formular */
 function formsFromQuery(c: Context<SiteEnv>): Record<string, FormState> | null {
   const id = c.req.query('form');
-  if (c.req.query('kontakt') !== 'ok' || !id) return null;
-  return { [id]: { 'posted_successfully?': true, errors: null } };
+  if (c.req.query('kontakt') === 'ok' && id) return { [id]: { 'posted_successfully?': true, errors: null } };
+  // Render the chosen webshop tier even without JavaScript. Form state also bypasses the shared HTML cache.
+  if (['pakke-webshop', 'webshop'].includes(c.req.query('ydelse') ?? '')) {
+    const choice = c.req.query('webshop_niveau');
+    return { __contact: { 'posted_successfully?': false, errors: null, service: 'Pakke: Webshop', webshop_tier: choice === 'custom' ? 'custom' : webshopTier(choice)?.id ?? '15' } };
+  }
+  return null;
 }
 
 site.get('/', (c) => respond(c, '/', formsFromQuery(c)));
@@ -414,9 +421,9 @@ for (const language of ['en', 'sv'] as const) {
 
 // ---------- Formularer ----------
 
-function formErrors(fields: Record<string, string>): FormState['errors'] {
+function formErrors(fields: Record<string, string>, language: SiteLanguage = 'da'): FormState['errors'] {
   const keys = Object.keys(fields);
-  return Object.assign(keys, { messages: fields, translated_fields: Object.fromEntries(keys.map((k) => [k, k === 'email' ? 'E-mail' : k])) });
+  return Object.assign(keys, { messages: fields, translated_fields: Object.fromEntries(keys.map((k) => [k, k === 'email' ? 'E-mail' : k === 'webshop_tier' ? translate('webshop_tiers.label', {}, language) : k])) });
 }
 
 site.post('/contact', async (c) => {
@@ -436,6 +443,9 @@ site.post('/contact', async (c) => {
     const m = k.match(/^contact\[(.{1,60})\]$/);
     if (m && typeof v === 'string' && Object.keys(fields).length < 40) fields[m[1]!] = v.trim().slice(0, 5000);
   }
+  const webshopChoice = fields['Webshopniveau'] || '15';
+  // Enquiry details are derived from our tier model, never from a submitted price or limit.
+  for (const key of ['Webshopniveau-id', 'Webshoppris DKK ekskl. moms', 'Vist webshoppris', 'Webshopgrænser', 'Webshopimport']) delete fields[key];
   // Honningkrukke: robotter udfylder det skjulte felt. Lad som om det lykkedes.
   const success = () => {
     const u = new URL(returnTo, 'http://x');
@@ -446,7 +456,7 @@ site.post('/contact', async (c) => {
   if (String(body['website_url'] ?? '').trim()) return success();
 
   const state = (errors: Record<string, string>): Record<string, FormState> => ({
-    [formId]: { 'posted_successfully?': false, errors: formErrors(errors), name: fields['name'] ?? '', email: fields['email'] ?? '', body: fields['body'] ?? '' },
+    [formId]: { 'posted_successfully?': false, errors: formErrors(errors, language), name: fields['name'] ?? '', email: fields['email'] ?? '', body: fields['body'] ?? '', service: fields['Ydelse'] ?? '', webshop_tier: webshopChoice },
   });
 
   const ip = c.req.header('CF-Connecting-IP') ?? null;
@@ -464,6 +474,9 @@ site.post('/contact', async (c) => {
   const errors: Record<string, string> = {};
   if (!email) errors.email = errorText('email');
   if (!fields['Samtykke']) errors.form = errorText('consent');
+  if (fields['Ydelse'] === 'Pakke: Webshop' && webshopChoice !== 'custom' && !webshopTier(webshopChoice)) {
+    errors.webshop_tier = translate('webshop_enquiry.invalid', {}, language);
+  }
 
   let cart: LeadCartLine[] | null = null;
   if (kind === 'kurv') {
@@ -476,6 +489,22 @@ site.post('/contact', async (c) => {
     if (!cart.length) errors.form = errorText('empty_cart');
   }
   if (Object.keys(errors).length) return respond(c, returnPath, state(errors), 422);
+
+  if (fields['Ydelse'] === 'Pakke: Webshop') {
+    fields['Webshopniveau-id'] = webshopChoice;
+    const tier = webshopTier(webshopChoice);
+    if (tier) {
+      fields['Webshopniveau'] = `Webshop ${tier.products}`;
+      fields['Webshoppris DKK ekskl. moms'] = `${tier.price_dkk} kr./md. ekskl. moms`;
+      fields['Vist webshoppris'] = `${displayPrice(tier.price_dkk, language)} ${translate('webshop_enquiry.per_month_ex_vat', {}, language)}`;
+      fields['Webshopgrænser'] = `Op til ${tier.products} aktive produkter og ${tier.variants} varianter i alt`;
+      fields['Webshopimport'] = `De første 10 produkter manuelt ELLER én standardimport af op til ${tier.import_products} produkter og ${tier.variants} varianter i alt`;
+    } else {
+      fields['Webshopniveau'] = 'Større webshop – individuelt tilbud';
+    }
+  } else {
+    delete fields['Webshopniveau'];
+  }
 
   const id = await createLead(c.env.DB, {
     kind,
@@ -504,6 +533,7 @@ site.post('/contact', async (c) => {
       ...(fields['Virksomhed'] ? [`Virksomhed: ${fields['Virksomhed']}`] : []),
       ...(fields['Hjemmeside'] ? [`Hjemmeside: ${fields['Hjemmeside']}`] : []),
       ...(fields['Ydelse'] ? [`Ydelse: ${fields['Ydelse']}`] : []),
+      ...['Webshopniveau', 'Webshoppris DKK ekskl. moms', 'Vist webshoppris', 'Webshopgrænser', 'Webshopimport'].filter(k => fields[k]).map(k => `${k}: ${fields[k]}`),
       ...(['Branche', 'Antal medarbejdere'] as const).filter((k) => fields[k]).map((k) => `${k}: ${fields[k]}`),
       ...(cart ?? []).map((l) => `Kurv: ${l.quantity} × ${l.title} – ${formatKr(l.price * l.quantity)} ${l.interval === 'year' ? 'pr. år' : 'pr. md.'}`),
       ...(fields['body'] ? [`Besked: ${fields['body']}`] : []),

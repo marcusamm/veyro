@@ -405,5 +405,38 @@
   "pricing": {
     "conversion_note": "Vejledende omregning fra DKK. Endelig pris og valuta bekræftes i tilbuddet.",
     "conversion_source": "ECB, 30. okt. 2026"
+  },
+  "webshop_tiers": {
+    "label": "Webshopniveau",
+    "choose": "Vælg webshopniveau",
+    "option_label": "{{ products }} produkter / {{ variants }} varianter — {{ price }}/md.",
+    "capacity": "Op til {{ products }} produkter og {{ variants }} varianter",
+    "import_capacity": "10 manuelt oprettede produkter eller én standardimport af op til {{ products }} produkter, inden for {{ variants }} varianter i alt.",
+    "from": "Fra",
+    "limits_note": "Begge grænser skal være overholdt. Variantgrænsen gælder hele webshoppen, ikke hvert produkt.",
+    "example": "12 produkter med 80 varianter kræver niveauet med 30 produkter og 120 varianter. En T-shirt i 3 størrelser og 2 farver tæller som ét produkt med 6 varianter.",
+    "heading": "Plads til jeres webshop.",
+    "introduction": "Samme webshop og hjælp. Vælg niveau efter antallet af aktive produkter og varianter i hele webshoppen.",
+    "larger": "Har I brug for flere produkter eller varianter? Kontakt os, så aftaler vi en pris, der passer til jeres webshop.",
+    "upgrade": "Kontakt os, når I har brug for et større niveau. Ændringer i abonnement og pris aftales med jer. Over 50 produkter eller 200 varianter kræver et individuelt tilbud.",
+    "products": "Aktive produkter",
+    "variants": "Varianter i alt",
+    "monthly_price": "Pr. måned ekskl. moms",
+    "import": "Manuel oprettelse eller import",
+    "enquiry": "Aftal en demo",
+    "all_tiers": "Se alle tre webshopniveauer",
+    "comparison": "Webshopniveauer, priser og grænser",
+    "staff_table": "Månedspris efter antal brugere og webshopniveau",
+    "scroll_hint": "Tabellen kan rulles vandret på små skærme.",
+    "tier_name": "Webshop {{ products }}",
+    "setup_note": "Vi opretter de første 10 produkter eller laver én standardimport inden for jeres valgte produkt- og variantgrænser. I leverer billeder og produktdata i vores CSV- eller Excel-skabelon.",
+    "setup_extra": "Det er enten manuel oprettelse eller én standardimport. Ekstra import, oprydning i produktdata og øvrigt katalogarbejde aftales særskilt.",
+    "contact_larger": "Få et individuelt tilbud"
+  },
+  "webshop_enquiry": {
+    "custom": "Større webshop – individuelt tilbud",
+    "help": "Gælder kun Webshop. Begge grænser skal være overholdt. Vi bekræfter niveau, pris og valuta i tilbuddet; valget ændrer ikke et eksisterende abonnement.",
+    "invalid": "Vælg et gyldigt webshopniveau eller et individuelt tilbud.",
+    "per_month_ex_vat": "pr. måned ekskl. moms"
   }
 }

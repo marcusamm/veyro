@@ -1,0 +1,21 @@
+<section class="section webshop-tiers" id="{{ section.settings.anchor | default: 'webshop-niveauer' | handle }}">
+  <div class="container webshop-tiers__inner">
+    <div class="webshop-tiers__intro">
+      <p class="eyebrow">{{ 'webshop_tiers.label' | t }}</p>
+      <h2 class="h2">{{ 'webshop_tiers.heading' | t }}</h2>
+      <p>{{ 'webshop_tiers.introduction' | t }}</p>
+    </div>
+    <div class="webshop-tiers__comparison">
+      {% render 'webshop-tier-table' %}
+      <p class="pricing-table-hint">{{ 'webshop_tiers.scroll_hint' | t }}</p>
+      {% render 'currency-note' %}
+      <div class="webshop-tiers__limits"><p>{{ 'webshop_tiers.limits_note' | t }}</p><p>{{ 'webshop_tiers.example' | t }}</p></div>
+      <div class="webshop-tiers__setup"><h3>{{ 'webshop_tiers.import' | t }}</h3><p>{{ 'webshop_tiers.setup_note' | t }}</p><p>{{ 'webshop_tiers.setup_extra' | t }}</p></div>
+      <div class="webshop-tiers__larger"><p>{{ 'webshop_tiers.larger' | t }}</p><p>{{ 'webshop_tiers.upgrade' | t }}</p><a class="text-link" href="/pages/kontakt?ydelse=pakke-webshop&amp;webshop_niveau=custom#formular">{{ 'webshop_tiers.contact_larger' | t }} <span aria-hidden="true">↗</span></a></div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{"name":"Webshopniveauer","tag":"div","settings":[{"type":"text","id":"anchor","label":"Anker-id","default":"webshop-niveauer"}],"presets":[{"name":"Webshopniveauer"}]}
+{% endschema %}

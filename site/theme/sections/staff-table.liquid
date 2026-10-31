@@ -7,33 +7,35 @@
   assign extra = section.settings.extra_price
   assign max = inc | plus: 3
 -%}
-<section class="section staff" id="{{ section.settings.anchor | default: section.id | handle }}">
+<section class="section staff staff--tiers" id="{{ section.settings.anchor | default: section.id | handle }}">
   <div class="container staff__inner">
     <div class="staff__text">
       {% render 'section-head', eyebrow: section.settings.eyebrow, heading: section.settings.heading, text: section.settings.text %}
     </div>
     <div class="staff__table-wrap">
+      <div class="pricing-table-scroll" role="region" aria-label="{{ 'webshop_tiers.staff_table' | t | escape }}" tabindex="0">
       <table class="table staff__table">
         <caption>{{ section.settings.caption | escape }}</caption>
         <thead>
           <tr>
             <th scope="col">{{ 'public.users' | t }}</th>
             {%- if section.settings.a_label != blank -%}<th scope="col" class="num">{{ section.settings.a_label | escape }}</th>{%- endif -%}
-            {%- if section.settings.b_label != blank -%}<th scope="col" class="num">{{ section.settings.b_label | escape }}</th>{%- endif -%}
+            {%- for tier in webshop_tiers -%}<th scope="col" class="num">{{ 'webshop_tiers.tier_name' | t: products: tier.products }}</th>{%- endfor -%}
           </tr>
         </thead>
         <tbody>
           {%- for n in (inc..max) -%}
             {%- assign add = n | minus: inc | times: extra -%}
             {%- assign a = section.settings.a_price | plus: add -%}
-            {%- assign b = section.settings.b_price | plus: add -%}
             <tr><th scope="row">{{ n }}{% if n == inc %} {{ 'public.included_parentheses' | t }}{% endif %}</th>
               {%- if section.settings.a_label != blank -%}<td class="num">{{ a | display_money }}</td>{%- endif -%}
-              {%- if section.settings.b_label != blank -%}<td class="num">{{ b | display_money }}</td>{%- endif -%}
+              {%- for tier in webshop_tiers -%}{%- assign tier_total = tier.price_dkk | plus: add -%}<td class="num">{{ tier_total | display_money }}</td>{%- endfor -%}
             </tr>
           {%- endfor -%}
         </tbody>
       </table>
+      </div>
+      <p class="pricing-table-hint">{{ 'webshop_tiers.scroll_hint' | t }}</p>
       {% render 'currency-note' %}
       {%- if section.settings.table_note != blank -%}<p class="staff__note">{{ section.settings.table_note | escape }}</p>{%- endif -%}
     </div>

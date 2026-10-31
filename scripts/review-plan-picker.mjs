@@ -13,7 +13,7 @@ const paths = process.env.PATHS ? process.env.PATHS.split(',') : ['/', '/pages/p
 const expected = [
   { title: 'Hjemmeside', price: '199', key: 'hjemmeside' },
   { title: 'Booking', price: '299', key: 'booking' },
-  { title: 'Webshop', price: '499', key: 'webshop' },
+  { title: 'Webshop', price: '299', key: 'webshop' },
 ];
 const results = [];
 const failures = [];

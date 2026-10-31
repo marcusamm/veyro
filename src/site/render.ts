@@ -3,6 +3,8 @@ import type { SiteData, SitePage, SiteProduct, SectionData, TemplateData } from 
 import { Color, translate, engine, parsedFile, sectionSchema, themeSettingsSchema, type FormState, type RenderHooks, type SettingDef } from './engine';
 import { contentText, localizedContent, localizedPath, localizeLinks, SITE_LANGUAGES, type SiteLanguage } from './localization';
 import { THEME_FILES } from './theme.generated';
+import { displayPrice } from './currency';
+import { WEBSHOP_TIERS } from './webshop-tiers';
 
 export type PageType = 'index' | 'page' | 'product' | 'cart' | '404';
 
@@ -221,6 +223,7 @@ export function renderSitePage(site: SiteData, req: RenderRequest): string {
     content_for_header: '',
     localization: { language: { iso_code: language }, country: { iso_code: 'DK' } },
     customer: null,
+    webshop_tiers: WEBSHOP_TIERS.map(tier => ({ ...tier, price: displayPrice(tier.price_dkk, language) })),
   };
   if (req.page) globals.page = { ...pageDrop(req.page), original_content: originalPageContent };
   if (req.product) globals.product = productDrop(req.product);

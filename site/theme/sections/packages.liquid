@@ -28,6 +28,8 @@
       <div class="plan-summary__preview">
         <p class="plan-summary__name" data-summary-title>{{ initial.title | escape }}</p>
         <p class="plan-summary__description" data-summary-description>{{ initial.text | escape }}</p>
+        <p class="plan-summary__capacity" data-summary-capacity hidden></p>
+        <p class="plan-summary__import" data-summary-import hidden></p>
         <p class="plan-summary__price"><strong data-summary-price>{{ initial.price | escape }}</strong><span>{{ initial.interval | escape }}</span></p>
       </div>
       <dl class="plan-summary__terms"><div><dt>{{ 'public.setup' | t }}</dt><dd>{{ 'public.free' | t }}</dd></div><div><dt>{{ 'public.first_month' | t }}</dt><dd>{{ 'public.free' | t }}</dd></div><div><dt>{{ 'public.minimum_term' | t }}</dt><dd>{{ 'public.none' | t }}</dd></div></dl>

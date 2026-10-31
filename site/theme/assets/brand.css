@@ -40,3 +40,43 @@
 html[lang="en"] .plan-summary__total strong, html[lang="sv"] .plan-summary__total strong { font-size: clamp(1.8rem, 2.6vw, 2.55rem); }
 html[lang="en"] .packages .pc__amount strong, html[lang="sv"] .packages .pc__amount strong { font-size: clamp(1.5rem, 2.1vw, 2.2rem); }
 html[lang="en"] .staff__table .num, html[lang="sv"] .staff__table .num { white-space: normal; font-variant-numeric: tabular-nums; }
+
+/* Webshop capacity remains a choice inside the existing Webshop solution. */
+.packages .pc__price-label { color: inherit; align-self: center; }
+.webshop-tier-picker { margin: 0 0 1rem; min-width: 0; }
+.webshop-tier-picker label { display: block; margin-bottom: .45rem; font-size: .75rem; font-weight: 600; color: #373a36; }
+.webshop-tier-picker select { display: block; width: 100%; max-width: 100%; min-width: 0; min-height: 44px; padding: .7rem 1.8rem .7rem .75rem; border: 1px solid #aeb4ab; border-radius: 11px; background-color: #f4f5f0; color: #191b1b; font: inherit; font-size: .75rem; cursor: pointer; color-scheme: light; }
+.webshop-tier-picker select:focus-visible { outline: 2px solid #763817; outline-offset: 3px; }
+.webshop-tier-scope { margin-bottom: 1.15rem; padding-bottom: 1rem; border-bottom: 1px solid #daddd4; }
+.webshop-tier-scope p:first-child { color: #252923; font-weight: 600; line-height: 1.5; }
+.webshop-tier-scope p + p { margin-top: .45rem; color: #51564d; font-size: .75rem; line-height: 1.65; }
+.plan-summary__capacity { margin-top: .8rem; font-size: .75rem; line-height: 1.55; font-weight: 600; }
+.plan-summary__import { margin-top: .4rem; font-size: .6875rem; line-height: 1.65; color: #eceee9; }
+.staff--tiers .staff__inner { grid-template-columns: minmax(0, 1fr); }
+.staff--tiers .staff__text { max-width: 50rem; }
+.staff--tiers .staff__table-wrap, .webshop-tiers__comparison { min-width: 0; }
+.pricing-table-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.pricing-table-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; border-radius: 4px; }
+.staff--tiers .staff__table { min-width: 640px; }
+.staff--tiers .staff__table th, .staff--tiers .staff__table td, .webshop-tiers__table th, .webshop-tiers__table td { padding: 1rem .8rem; vertical-align: middle; }
+.staff--tiers .staff__table th:first-child, .staff--tiers .staff__table td:first-child, .webshop-tiers__table th:first-child { padding-left: 0; }
+.staff--tiers .staff__table th:last-child, .staff--tiers .staff__table td:last-child, .webshop-tiers__table td:last-child, .webshop-tiers__table th:last-child { padding-right: 0; }
+.staff--tiers .staff__table tbody th { white-space: nowrap; }
+.pricing-table-hint { margin-top: .75rem; color: var(--muted); font-size: .75rem; line-height: 1.5; }
+.webshop-tiers__inner { display: grid; gap: 2rem 4rem; align-items: start; }
+.webshop-tiers__intro .h2 { margin-block: .75rem 1.25rem; }
+.webshop-tiers__intro > p:last-child { color: var(--muted); max-width: 42ch; line-height: 1.7; }
+.webshop-tiers__table { min-width: 540px; }
+.webshop-tiers__table tbody th a { display: inline-flex; align-items: center; gap: .6rem; min-height: 44px; text-underline-offset: .3em; white-space: nowrap; }
+.webshop-tiers__table td { font-variant-numeric: tabular-nums; }
+.webshop-tiers__limits, .webshop-tiers__setup, .webshop-tiers__larger { margin-top: 1.5rem; font-size: .875rem; line-height: 1.75; }
+.webshop-tiers__limits p + p, .webshop-tiers__setup p + p, .webshop-tiers__larger p + p { margin-top: .65rem; color: var(--muted); }
+.webshop-tiers__setup, .webshop-tiers__larger { border-top: var(--border); padding-top: 1.5rem; }
+.webshop-tiers__setup h3 { margin-bottom: .65rem; font-size: 1.05rem; font-weight: 500; }
+.webshop-tiers__larger > a { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; margin-top: .65rem; text-underline-offset: .3em; }
+.pricing-table-scroll--compact { margin: 1rem 0; }
+.pricing-table-scroll--compact .table { color: #252923; font-size: .75rem; }
+.pricing-table-scroll--compact .table caption { color: #51564d; }
+@media (min-width: 1100px) { .webshop-tiers__inner { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); } }
+@media (min-width: 800px) { .pricing-table-hint { display: none; } }
+@media (max-width: 599px) { .webshop-tier-picker select { font-size: .75rem; } .staff--tiers .staff__table-wrap { padding-inline: 1.1rem; } }

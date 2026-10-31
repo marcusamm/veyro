@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { convertDkk, convertPriceText, displayPrice, DISPLAY_EXCHANGE_RATE } from '../src/site/currency';
+import { webshopTier } from '../src/site/webshop-tiers';
 
 const spaces = (text) => text.replace(/[\u00a0\u202f]/g, ' ');
 
@@ -43,5 +44,30 @@ describe('Public price conversions from DKK', () => {
     expect(convertPriceText('1 099,50 DKK', 'sv')).toBe(displayPrice(1099.5, 'sv'));
     expect(displayPrice(299 + 2 * 99, 'en')).toBe('≈ EUR 66.50');
     expect(spaces(displayPrice(299 + 2 * 99, 'sv'))).toBe('≈ 730,05 SEK');
+  });
+
+  // Fixed reference values: convert the complete DKK total before rounding, rather
+  // than adding independently rounded foreign-currency base and extra-user prices.
+  it.each([
+    ['15', 3, 299, '40.01', '439,21'],
+    ['15', 4, 398, '53.25', '584,63'],
+    ['15', 5, 497, '66.50', '730,05'],
+    ['15', 6, 596, '79.75', '875,48'],
+    ['30', 3, 399, '53.39', '586,10'],
+    ['30', 4, 498, '66.64', '731,52'],
+    ['30', 5, 597, '79.88', '876,95'],
+    ['30', 6, 696, '93.13', '1 022,37'],
+    ['50', 3, 499, '66.77', '732,99'],
+    ['50', 4, 598, '80.02', '878,42'],
+    ['50', 5, 697, '93.26', '1 023,84'],
+    ['50', 6, 796, '106.51', '1 169,26'],
+  ])('converts Webshop %s with %i users from the full DKK total', (id, users, dkk, eur, sek) => {
+    const total = webshopTier(id).price_dkk + (users - 3) * 99;
+    expect(total).toBe(dkk);
+    expect(displayPrice(total, 'da')).toBe(`${dkk} kr.`);
+    expect(displayPrice(total, 'en')).toBe(`≈ EUR ${eur}`);
+    expect(spaces(displayPrice(total, 'sv'))).toBe(`≈ ${sek} SEK`);
+    expect(convertPriceText(`DKK ${dkk}/month`, 'en')).toBe(`≈ EUR ${eur}/month`);
+    expect(spaces(convertPriceText(`${dkk} DKK/mån.`, 'sv'))).toBe(`≈ ${sek} SEK/mån.`);
   });
 });
