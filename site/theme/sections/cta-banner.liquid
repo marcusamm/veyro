@@ -13,7 +13,7 @@
         {% render 'button', label: section.settings.label, url: cta_url, style: 'primary' %}
         {% render 'button', label: section.settings.secondary_label, url: section.settings.secondary_link, style: 'secondary' %}
         {%- if section.settings.show_email and settings.company_email != blank -%}
-          <p class="cta__alt">{{ section.settings.email_prefix | escape }} <a href="mailto:{{ settings.company_email | escape }}">{{ settings.company_email | escape }}</a>{% if settings.company_phone != blank %} eller ring på <a href="tel:{{ settings.company_phone | remove: ' ' | escape }}">{{ settings.company_phone | escape }}</a>{% endif %}.</p>
+          <p class="cta__alt">{{ section.settings.email_prefix | escape }} <a href="mailto:{{ settings.company_email | escape }}">{{ settings.company_email | escape }}</a>{% if settings.company_phone != blank %} {{ 'public.or_call' | t }} <a href="tel:{{ settings.company_phone | remove: ' ' | escape }}">{{ settings.company_phone | escape }}</a>{% endif %}.</p>
         {%- endif -%}
       </div>
     </div>

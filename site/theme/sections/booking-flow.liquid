@@ -6,19 +6,19 @@
       <h2 class="t-lg">{{ section.settings.heading }}</h2>
       <div class="rte">{{ section.settings.text }}</div>
       <ol class="booking-flow__steps" role="list">
-        <li><span>01</span><div><strong>Kunden vælger selv en tid</strong><p>Jeres ydelser og ledige tider er samlet på hjemmesiden.</p></div></li>
-        <li><span>02</span><div><strong>Bookingen er på plads</strong><p>I og kunden får en bekræftelse på mail. Kunden kan selv flytte eller aflyse.</p></div></li>
+        <li><span>01</span><div><strong>{{ 'public.customer_chooses_time' | t }}</strong><p>{{ 'public.services_and_times' | t }}</p></div></li>
+        <li><span>02</span><div><strong>{{ 'public.booking_confirmed' | t }}</strong><p>{{ 'public.confirmation_and_changes' | t }}</p></div></li>
       </ol>
-      <a class="arrow-link" href="/pages/booking">Se hvad Booking indeholder</a>
-      <div class="booking-flow__details"><p>Fra første klik til dagens overblik</p><div><span>Ydelser og ledige tider</span><span>Bekræftelse på mail</span><span>Flytning og aflysning</span></div></div>
+      <a class="arrow-link" href="/pages/booking">{{ 'public.booking_includes' | t }}</a>
+      <div class="booking-flow__details"><p>{{ 'public.click_to_overview' | t }}</p><div><span>{{ 'public.services_available_times' | t }}</span><span>{{ 'public.email_confirmation' | t }}</span><span>{{ 'public.reschedule_cancel' | t }}</span></div></div>
     </div>
     <figure class="booking-flow__figure">
-      <a class="demo-snapshot" href="/demo/salon-nord/book?behandling=dameklip" aria-label="Prøv bookingforløbet hos Salon Nord">
-        <span class="capability-browser__chrome" aria-hidden="true"><span><i></i><i></i><i></i></span><span>Salon Nord · Bookingdemo</span><span>↗</span></span>
-        <picture><source media="(max-width: 499px)" srcset="/demo/_previews/salon-nord-booking-mobil.jpg"><img src="/demo/_previews/salon-nord-booking-960.jpg" srcset="/demo/_previews/salon-nord-booking-960.jpg 960w, /demo/_previews/salon-nord-booking-1920.jpg 1920w" sizes="(min-width: 990px) 45vw, 90vw" width="960" height="600" loading="lazy" alt="Skærmbillede fra Salon Nords bookingforløb, hvor kunden vælger en ledig tid"></picture>
-        <span class="demo-snapshot__action">Prøv hele bookingforløbet <span aria-hidden="true">↗</span></span>
+      <a class="demo-snapshot" href="/demo/salon-nord/book?behandling=dameklip" aria-label="{{ 'public.try_salon_flow' | t | escape }}">
+        <span class="capability-browser__chrome" aria-hidden="true"><span><i></i><i></i><i></i></span><span>{{ 'public.salon_booking_demo' | t }}</span><span>↗</span></span>
+        <picture><source media="(max-width: 499px)" srcset="/demo/_previews/salon-nord-booking-mobil.jpg"><img src="/demo/_previews/salon-nord-booking-960.jpg" srcset="/demo/_previews/salon-nord-booking-960.jpg 960w, /demo/_previews/salon-nord-booking-1920.jpg 1920w" sizes="(min-width: 990px) 45vw, 90vw" width="960" height="600" loading="lazy" alt="{{ 'public.booking_flow_alt' | t | escape }}"></picture>
+        <span class="demo-snapshot__action">{{ 'public.try_full_booking' | t }} <span aria-hidden="true">↗</span></span>
       </a>
-      <figcaption>Skærmbillede fra Salon Nords bookingdemo. Ingen tid bliver booket.</figcaption>
+      <figcaption>{{ 'public.booking_screenshot_note' | t }}</figcaption>
     </figure>
   </div>
 </section>

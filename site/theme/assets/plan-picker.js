@@ -1,6 +1,7 @@
 /* A native radio group chooses which existing demo enquiry link to use. No purchase is made. */
 (() => {
   'use strict';
+  const strings = (() => { try { return JSON.parse(document.getElementById('ThemeStrings')?.textContent || '{}'); } catch (_) { return {}; } })();
   const init = () => document.querySelectorAll('[data-plan-picker]').forEach(picker => {
     const cards = [...picker.querySelectorAll('[data-plan-card]')];
     const summary = picker.querySelector('[data-plan-summary]');
@@ -21,7 +22,7 @@
       description.textContent = card.querySelector('.pc__desc')?.textContent || '';
       link.setAttribute('href', card.dataset.planLink);
       summary.dataset.plan = radio.value;
-      if (announce && status) status.textContent = `${card.dataset.planTitle} valgt. ${card.dataset.planPrice} pr. måned ekskl. moms efter den gratis første måned.`;
+      if (announce && status) status.textContent = (strings.planSelected || '').replace('{title}', card.dataset.planTitle).replace('{price}', card.dataset.planPrice);
     };
     picker.querySelectorAll('[data-plan-radio]').forEach(radio => {
       radio.addEventListener('change', () => { if (radio.checked) select(radio, true); });

@@ -46,6 +46,7 @@
         {%- if is_subscription -%}<span class="product__per">{{ 'subscriptions.per_month' | t }}</span>{%- endif -%}
         {%- if cart.taxes_included -%}<span class="small muted">{{ 'products.tax_included' | t }}</span>{%- endif -%}
       </div>
+      {% render 'currency-note' %}
       {%- if is_subscription -%}
         <p class="sub-terms">{% render 'icon', name: 'automation', size: 16 %}<span>{{ 'subscriptions.terms' | t }}</span></p>
       {%- endif -%}

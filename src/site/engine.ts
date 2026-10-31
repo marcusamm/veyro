@@ -1,6 +1,8 @@
 // Gengiver hjemmesidens tema (Shopify-Liquid) i Workeren med liquidjs.
 // Temaet ligger i site/theme og pakkes ind i theme.generated.ts (npm run build:site).
 import { Hash, Liquid, type Context, type Emitter, type Template, type TagToken, type TopLevelToken } from 'liquidjs';
+import { contentText, type SiteLanguage } from './localization';
+import { displayPrice, DISPLAY_EXCHANGE_RATE } from './currency';
 import { THEME_ASSETS, THEME_FILES, THEME_VERSION } from './theme.generated';
 
 const stripComment = (t: string) => t.replace(/^\s*\/\*[\s\S]*?\*\/\s*/, '');
@@ -58,9 +60,11 @@ export function themeSettingsSchema(): { name: string; settings?: SettingDef[] }
 }
 
 export const LOCALE: Record<string, any> = readThemeJson('locales/da.default.json');
+const locales = { da: LOCALE, en: readThemeJson('locales/en.json'), sv: readThemeJson('locales/sv.json') };
 
-export function translate(key: string, args: Record<string, unknown> = {}): string {
-  const v = key.split('.').reduce<any>((o, k) => (o == null ? o : o[k]), LOCALE);
+export function translate(key: string, args: Record<string, unknown> = {}, language: SiteLanguage = 'da'): string {
+  const locale = locales[language] ?? LOCALE;
+  const v = key.split('.').reduce<any>((o, k) => (o == null ? o : o[k]), locale);
   if (v == null) return key;
   return String(v).replace(/{{\s*(\w+)\s*}}/g, (_, k) => String(args[k] ?? ''));
 }
@@ -133,6 +137,7 @@ export interface RenderHooks {
   forms: Record<string, FormState>;
   path: string;
   host: string;
+  language?: SiteLanguage;
 }
 
 const snippets: Record<string, string> = {};
@@ -161,11 +166,12 @@ function blockTag(name: string, render: (this: any, ctx: Context, emitter: Emitt
 function createEngine(): Liquid {
   const engine = new Liquid({ templates: snippets, extname: '.liquid', cache: true, strictFilters: false, jsTruthy: false, ownPropertyOnly: true });
 
-  engine.registerFilter('t', function (key: string, ...args: unknown[]) {
+  engine.registerFilter('t', function (this: any, key: string, ...args: unknown[]) {
     const o: Record<string, unknown> = {};
     for (const a of args) if (Array.isArray(a)) o[a[0]] = a[1];
-    return translate(key, o);
+    return translate(key, o, (this.context.globals.__hooks as RenderHooks).language);
   });
+  engine.registerFilter('content_t', function (this: any, value: string) { return contentText(value, (this.context.globals.__hooks as RenderHooks).language ?? 'da'); });
   // Som hos Shopify: protokol-relative adresser (temaet sætter selv "https:" foran i delingsbilleder)
   engine.registerFilter('asset_url', function (this: any, f: string) {
     return `//${(this.context.globals.__hooks as RenderHooks).host}/assets/${f}?v=${THEME_VERSION}`;
@@ -185,9 +191,16 @@ function createEngine(): Liquid {
   });
   engine.registerFilter('handle', handleize);
   engine.registerFilter('handleize', handleize);
-  engine.registerFilter('money', (v: number) => moneyText(v, true));
-  engine.registerFilter('money_without_trailing_zeros', (v: number) => moneyText(v, false));
-  engine.registerFilter('money_with_currency', (v: number) => moneyText(v, true).replace(/ kr$/, ' DKK'));
+  const money = function (this: any, v: number, zeros: boolean) {
+    const language = (this.context.globals.__hooks as RenderHooks)?.language ?? 'da';
+    return language === 'da' ? moneyText(v, zeros) : displayPrice(v / 100, language);
+  };
+  engine.registerFilter('money', function (this: any, v: number) { return money.call(this, v, true); });
+  engine.registerFilter('money_without_trailing_zeros', function (this: any, v: number) { return money.call(this, v, false); });
+  engine.registerFilter('money_with_currency', function (this: any, v: number) { return money.call(this, v, true).replace(/ kr$/, ' DKK'); });
+  // Numeric section settings are whole DKK; product/cart money filters above receive øre.
+  engine.registerFilter('display_money', function (this: any, v: number) { return displayPrice(v, (this.context.globals.__hooks as RenderHooks)?.language ?? 'da'); });
+  engine.registerFilter('exchange_rate_source', () => DISPLAY_EXCHANGE_RATE.source);
   engine.registerFilter('font_face', () => '');
   engine.registerFilter('payment_button', () => '');
   engine.registerFilter('cart_clear', () => '');
@@ -225,7 +238,7 @@ function createEngine(): Liquid {
       const action = kind === 'product' ? '/cart/add' : `/contact#${escAttr(id)}`;
       emitter.write(
         `<form method="post" action="${action}" accept-charset="UTF-8"${id ? ` id="${escAttr(id)}"` : ''}${h.class ? ` class="${escAttr(h.class)}"` : ''}${h.novalidate ? ' novalidate' : ''}>` +
-          `<input type="hidden" name="form_type" value="${escAttr(kind)}">`,
+          `<input type="hidden" name="form_type" value="${escAttr(kind)}"><input type="hidden" name="site_language" value="${hooks.language ?? 'da'}">`,
       );
       if (kind === 'contact') {
         emitter.write(

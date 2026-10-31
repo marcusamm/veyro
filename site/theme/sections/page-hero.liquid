@@ -72,6 +72,7 @@
         </div>
       {%- endif -%}
     </div>
+    {%- if section.settings.note contains '≈' or section.settings.facts contains '≈' or section.settings.text contains '≈' -%}{% render 'currency-note' %}{%- endif -%}
     <hr class="page-hero__rule">
   </div>
 </section>

@@ -14,6 +14,7 @@
         </ul>
       {%- endif -%}
     </div>
+    {% render 'currency-note' %}
     <div class="packages__chooser" data-plan-picker>
     <ul class="pc-grid" role="list">
       {%- for block in section.blocks -%}
@@ -22,20 +23,20 @@
     </ul>
     {%- assign first_block = section.blocks | first -%}
     {%- assign initial = first_block.settings -%}
-    <aside class="plan-summary" data-plan-summary aria-label="Overblik over den valgte løsning">
-      <p class="plan-summary__eyebrow">Dit overblik</p>
+    <aside class="plan-summary" data-plan-summary aria-label="{{ 'public.selected_solution_overview' | t | escape }}">
+      <p class="plan-summary__eyebrow">{{ 'public.your_summary' | t }}</p>
       <div class="plan-summary__preview">
         <p class="plan-summary__name" data-summary-title>{{ initial.title | escape }}</p>
         <p class="plan-summary__description" data-summary-description>{{ initial.text | escape }}</p>
         <p class="plan-summary__price"><strong data-summary-price>{{ initial.price | escape }}</strong><span>{{ initial.interval | escape }}</span></p>
       </div>
-      <dl class="plan-summary__terms"><div><dt>Oprettelse</dt><dd>Gratis</dd></div><div><dt>Første måned</dt><dd>Gratis</dd></div><div><dt>Binding</dt><dd>Ingen</dd></div></dl>
-      <p class="plan-summary__total-label">Herefter pr. måned</p>
+      <dl class="plan-summary__terms"><div><dt>{{ 'public.setup' | t }}</dt><dd>{{ 'public.free' | t }}</dd></div><div><dt>{{ 'public.first_month' | t }}</dt><dd>{{ 'public.free' | t }}</dd></div><div><dt>{{ 'public.minimum_term' | t }}</dt><dd>{{ 'public.none' | t }}</dd></div></dl>
+      <p class="plan-summary__total-label">{{ 'public.monthly_afterwards' | t }}</p>
       <p class="plan-summary__total"><strong data-summary-total>{{ initial.price | escape }}</strong><span>{{ initial.interval | escape }}</span></p>
       <p class="plan-summary__vat">{{ initial.vat | escape }}</p>
       <a class="btn btn--primary plan-summary__cta" data-summary-link href="{{ initial.button_link }}">{{ initial.button_label | escape }}<span aria-hidden="true">↗</span></a>
-      <p class="plan-summary__note">Uforpligtende. Vi taler om jeres behov, før I beslutter jer.</p>
-      <div class="plan-summary__start"><p>Sådan kommer I i gang</p><ol><li>Fortæl om virksomheden</li><li>Se en demo og giv feedback</li><li>Godkend design og aftalt indhold</li></ol></div>
+      <p class="plan-summary__note">{{ 'public.no_obligation' | t }}</p>
+      <div class="plan-summary__start"><p>{{ 'public.get_started' | t }}</p><ol><li>{{ 'public.tell_us_about_business' | t }}</li><li>{{ 'public.demo_and_feedback' | t }}</li><li>{{ 'public.approve_design' | t }}</li></ol></div>
       <p class="visually-hidden" role="status" aria-live="polite" aria-atomic="true" data-summary-status></p>
     </aside>
     </div>

@@ -1,68 +1,73 @@
+{%- liquid
+  assign fallback_eyebrow = 'public.gallery_eyebrow' | t
+  assign fallback_heading = 'public.gallery_heading' | t
+  assign fallback_text = 'public.gallery_description' | t
+-%}
 {%- comment -%}Original, rumlig fremvisning af Veyros tre eksisterende demoer. Alle er fiktive designkoncepter.{%- endcomment -%}
 <section class="project-gallery" id="{{ section.settings.anchor | default: 'et-udtryk-der-er-jeres' | handle }}" data-project-gallery>
   <div class="project-gallery__intro">
-    <p class="project-gallery__eyebrow"><span aria-hidden="true"></span>{{ section.settings.eyebrow | default: 'Formet efter din forretning' | escape }}</p>
-    <h2>{{ section.settings.heading | default: 'Forskellige verdener.<br>Samme omhu.' }}</h2>
-    <div class="project-gallery__text rte">{{ section.settings.text | default: '<p>En hjemmeside skal ligne den virksomhed, der står bag. Se tre forskellige måder, det kan tage form på.</p>' }}</div>
+    <p class="project-gallery__eyebrow"><span aria-hidden="true"></span>{{ section.settings.eyebrow | default: fallback_eyebrow | escape }}</p>
+    <h2>{{ section.settings.heading | default: fallback_heading }}</h2>
+    <div class="project-gallery__text rte">{{ section.settings.text | default: fallback_text }}</div>
   </div>
-  <div class="project-gallery__stage" data-gallery-stage aria-label="Tre hjemmesidedemoer">
-    <div class="gallery-orbit__lead" aria-hidden="true">Et udtryk.<br>Der er jeres.</div>
-    <a class="project-gallery__plane project-gallery__plane--craft" href="/demo/holm-tomrer/" aria-label="Åbn Holm Tømrer – fiktivt designkoncept">
+  <div class="project-gallery__stage" data-gallery-stage aria-label="{{ 'public.three_demo_websites' | t | escape }}">
+    <div class="gallery-orbit__lead" aria-hidden="true">{{ 'public.a_look' | t }}<br>{{ 'public.that_is_yours' | t }}</div>
+    <a class="project-gallery__plane project-gallery__plane--craft" href="/demo/holm-tomrer/" aria-label="{{ 'public.open_holm_concept' | t | escape }}">
       <div class="project-gallery__float">
         <figure class="project-gallery__surface">
-          <div class="project-gallery__image"><img src="/demo/_previews/holm-tomrer-960.jpg" srcset="/demo/_previews/holm-tomrer-960.jpg 960w, /demo/_previews/holm-tomrer-1920.jpg 1920w" sizes="(min-width: 990px) 46vw, 85vw" width="1920" height="1200" alt="Holm Tømrer: en hjemmeside med håndværk og træ i centrum" loading="lazy" decoding="async"></div>
-          <figcaption><span>Holm Tømrer</span><span>Hjemmeside <span aria-hidden="true">↗</span></span></figcaption>
+          <div class="project-gallery__image"><img src="/demo/_previews/holm-tomrer-960.jpg" srcset="/demo/_previews/holm-tomrer-960.jpg 960w, /demo/_previews/holm-tomrer-1920.jpg 1920w" sizes="(min-width: 990px) 46vw, 85vw" width="1920" height="1200" alt="{{ 'public.holm_image' | t | escape }}" loading="lazy" decoding="async"></div>
+          <figcaption><span>Holm Tømrer</span><span>{{ 'public.website' | t }} <span aria-hidden="true">↗</span></span></figcaption>
         </figure>
       </div>
     </a>
-    <a class="project-gallery__plane project-gallery__plane--salon" href="/demo/salon-nord/" aria-label="Åbn Salon Nord – fiktivt designkoncept">
+    <a class="project-gallery__plane project-gallery__plane--salon" href="/demo/salon-nord/" aria-label="{{ 'public.open_salon_concept' | t | escape }}">
       <div class="project-gallery__float">
         <figure class="project-gallery__surface">
-          <div class="project-gallery__image"><img src="/demo/_previews/salon-nord-960.jpg" srcset="/demo/_previews/salon-nord-960.jpg 960w, /demo/_previews/salon-nord-1920.jpg 1920w" sizes="(min-width: 990px) 44vw, 85vw" width="1920" height="1200" alt="Salon Nord: frisørsalon med hårportræt, behandlinger og online booking" loading="lazy" decoding="async"></div>
-          <figcaption><span>Salon Nord</span><span>Booking <span aria-hidden="true">↗</span></span></figcaption>
+          <div class="project-gallery__image"><img src="/demo/_previews/salon-nord-960.jpg" srcset="/demo/_previews/salon-nord-960.jpg 960w, /demo/_previews/salon-nord-1920.jpg 1920w" sizes="(min-width: 990px) 44vw, 85vw" width="1920" height="1200" alt="{{ 'public.salon_image' | t | escape }}" loading="lazy" decoding="async"></div>
+          <figcaption><span>Salon Nord</span><span>{{ 'public.booking' | t }} <span aria-hidden="true">↗</span></span></figcaption>
         </figure>
       </div>
     </a>
-    <a class="project-gallery__plane project-gallery__plane--shop" href="/demo/lervaerk/" aria-label="Åbn Lerværk – fiktivt designkoncept">
+    <a class="project-gallery__plane project-gallery__plane--shop" href="/demo/lervaerk/" aria-label="{{ 'public.open_shop_concept' | t | escape }}">
       <div class="project-gallery__float">
         <figure class="project-gallery__surface">
-          <div class="project-gallery__image"><img src="/demo/_previews/lervaerk-960.jpg" srcset="/demo/_previews/lervaerk-960.jpg 960w, /demo/_previews/lervaerk-1920.jpg 1920w" sizes="(min-width: 990px) 34vw, 85vw" width="1920" height="1200" alt="Lerværk: keramikbutik med kollektion, materialer og hverdagens bord" loading="lazy" decoding="async"></div>
-          <figcaption><span>Lerværk</span><span>Webshop <span aria-hidden="true">↗</span></span></figcaption>
+          <div class="project-gallery__image"><img src="/demo/_previews/lervaerk-960.jpg" srcset="/demo/_previews/lervaerk-960.jpg 960w, /demo/_previews/lervaerk-1920.jpg 1920w" sizes="(min-width: 990px) 34vw, 85vw" width="1920" height="1200" alt="{{ 'public.shop_image' | t | escape }}" loading="lazy" decoding="async"></div>
+          <figcaption><span>Lerværk</span><span>{{ 'public.online_shop' | t }} <span aria-hidden="true">↗</span></span></figcaption>
         </figure>
       </div>
     </a>
   </div>
   <div class="gallery-orbit__controls" data-gallery-controls hidden>
-    <p>Træk for at dreje <span aria-hidden="true">↔</span> Klik på en demo for at åbne</p>
-    <div><button type="button" data-gallery-prev aria-label="Vis forrige demo">←</button><button type="button" data-gallery-pause aria-label="Sæt rotationen på pause" aria-pressed="false"><span data-gallery-pause-icon aria-hidden="true">Ⅱ</span></button><button type="button" data-gallery-next aria-label="Vis næste demo">→</button><span data-gallery-current>Holm Tømrer</span></div>
+    <p>{{ 'public.drag_to_rotate' | t }} <span aria-hidden="true">↔</span> {{ 'public.click_demo_to_open' | t }}</p>
+    <div><button type="button" data-gallery-prev aria-label="{{ 'public.previous_demo' | t | escape }}">←</button><button type="button" data-gallery-pause aria-label="{{ 'public.pause_rotation' | t | escape }}" aria-pressed="false"><span data-gallery-pause-icon aria-hidden="true">Ⅱ</span></button><button type="button" data-gallery-next aria-label="{{ 'public.next_demo' | t | escape }}">→</button><span data-gallery-current>Holm Tømrer</span></div>
   </div>
-  <div class="project-gallery__dossiers" aria-label="Det viser designkoncepterne">
+  <div class="project-gallery__dossiers" aria-label="{{ 'public.concept_contents' | t | escape }}">
     <article class="project-gallery__dossier">
-      <div class="project-gallery__dossier-meta"><span>Hjemmeside</span><span>Designkoncept</span></div>
+      <div class="project-gallery__dossier-meta"><span>{{ 'public.website' | t }}</span><span>{{ 'public.design_concept' | t }}</span></div>
       <h3>Holm Tømrer</h3>
-      <p>Håndværket først. Ydelser, billeder og en tydelig kontaktvej gør det let at gå fra interesse til en samtale om opgaven.</p>
-      <ul class="project-gallery__tags" role="list"><li>Ydelser</li><li>Projekter</li><li>Kontakt</li></ul>
-      <a href="/demo/holm-tomrer/">Udforsk hjemmesiden <span aria-hidden="true">↗</span></a>
+      <p>{{ 'public.craft_demo_description' | t }}</p>
+      <ul class="project-gallery__tags" role="list"><li>{{ 'public.services' | t }}</li><li>{{ 'public.projects' | t }}</li><li>{{ 'public.contact' | t }}</li></ul>
+      <a href="/demo/holm-tomrer/">{{ 'public.explore_website' | t }} <span aria-hidden="true">↗</span></a>
     </article>
     <article class="project-gallery__dossier">
-      <div class="project-gallery__dossier-meta"><span>Booking</span><span>Designkoncept</span></div>
+      <div class="project-gallery__dossier-meta"><span>{{ 'public.booking' | t }}</span><span>{{ 'public.design_concept' | t }}</span></div>
       <h3>Salon Nord</h3>
-      <p>Fra behandling til ledig tid. Kunden vælger medarbejder, dato og tidspunkt i ét samlet bookingforløb.</p>
-      <ul class="project-gallery__tags" role="list"><li>Behandlinger</li><li>Medarbejdere</li><li>Kalender</li></ul>
-      <a href="/demo/salon-nord/book">Prøv bookingforløbet <span aria-hidden="true">↗</span></a>
+      <p>{{ 'public.booking_demo_description' | t }}</p>
+      <ul class="project-gallery__tags" role="list"><li>{{ 'public.treatments' | t }}</li><li>{{ 'public.staff' | t }}</li><li>{{ 'public.calendar' | t }}</li></ul>
+      <a href="/demo/salon-nord/book">{{ 'public.try_booking' | t }} <span aria-hidden="true">↗</span></a>
     </article>
     <article class="project-gallery__dossier">
-      <div class="project-gallery__dossier-meta"><span>Webshop</span><span>Designkoncept</span></div>
+      <div class="project-gallery__dossier-meta"><span>{{ 'public.online_shop' | t }}</span><span>{{ 'public.design_concept' | t }}</span></div>
       <h3>Lerværk</h3>
-      <p>Plads til produktet og dets detaljer. Glasurvalg, lager og antal er samlet, så vejen fra keramikkop til kurv er nem at følge.</p>
-      <ul class="project-gallery__tags" role="list"><li>Varianter</li><li>Lager</li><li>Kurv</li></ul>
-      <a href="/demo/lervaerk/">Gå på opdagelse i shoppen <span aria-hidden="true">↗</span></a>
+      <p>{{ 'public.shop_demo_description' | t }}</p>
+      <ul class="project-gallery__tags" role="list"><li>{{ 'public.variants' | t }}</li><li>{{ 'public.stock' | t }}</li><li>{{ 'public.basket' | t }}</li></ul>
+      <a href="/demo/lervaerk/">{{ 'public.explore_shop' | t }} <span aria-hidden="true">↗</span></a>
     </article>
   </div>
   <div class="project-gallery__footer">
-    <p>Fiktive designkoncepter — lavet af Veyro</p>
-    <span class="project-gallery__swipe" aria-hidden="true">Swipe for at udforske <span>↔</span></span>
-    <a href="/pages/eksempler">Se alle eksempler <span aria-hidden="true">↗</span></a>
+    <p>{{ 'public.fictional_concepts_credit' | t }}</p>
+    <span class="project-gallery__swipe" aria-hidden="true">{{ 'public.swipe_to_explore' | t }} <span>↔</span></span>
+    <a href="/pages/eksempler">{{ 'public.all_examples' | t }} <span aria-hidden="true">↗</span></a>
   </div>
 </section>
 {% schema %}

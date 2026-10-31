@@ -1,6 +1,6 @@
 <section class="section not-found">
   <div class="container not-found__inner">
-    <p class="label">Fejl 404</p>
+    <p class="label">{{ 'public.error_404' | t }}</p>
     <h1 class="t-xl">{{ 'not_found.title' | t }}</h1>
     <p class="lead">{{ 'not_found.text' | t }}</p>
     <div class="actions">
@@ -9,13 +9,13 @@
       {%- assign contact_label = 'footer.contact' | t -%}
       {% render 'button', label: contact_label, url: pages['kontakt'].url, style: 'secondary' %}
     </div>
-    <nav class="not-found__links" aria-label="Populære sider">
-      <h2 class="t-sm">Måske leder du efter</h2>
+    <nav class="not-found__links" aria-label="{{ 'public.popular_pages' | t | escape }}">
+      <h2 class="t-sm">{{ 'public.looking_for' | t }}</h2>
       <ul role="list">
-        <li><a href="/pages/ydelser">Løsninger</a></li>
-        <li><a href="/pages/eksempler">Eksempler</a></li>
-        <li><a href="/pages/priser">Priser</a></li>
-        <li><a href="https://kunde.veyro.dk/login">Kundelogin</a></li>
+        <li><a href="/pages/ydelser">{{ 'public.solutions' | t }}</a></li>
+        <li><a href="/pages/eksempler">{{ 'public.examples' | t }}</a></li>
+        <li><a href="/pages/priser">{{ 'public.prices' | t }}</a></li>
+        <li><a href="https://kunde.veyro.dk/login">{{ 'public.customer_login' | t }}</a></li>
       </ul>
     </nav>
   </div>

@@ -14,17 +14,17 @@
       assign shot = 'salon-nord-booking'
       assign path = '/demo/salon-nord/book'
       assign title = 'Salon Nord'
-      assign alt = 'Skærmbillede fra bookingen hos Salon Nord, hvor kunden vælger dato og tid'
+      assign alt = 'public.concept_booking_alt' | t
     when 'shop'
       assign shot = 'lervaerk-produkt'
       assign path = '/demo/lervaerk/produkter/krus'
       assign title = 'Lerværk'
-      assign alt = 'Skærmbillede af en produktside i Lerværks webshop med valg af glasur og antal'
+      assign alt = 'public.concept_product_alt' | t
     else
       assign shot = 'holm-tomrer'
       assign path = '/demo/holm-tomrer/'
       assign title = 'Holm Tømrer'
-      assign alt = 'Skærmbillede af forsiden hos Holm Tømrer med overskrift, knapper og et stort foto'
+      assign alt = 'public.concept_home_alt' | t
   endcase
   if eager
     assign loading = 'eager'
@@ -44,7 +44,7 @@
   </a>
 </div>
 <figcaption class="concept__cap">
-  <span class="badge">Fiktivt designkoncept — lavet af Veyro</span>
+  <span class="badge">{{ 'public.fictional_concept_credit' | t }}</span>
   {%- if caption != blank -%}<span>{{ caption | escape }}</span>{%- endif -%}
-  <a class="arrow-link" href="{{ path }}">Åbn demoen<span class="visually-hidden">: {{ title }}</span></a>
+  <a class="arrow-link" href="{{ path }}">{{ 'public.open_demo' | t }}<span class="visually-hidden">: {{ title }}</span></a>
 </figcaption>

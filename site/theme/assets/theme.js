@@ -41,7 +41,7 @@
       panel.hidden = !open;
       document.documentElement.classList.toggle('nav-open', open);
       document.querySelectorAll('main, .site-footer, [data-cookie]').forEach((el) => { el.inert = open; });
-      if (label) label.textContent = open ? 'Luk' : 'Menu';
+      if (label) label.textContent = open ? strings.close : strings.menu;
       if (open) {
         panel.querySelector('a')?.focus();
       } else if (returnFocus) {
@@ -133,9 +133,9 @@
           logItem = document.createElement('li');
           logItem.className = 'demo__log-new';
           const a = document.createElement('span');
-          a.textContent = 'Forbrug registreret på job';
+          a.textContent = strings.usageRecorded;
           const b = document.createElement('em');
-          b.textContent = `Arbejdshandsker −${qty}`;
+          b.textContent = fmt(strings.glovesUsed, { qty });
           logItem.append(a, b);
           log.prepend(logItem);
           if (log.lastElementChild !== logItem) log.lastElementChild.hidden = true;
@@ -153,7 +153,7 @@
         if (played) {
           render(start.physical - qty);
           showLog(true);
-          status.textContent = `${qty} par registreret på jobbet. Lager opdateret.`;
+          status.textContent = fmt(strings.stockUpdated, { qty });
           status.classList.add('is-shown');
         }
         row.classList.remove('is-highlight');
@@ -174,7 +174,7 @@
           later(() => render(start.physical - qty), 280);
           later(() => {
             showLog(true);
-            status.textContent = `${qty} par registreret på jobbet. Lager opdateret.`;
+            status.textContent = fmt(strings.stockUpdated, { qty });
             status.classList.add('is-shown');
           }, 520);
           later(() => row.classList.remove('is-highlight'), 1600);
@@ -183,7 +183,7 @@
           btn.textContent = playLabel;
           render(start.physical);
           showLog(false);
-          status.textContent = 'Eksemplet er nulstillet.';
+          status.textContent = strings.exampleReset;
           status.classList.add('is-shown');
         }
       });
@@ -507,8 +507,9 @@
   const NEW_HASH = { '#pakke-basis': '#pakke-hjemmeside', '#webdesign': '' };
   function redirectOldAnchors() {
     const { pathname, hash, search } = window.location;
-    if (pathname !== '/pages/ydelser' || !OLD_ANCHORS[hash]) return;
-    window.location.replace(OLD_ANCHORS[hash] + search + (hash in NEW_HASH ? NEW_HASH[hash] : hash));
+    const prefix = ['en', 'sv'].includes(document.documentElement.lang) ? '/' + document.documentElement.lang : '';
+    if (pathname !== prefix + '/pages/ydelser' || !OLD_ANCHORS[hash]) return;
+    window.location.replace(prefix + OLD_ANCHORS[hash] + search + (hash in NEW_HASH ? NEW_HASH[hash] : hash));
   }
 
   document.addEventListener('DOMContentLoaded', () => {

@@ -14,11 +14,12 @@ import { latestTemplate, veyroInfo } from '../lib/nda';
 import { sampleNdaPdf } from '../lib/nda-docs';
 import { asset, THEME_VERSION, translate, warmUp, type FormState } from './engine';
 import { blockEmailKey, countView, createLead, ipHash, isBlockedSender, LEAD_KIND_LABEL, markLeadNotified, type LeadCartLine, type LeadKind } from './leads';
+import { languagePath, localizedPath, SITE_LANGUAGES, type SiteLanguage } from './localization';
 import { cartDrop, renderSitePage, type CartLine, type RenderRequest } from './render';
 
 warmUp();
 
-type SiteEnv = { Bindings: Env; Variables: { nonce: string } };
+type SiteEnv = { Bindings: Env; Variables: { nonce: string; siteLanguage: SiteLanguage } };
 const site = new Hono<SiteEnv>();
 
 export function siteHosts(env: Env): string[] {
@@ -42,6 +43,7 @@ function isCanonicalHost(c: Context<SiteEnv>): boolean {
 
 site.use('*', async (c, next) => {
   const url = new URL(c.req.url);
+  c.set('siteLanguage', languagePath(url.pathname).language);
   // www.veyro.dk → veyro.dk, og http → https på de rigtige adresser (ikke ved lokal udvikling)
   const www = url.hostname.startsWith('www.') && siteHosts(c.env).includes(url.hostname.slice(4));
   const insecure = url.protocol === 'http:' && url.hostname !== 'localhost' && canonicalOrigin(c.env).startsWith('https:');
@@ -142,14 +144,14 @@ site.get('/favicon.ico', (c) => {
 
 site.get('/robots.txt', (c) => {
   if (!isCanonicalHost(c)) return c.text('User-agent: *\nDisallow: /\n');
-  return c.text(`User-agent: *\nDisallow: /cart\nDisallow: /contact\n\nSitemap: ${canonicalOrigin(c.env)}/sitemap.xml\n`, 200, { 'Cache-Control': 'public, max-age=3600' });
+  return c.text(`User-agent: *\nDisallow: /cart\nDisallow: /contact\nDisallow: /en/cart\nDisallow: /sv/cart\n\nSitemap: ${canonicalOrigin(c.env)}/sitemap.xml\n`, 200, { 'Cache-Control': 'public, max-age=3600' });
 });
 
 site.get('/sitemap.xml', async (c) => {
   const data = await loadSite(c.env.DB);
   const o = canonicalOrigin(c.env);
   const urls = ['/', ...data.pages.filter((p) => p.published).map((p) => `/pages/${p.handle}`), ...data.products.filter((p) => p.status === 'active').map((p) => `/products/${p.handle}`)];
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${o}${u}</loc></url>`).join('\n')}\n</urlset>\n`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.flatMap((u) => SITE_LANGUAGES.map(language => `  <url><loc>${o}${localizedPath(u, language)}</loc>${SITE_LANGUAGES.map(code => `<xhtml:link rel="alternate" hreflang="${code}" href="${o}${localizedPath(u, code)}"/>`).join('')}</url>`)).join('\n')}\n</urlset>\n`;
   return c.body(xml, 200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
 });
 
@@ -237,25 +239,34 @@ const qty = (v: unknown, fallback: number) => {
   return Number.isFinite(n) ? Math.max(0, Math.min(MAX_QTY, n)) : fallback;
 };
 
+const cartLanguage = (c: Context<SiteEnv>, body?: Record<string, unknown>): SiteLanguage => {
+  const value = body?.site_language;
+  const language = value === 'en' || value === 'sv' ? value : languagePath(new URL(c.req.url).pathname).language;
+  c.set('siteLanguage', language);
+  return language;
+};
+
 site.post('/cart/add', async (c) => {
   if (!sameOrigin(c)) return c.text('Ugyldig anmodning.', 403);
   const body = await c.req.parseBody();
+  cartLanguage(c, body);
   const handle = String(body['id'] ?? '');
   const data = await loadSite(c.env.DB);
   const product = data.products.find((p) => p.handle === handle && p.status === 'active');
-  if (!product) return c.redirect('/cart', 303);
+  if (!product) return c.redirect(localizedPath('/cart', cartLanguage(c, body)), 303);
   const lines = readCart(c);
   const add = Math.max(1, qty(body['quantity'], 1));
   const line = lines.find((l) => l.handle === handle);
   if (line) line.quantity = Math.min(MAX_QTY, line.quantity + add);
   else lines.push({ handle, quantity: add });
   writeCart(c, lines);
-  return c.redirect('/cart', 303);
+  return c.redirect(localizedPath('/cart', cartLanguage(c, body)), 303);
 });
 
 async function updateCart(c: Context<SiteEnv>) {
   if (!sameOrigin(c)) return c.text('Ugyldig anmodning.', 403);
   const body = await c.req.parseBody({ all: true });
+  cartLanguage(c, body);
   const raw = body['updates[]'];
   const updates = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
   const data = await loadSite(c.env.DB);
@@ -267,12 +278,12 @@ async function updateCart(c: Context<SiteEnv>) {
     if (l && updates[i] != null) l.quantity = qty(updates[i], l.quantity);
   });
   writeCart(c, lines);
-  return c.redirect('/cart', 303);
+  return c.redirect(localizedPath('/cart', cartLanguage(c, body)), 303);
 }
 site.post('/cart', updateCart);
 site.post('/cart/update', updateCart);
 
-site.get('/cart/change', async (c) => {
+const changeCart = async (c: Context<SiteEnv>) => {
   const line = Number(c.req.query('line'));
   const q = qty(c.req.query('quantity'), 0);
   const data = await loadSite(c.env.DB);
@@ -284,13 +295,18 @@ site.get('/cart/change', async (c) => {
     if (l) l.quantity = q;
     writeCart(c, lines);
   }
-  return c.redirect('/cart', 303);
-});
+  return c.redirect(localizedPath('/cart', cartLanguage(c)), 303);
+};
+site.get('/cart/change', changeCart);
+site.get('/en/cart/change', changeCart);
+site.get('/sv/cart/change', changeCart);
 
-site.post('/cart/clear', (c) => {
+site.post('/cart/clear', async (c) => {
   if (!sameOrigin(c)) return c.text('Ugyldig anmodning.', 403);
+  const body = await c.req.parseBody();
+  cartLanguage(c, body);
   writeCart(c, []);
-  return c.redirect('/cart', 303);
+  return c.redirect(localizedPath('/cart', cartLanguage(c, body)), 303);
 });
 site.post('/cart/clear.js', (c) => {
   if (!sameOrigin(c)) return c.json({ error: 'forbidden' }, 403);
@@ -321,12 +337,12 @@ function resolvePath(data: SiteData, path: string): Resolved | null {
 // Gengivne sider i hukommelsen (pr. isolate) og i D1 (på tværs af servere), pr. indholdsversion
 const memCache = new Map<string, string>();
 
-async function pageHtml(c: Context<SiteEnv>, data: SiteData, path: string, r: Resolved, forms: Record<string, FormState> | null): Promise<string> {
+async function pageHtml(c: Context<SiteEnv>, data: SiteData, path: string, r: Resolved, forms: Record<string, FormState> | null, language: SiteLanguage): Promise<string> {
   const host = new URL(c.req.url).host;
-  const req: RenderRequest = { ...r, path, host, canonicalOrigin: canonicalOrigin(c.env), cart: r.type === 'cart' ? readCart(c) : [], forms: forms ?? {} };
-  const cacheable = !forms && r.type !== 'cart';
+  const req: RenderRequest = { ...r, language, path, host, canonicalOrigin: canonicalOrigin(c.env), cart: r.type === 'cart' ? readCart(c) : [], forms: forms ?? {} };
+  const cacheable = !forms && r.type !== 'cart' && r.type !== '404';
   if (!cacheable) return renderSitePage(data, req);
-  const key = `${data.version}|${host}|${path}`;
+  const key = `${data.version}|${host}|${language}|${path}`;
   const mem = memCache.get(key);
   if (mem) return mem;
   const row = await c.env.DB.prepare('SELECT html FROM site_cache WHERE key = ?').bind(key).first<{ html: string }>();
@@ -346,29 +362,33 @@ async function pageHtml(c: Context<SiteEnv>, data: SiteData, path: string, r: Re
 }
 
 /** Ting, der er forskellige for hver besøgende, sættes ind efter cachen */
-function personalize(c: Context<SiteEnv>, data: SiteData, html: string): string {
+function personalize(c: Context<SiteEnv>, data: SiteData, html: string, language: SiteLanguage): string {
   const count = cartDrop(data, readCart(c)).item_count;
   // Kurven vises kun i headeren, når der ligger noget i den
   const badge =
     count > 0
-      ? `<a class="site-header__cart" href="/cart">Kurv <span class="site-header__count" aria-label="${translate('cart.count', { count })}">${count}</span></a>`
+      ? `<a class="site-header__cart" href="${localizedPath('/cart', language)}">${{ da: 'Kurv', en: 'Cart', sv: 'Varukorg' }[language]} <span class="site-header__count" aria-label="${translate('cart.count', { count }, language)}">${count}</span></a>`
       : '';
   const nonce = c.get('nonce');
   return html.replace('<!--cart-count-->', badge).replace(/<script(?=[\s>])/g, `<script nonce="${nonce}"`);
 }
 
 async function respond(c: Context<SiteEnv>, path: string, forms: Record<string, FormState> | null = null, status: 200 | 404 | 422 | 429 = 200) {
+  const localized = languagePath(path);
+  path = localized.path;
+  const language = localized.language;
   const data = await loadSite(c.env.DB);
   let r = resolvePath(data, path);
   if (!r) {
     r = { type: '404' };
     status = 404;
   }
-  const html = await pageHtml(c, data, r.type === '404' ? '/404' : path, r, forms);
+  const html = await pageHtml(c, data, path, r, forms, language);
+  c.header('Content-Language', language);
   if (status === 200 && c.req.method === 'GET' && !/bot|crawl|spider|slurp|preview|monitor/i.test(c.req.header('User-Agent') ?? '')) {
-    c.executionCtx.waitUntil(countView(c.env.DB, path).catch(() => {}));
+    c.executionCtx.waitUntil(countView(c.env.DB, localizedPath(path, language)).catch(() => {}));
   }
-  return c.html(personalize(c, data, html), status);
+  return c.html(personalize(c, data, html, language), status);
 }
 
 /** ?kontakt=ok&form=<id> efter en vellykket formular viser takkebeskeden i den formular */
@@ -382,6 +402,15 @@ site.get('/', (c) => respond(c, '/', formsFromQuery(c)));
 site.get('/pages/:handle', (c) => respond(c, new URL(c.req.url).pathname.replace(/\/$/, ''), formsFromQuery(c)));
 site.get('/products/:handle', (c) => respond(c, new URL(c.req.url).pathname.replace(/\/$/, ''), formsFromQuery(c)));
 site.get('/cart', (c) => respond(c, '/cart', formsFromQuery(c)));
+
+// Language is explicit in the URL: no cookie, browser-language redirect or shared mutable state.
+for (const language of ['en', 'sv'] as const) {
+  site.get(`/${language}`, (c) => c.redirect(`/${language}/${new URL(c.req.url).search}`, 301));
+  site.get(`/${language}/`, (c) => respond(c, `/${language}/`, formsFromQuery(c)));
+  site.get(`/${language}/pages/:handle`, (c) => respond(c, new URL(c.req.url).pathname.replace(/\/$/, ''), formsFromQuery(c)));
+  site.get(`/${language}/products/:handle`, (c) => respond(c, new URL(c.req.url).pathname.replace(/\/$/, ''), formsFromQuery(c)));
+  site.get(`/${language}/cart`, (c) => respond(c, `/${language}/cart`, formsFromQuery(c)));
+}
 
 // ---------- Formularer ----------
 
@@ -398,6 +427,9 @@ site.post('/contact', async (c) => {
   // Kun egne stier. "\" og "/./" kan ellers normaliseres til "//andet-domæne" i URL-parseren.
   if (!/^\/(?![\/\\])/.test(returnTo) || returnTo.includes('\\') || new URL(returnTo, 'http://x').pathname.startsWith('//')) returnTo = '/';
   const returnPath = returnTo.split(/[?#]/)[0] || '/';
+  const language = languagePath(returnPath).language;
+  c.set('siteLanguage', language);
+  const errorText = (key: string) => translate(`forms.server.${key}`, {}, language);
 
   const fields: Record<string, string> = {};
   for (const [k, v] of Object.entries(body)) {
@@ -423,15 +455,15 @@ site.post('/contact', async (c) => {
   // Blokerede afsendere (admin › Forespørgsler › Bloker afsender) afvises i stilhed: takkebesked, men intet gemmes og ingen mail
   if (await isBlockedSender(c.env.DB, email, ip_hash, fields['name'] ?? null)) return success();
 
-  const tooMany = () => respond(c, returnPath, state({ form: 'Du har sendt mange henvendelser på kort tid. Vent lidt, eller skriv direkte til kontakt@veyro.dk.' }), 429);
+  const tooMany = () => respond(c, returnPath, state({ form: errorText('rate_limit') }), 429);
   if (!(await rateLimit(c.env.DB, 'lead-ip:' + (ip_hash ?? 'ukendt'), 8, 3600))) return tooMany();
   if (ip_hash && !(await rateLimit(c.env.DB, 'lead-ip-dag:' + ip_hash, 20, 86400))) return tooMany();
   if (email && !(await rateLimit(c.env.DB, 'lead-mail:' + (await sha256Hex(blockEmailKey(email))), 3, 3600))) return tooMany();
 
   const kind: LeadKind = formId === 'CartRequest' ? 'kurv' : formId.startsWith('Assessment') ? 'vurdering' : 'kontakt';
   const errors: Record<string, string> = {};
-  if (!email) errors.email = 'er ugyldig';
-  if (!fields['Samtykke']) errors.form = 'Sæt kryds for at give samtykke til, at vi må bruge oplysningerne til at svare dig.';
+  if (!email) errors.email = errorText('email');
+  if (!fields['Samtykke']) errors.form = errorText('consent');
 
   let cart: LeadCartLine[] | null = null;
   if (kind === 'kurv') {
@@ -441,7 +473,7 @@ site.post('/contact', async (c) => {
       const p = data.products.find((x) => x.handle === i.product.handle)!;
       return { handle: p.handle, title: p.title, quantity: i.quantity, price: p.price, interval: p.interval };
     });
-    if (!cart.length) errors.form = 'Kurven er tom. Brug kontaktformularen, så sender vi et tilbud.';
+    if (!cart.length) errors.form = errorText('empty_cart');
   }
   if (Object.keys(errors).length) return respond(c, returnPath, state(errors), 422);
 
@@ -491,8 +523,15 @@ site.notFound((c) => respond(c, new URL(c.req.url).pathname, null, 404));
 site.onError((err, c) => {
   console.error('Fejl på hjemmesiden:', err.message);
   c.executionCtx.waitUntil(logError(c.env.DB, 'Hjemmeside', err));
+  const language = c.get('siteLanguage') ?? languagePath(new URL(c.req.url).pathname).language;
+  const copy = {
+    da: ['Der opstod en fejl', 'Prøv igen om lidt. Fortsætter problemet, så skriv til'],
+    en: ['Something went wrong', 'Please try again shortly. If the problem continues, email'],
+    sv: ['Ett fel uppstod', 'Försök igen om en stund. Om problemet kvarstår, mejla'],
+  }[language];
+  c.header('Content-Language', language);
   return c.html(
-    '<!doctype html><html lang="da"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fejl – Veyro</title><body style="font-family:system-ui,sans-serif;max-width:36rem;margin:4rem auto;padding:0 1rem"><h1>Der opstod en fejl</h1><p>Prøv igen om lidt. Fortsætter problemet, så skriv til <a href="mailto:kontakt@veyro.dk">kontakt@veyro.dk</a>.</p></body></html>',
+    `<!doctype html><html lang="${language}"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${copy[0]} – Veyro</title><body style="font-family:system-ui,sans-serif;max-width:36rem;margin:4rem auto;padding:0 1rem"><h1>${copy[0]}</h1><p>${copy[1]} <a href="mailto:kontakt@veyro.dk">kontakt@veyro.dk</a>.</p></body></html>`,
     500,
   );
 });

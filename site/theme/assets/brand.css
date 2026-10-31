@@ -17,3 +17,26 @@
 @media (max-width: 599px) {
   .studio-introduction__identity .veyro-brand-mark { order: -1; width: 56px; height: 56px; }
 }
+
+/* Compact language choice stays available in the mobile header as well. */
+.language-switch { position: relative; flex: none; color: var(--fg); }
+.language-switch > summary { display: flex; align-items: center; justify-content: center; gap: .35rem; min-height: 44px; padding: .4rem .6rem; border: 1px solid var(--line); border-radius: 999px; font-size: .75rem; font-weight: 600; cursor: pointer; list-style: none; }
+.language-switch > summary::-webkit-details-marker { display: none; }
+.language-switch > summary:hover, .language-switch[open] > summary { background: var(--tint); }
+.language-switch__options { position: absolute; top: calc(100% + .65rem); right: 0; z-index: 60; display: grid; min-width: 164px; padding: .45rem; border: 1px solid #ffffff20; border-radius: 18px; background: #242424; box-shadow: 0 12px 40px #0005; }
+.language-switch__options a { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; min-height: 44px; padding: .55rem .8rem; border-radius: 11px; color: #f6f5f2; font-size: .875rem; text-decoration: none; }
+.language-switch__options a span { color: #aaa; font-size: .65rem; }
+.language-switch__options a:hover, .language-switch__options a[aria-current] { background: #ffffff12; }
+.language-switch__options a[aria-current] { color: #ffb495; }
+@media (min-width: 990px) and (max-width: 1199px) { .site-header__login { display: none; } .site-header__inner { gap: .75rem; } .nav__link { padding-inline: .45rem; } }
+@media (max-width: 499px) { .site-header__inner { gap: .7rem; } .site-header__actions { gap: .25rem; } .language-switch > summary { padding-inline: .4rem; } }
+@media (max-width: 359px) { .language-switch > summary svg { display: none; } }
+
+/* Converted amounts retain their precision without overflowing narrow price summaries. */
+.currency-note { max-width: 68ch; margin: 1rem 0 1.5rem; color: var(--muted); font-size: .8125rem; line-height: 1.6; }
+.currency-note a { color: inherit; text-underline-offset: .2em; }
+.studio-price strong.studio-price__converted { font-size: clamp(1.75rem, 3vw, 2.65rem); line-height: 1.15; }
+.studio-price__converted small { display: block; margin-top: .15rem; }
+html[lang="en"] .plan-summary__total strong, html[lang="sv"] .plan-summary__total strong { font-size: clamp(1.8rem, 2.6vw, 2.55rem); }
+html[lang="en"] .packages .pc__amount strong, html[lang="sv"] .packages .pc__amount strong { font-size: clamp(1.5rem, 2.1vw, 2.2rem); }
+html[lang="en"] .staff__table .num, html[lang="sv"] .staff__table .num { white-space: normal; font-variant-numeric: tabular-nums; }

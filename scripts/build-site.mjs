@@ -38,6 +38,10 @@ export function build() {
   }
   const content = JSON.parse(fs.readFileSync(path.join(ROOT, 'site/content.json'), 'utf8'));
   hash.update(JSON.stringify(content));
+  const translations = Object.fromEntries(['en', 'sv'].map((locale) => [locale, JSON.parse(fs.readFileSync(path.join(ROOT, `site/translations/${locale}.content.json`), 'utf8'))]));
+  hash.update(JSON.stringify(translations));
+  // Display exchange rates are part of the cached HTML as well as the theme text.
+  hash.update(fs.readFileSync(path.join(ROOT, 'src/site/currency.ts')));
   const v = hash.digest('hex').slice(0, 12);
   return `// AUTOGENERERET af scripts/build-site.mjs – redigér site/theme og site/content.json i stedet.
 /* eslint-disable */
@@ -45,6 +49,7 @@ export const THEME_VERSION = ${JSON.stringify(v)};
 export const THEME_FILES: Record<string, string> = ${JSON.stringify(text)};
 export const THEME_ASSETS: Record<string, { type: string; b64: boolean; data: string }> = ${JSON.stringify(assets)};
 export const SITE_DEFAULTS = ${JSON.stringify(content)};
+export const SITE_TRANSLATIONS = ${JSON.stringify(translations)};
 `;
 }
 
