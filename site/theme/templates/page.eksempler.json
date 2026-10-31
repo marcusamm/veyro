@@ -54,10 +54,10 @@
           "settings": {
             "concept": "shop",
             "anchor": "webshop",
-            "package": "Webshop · Fra 299 kr./md. ekskl. moms · Op til 15 produkter og 60 varianter",
+            "package": "Webshop · Fra 299 kr./md. ekskl. moms · Op til 60 salgbare varer og varianter i alt",
             "title": "Lille webshop til et keramikværksted",
             "text": "<p>En rolig, materialefokuseret keramikbutik med kollektion, værkstedsfortælling og gennemarbejdede produktsider. Glasurer, lagerstatus og kurv kan prøves i demoen.</p>",
-            "points": "Tre glasurer er ét produkt med tre varianter\nKurven opdateres med det samme\nStartniveau: op til 15 aktive produkter og 60 varianter i alt\nI kan selv rette og oprette produkter inden for det valgte niveau",
+            "points": "Et krus i tre glasurer tæller som tre salgbare varianter\nKurven opdateres med det samme\nStartniveau: op til 60 salgbare varer og varianter i alt\nKategorier organiserer sortimentet uden at ændre prisen\nI kan selv rette produkter og varianter bagefter",
             "link_label": "Se hvad Webshop indeholder",
             "link": "/pages/webshop",
             "caption": "Produktside hos Lerværk."

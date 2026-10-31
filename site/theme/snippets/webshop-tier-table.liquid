@@ -1,12 +1,12 @@
 <div class="pricing-table-scroll{% if compact %} pricing-table-scroll--compact{% endif %}" role="region" aria-label="{{ 'webshop_tiers.comparison' | t | escape }}" tabindex="0">
   <table class="table webshop-tiers__table">
     <caption>{{ 'webshop_tiers.monthly_price' | t }}</caption>
-    <thead><tr><th scope="col">{{ 'webshop_tiers.label' | t }}</th><th scope="col" class="num">{{ 'webshop_tiers.products' | t }}</th><th scope="col" class="num">{{ 'webshop_tiers.variants' | t }}</th><th scope="col" class="num">{{ 'webshop_tiers.monthly_price' | t }}</th></tr></thead>
+    <thead><tr><th scope="col">{{ 'webshop_tiers.total_items' | t }}</th><th scope="col" class="num">{{ 'webshop_tiers.monthly_price' | t }}</th></tr></thead>
     <tbody>
       {%- for tier in webshop_tiers -%}
         <tr>
-          <th scope="row"><a href="/pages/kontakt?ydelse=pakke-webshop&amp;webshop_niveau={{ tier.id | escape }}#formular">{{ 'webshop_tiers.tier_name' | t: products: tier.products }} <span aria-hidden="true">↗</span><span class="visually-hidden"> — {{ 'webshop_tiers.enquiry' | t }}</span></a></th>
-          <td class="num">{{ tier.products }}</td><td class="num">{{ tier.variants }}</td><td class="num">{{ tier.price | escape }}</td>
+          <th scope="row"><a href="/pages/kontakt?ydelse=pakke-webshop&amp;webshop_niveau={{ tier.id | escape }}#formular">{{ 'webshop_tiers.capacity_limit' | t: capacity: tier.capacity }} <span aria-hidden="true">↗</span><span class="visually-hidden"> — {{ 'webshop_tiers.enquiry' | t }}</span></a></th>
+          <td class="num">{{ tier.price | escape }}</td>
         </tr>
       {%- endfor -%}
     </tbody>

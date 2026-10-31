@@ -7,7 +7,7 @@
   {%- when 'webshop' -%}
     <div class="plan-art__shop"><div class="plan-art__product"><svg viewBox="0 0 110 85" fill="none"><path d="M26 20h48v33c0 14-9 23-24 23S26 67 26 53V20Z" fill="currentColor" opacity=".5"/><path d="M74 27h8c21 0 21 26 0 26h-8" stroke="currentColor" stroke-width="7"/><ellipse cx="50" cy="20" rx="24" ry="6" stroke="currentColor" stroke-width="2"/></svg><span>{{ 'public.one_product_variants' | t }}</span><div><i></i><i></i><i></i></div></div><div class="plan-art__order"><span>{{ 'public.online_shop' | t }}</span><b>{{ 'public.your_products' | t }}<br>{{ 'public.your_expression' | t }}</b><i></i><i></i><small>{{ 'public.product_menu' | t }}</small></div></div>
     {%- assign initial_tier = webshop_tiers | first -%}
-    <p class="plan-art__fact" data-webshop-art-capacity>{{ 'webshop_tiers.capacity' | t: products: initial_tier.products, variants: initial_tier.variants }}</p>
+    <p class="plan-art__fact" data-webshop-art-capacity>{{ 'webshop_tiers.capacity' | t: capacity: initial_tier.capacity }}</p>
   {%- else -%}
     <div class="plan-art__browser"><div class="plan-art__bar"><span>● ● ●</span><span>{{ 'public.example_domain' | t }}</span></div><div class="plan-art__web"><div><span>{{ 'public.your_company' | t }}</span><b>{{ 'public.a_place_to' | t }}<br>{{ 'public.meet_you' | t }}</b><i></i></div><div class="plan-art__picture">{% render 'brand-mark' %}</div></div><div class="plan-art__tabs"><span>{{ 'public.home' | t }}</span><span>{{ 'public.services' | t }}</span><span>{{ 'public.about_you' | t }}</span><span>{{ 'public.contact' | t }}</span></div></div>
     <p class="plan-art__fact">{{ 'public.page_revision_limits' | t }}</p>

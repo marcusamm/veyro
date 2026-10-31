@@ -36,13 +36,13 @@
       <label for="{{ card_id }}-tier">{{ 'webshop_tiers.choose' | t }}</label>
       <select id="{{ card_id }}-tier" data-webshop-tier aria-describedby="{{ card_id }}-capacity {{ card_id }}-import">
         {%- for tier in webshop_tiers -%}
-          <option value="{{ tier.id | escape }}" data-price="{{ tier.price | escape }}" data-capacity="{{ 'webshop_tiers.capacity' | t: products: tier.products, variants: tier.variants | escape }}" data-import="{{ 'webshop_tiers.import_capacity' | t: products: tier.import_products, variants: tier.variants | escape }}">{{ 'webshop_tiers.option_label' | t: products: tier.products, variants: tier.variants, price: tier.price | escape }}</option>
+          <option value="{{ tier.id | escape }}" data-price="{{ tier.price | escape }}" data-capacity="{{ 'webshop_tiers.capacity' | t: capacity: tier.capacity | escape }}" data-import="{{ 'webshop_tiers.import_capacity' | t: capacity: tier.import_capacity | escape }}">{{ 'webshop_tiers.option_label' | t: capacity: tier.capacity, price: tier.price | escape }}</option>
         {%- endfor -%}
       </select>
     </div>
     <div class="webshop-tier-scope">
-      <p id="{{ card_id }}-capacity" data-webshop-capacity>{{ 'webshop_tiers.capacity' | t: products: initial_tier.products, variants: initial_tier.variants }}</p>
-      <p id="{{ card_id }}-import" data-webshop-import>{{ 'webshop_tiers.import_capacity' | t: products: initial_tier.import_products, variants: initial_tier.variants }}</p>
+      <p id="{{ card_id }}-capacity" data-webshop-capacity>{{ 'webshop_tiers.capacity' | t: capacity: initial_tier.capacity }}</p>
+      <p id="{{ card_id }}-import" data-webshop-import>{{ 'webshop_tiers.import_capacity' | t: capacity: initial_tier.import_capacity }}</p>
     </div>
     <noscript>{% render 'webshop-tier-table', compact: true %}</noscript>
   {%- endif -%}

@@ -231,7 +231,7 @@
           "type": "question",
           "settings": {
             "question": "Hvad er med i pakkerne?",
-            "answer": "<p>Hjemmeside (199 kr./md.) er en hjemmeside med op til 5 sider, jeres eget design, kontaktformular, hosting og vedligeholdelse. Booking (299 kr./md.) lægger online booking oven i. Webshop starter fra 299 kr./md. med op til 15 aktive produkter og 60 varianter i alt. Vælg 30 produkter / 120 varianter til 399 kr./md. eller 50 produkter / 200 varianter til 499 kr./md., hvis I har et større sortiment. Alle priser er ekskl. moms. <a href=\"/pages/priser\">Se alt indhold på prissiden</a>.</p>"
+            "answer": "<p>Hjemmeside (199 kr./md.) er en hjemmeside med op til 5 sider, jeres eget design, kontaktformular, hosting og vedligeholdelse. Booking (299 kr./md.) lægger online booking oven i. Webshop starter fra 299 kr./md. med op til 60 salgbare varer og varianter i alt. De større niveauer rummer op til 120 til 399 kr./md. eller 200 til 499 kr./md. Alle priser er ekskl. moms. Kategorier organiserer sortimentet og ændrer ikke prisen. <a href=\"/pages/priser\">Se alt indhold på prissiden</a>.</p>"
           }
         },
         "question_2": {

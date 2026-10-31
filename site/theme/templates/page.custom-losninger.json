@@ -35,7 +35,7 @@
           "type": "item",
           "settings": {
             "title": "Pakken Webshop hos Veyro",
-            "text": "<p>En webshop på Veyros egen platform fra 299 kr./md. ekskl. moms med op til 15 produkter og 60 varianter. Vi sætter den op og holder den ved lige. I kan vælge et større niveau efter jeres sortiment. Den bruger ikke Shopify.</p>",
+            "text": "<p>En webshop på Veyros egen platform fra 299 kr./md. ekskl. moms med op til 60 salgbare varer og varianter i alt. Vi sætter den op og holder den ved lige. Kategorier organiserer sortimentet og ændrer ikke prisen. Den bruger ikke Shopify.</p>",
             "link_label": "Læs om Webshop",
             "link": "/pages/webshop"
           }

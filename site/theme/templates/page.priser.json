@@ -10,7 +10,7 @@
         "primary_link": "/pages/kontakt?ydelse=aftal-en-demo#formular",
         "secondary_label": "Se eksempler",
         "secondary_link": "/pages/eksempler",
-        "facts": "Hjemmeside | 199 kr./md. ekskl. moms\nBooking | 299 kr./md. ekskl. moms\nWebshop | Fra 299 kr./md. ekskl. moms · Op til 15 produkter og 60 varianter\nDrift og Alt inkl. | På vej"
+        "facts": "Hjemmeside | 199 kr./md. ekskl. moms\nBooking | 299 kr./md. ekskl. moms\nWebshop | Fra 299 kr./md. ekskl. moms · Op til 60 salgbare varer og varianter i alt\nDrift og Alt inkl. | På vej"
       }
     },
     "pakker": {
@@ -85,7 +85,7 @@
             "badge": "",
             "features": "Webshop tilpasset jeres virksomhed\nVirker på mobil, tablet og computer\nI kan selv rette og oprette produkter inden for det valgte niveau\nOp til 3 administratorbrugere\nHosting og teknisk vedligeholdelse\nMindre løbende justeringer",
             "features_label": "Det er med",
-            "limits": "Et produkt med varianter tæller som ét produkt. En T-shirt i 3 størrelser og 2 farver er 1 produkt med 6 varianter.\nBåde produktgrænsen og variantgrænsen skal være overholdt. Variantgrænsen gælder hele webshoppen.\nVi opretter de første 10 produkter eller laver én standardimport inden for jeres valgte produkt- og variantgrænser. I leverer billeder og produktdata i vores CSV- eller Excel-skabelon.\nDet er enten manuel oprettelse eller én standardimport. Ekstra import, oprydning i produktdata og øvrigt katalogarbejde aftales særskilt. Produktkataloget tæller ikke som indholdssider.",
+            "limits": "Niveauet afhænger af det samlede antal salgbare varer og varianter. Et produkt uden varianter tæller som én. Har et produkt 4 varianter, tæller de som 4, ikke 5.\nKategorier organiserer produkterne og ændrer ikke prisen. Lagerantal påvirker heller ikke niveauet.\nVi opretter de første 10 produkter eller laver én standardimport inden for jeres valgte grænse på 60, 120 eller 200 salgbare varer og varianter. I leverer billeder og korrekt udfyldte produktdata i vores CSV- eller Excel-skabelon.\nDet er enten manuel oprettelse eller én standardimport. Hjælpen med de første 10 produkter er ikke en kapacitetsgrænse eller ubegrænset variantarbejde. Ekstra import, oprydning og øvrigt katalogarbejde aftales særskilt. Produktkataloget tæller ikke som indholdssider.",
             "limits_label": "Rammer",
             "note": "<p>Gebyrer til betalingsudbyderen, fragt og eventuelle abonnementer hos tredjepart betaler I selv. Ekstra brugere: 99 kr./md. pr. bruger ekskl. moms.</p>",
             "button_label": "Aftal en demo",
@@ -157,7 +157,7 @@
         "extra_price": 99,
         "a_label": "Booking",
         "a_price": 299,
-        "b_label": "Webshop 15",
+        "b_label": "Webshop 60",
         "b_price": 299,
         "table_note": "Eksempel: Booking med 5 medarbejdere koster 497 kr./md. ekskl. moms."
       }
@@ -415,7 +415,7 @@
           "type": "question",
           "settings": {
             "question": "Hvilket webshopniveau skal vi vælge?",
-            "answer": "<p>Vælg det mindste niveau, der rummer både jeres aktive produkter og alle jeres varianter: 15 produkter / 60 varianter til 299 kr., 30 produkter / 120 varianter til 399 kr. eller 50 produkter / 200 varianter til 499 kr. pr. måned ekskl. moms.</p><p>12 produkter med 80 varianter kræver niveauet til 399 kr. Variantgrænsen gælder hele webshoppen. Skal I senere op på et større niveau, kontakter I os, så aftaler vi ændringen.</p>"
+            "answer": "<p>Vælg niveau efter det samlede antal salgbare varer og varianter i hele webshoppen: op til 60 til 299 kr., 120 til 399 kr. eller 200 til 499 kr. pr. måned ekskl. moms. Der er ingen særskilt grænse på antallet af hovedprodukter.</p><p>Et produkt uden varianter tæller som 1. Et produkt med 4 varianter tæller som 4, ikke 5. Kategorier og lagerantal påvirker ikke prisen. Skal I senere bruge mere plads, kontakter I os, så aftaler vi ændringen.</p>"
           }
         }
       },

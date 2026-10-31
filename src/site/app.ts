@@ -17,7 +17,7 @@ import { blockEmailKey, countView, createLead, ipHash, isBlockedSender, LEAD_KIN
 import { languagePath, localizedPath, SITE_LANGUAGES, type SiteLanguage } from './localization';
 import { cartDrop, renderSitePage, type CartLine, type RenderRequest } from './render';
 import { displayPrice } from './currency';
-import { webshopTier } from './webshop-tiers';
+import { normalizeWebshopTierId, webshopTier } from './webshop-tiers';
 
 warmUp();
 
@@ -400,7 +400,7 @@ function formsFromQuery(c: Context<SiteEnv>): Record<string, FormState> | null {
   // Render the chosen webshop tier even without JavaScript. Form state also bypasses the shared HTML cache.
   if (['pakke-webshop', 'webshop'].includes(c.req.query('ydelse') ?? '')) {
     const choice = c.req.query('webshop_niveau');
-    return { __contact: { 'posted_successfully?': false, errors: null, service: 'Pakke: Webshop', webshop_tier: choice === 'custom' ? 'custom' : webshopTier(choice)?.id ?? '15' } };
+    return { __contact: { 'posted_successfully?': false, errors: null, service: 'Pakke: Webshop', webshop_tier: choice === 'custom' ? 'custom' : normalizeWebshopTierId(choice) ?? '60' } };
   }
   return null;
 }
@@ -443,7 +443,8 @@ site.post('/contact', async (c) => {
     const m = k.match(/^contact\[(.{1,60})\]$/);
     if (m && typeof v === 'string' && Object.keys(fields).length < 40) fields[m[1]!] = v.trim().slice(0, 5000);
   }
-  const webshopChoice = fields['Webshopniveau'] || '15';
+  const rawWebshopChoice = fields['Webshopniveau'] || '60';
+  const webshopChoice = normalizeWebshopTierId(rawWebshopChoice) ?? rawWebshopChoice;
   // Enquiry details are derived from our tier model, never from a submitted price or limit.
   for (const key of ['Webshopniveau-id', 'Webshoppris DKK ekskl. moms', 'Vist webshoppris', 'Webshopgrænser', 'Webshopimport']) delete fields[key];
   // Honningkrukke: robotter udfylder det skjulte felt. Lad som om det lykkedes.
@@ -494,11 +495,11 @@ site.post('/contact', async (c) => {
     fields['Webshopniveau-id'] = webshopChoice;
     const tier = webshopTier(webshopChoice);
     if (tier) {
-      fields['Webshopniveau'] = `Webshop ${tier.products}`;
+      fields['Webshopniveau'] = `Webshop – op til ${tier.capacity} varer og varianter i alt`;
       fields['Webshoppris DKK ekskl. moms'] = `${tier.price_dkk} kr./md. ekskl. moms`;
       fields['Vist webshoppris'] = `${displayPrice(tier.price_dkk, language)} ${translate('webshop_enquiry.per_month_ex_vat', {}, language)}`;
-      fields['Webshopgrænser'] = `Op til ${tier.products} aktive produkter og ${tier.variants} varianter i alt`;
-      fields['Webshopimport'] = `De første 10 produkter manuelt ELLER én standardimport af op til ${tier.import_products} produkter og ${tier.variants} varianter i alt`;
+      fields['Webshopgrænser'] = `Op til ${tier.capacity} salgbare varer og varianter i alt`;
+      fields['Webshopimport'] = `De første 10 produkter manuelt ELLER én standardimport af op til ${tier.import_capacity} salgbare varer og varianter i alt. Manuel oprettelse er opstartshjælp, ikke en produktgrænse eller ubegrænset variantarbejde.`;
     } else {
       fields['Webshopniveau'] = 'Større webshop – individuelt tilbud';
     }
