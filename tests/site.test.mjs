@@ -403,7 +403,7 @@ describe('Pakker og priser', () => {
     expect(examples.match(/class="badge">Fiktivt designkoncept — lavet af Veyro</g)).toHaveLength(3);
     // Skærmbilleder og links til de rigtige demoer, ingen formularer og ingen opdigtede domæner
     for (const [shot, demo] of [['holm-tomrer', '/demo/holm-tomrer/'], ['salon-nord-booking', '/demo/salon-nord/book'], ['lervaerk-produkt', '/demo/lervaerk/produkter/krus']]) {
-      expect(examples).toContain(`src="/demo/_previews/${shot}-960.jpg"`);
+      expect(examples).toMatch(new RegExp(`src="/demo/_previews/${shot}-960\\.jpg(?:\\?v=[^"\\s]+)?"`));
       expect(examples).toContain(`<span class="browser__url">veyro.dk${demo}</span>`);
       expect(examples).toContain(`<a class="arrow-link" href="${demo}">Åbn demoen`);
     }
