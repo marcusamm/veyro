@@ -9,6 +9,7 @@
   Bruges inde i <figure class="concept">.
 {%- endcomment -%}
 {%- liquid
+  assign shot_version = ''
   case name
     when 'salon'
       assign shot = 'salon-nord-booking'
@@ -17,6 +18,7 @@
       assign alt = 'public.concept_booking_alt' | t
     when 'shop'
       assign shot = 'lervaerk-produkt'
+      assign shot_version = '?v=photo-20261101'
       assign path = '/demo/lervaerk/produkter/krus'
       assign title = 'Lerværk'
       assign alt = 'public.concept_product_alt' | t
@@ -38,8 +40,8 @@
   <div class="browser__bar" aria-hidden="true"><span class="browser__url">veyro.dk{{ path }}</span></div>
   <a class="browser__shot" href="{{ path }}" tabindex="-1">
     <picture>
-      <source media="(max-width: 599px)" srcset="/demo/_previews/{{ shot }}-mobil.jpg" width="780" height="1280">
-      <img src="/demo/_previews/{{ shot }}-960.jpg" srcset="/demo/_previews/{{ shot }}-960.jpg 960w, /demo/_previews/{{ shot }}-1920.jpg 1920w" sizes="{% if wide %}(min-width: 1280px) 1152px, 100vw{% else %}(min-width: 990px) 58vw, 100vw{% endif %}" width="1920" height="1200" alt="{{ alt }}" loading="{{ loading }}" fetchpriority="{{ priority }}" decoding="async">
+      <source media="(max-width: 599px)" srcset="/demo/_previews/{{ shot }}-mobil.jpg{{ shot_version }}" width="780" height="1280">
+      <img src="/demo/_previews/{{ shot }}-960.jpg{{ shot_version }}" srcset="/demo/_previews/{{ shot }}-960.jpg{{ shot_version }} 960w, /demo/_previews/{{ shot }}-1920.jpg{{ shot_version }} 1920w" sizes="{% if wide %}(min-width: 1280px) 1152px, 100vw{% else %}(min-width: 990px) 58vw, 100vw{% endif %}" width="1920" height="1200" alt="{{ alt }}" loading="{{ loading }}" fetchpriority="{{ priority }}" decoding="async">
     </picture>
   </a>
 </div>

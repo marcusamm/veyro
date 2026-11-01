@@ -260,7 +260,7 @@ input[type="text"]:focus-visible, input[type="email"]:focus-visible, input[type=
 .footer__note { color: var(--muted); }
 
 /* Lerværk / a complete, original editorial ceramics shop.
-   Local Instrument Sans, system serif, and the concept's own 3D material studies. */
+   Local Instrument Sans, system serif, and licensed documentary ceramic photographs. */
 :root { --bg:#f4f0e8; --white:#faf7f0; --photo:#e3dfdc; --ink:#393b2e; --muted:#66685b; --line:#d5d4c7; --line-strong:#a4a696; --accent:#64523e; --error:#9b3329; --ok:#3f5c42; --wrap:88rem; --gutter:clamp(1.25rem,4vw,4rem); --section:clamp(4.5rem,8vw,8.5rem); --serif:Georgia,'Times New Roman',serif; }
 html { scroll-behavior:smooth; scroll-padding-top:1.5rem; }
 body { font-size:1rem; line-height:1.65; }
@@ -303,7 +303,7 @@ a { transition:color .2s; }
 .hero__aside { display:grid; justify-items:start; gap:1.5rem; padding-bottom:.4rem; }
 .hero__aside>p { font-size:.94rem; }
 .hero__visual { position:relative; width:calc(100% - 2*var(--gutter)); margin-inline:auto; height:clamp(26rem,51vw,47rem); background:var(--photo); overflow:hidden; }
-.hero__visual>img { width:100%; height:100%; object-fit:cover; object-position:center 59%; transform:scale(1.015); }
+.hero__visual img { width:100%; height:100%; object-fit:cover; object-position:center 59%; transform:scale(1.015); }
 .hero__caption { position:absolute; inset:1.2rem 1.4rem auto; display:flex; justify-content:space-between; gap:1rem; color:#393b2e; font-size:.63rem; letter-spacing:.07em; text-transform:uppercase; pointer-events:none; }
 .hero__object { position:absolute; right:1.4rem; bottom:1.4rem; display:grid; gap:.4rem; min-width:13rem; padding:1rem 1.1rem; background:var(--bg); text-decoration:none; font-size:.75rem; }
 .hero__object>span:last-child { display:flex; align-items:center; justify-content:space-between; }
@@ -532,7 +532,7 @@ input:-webkit-autofill { -webkit-text-fill-color:var(--ink); box-shadow:0 0 0 10
  .hero__aside { display:flex; justify-content:space-between; align-items:end; gap:1.5rem; margin-top:1.8rem; padding:0; }
  .hero__aside .underlink { font-size:.72rem; gap:1rem; }
  .hero__visual { height:clamp(26rem,80vw,37rem); }
- .hero__visual>img { object-position:50% 60%; }
+ .hero__visual img { object-position:50% 60%; }
  .hero__caption { font-size:.5rem; inset:1rem; }
  .hero__caption>span:first-child { max-width:8rem; }
  .hero__object { right:1rem; bottom:1rem; min-width:11rem; padding:.75rem; font-size:.68rem; }
@@ -596,7 +596,7 @@ input:-webkit-autofill { -webkit-text-fill-color:var(--ink); box-shadow:0 0 0 10
  .hero__aside>p { font-size:.73rem; line-height:1.5; }
  .hero__aside .underlink { max-width:10rem; font-size:.67rem; padding-top:0; line-height:1.5; gap:.5rem; }
  .hero__visual { width:100%; height:24rem; }
- .hero__visual>img { width:100%; object-position:49% 60%; }
+ .hero__visual img { width:100%; object-position:49% 60%; }
  .hero__caption { inset:.8rem 1.25rem auto; }
  .hero__caption>span:last-child { max-width:7rem; text-align:right; }
  .hero__object { right:1.25rem; bottom:1rem; }
@@ -707,7 +707,7 @@ input:-webkit-autofill { -webkit-text-fill-color:var(--ink); box-shadow:0 0 0 10
 /* One quiet entrance; subsequent movement follows a deliberate interaction. */
 @media (prefers-reduced-motion:no-preference) {
  .page-home .hero__intro h1 { animation:lervaerk-rise .85s cubic-bezier(.2,.65,.3,1) both; }
- .page-home .hero__visual>img { animation:lervaerk-settle 1.4s cubic-bezier(.2,.65,.3,1) both; }
+ .page-home .hero__visual img { animation:lervaerk-settle 1.4s cubic-bezier(.2,.65,.3,1) both; }
  @keyframes lervaerk-rise { from { opacity:.35; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
  @keyframes lervaerk-settle { from { transform:scale(1.055); } to { transform:scale(1.015); } }
 }
@@ -723,3 +723,13 @@ input:-webkit-autofill { -webkit-text-fill-color:var(--ink); box-shadow:0 0 0 10
  .buy .btn { font-size:.9rem; }
 }
 .line__name { overflow-wrap:anywhere; hyphens:auto; }
+
+/* Real photographs: readable overlays and uncropped wide serving pieces. */
+.hero__caption { color:#fff; text-shadow:0 1px 8px #0008; }
+.item__no,.item__arrow,.glaze__number,.product__object { color:var(--ink); background:#f3f0e8eb; padding:.25rem .45rem; }
+.product__media img[src*="foto-serveringsskal"],.product__media img[src*="foto-fad"] { aspect-ratio:4/3; }
+.catalog>li:nth-child(n) .item__img:has(img[src*="foto-serveringsskal"]),
+.catalog>li:nth-child(n) .item__img:has(img[src*="foto-fad"]) { aspect-ratio:4/3; }
+.material__image img,.object-story img { object-position:center; }
+
+.hero__visual picture { display:block; height:100%; }
