@@ -216,7 +216,7 @@ export function renderSitePage(site: SiteData, req: RenderRequest): string {
     page_title: contentText(title, language),
     page_description: description || null,
     canonical_url: req.canonicalOrigin + publicPath,
-    site_languages: SITE_LANGUAGES.map(code => ({ code, label: { da: 'Dansk', en: 'English', sv: 'Svenska' }[code], url: localizedPath(req.type === '404' ? '/' : req.path, code), canonical: req.canonicalOrigin + localizedPath(req.type === '404' ? '/' : req.path, code), current: language === code })),
+    site_languages: SITE_LANGUAGES.map(code => ({ code, label: { da: 'Dansk', en: 'English', sv: 'Svenska' }[code], url: localizedPath(req.type === '404' ? '/' : req.path, code) + `?lang=${code}`, canonical: req.canonicalOrigin + localizedPath(req.type === '404' ? '/' : req.path, code), current: language === code })),
     language_label: { da: 'Vælg sprog', en: 'Choose language', sv: 'Välj språk' }[language],
     current_page: 1,
     current_tags: null,

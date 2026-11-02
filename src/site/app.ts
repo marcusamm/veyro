@@ -15,6 +15,7 @@ import { sampleNdaPdf } from '../lib/nda-docs';
 import { asset, THEME_VERSION, translate, warmUp, type FormState } from './engine';
 import { blockEmailKey, countView, createLead, ipHash, isBlockedSender, LEAD_KIND_LABEL, markLeadNotified, type LeadCartLine, type LeadKind } from './leads';
 import { languagePath, localizedPath, SITE_LANGUAGES, type SiteLanguage } from './localization';
+import { LANGUAGE_COOKIE, languageRedirect } from './language-routing';
 import { cartDrop, renderSitePage, type CartLine, type RenderRequest } from './render';
 import { displayPrice } from './currency';
 import { normalizeWebshopTierId, webshopTier } from './webshop-tiers';
@@ -90,6 +91,21 @@ site.use('*', async (c, next) => {
     const html = c.req.method === 'GET' && (h.get('Content-Type') || '').startsWith('text/html');
     h.set('Cache-Control', html ? 'private, no-cache' : 'no-store');
   }
+});
+
+/** Vælg sprog før gengivelse; gem kun et aktivt valg fra sprogvælgeren. */
+site.use('*', async (c, next) => {
+  const decision = languageRedirect(c.req.raw, getCookie(c, LANGUAGE_COOKIE));
+  if (!decision) return next();
+  if (decision.selectedLanguage) {
+    setCookie(c, LANGUAGE_COOKIE, decision.selectedLanguage, {
+      path: '/', httpOnly: true, sameSite: 'Lax',
+      secure: new URL(c.req.url).protocol === 'https:', maxAge: 365 * 86400,
+    });
+  }
+  // A country/preference redirect must never be reused for another visitor.
+  c.header('Cache-Control', 'private, no-store');
+  return c.redirect(decision.location, 302);
 });
 
 /** Formularer må kun sendes fra siden selv */
@@ -410,7 +426,7 @@ site.get('/pages/:handle', (c) => respond(c, new URL(c.req.url).pathname.replace
 site.get('/products/:handle', (c) => respond(c, new URL(c.req.url).pathname.replace(/\/$/, ''), formsFromQuery(c)));
 site.get('/cart', (c) => respond(c, '/cart', formsFromQuery(c)));
 
-// Language is explicit in the URL: no cookie, browser-language redirect or shared mutable state.
+// Explicit language URLs take precedence over country detection and saved preferences.
 for (const language of ['en', 'sv'] as const) {
   site.get(`/${language}`, (c) => c.redirect(`/${language}/${new URL(c.req.url).search}`, 301));
   site.get(`/${language}/`, (c) => respond(c, `/${language}/`, formsFromQuery(c)));

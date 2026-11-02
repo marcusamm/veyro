@@ -1,6 +1,10 @@
 # Public website languages
 
-The Danish website is the default at `/`. English is served at `/en/`, Swedish at `/sv/`; public subpages retain their existing handles below the language prefix.
+The Danish website lives at `/`. English is served at `/en/`, Swedish at `/sv/`; public subpages retain their existing handles below the language prefix.
+
+Unprefixed public page requests use Cloudflare's `request.cf.country`: Denmark (`DK`) stays Danish, Sweden (`SE`) redirects to Swedish, and other/unknown countries redirect to English. Local development without country metadata stays Danish. Redirects are temporary and private/no-store, and happen before page rendering. Explicit `/en/` and `/sv/` links always retain their language; known crawlers can fetch all canonical pages. Demos, assets, PDFs, portal routes and form submissions are excluded.
+
+The language switcher adds a validated `?lang=da|en|sv` selection. The server saves a host-only `veyro_language` cookie for one year and redirects to the clean URL, preserving the other query parameters. This works without JavaScript and lets visitors keep Danish outside Denmark. A saved manual choice takes precedence over country detection on unprefixed pages. Only the language choice is stored; country/IP data is not persisted for this feature.
 
 - `site/theme/locales/`: static interface text, accessibility labels, validation messages and JavaScript strings. Liquid uses `| t`; client scripts read `ThemeStrings`.
 - `en.content.json` and `sv.content.json`: exact-source translations of display values from the existing templates, page bodies, menus and schema defaults. Preserve embedded HTML, URLs, placeholders and commercial terms when editing.
