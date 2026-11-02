@@ -10,6 +10,14 @@ let stack;
 let admin;
 let site;
 
+// Content tests explicitly select Danish so Wrangler's simulated country cannot change their locale.
+class SiteClient extends Client {
+  constructor() {
+    super(stack.site);
+    this.cookies.set('veyro_language', 'da');
+  }
+}
+
 const emails = async () => (await fetch(stack.mock.url + '/__mock/emails')).json();
 
 function sql(query) {
@@ -60,7 +68,7 @@ const adminPost = async (p, fields) => {
 beforeAll(async () => {
   stack = await startStack({ minMonths: 0 });
   admin = (await login(stack, ADMIN_EMAIL)).client;
-  site = new Client(stack.site);
+  site = new SiteClient();
 });
 
 afterAll(async () => {
@@ -159,6 +167,30 @@ describe('Hjemmesiden vises uden Shopify', () => {
 });
 
 describe('Offentlige sprogversioner', () => {
+  it('gemmer et manuelt sprogvalg før redirect og bevarer valg, query og eksplicitte links', async () => {
+    const visitor = new Client(stack.site);
+    const selected = await visitor.get('/pages/kontakt?lang=sv&ydelse=webshop&webshop_niveau=webshop-120');
+    expect(selected.status).toBe(302);
+    expect(selected.headers.get('location')).toBe('/sv/pages/kontakt?ydelse=webshop&webshop_niveau=webshop-120');
+    expect(selected.headers.get('cache-control')).toBe('private, no-store');
+    expect(selected.headers.get('set-cookie')).toMatch(/veyro_language=sv;.*Max-Age=31536000.*Path=\/.*HttpOnly.*SameSite=Lax/i);
+    const swedish = await visitor.get(selected.headers.get('location'));
+    expect(swedish.status).toBe(200);
+    expect(swedish.headers.get('content-language')).toBe('sv');
+    expect((await visitor.get('/')).headers.get('location')).toBe('/sv/');
+    expect((await visitor.get('/en/')).headers.get('content-language')).toBe('en');
+    expect((await visitor.get('/sitemap.xml')).status).toBe(200);
+    expect((await visitor.get('/healthz')).status).toBe(200);
+    const danish = await visitor.get('/sv/pages/kontakt?lang=da&ydelse=webshop');
+    expect(danish.headers.get('location')).toBe('/pages/kontakt?ydelse=webshop');
+    expect(visitor.cookies.get('veyro_language')).toBe('da');
+    expect((await visitor.get(danish.headers.get('location'))).headers.get('content-language')).toBe('da');
+    expect((await visitor.get('/')).status).toBe(200);
+    for (const prefix of ['', '/en', '/sv']) {
+      expect((await visitor.get(`${prefix}/pages/cookiepolitik`)).html).toContain('veyro_language');
+    }
+  });
+
   it('viser alle publicerede sider på engelsk og svensk uden at ændre dansk', async () => {
     const content = JSON.parse(readFileSync(path.join(ROOT, 'site/content.json'), 'utf8'));
     for (const language of ['en', 'sv']) {
@@ -196,7 +228,7 @@ describe('Offentlige sprogversioner', () => {
     expect(en.html).toContain('href="/demo/holm-tomrer/"');
     expect(en.html).toContain('href="https://kunde.veyro.dk/login"');
     expect(en.html).toContain('id="pakke-hjemmeside-forside"');
-    expect(en.html).toContain('href="/sv/" lang="sv"');
+    expect(en.html).toContain('href="/sv/?lang=sv" lang="sv"');
     const r = await site.get('/sv/pages/kontakt?ydelse=pakke-hjemmeside');
     expect(r.html).toContain('name="return_to" value="/sv/pages/kontakt"');
     expect(r.html).toContain('name="contact[Samtykke]"');
@@ -217,7 +249,7 @@ describe('Offentlige sprogversioner', () => {
 
   it('giver lokaliseret servervalidering og takkeside efter en reel lokal formularindsendelse', async () => {
     for (const language of ['en', 'sv']) {
-      const visitor = new Client(stack.site);
+      const visitor = new SiteClient();
       const page = await visitor.get(`/${language}/pages/kontakt`);
       const id = page.html.match(/id="(Contact-[^"]+)"/)[1];
       const invalid = await visitor.post('/contact', contactForm(page.html, id, { 'contact[email]': 'invalid' }));
@@ -473,7 +505,7 @@ describe('Kurv og forespørgsel', () => {
   });
 
   it('lægger et abonnement i kurven, opdaterer antal og fjerner det igen', async () => {
-    const shopper = new Client(stack.site);
+    const shopper = new SiteClient();
     const product = await shopper.get('/products/business');
     expect(product.html).toContain('action="/cart/add"');
     expect(product.html).toContain('599 kr');
@@ -503,7 +535,7 @@ describe('Kurv og forespørgsel', () => {
 
   it('bevarer sproget gennem produkt, kurv, antal og fjernelse', async () => {
     for (const language of ['en', 'sv']) {
-      const shopper = new Client(stack.site);
+      const shopper = new SiteClient();
       const product = await shopper.get(`/${language}/products/business`);
       expect(product.status).toBe(200);
       expect(product.html).toContain(`name="site_language" value="${language}"`);
@@ -526,7 +558,7 @@ describe('Kurv og forespørgsel', () => {
   });
 
   it('sender kurven som forespørgsel: gemmes, mail til Veyro, kurven tømmes, intet betales', async () => {
-    const shopper = new Client(stack.site);
+    const shopper = new SiteClient();
     await shopper.post('/cart/add', { id: 'premium' });
     await shopper.post('/cart/add', { id: 'starter', quantity: '2' });
     const cart = await shopper.get('/cart');
@@ -559,7 +591,7 @@ describe('Kurv og forespørgsel', () => {
   });
 
   it('en tom kurv kan ikke sendes', async () => {
-    const shopper = new Client(stack.site);
+    const shopper = new SiteClient();
     const r = await shopper.post('/contact', { form_type: 'contact', form_id: 'CartRequest', return_to: '/cart', 'contact[email]': 'tom@firma.dk', 'contact[Samtykke]': 'Ja' });
     expect(r.status).toBe(422);
     expect(r.html).toContain('Kurven er tom');
@@ -573,7 +605,7 @@ describe('Kontaktformularer', () => {
       expect(page.html).toContain(`value="${currentId}" selected`);
       expect(page.html).not.toMatch(/<option value="(?:15|30|50)"/);
     }
-    const visitor = new Client(stack.site);
+    const visitor = new SiteClient();
     const page = await visitor.get('/pages/kontakt');
     const formId = page.html.match(/id="(Contact-[^"]+)"/)[1];
     const result = await visitor.post('/contact', contactForm(page.html, formId, {
@@ -612,7 +644,7 @@ describe('Kontaktformularer', () => {
     ];
     const billingBefore = sql('SELECT id, status, price_id, amount, currency FROM subscriptions ORDER BY id');
     for (const test of cases) {
-      const visitor = new Client(stack.site);
+      const visitor = new SiteClient();
       const page = await visitor.get(`${test.prefix}/pages/kontakt`);
       const formId = page.html.match(/id="(Contact-[^"]+)"/)[1];
       const email = `local-webshop-${test.id}@example.test`;
@@ -643,7 +675,7 @@ describe('Kontaktformularer', () => {
   });
 
   it('bevarer niveau ved formularfejl, afviser ukendte niveauer og prissætter ikke individuelle tilbud', async () => {
-    const visitor = new Client(stack.site);
+    const visitor = new SiteClient();
     const page = await visitor.get('/en/pages/kontakt');
     const formId = page.html.match(/id="(Contact-[^"]+)"/)[1];
     const fields = { 'contact[name]': 'LOCAL TEST Valg', 'contact[email]': 'not-email', 'contact[Ydelse]': 'Pakke: Webshop', 'contact[Webshopniveau]': '120', 'contact[Samtykke]': 'Ja', 'contact[body]': 'LOCAL TEST Preserve this enquiry.' };
@@ -698,7 +730,7 @@ describe('Kontaktformularer', () => {
   });
 
   it('en genvist besked kan ikke bryde ud af tekstfeltet (kontakt og kurv)', async () => {
-    const visitor = new Client(stack.site);
+    const visitor = new SiteClient();
     const evil = '</textarea><script>alert(1)</script>';
     const page = await visitor.get('/pages/kontakt');
     const id = page.html.match(/id="(Contact-[^"]+)"/)[1];
@@ -714,7 +746,7 @@ describe('Kontaktformularer', () => {
   });
 
   it('return_to kan kun pege på siden selv', async () => {
-    const visitor = new Client(stack.site);
+    const visitor = new SiteClient();
     const page = await visitor.get('/pages/kontakt');
     const id = page.html.match(/id="(Contact-[^"]+)"/)[1];
     for (const ret of ['/.//evil.example', '/\\evil.example', '//evil.example']) {
@@ -809,14 +841,14 @@ describe('Admin: hjemmesiden', () => {
     const res = await admin.post('/admin/hjemmeside/produkter', { _csrf: csrfFrom(page.html), ...fields, 'p|business|price': '649' });
     expect(res.status).toBe(303);
     expect((await site.get('/products/business')).html).toContain('649 kr');
-    const shopper = new Client(stack.site);
+    const shopper = new SiteClient();
     await shopper.post('/cart/add', { id: 'business' });
     expect((await shopper.get('/cart')).html).toContain('649 kr');
     // Et skjult abonnement kan ikke lægges i kurven
     const p2 = await admin.get('/admin/hjemmeside/produkter');
     await admin.post('/admin/hjemmeside/produkter', { _csrf: csrfFrom(p2.html), ...fields, 'p|business|price': '649', 'p|premium|status': 'draft' });
     expect((await site.get('/products/premium')).status).toBe(404);
-    const s2 = new Client(stack.site);
+    const s2 = new SiteClient();
     await s2.post('/cart/add', { id: 'premium' });
     expect((await s2.get('/cart')).html).not.toContain('Premium abonnement');
   });
@@ -947,7 +979,7 @@ describe('Admin: forespørgsler → tilbud', () => {
 
 describe('Admin: bloker afsender (spam)', () => {
   const send = async (email, ip, body = 'Køb billige links') => {
-    const visitor = new Client(stack.site);
+    const visitor = new SiteClient();
     const page = await visitor.get('/pages/kontakt');
     const id = page.html.match(/id="(Contact-[^"]+)"/)[1];
     return visitor.post('/contact', contactForm(page.html, id, { 'contact[name]': 'Spam Spamsen', 'contact[email]': email, 'contact[body]': body, 'contact[Samtykke]': 'Ja' }), { 'CF-Connecting-IP': ip });
@@ -1017,7 +1049,7 @@ describe('Admin: bloker afsender (spam)', () => {
     const page = await site.get('/pages/kontakt');
     const id = page.html.match(/id="(Contact-[^"]+)"/)[1];
     const named = (email, ip) =>
-      new Client(stack.site).post('/contact', contactForm(page.html, id, { 'contact[name]': 'Robertbaick', 'contact[email]': email, 'contact[body]': 'Hej, jeg ønskede at kende din pris.', 'contact[Samtykke]': 'Ja' }), { 'CF-Connecting-IP': ip });
+      new SiteClient().post('/contact', contactForm(page.html, id, { 'contact[name]': 'Robertbaick', 'contact[email]': email, 'contact[body]': 'Hej, jeg ønskede at kende din pris.', 'contact[Samtykke]': 'Ja' }), { 'CF-Connecting-IP': ip });
     await named('robot1@shaw.ca', '203.0.113.50');
     await named('robot2@yahoo.ca', '203.0.113.51');
     const [lead] = sql("SELECT id FROM leads WHERE email = 'robot1@shaw.ca'");

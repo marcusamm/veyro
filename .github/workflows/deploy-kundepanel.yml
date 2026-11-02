@@ -54,9 +54,10 @@ jobs:
         run: npx wrangler deploy
       - name: Tjek de publicerede sider
         run: |
+          # Vælg dansk eksplicit: runnerens land må ikke ændre disse indholdstjek.
           check() {
             for i in $(seq 1 12); do
-              code=$(curl -s -o /dev/null -w '%{http_code}' "$1" || true)
+              code=$(curl -s --cookie 'veyro_language=da' -o /dev/null -w '%{http_code}' "$1" || true)
               if [ "$code" = "$2" ]; then echo "OK $code $1"; return 0; fi
               echo "Venter på $1 (fik $code)"; sleep 10
             done
@@ -73,10 +74,12 @@ jobs:
           check https://ny.veyro.dk/ 200
           check https://ny.veyro.dk/pages/kontakt 200
           check https://ny.veyro.dk/cart 200
+          check https://veyro.dk/en/ 200
+          check https://veyro.dk/sv/ 200
           # Juridiske sider på veyro.dk med indholdet, kunderne accepterer i kundepanelet
           side() {
             check "$1" 200
-            if curl -s "$1" | grep -q "$2"; then echo "OK indhold: $2"; else echo "::error::$1 mangler '$2'"; return 1; fi
+            if curl -s --cookie 'veyro_language=da' "$1" | grep -q "$2"; then echo "OK indhold: $2"; else echo "::error::$1 mangler '$2'"; return 1; fi
           }
           side https://veyro.dk/pages/handelsbetingelser 'ingen fortrydelsesret'
           side https://veyro.dk/pages/databehandleraftale 'Bilag B: Underdatabehandlere'

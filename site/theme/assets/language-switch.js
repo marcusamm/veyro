@@ -8,6 +8,7 @@
       url.search = location.search;
       url.searchParams.delete('kontakt');
       url.searchParams.delete('form');
+      url.searchParams.set('lang', link.lang);
       const service = document.querySelector('select[name="contact[Ydelse]"]');
       const tier = document.querySelector('[data-webshop-enquiry-select]');
       if (service?.value) {
