@@ -17,7 +17,7 @@ import {
 import { alert, csrfField, type H } from './layout';
 import { badgeClass, subscriptionState } from './status';
 import { legalLinks } from './legal';
-import { LEGAL_DOCS, LEGAL_VERSION, type Acceptance, type LegalDocKey } from '../lib/legal';
+import { LEGAL_DOCS, acceptedVersionApplies, legalDocumentUrl, type Acceptance, type LegalDocKey } from '../lib/legal';
 
 const kr = (n: number) => formatKr(n, { decimals: n % 100 !== 0 });
 const iv = (i: string | null | undefined) => INTERVAL_LABEL[(i === 'year' ? 'year' : 'month') as Interval];
@@ -353,7 +353,8 @@ export function adminCustomerPage(args: {
       <div><dt>Stripe</dt><dd>${c.stripe_customer_id ? html`<a href="https://dashboard.stripe.com/customers/${c.stripe_customer_id}" target="_blank" rel="noopener">${c.stripe_customer_id}</a>` : '–'}</dd></div>
       ${LEGAL_DOCS.map((d) => {
         const a = args.accepted?.[d.key];
-        return html`<div><dt>${d.title}</dt><dd>${a ? `Version ${a.version}, accepteret ${formatDate(a.accepted_at)}${a.version === LEGAL_VERSION ? '' : ' (ikke nyeste)'}` : 'Ikke accepteret'}</dd></div>`;
+        const known = acceptedVersionApplies(d, a?.version);
+        return html`<div><dt><a href="${legalDocumentUrl(d, a?.version)}" target="_blank" rel="noopener">${d.title}${a && !known ? ' (aktuel tekst)' : ''}</a></dt><dd>${a ? `Version ${a.version}, accepteret ${formatDate(a.accepted_at)}${a.version === d.version ? '' : known ? ' (eksisterende aftale)' : ' (historisk accept; versionstekst ikke tilgængelig her)'}` : 'Ikke accepteret'}</dd></div>`;
       })}
     </dl>
   </section>
