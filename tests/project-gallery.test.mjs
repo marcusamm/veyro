@@ -67,9 +67,9 @@ function card(data) {
 
 // The actual shipped class runs against document geometry and native-link state.
 // CSS perspective, painting and real keyboard navigation are separately browser-reviewed.
-function fixture({ count = 3, demos, reduced = false, paused = false, motion = true, height = 900, width = 1440, pinHeight = 720, sticky = true, depth = true, io = true, absoluteTop = 400, withDepth = true } = {}) {
+function fixture({ count = 3, demos, reduced = false, paused = false, motion = true, height = 900, width = 1440, pinHeight = 720, sticky = true, depth = true, io = true, absoluteTop = 400, withDepth = true, homepage = false } = {}) {
   const window = new Element(), document = new Element(), root = new Element();
-  const body = new Element('body'); if (motion) body.classList.add('has-motion'); if (paused) body.classList.add('effects-paused');
+  const body = new Element('body'); if (motion) body.classList.add('has-motion'); if (paused) body.classList.add('effects-paused'); if (homepage) body.classList.add('template-index');
   const make = (tag, key) => { const el = new Element(tag); el.setAttribute(`data-gallery-${key}`, ''); return el; };
   const track = make('div', 'track'), pin = make('div', 'pin'), stage = make('div', 'stage');
   const depthLayer = withDepth ? make('div', 'depth') : null;
@@ -185,6 +185,144 @@ describe('Native-scroll helix showcase', () => {
     state.progress(1.1); expect(geometry(state)).toEqual(last);
     state.progress(0); const first = geometry(state);
     state.progress(-.1); expect(geometry(state)).toEqual(first);
+  });
+
+  it.each([2, 3, 5])('carries %i homepage projects through both sticky boundaries without freezing', count => {
+    const state = fixture({ count, homepage: true });
+    const scene = () => ['--gallery-depth-y', '--gallery-light-y'].map(property => parseFloat(state.root.style.getPropertyValue(property)));
+    // Sample native scrolling on either side of entry and release, not just
+    // inside the pinned interval. No scroll step may repeat its geometry.
+    for (const boundary of [0, 1]) {
+      const index = boundary === 0 ? 0 : count - 1;
+      const samples = [];
+      let previous = null;
+      for (let step = -10; step <= 10; step++) {
+        const progress = boundary + step / 100;
+        state.progress(progress);
+        expectActive(state, index);
+        const current = geometry(state), background = scene();
+        expect(state.root.dataset.galleryProgress).toBe(Math.max(0, Math.min(1, progress)).toFixed(4));
+        expect(state.planes[index].style.visibility).toBe('visible');
+        if (previous) {
+          expect(parseFloat(current[index]['--rotate-y'])).toBeLessThan(parseFloat(previous.geometry[index]['--rotate-y']));
+          expect(parseFloat(current[index]['--y'])).toBeGreaterThan(parseFloat(previous.geometry[index]['--y']));
+          expect(background[0]).toBeLessThan(previous.background[0]);
+          expect(background[1]).toBeLessThan(previous.background[1]);
+        }
+        samples.push({ progress, geometry: current, background });
+        previous = samples.at(-1);
+        expect(state.frames).toBe(0);
+      }
+      for (const sample of samples.reverse()) {
+        state.progress(sample.progress);
+        expect(geometry(state)).toEqual(sample.geometry);
+        expect(scene()).toEqual(sample.background);
+        expectActive(state, index);
+      }
+    }
+  });
+
+  it.each([0, 1])('joins native sticky motion with continuous velocity at homepage boundary %i', boundary => {
+    const state = fixture({ homepage: true });
+    const bridge = Math.min(160, state.instance.pinHeight * .22);
+    const samples = [];
+    const pinPosition = distance => {
+      state.progress(boundary + distance / state.instance.range);
+      const correction = parseFloat(state.root.style.getPropertyValue('--gallery-pin-y'));
+      const native = boundary === 0 ? -Math.min(distance, 0) : -Math.max(distance, 0);
+      expect(Math.abs(correction)).toBeLessThanOrEqual(bridge / 4 + .001);
+      expect(state.frames).toBe(0);
+      return { correction, position: native + correction };
+    };
+    // One-pixel samples catch a velocity discontinuity at the exact sticky
+    // boundary and where the bridge rejoins ordinary document scrolling.
+    for (let distance = -Math.ceil(bridge) - 2; distance <= Math.ceil(bridge) + 2; distance++) {
+      const current = pinPosition(distance);
+      samples.push({ distance, ...current });
+    }
+    const velocities = samples.slice(1).map((sample, index) => sample.position - samples[index].position);
+    velocities.forEach(velocity => {
+      expect(velocity).toBeGreaterThanOrEqual(-1.001);
+      expect(velocity).toBeLessThanOrEqual(.001);
+    });
+    velocities.slice(1).forEach((velocity, index) => expect(Math.abs(velocity - velocities[index])).toBeLessThan(.007));
+    const minus = pinPosition(-1).position, center = pinPosition(0).position, plus = pinPosition(1).position;
+    expect(center - minus).toBeCloseTo(-.5, 2);
+    expect(plus - center).toBeCloseTo(-.5, 2);
+    expect(Math.abs(pinPosition(0).correction)).toBeCloseTo(bridge / 4, 3);
+    for (const endpoint of [-bridge, bridge]) {
+      expect(pinPosition(endpoint).correction).toBe(0);
+      const before = pinPosition(endpoint - 1).position;
+      const middle = pinPosition(endpoint).position;
+      const after = pinPosition(endpoint + 1).position;
+      expect(Math.abs((after - middle) - (middle - before))).toBeLessThan(.004);
+    }
+    for (const sample of samples.reverse()) expect(pinPosition(sample.distance)).toEqual({ correction: sample.correction, position: sample.position });
+  });
+
+  it('removes the sticky bridge for reduced motion, pause and component teardown', () => {
+    const state = fixture({ homepage: true });
+    state.progress(1);
+    expect(parseFloat(state.root.style.getPropertyValue('--gallery-pin-y'))).toBeLessThan(0);
+    state.reduce(true);
+    expect(parseFloat(state.root.style.getPropertyValue('--gallery-pin-y'))).toBe(0);
+    state.reduce(false);
+    expect(parseFloat(state.root.style.getPropertyValue('--gallery-pin-y'))).toBeLessThan(0);
+    state.pause(true);
+    expect(parseFloat(state.root.style.getPropertyValue('--gallery-pin-y'))).toBe(0);
+    state.pause(false);
+    state.progress(0);
+    expect(parseFloat(state.root.style.getPropertyValue('--gallery-pin-y'))).toBeGreaterThan(0);
+    state.instance.destroy();
+    expect(state.root.style.getPropertyValue('--gallery-pin-y')).toBe('');
+    expect(state.frames).toBe(0);
+    const standalone = fixture();
+    standalone.progress(0);
+    expect(parseFloat(standalone.root.style.getPropertyValue('--gallery-pin-y'))).toBe(0);
+  });
+
+  it('bounds homepage travel and keeps valid destinations beyond either end', () => {
+    const state = fixture({ homepage: true });
+    for (const [progress, index] of [[-5, 0], [5, 2]]) {
+      state.progress(progress);
+      expectActive(state, index);
+      expect(Math.abs(parseFloat(state.planes[index].style.getPropertyValue('--rotate-y')))).toBeCloseTo(.78 * 96);
+      expect(visible(state)).toHaveLength(0);
+      expect(state.open.emit('click').defaultPrevented).toBe(false);
+      expect(state.frames).toBe(0);
+    }
+    const single = fixture({ homepage: true, count: 1 });
+    for (const progress of [-1, 0, 1, 2]) { single.progress(progress); expectCentered(single, 0); }
+  });
+
+  it.each(['preview', 'current-link'])('protects a homepage %s pointer press as the sticky scene releases', target => {
+    const state = fixture({ homepage: true, width: 390, height: 844, pinHeight: 740 });
+    state.progress(1.08);
+    const element = target === 'preview' ? state.planes[2] : state.open;
+    const before = geometry(state), href = element.href;
+    state.window.emit('scroll');
+    state.focus(element, { keyboard: false, flushFrame: false });
+    state.flush();
+    expect(geometry(state)).toEqual(before);
+    state.progress(1.14);
+    expect(geometry(state)).toEqual(before);
+    expectActive(state, 2);
+    expect(element.href).toBe(href);
+    expect(element.emit('click').defaultPrevented).toBe(false);
+    state.blur();
+    expect(geometry(state)).not.toEqual(before);
+    expect(state.frames).toBe(0);
+  });
+
+  it.each([{ reduced: true }, { paused: true }, { motion: false }, { depth: false }])('keeps homepage boundary movement static when effects are disabled: %j', options => {
+    const state = fixture({ homepage: true, ...options });
+    state.progress(0); const first = geometry(state);
+    state.progress(-.1); expect(geometry(state)).toEqual(first); expectActive(state, 0);
+    state.progress(1); const last = geometry(state);
+    state.progress(1.1); expect(geometry(state)).toEqual(last); expectActive(state, 2);
+    expect(state.root.style.getPropertyValue('--gallery-depth-y')).toBe('0.00px');
+    expect(state.root.style.getPropertyValue('--gallery-light-y')).toBe('0.00px');
+    expect(state.frames).toBe(0);
   });
 
   it('shows at most two planes throughout transitions and reverses exactly with scroll', () => {

@@ -4,7 +4,7 @@
   const instances = new WeakMap();
   const clamp = (value, min = 0, max = 1) => Math.max(min, Math.min(max, value));
   const planeProperties = ['--x', '--y', '--z', '--rotate-y', '--plane-opacity', '--plane-shade'];
-  const rootProperties = ['--gallery-steps', '--gallery-scroll-height', '--gallery-card-width', '--gallery-radius', '--gallery-progress', '--gallery-accent', '--gallery-depth-step', '--gallery-depth-y', '--gallery-light-y'];
+  const rootProperties = ['--gallery-steps', '--gallery-scroll-height', '--gallery-card-width', '--gallery-radius', '--gallery-progress', '--gallery-accent', '--gallery-depth-step', '--gallery-depth-y', '--gallery-light-y', '--gallery-pin-y'];
   const safeURL = value => {
     if (typeof value !== 'string' || !value.trim()) return null;
     try {
@@ -177,6 +177,7 @@
         this.root.style.removeProperty('--gallery-scroll-height');
         this.root.style.setProperty('--gallery-depth-y', '0px');
         this.root.style.setProperty('--gallery-light-y', '0px');
+        this.root.style.setProperty('--gallery-pin-y', '0px');
         this.restorePlanes();
         const rect = this.track.getBoundingClientRect();
         this.inView = rect.bottom > 0 && rect.top < viewport;
@@ -236,20 +237,37 @@
       // One layout read per dirty scroll frame also accounts for content above
       // the gallery changing height after a font or an image finishes loading.
       this.top = this.track.getBoundingClientRect().top + window.scrollY;
-      const progress = clamp((window.scrollY - this.top + this.stickyTop) / this.range);
+      const rawProgress = (window.scrollY - this.top + this.stickyTop) / this.range;
+      const progress = clamp(rawProgress), mode = this.mode();
+      const last = Math.max(0, this.planes.length - 1);
+      const continuous = last && mode === '3d' && document.body.classList.contains('template-index');
+      // On the homepage the screw path carries through the sticky boundaries.
+      // The first/last preview continues approaching/leaving while the document
+      // scrolls, rather than freezing as the neighboring content arrives.
+      const travel = continuous
+        ? clamp(rawProgress * last, -.78, last + .78)
+        : progress * last;
+      // Ease the *geometry* of sticky entry/release, not the scroll input. Native
+      // sticky changes velocity instantly at each edge; this short quadratic
+      // bridge gives the scene a continuous velocity as the document takes over.
+      const bridge = Math.min(160, this.pinHeight * .22);
+      const edge = distance => Math.abs(distance) < bridge
+        ? Math.pow(bridge - Math.abs(distance), 2) / (4 * bridge) : 0;
+      const pinY = continuous ? edge(rawProgress * this.range) - edge((rawProgress - 1) * this.range) : 0;
+      this.root.style.setProperty('--gallery-pin-y', `${pinY.toFixed(3)}px`);
       // Direct travel: every scroll delta moves the previews, including
       // through the face-on position. There are no hold windows or snapping.
-      let position = progress * Math.max(0, this.planes.length - 1);
+      let position = travel;
       if (this.focusIndex !== null) position = this.focusPosition ?? this.focusIndex;
       this.position = position;
-      const active = Math.round(position), mode = this.mode();
+      const active = clamp(Math.round(position), 0, last);
       this.root.dataset.galleryMode = mode;
       this.root.dataset.galleryProgress = progress.toFixed(4);
       this.root.style.setProperty('--gallery-progress', progress.toFixed(4));
       // Background layers share native progress at their own depth speeds.
       // Keyboard focus protects the current link without freezing the environment.
-      const depthY = mode === '3d' ? this.pinHeight * .08 - progress * Math.max(0, this.planes.length - 1) * this.depthStep : 0;
-      const lightY = mode === '3d' ? (.5 - progress) * this.pinHeight * .35 : 0;
+      const depthY = mode === '3d' ? this.pinHeight * .08 - travel * this.depthStep : 0;
+      const lightY = mode === '3d' ? (.5 - (last ? travel / last : progress)) * this.pinHeight * .35 : 0;
       this.root.style.setProperty('--gallery-depth-y', `${depthY.toFixed(2)}px`);
       this.root.style.setProperty('--gallery-light-y', `${lightY.toFixed(2)}px`);
       this.root.dataset.activeDemo = String(active);
