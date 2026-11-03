@@ -1,0 +1,53 @@
+{%- comment -%} Runs before the first body paint; the default/no-JS page remains fully visible. {%- endcomment -%}
+<script>
+(() => {
+  const root = document.documentElement;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const navigation = performance.getEntriesByType('navigation')[0];
+  let paused = false;
+  try { paused = sessionStorage.getItem('veyro-effects-paused') === 'true'; } catch (_) {}
+  let internal = false;
+  try { internal = document.referrer && new URL(document.referrer).origin === location.origin; } catch (_) {}
+  if (reduced.matches || paused || location.hash || navigation?.type === 'back_forward' || (internal && navigation?.type !== 'reload')) return;
+
+  let finished = false;
+  let revealTimer, finishTimer;
+  const revealAt = performance.now() + 900;
+  function announce() { window.dispatchEvent(new Event('veyro:entrance-reveal')); }
+  function finish() {
+    if (finished) return;
+    finished = true;
+    clearTimeout(revealTimer);
+    clearTimeout(finishTimer);
+    delete root.dataset.entrance;
+    window.VeyroEntrance.revealAt = 0;
+    document.querySelector('[data-site-entrance]')?.remove();
+    announce();
+    for (const type of ['pointerdown', 'keydown', 'wheel', 'touchstart', 'focusin']) document.removeEventListener(type, finish, true);
+    window.removeEventListener('scroll', finish);
+    window.removeEventListener('pagehide', finish);
+    window.removeEventListener('beforeprint', finish);
+    window.removeEventListener('pageshow', restored);
+    window.removeEventListener('hashchange', finish);
+    reduced.removeEventListener('change', preference);
+  }
+  function restored(event) { if (event.persisted) finish(); }
+  function preference() { if (reduced.matches) finish(); }
+  window.VeyroEntrance = { revealAt, finish };
+  root.dataset.entrance = 'opening';
+  revealTimer = setTimeout(() => {
+    if (finished) return;
+    root.dataset.entrance = 'revealing';
+    announce();
+  }, 900);
+  // Independent of fonts, images and motion.js: a failed enhancement cannot cover the page.
+  finishTimer = setTimeout(finish, 2050);
+  for (const type of ['pointerdown', 'keydown', 'wheel', 'touchstart', 'focusin']) document.addEventListener(type, finish, { capture: true, passive: true });
+  window.addEventListener('scroll', finish, { passive: true });
+  window.addEventListener('pagehide', finish);
+  window.addEventListener('beforeprint', finish);
+  window.addEventListener('pageshow', restored);
+  window.addEventListener('hashchange', finish);
+  reduced.addEventListener('change', preference);
+})();
+</script>
