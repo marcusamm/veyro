@@ -196,7 +196,7 @@
         canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         buildPoints();
-        if (entranceStart === null) entranceStart = performance.now();
+        if (entranceStart === null) entranceStart = Math.max(performance.now(), window.VeyroEntrance?.revealAt || 0);
         if (!enabled() || (hero && hero.getBoundingClientRect().top < -80)) formed = true;
         draw(elapsed);
       }
@@ -325,10 +325,14 @@
         rippleU = (event.clientX - r.left) / r.width; rippleV = (event.clientY - r.top) / r.height;
         rippleStart = elapsed;
       });
-      return { resize, sync, setScroll() { scroll = clamp((scrollY - scrollStart) / scrollRange); locatePointer(); } };
+      return { resize, sync, reveal() {
+        // Early interaction releases the intro without restarting an already-formed V.
+        if (entranceStart !== null && entranceStart > performance.now()) entranceStart = performance.now();
+      }, setScroll() { scroll = clamp((scrollY - scrollStart) / scrollRange); locatePointer(); } };
     }
     const canvas = document.querySelector('[data-particle-scene]');
     const scene = canvas ? createScene(canvas) : null;
+    addEventListener('veyro:entrance-reveal', () => scene?.reveal());
 
     // Pointer-lit panels and tilt on project pictures; touch keeps the native interaction.
     document.querySelectorAll('.studio-introduction, .home-hero__project, .concepts__item .browser, .booking-preview').forEach(el => {
@@ -363,6 +367,7 @@
       clearTimeout(preferenceTimer);
       body.classList.toggle('studio-motion-ready', enabled());
       body.classList.toggle('effects-paused', paused);
+      if (!enabled()) window.VeyroEntrance?.finish();
       if (pauseButton) {
         pauseButton.hidden = !body.classList.contains('has-motion') || reduce.matches;
         pauseButton.setAttribute('aria-pressed', String(paused));

@@ -64,6 +64,10 @@
     {{ 'studio-capabilities.css' | asset_url | stylesheet_tag }}
     {{ 'studio-depth.css' | asset_url | stylesheet_tag }}
     {{ 'brand.css' | asset_url | stylesheet_tag }}
+    {%- if request.page_type == 'index' and settings.animations -%}
+      {{ 'entrance.css' | asset_url | stylesheet_tag }}
+      {% render 'entrance-bootstrap' %}
+    {%- endif -%}
 
     <script>document.documentElement.className = document.documentElement.className.replace('no-js', 'js');</script>
     <script src="{{ 'language-switch.js' | asset_url }}" defer="defer"></script>
@@ -77,6 +81,7 @@
   </head>
 
   <body class="template-{{ template.name | handle }}{% if template.suffix %} template-{{ template.name | handle }}--{{ template.suffix | handle }}{% endif %}{% if settings.animations %} has-motion{% endif %}">
+    {%- if request.page_type == 'index' and settings.animations -%}{% render 'entrance' %}{%- endif -%}
     <a class="skip-link" href="#MainContent">{{ 'general.skip_to_content' | t }}</a>
 
     {% sections 'header-group' %}

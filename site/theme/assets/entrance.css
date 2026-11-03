@@ -1,0 +1,25 @@
+/* A short brand entrance, then the existing live hero. Never intercept input. */
+.site-entrance { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-entrance] .site-entrance { display: grid !important; place-items: center; position: fixed; inset: 0; z-index: 120; pointer-events: none; user-select: none; isolation: isolate; }
+  .site-entrance__surface { position: absolute; inset: 0; background: #ff763f; z-index: -1; }
+  .site-entrance__wordmark { display: flex; align-items: baseline; justify-content: center; color: #171717; font-family: var(--font-body); font-size: clamp(72px, 19vw, 310px); font-weight: 500; letter-spacing: -.075em; line-height: 1; padding: .15em .08em .15em 0; }
+  .site-entrance__wordmark > span { display: block; animation: entrance-letter-in .65s cubic-bezier(.16,1,.3,1) both; animation-delay: calc(80ms + var(--letter) * 65ms); }
+  .site-entrance__dot { color: #f6f5f2; }
+  html[data-entrance='opening'] .studio-art,
+  html[data-entrance='opening'] .site-header { opacity: 0; }
+  html[data-entrance='opening'] .studio-motion-ready .hero-word,
+  html[data-entrance='opening'] .studio-motion-ready .studio-wordmark > span,
+  html[data-entrance='opening'] .studio-motion-ready .studio-action { animation-play-state: paused; }
+  html[data-entrance='revealing'] .site-entrance__surface { animation: entrance-surface-out .85s cubic-bezier(.76,0,.24,1) both; }
+  html[data-entrance='revealing'] .site-entrance__wordmark > span { animation: entrance-letter-out .48s cubic-bezier(.64,0,.78,0) both; animation-delay: calc(var(--letter) * 28ms); }
+  html[data-entrance='revealing'] .studio-art { animation: entrance-art-in 1.1s cubic-bezier(.16,1,.3,1) both !important; }
+  html[data-entrance='revealing'] .site-header { animation: entrance-header-in .7s .25s ease both; }
+  @keyframes entrance-letter-in { from { opacity: 0; transform: translateY(35%) rotate(5deg); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+  @keyframes entrance-letter-out { to { opacity: 0; transform: translateY(-65%) rotate(-5deg); filter: blur(5px); } }
+  @keyframes entrance-surface-out { 0% { opacity: 1; clip-path: inset(0); } 55% { opacity: .92; } 100% { opacity: 0; clip-path: inset(0 0 100% 0 round 0 0 35% 35%); } }
+  @keyframes entrance-art-in { from { opacity: 0; transform: translateY(24px) scale(.94); } to { opacity: 1; transform: none; } }
+  @keyframes entrance-header-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+}
+@media (max-width: 599px) { .site-entrance__wordmark { font-size: 21vw; } }
+@media print { html[data-entrance] .site-entrance { display: none !important; } }
