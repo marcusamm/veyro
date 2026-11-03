@@ -10,7 +10,7 @@ class Element {
   constructor(tag = 'div') {
     this.tagName = tag.toUpperCase(); this.children = []; this.parentElement = null;
     this.dataset = {}; this.attributes = new Map(); this.listeners = new Map(); this.inert = false;
-    this.text = ''; this.classes = new Set();
+    this.text = ''; this.classes = new Set(); this.focusVisible = false;
     const values = new Map();
     this.style = { visibility: '', pointerEvents: '', setProperty: (key, value) => values.set(key, String(value)), getPropertyValue: key => values.get(key) || '', removeProperty: key => values.delete(key) };
     this.classList = { contains: name => this.classes.has(name), add: name => this.classes.add(name), remove: name => this.classes.delete(name), toggle: (name, force) => { const add = force ?? !this.classes.has(name); this.classes[add ? 'add' : 'delete'](name); return add; } };
@@ -32,6 +32,7 @@ class Element {
   remove() { if (this.parentElement) this.parentElement.children = this.parentElement.children.filter(child => child !== this); this.parentElement = null; }
   contains(target) { return target === this || this.children.some(child => child.contains(target)); }
   matches(selector) {
+    if (selector === ':focus-visible') return this.focusVisible;
     if (selector.startsWith('.')) return this.classList.contains(selector.slice(1));
     if (/^\[data-[\w-]+\]$/.test(selector)) return this.getAttribute(selector.slice(1, -1)) !== null;
     return this.tagName.toLowerCase() === selector;
@@ -111,17 +112,19 @@ function fixture({ count = 3, demos, reduced = false, paused = false, motion = t
     progress(value) { window.scrollY = absoluteTop - instance.stickyTop + instance.range * value; window.emit('scroll'); flush(); },
     pause(value) { body.classList[value ? 'add' : 'remove']('effects-paused'); observers.mutation.forEach(observer => observer.callback([])); flush(); },
     reduce(value) { media.matches = value; media.emit('change'); flush(); },
-    focus(element) { document.activeElement = element; root.emit('focusin', { target: element }); flush(); },
-    blur() { document.activeElement = body; root.emit('focusout', { relatedTarget: body }); flush(); },
+    focus(element, { keyboard = true, flushFrame = true } = {}) {
+      document.activeElement.focusVisible = false; document.activeElement = element; element.focusVisible = keyboard;
+      root.emit('focusin', { target: element }); if (flushFrame) flush();
+    },
+    blur() { document.activeElement.focusVisible = false; document.activeElement = body; root.emit('focusout', { relatedTarget: body }); flush(); },
     intersect(value) { observers.intersection.forEach(observer => observer.callback([{ isIntersecting: value }])); flush(); },
   };
 }
 
 const geometry = state => state.planes.map(plane => Object.fromEntries(properties.map(property => [property, plane.style.getPropertyValue(property)])));
 const visible = state => state.planes.filter(plane => plane.style.visibility === 'visible');
-function expectSettled(state, index) {
+function expectActive(state, index) {
   expect(state.root.dataset.activeDemo).toBe(String(index));
-  expect(visible(state)).toEqual([state.planes[index]]);
   state.planes.forEach((plane, other) => {
     expect(plane.tabIndex).toBe(other === index ? 0 : -1);
     expect(plane.inert).toBe(other !== index);
@@ -134,19 +137,54 @@ function expectSettled(state, index) {
   expect(state.description.textContent).toBe(state.instance.demos[index].description);
   expect(state.open.getAttribute('href')).toBe(state.instance.demos[index].url);
   expect(state.counter.textContent).toBe(`${String(index + 1).padStart(2, '0')} / ${String(state.planes.length).padStart(2, '0')}`);
+}
+
+function expectCentered(state, index) {
+  expectActive(state, index);
+  expect(visible(state)).toEqual([state.planes[index]]);
   for (const property of ['--x', '--y', '--z', '--rotate-y']) expect(parseFloat(state.planes[index].style.getPropertyValue(property))).toBe(0);
 }
 
 describe('Native-scroll helix showcase', () => {
-  it.each([2, 3, 5])('holds each of %i projects alone, with metadata and native current link', count => {
+  it.each([2, 3, 5])('passes each of %i projects face-on, with metadata and native current link', count => {
     const state = fixture({ count });
     expect(state.root.classList.contains('is-helix-ready')).toBe(true);
     expect(state.frames).toBe(0);
     for (let index = 0; index < count; index++) {
-      state.progress((index + .5) / count);
-      expectSettled(state, index);
+      state.progress(index / (count - 1));
+      expectCentered(state, index);
       expect(state.frames).toBe(0);
     }
+  });
+
+  it.each([2, 3, 5])('keeps all %i projects moving through every scroll increment without a center hold', count => {
+    const state = fixture({ count });
+    const sample = () => state.planes.map(plane => ({
+      angle: parseFloat(plane.style.getPropertyValue('--rotate-y')),
+      y: parseFloat(plane.style.getPropertyValue('--y')),
+    }));
+    state.progress(0);
+    let previous = sample();
+    // Dense samples include the exact centers and both ends of the old holds.
+    for (let tick = 1; tick <= 400; tick++) {
+      state.progress(tick / 400);
+      const current = sample();
+      current.forEach((plane, index) => {
+        expect(plane.angle).toBeLessThan(previous[index].angle);
+        expect(plane.y).toBeGreaterThan(previous[index].y);
+      });
+      const active = Number(state.root.dataset.activeDemo);
+      expectActive(state, active);
+      expect(state.planes[active].style.visibility).toBe('visible');
+      expect(state.frames).toBe(0);
+      previous = current;
+    }
+    // Traversal uses one viewport step per adjacent pair, with no extra hold step.
+    expect(state.instance.range).toBe((count - 1) * (state.window.innerHeight - state.instance.stickyTop));
+    const last = geometry(state);
+    state.progress(1.1); expect(geometry(state)).toEqual(last);
+    state.progress(0); const first = geometry(state);
+    state.progress(-.1); expect(geometry(state)).toEqual(first);
   });
 
   it('shows at most two planes throughout transitions and reverses exactly with scroll', () => {
@@ -163,24 +201,27 @@ describe('Native-scroll helix showcase', () => {
       state.progress(step / 100);
       expect({ geometry: geometry(state), index: state.root.dataset.activeDemo, href: state.open.href }).toEqual(samples[step]);
     }
-    state.progress(1 / 5);
+    state.progress(1 / 8);
     expect(visible(state)).toHaveLength(2);
-    expect(state.planes.every(plane => plane.inert && plane.tabIndex === -1)).toBe(true);
+    expectActive(state, 1);
+    expect(state.planes[1].emit('click').defaultPrevented).toBe(false);
+    expect(state.open.emit('click').defaultPrevented).toBe(false);
+    expect(state.planes.filter(plane => !plane.inert)).toEqual([state.planes[1]]);
   });
 
 
-  it('moves the environment through settled holds and reverses exactly with native scroll', () => {
+  it('moves the environment alongside the previews and reverses exactly with native scroll', () => {
     const state = fixture();
     const scene = () => ['--gallery-depth-y', '--gallery-light-y'].map(property => parseFloat(state.root.style.getPropertyValue(property)));
-    state.progress(.05); expectSettled(state, 0); const start = scene();
-    state.progress(.2); expectSettled(state, 0); const later = scene();
+    state.progress(.05); expectActive(state, 0); const start = scene();
+    state.progress(.2); expectActive(state, 0); const later = scene();
     expect(later[0]).toBeLessThan(start[0]); expect(later[1]).toBeLessThan(start[1]);
     expect(state.frames).toBe(0);
-    state.progress(.8); expectSettled(state, 2);
+    state.progress(.8); expectActive(state, 2);
     state.progress(.2); expect(scene()).toEqual(later);
     state.progress(.05); expect(scene()).toEqual(start);
     // Keyboard focus protects the destination without freezing document depth.
-    state.focus(state.open); state.progress(.8); expectSettled(state, 0);
+    state.focus(state.open); state.progress(.8); expectCentered(state, 0);
     expect(scene()[0]).toBeLessThan(later[0]);
   });
 
@@ -211,7 +252,7 @@ describe('Native-scroll helix showcase', () => {
 
   it('supports the reusable component without a decorative background container', () => {
     const state = fixture({ withDepth: false });
-    state.progress(.5); expectSettled(state, 1);
+    state.progress(.5); expectCentered(state, 1);
     expect(state.instance.depthMarks).toEqual([]);
     expect(Number.isFinite(parseFloat(state.root.style.getPropertyValue('--gallery-depth-y')))).toBe(true);
     state.instance.destroy(); expect(state.frames).toBe(0);
@@ -244,14 +285,15 @@ describe('Native-scroll helix showcase', () => {
     state.reduce(true);
     state.progress(.5);
     expect(state.root.dataset.galleryMode).toBe('reduced');
-    expectSettled(state, 1);
+    expectCentered(state, 1);
     for (const plane of state.planes) for (const property of ['--x', '--y', '--z', '--rotate-y']) expect(parseFloat(plane.style.getPropertyValue(property))).toBe(0);
     state.reduce(false);
     expect(state.root.dataset.galleryMode).toBe('3d');
     state.pause(true);
     state.progress(5 / 6);
     expect(state.root.dataset.galleryMode).toBe('reduced');
-    expectSettled(state, 2);
+    expectActive(state, 2);
+    expect(visible(state)).toHaveLength(2);
     state.pause(false);
     expect(state.root.dataset.galleryMode).toBe('3d');
     expect(state.frames).toBe(0);
@@ -261,7 +303,7 @@ describe('Native-scroll helix showcase', () => {
     const state = fixture(options);
     state.progress(.5);
     expect(state.root.dataset.galleryMode).toBe('reduced');
-    expectSettled(state, 1);
+    expectCentered(state, 1);
   });
 
   it('locks the focused current link until focus leaves so its target never changes under the keyboard', () => {
@@ -270,14 +312,42 @@ describe('Native-scroll helix showcase', () => {
     state.focus(state.open);
     const href = state.open.href;
     state.progress(5 / 6);
-    expectSettled(state, 0);
+    expectCentered(state, 0);
     expect(state.open.href).toBe(href);
     expect(state.root.dataset.galleryFocusLocked).toBe('true');
     expect(state.document.activeElement).toBe(state.open);
     expect(state.open.emit('click').defaultPrevented).toBe(false);
     state.blur();
-    expectSettled(state, 2);
+    expectActive(state, 2);
+    expect(parseFloat(state.planes[2].style.getPropertyValue('--rotate-y'))).not.toBe(0);
     expect(state.root.dataset.galleryFocusLocked).toBe('false');
+  });
+
+  it.each(['preview', 'current-link'])('keeps the moving %s under a pointer press until its native click completes', target => {
+    const state = fixture({ width: 390, height: 844, pinHeight: 740 });
+    state.progress(.2645);
+    expectActive(state, 1);
+    const element = target === 'preview' ? state.planes[1] : state.open;
+    const before = geometry(state), href = element.href;
+    expect(parseFloat(before[1]['--rotate-y'])).not.toBe(0);
+    // A scroll paint can already be queued when pointerdown moves native focus.
+    state.window.emit('scroll');
+    state.focus(element, { keyboard: false, flushFrame: false });
+    expect(state.frames).toBe(1);
+    expect(geometry(state)).toEqual(before);
+    state.flush();
+    expect(geometry(state)).toEqual(before);
+    expectActive(state, 1);
+    // Even a further queued scroll before pointerup must not move the target.
+    state.progress(.3);
+    expect(geometry(state)).toEqual(before);
+    expect(element.href).toBe(href);
+    expect(element.emit('click').defaultPrevented).toBe(false);
+    expect(state.document.activeElement).toBe(element);
+    state.blur();
+    expect(geometry(state)).not.toEqual(before);
+    expect(state.root.dataset.galleryFocusLocked).toBe('false');
+    expect(state.frames).toBe(0);
   });
 
   it('keeps a focused plane centered, focusable and linked through scroll', () => {
@@ -285,11 +355,11 @@ describe('Native-scroll helix showcase', () => {
     state.progress(.5);
     state.focus(state.planes[1]);
     state.progress(0);
-    expectSettled(state, 1);
+    expectCentered(state, 1);
     expect(state.document.activeElement).toBe(state.planes[1]);
     expect(state.planes[1].emit('click').defaultPrevented).toBe(false);
     state.blur();
-    expectSettled(state, 0);
+    expectCentered(state, 0);
   });
 
   it.each([{ demos: [] }, { demos: [demo(0)] }])('handles empty and single-demo arrays without invalid geometry: %j', ({ demos }) => {
@@ -297,7 +367,7 @@ describe('Native-scroll helix showcase', () => {
     expect(state.planes).toHaveLength(demos.length);
     expect(state.frames).toBe(0);
     if (!demos.length) expect(state.root.classList.contains('is-helix-ready')).toBe(false);
-    else for (const progress of [0, .5, 1]) { state.progress(progress); expectSettled(state, 0); }
+    else for (const progress of [0, .5, 1]) { state.progress(progress); expectCentered(state, 0); }
   });
 
   it('creates configurable cards safely and rejects executable URL schemes', () => {
@@ -311,7 +381,7 @@ describe('Native-scroll helix showcase', () => {
     expect(state.planes[0].querySelector('figcaption > span').textContent).toBe(unsafeTitle);
     expect(state.planes[0].querySelectorAll('img')).toHaveLength(1);
     state.progress(.5);
-    expectSettled(state, 0);
+    expectCentered(state, 0);
   });
 
   it('does not replace a focused control when the demo collection is updated', () => {
@@ -325,7 +395,7 @@ describe('Native-scroll helix showcase', () => {
     state.instance.setDemos([demo(7)]);
     expect(state.planes).toHaveLength(1);
     state.progress(.5);
-    expectSettled(state, 0);
+    expectCentered(state, 0);
     expect(state.open.href).toBe('/demo/project-8/');
   });
 
