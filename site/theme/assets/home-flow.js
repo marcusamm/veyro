@@ -5,7 +5,14 @@
     const body = document.body;
     if (!body.classList.contains('template-index')) return;
     const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+    const compact = matchMedia('(max-width: 749px), (pointer: coarse)');
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    // Keep atmospheric transforms on one decorative layer. Inherited custom
+    // properties on body invalidated the whole page's styles on every scroll.
+    const atmosphere = document.createElement('div');
+    atmosphere.className = 'home-flow-atmosphere';
+    atmosphere.setAttribute('aria-hidden', 'true');
+    body.prepend(atmosphere);
     // Only noninteractive copy moves. Sticky ancestors, links, forms and the
     // price chooser stay in their native layout with stable pointer hitboxes.
     const selector = [
@@ -18,9 +25,12 @@
     const items = [...document.querySelectorAll(selector)]
       .filter(element => !element.querySelector('a, button, input, select, textarea, summary, [tabindex]'))
       .map(element => ({ element, top: 0, shift: 0 }));
-    let frame = 0, needsMeasure = true, pageActive = true;
+    let frame = 0, needsMeasure = true, pageActive = true, wasMoving = null;
+    let atmosphereTransform = '';
     let viewport = innerHeight, scrollRange = 1;
-    const enabled = () => body.classList.contains('has-motion') && !body.classList.contains('effects-paused') && !reduce.matches;
+    // On touch screens native document movement supplies the flow; avoid a
+    // second parallax pass across every heading while the gallery is animating.
+    const enabled = () => body.classList.contains('has-motion') && !body.classList.contains('effects-paused') && !reduce.matches && !compact.matches;
     items.forEach(({ element }) => element.classList.add('home-flow-item'));
 
     function measure() {
@@ -38,13 +48,32 @@
     function render() {
       frame = 0;
       if (!pageActive || document.hidden) return;
+      const moving = enabled();
+      if (!moving) {
+        if (wasMoving !== false) {
+          atmosphere.style.transform = 'none';
+          atmosphereTransform = 'none';
+          items.forEach(item => {
+            if (!item.shift) return;
+            item.shift = 0;
+            item.element.style.setProperty('--home-flow-y', '0px');
+          });
+        }
+        wasMoving = false;
+        needsMeasure = true;
+        return;
+      }
       if (needsMeasure) measure();
-      const moving = enabled(), y = scrollY;
+      wasMoving = true;
+      const y = scrollY;
       const progress = clamp(y / scrollRange, 0, 1);
-      body.style.setProperty('--home-light-y', `${moving ? ((.5 - progress) * 140).toFixed(2) : 0}px`);
-      body.style.setProperty('--home-light-x', `${moving ? ((progress - .5) * 56).toFixed(2) : 0}px`);
+      const transform = `translate3d(${((progress - .5) * 56).toFixed(2)}px, ${((.5 - progress) * 140).toFixed(2)}px, 0)`;
+      if (transform !== atmosphereTransform) {
+        atmosphere.style.transform = transform;
+        atmosphereTransform = transform;
+      }
       items.forEach(item => {
-        const shift = moving ? clamp((item.top - y - viewport * .46) / viewport * 32, -16, 28) : 0;
+        const shift = clamp((item.top - y - viewport * .46) / viewport * 32, -16, 28);
         if (shift === item.shift) return;
         item.shift = shift;
         item.element.style.setProperty('--home-flow-y', `${shift.toFixed(2)}px`);
@@ -52,6 +81,7 @@
     }
     function schedule(measureAgain = false) {
       needsMeasure ||= measureAgain;
+      if (!measureAgain && !enabled()) return;
       if (!frame && pageActive && !document.hidden) frame = requestAnimationFrame(render);
     }
     function cancel() {
@@ -65,6 +95,7 @@
     addEventListener('pageshow', () => { pageActive = true; schedule(true); });
     document.addEventListener('visibilitychange', () => document.hidden ? cancel() : schedule(true));
     reduce.addEventListener('change', () => schedule(true));
+    compact.addEventListener('change', () => schedule(true));
     new MutationObserver(() => schedule(true)).observe(body, { attributes: true, attributeFilter: ['class'] });
     if ('ResizeObserver' in window) {
       const observer = new ResizeObserver(() => schedule(true));

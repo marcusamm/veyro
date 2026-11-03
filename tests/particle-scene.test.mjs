@@ -31,7 +31,12 @@ async function mount({ mobile = false, reduced = false, lowPower = false } = {})
   await context.addInitScript(({ lowPower }) => {
     Object.defineProperty(navigator, 'hardwareConcurrency', { configurable: true, get: () => lowPower ? 2 : 8 });
     Object.defineProperty(navigator, 'deviceMemory', { configurable: true, get: () => lowPower ? 2 : 8 });
-    const qa = window.sceneQA = { draws: 0, dots: [], geometry: [], activations: [] };
+    const qa = window.sceneQA = { draws: 0, fills: 0, layoutReads: 0, dots: [], geometry: [], activations: [] };
+    const bounds = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function (...args) {
+      if (this.matches('.studio-stage, .studio-art')) qa.layoutReads++;
+      return bounds.apply(this, args);
+    };
     // Delegate to native arrays and Canvas2D. Capture the actual generated source
     // points and drawn arcs, rather than reimplementing the projection in a test.
     const push = Array.prototype.push, sets = new WeakMap();
@@ -44,14 +49,18 @@ async function mount({ mobile = false, reduced = false, lowPower = false } = {})
       }
       return push.apply(this, values);
     };
-    const clear = CanvasRenderingContext2D.prototype.clearRect, arc = CanvasRenderingContext2D.prototype.arc;
+    const clear = CanvasRenderingContext2D.prototype.clearRect, arc = CanvasRenderingContext2D.prototype.arc, fill = CanvasRenderingContext2D.prototype.fill;
     CanvasRenderingContext2D.prototype.clearRect = function (...args) {
-      if (this.canvas.matches('[data-particle-scene]')) { qa.draws++; qa.dots = []; }
+      if (this.canvas.matches('[data-particle-scene]')) { qa.draws++; qa.fills = 0; qa.dots = []; }
       return clear.apply(this, args);
     };
     CanvasRenderingContext2D.prototype.arc = function (x, y, radius, ...args) {
       if (this.canvas.matches('[data-particle-scene]')) push.call(qa.dots, [x, y, radius]);
       return arc.call(this, x, y, radius, ...args);
+    };
+    CanvasRenderingContext2D.prototype.fill = function (...args) {
+      if (this.canvas.matches('[data-particle-scene]')) qa.fills++;
+      return fill.apply(this, args);
     };
     document.addEventListener('click', e => { const c=e.target.closest('a,button,summary,input,select,label'); if(c)qa.activations.push(c.id || c.tagName); });
   }, { lowPower });
@@ -75,7 +84,7 @@ async function frame(page) {
     const pixels=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
     let hash=2166136261,alpha=0;for(let i=0;i<pixels.length;i++){hash=Math.imul(hash^pixels[i],16777619);if(i%4===3)alpha+=pixels[i];}
     const xs=qa.dots.map(d=>d[0]),ys=qa.dots.map(d=>d[1]);
-    return { draws:qa.draws, count:qa.dots.length, pixels:hash>>>0, alpha, bounds:[Math.min(...xs),Math.max(...xs),Math.min(...ys),Math.max(...ys)], formation:c.dataset.formation, paused:c.dataset.paused, canvas:[c.width,c.height], countCanvases:document.querySelectorAll('[data-particle-scene]').length };
+    return { draws:qa.draws, fills:qa.fills, layoutReads:qa.layoutReads, count:qa.dots.length, pixels:hash>>>0, alpha, bounds:[Math.min(...xs),Math.max(...xs),Math.min(...ys),Math.max(...ys)], formation:c.dataset.formation, paused:c.dataset.paused, canvas:[c.width,c.height], countCanvases:document.querySelectorAll('[data-particle-scene]').length };
   });
 }
 async function settle(page) { await advance(page, 2200); expect((await frame(page)).formation).toBe('formed'); }
@@ -92,6 +101,20 @@ const hash = value => createHash('sha256').update(JSON.stringify(value.map(p=>Ob
 const delta = (a,b) => Math.max(...a.bounds.map((n,i)=>Math.abs(n-b.bounds[i])));
 
 describe('Existing hero particle V through the real browser renderer', () => {
+  it('keeps every mobile dot while batching fills and avoids hero layout reads during touch scroll', async () => {
+    const page=await mount({mobile:true});await settle(page);
+    const before=await frame(page);
+    expect(before.count).toBe(1710);
+    expect(before.fills).toBeGreaterThan(1);
+    expect(before.fills).toBeLessThanOrEqual(48);
+    for(const y of [60,120,180,240]) await scroll(page,y);
+    const after=await frame(page);
+    expect(after.layoutReads).toBe(before.layoutReads);
+    expect(after.pixels).not.toBe(before.pixels);
+    expect(after.fills).toBeLessThanOrEqual(48);
+    expect(after.count).toBe(before.count);
+  });
+
   it('keeps every original base coordinate and surface normal on desktop and mobile', async () => {
     // Recorded before the polish, excluding unused morph-orbit coordinates.
     for (const [mobile,count,expected] of [[false,3672,'b38a9d9e815d5ba1d1b95a4ed6a2cd0b3030b869588711806fc6ce0feb5e09d6'],[true,1710,'0f5646121d0c7b03e948e6a0740116e8006318c432b1cbb763b0044db3738071']]) {

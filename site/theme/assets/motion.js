@@ -13,6 +13,8 @@
     const enabled = () => body.classList.contains('has-motion') && !reduce.matches && !paused;
     let layout = [];
     let scrollFrame = 0;
+    let needsMeasure = false, viewportHeight = innerHeight, documentRange = 1;
+    let heroTop = 0, heroHeight = 1, lastHeroProgress = -1;
     let preferenceTimer = 0;
     const hero = document.querySelector('.studio-stage');
     const progress = document.querySelector('[data-scroll-progress]');
@@ -90,42 +92,61 @@
     });
     function measure() {
       const y = scrollY;
-      layout = processes.map(section => ({ section, items: [...section.querySelectorAll('.steps__item')].map(el => ({ el, y: el.getBoundingClientRect().top + y, height: el.offsetHeight })) }));
+      viewportHeight = innerHeight;
+      documentRange = Math.max(1, document.documentElement.scrollHeight - viewportHeight);
+      lastHeroProgress = -1;
+      if (hero) {
+        const rect = hero.getBoundingClientRect();
+        heroTop = rect.top + y;
+        heroHeight = Math.max(1, rect.height);
+      }
+      layout = processes.map(section => ({ section, current: -1, count: section.querySelector('.process-orbit__count'), items: [...section.querySelectorAll('.steps__item')].map(el => ({ el, y: el.getBoundingClientRect().top + y, height: el.offsetHeight })) }));
+      needsMeasure = false;
       scene?.resize();
-      updateScroll();
     }
     function updateScroll() {
       scrollFrame = 0;
+      if (needsMeasure) measure();
       const y = scrollY;
-      const documentProgress = clamp(y / Math.max(1, document.documentElement.scrollHeight - innerHeight));
+      const documentProgress = clamp(y / documentRange);
       if (progress) progress.style.transform = `scaleX(${documentProgress})`;
-      const heroProgress = hero ? clamp(-hero.getBoundingClientRect().top / Math.max(1, hero.offsetHeight)) : 0;
+      // All geometry is cached before writes. Reading hero bounds after updating
+      // the fixed progress bar used to force layout on every mobile scroll frame.
+      const heroProgress = hero ? clamp((y - heroTop) / heroHeight) : 0;
       if (hero && enabled()) {
-        hero.style.setProperty('--hero-scroll', String(heroProgress));
-        hero.style.setProperty('--wordmark-shift', `${heroProgress * 65}px`);
+        if (heroProgress !== lastHeroProgress) {
+          lastHeroProgress = heroProgress;
+          hero.style.setProperty('--wordmark-shift', `${heroProgress * 65}px`);
+        }
         scene?.setScroll();
       }
-      layout.forEach(({ section, items }) => {
+      layout.forEach(process => {
+        const { section, items, count } = process;
         if (!items.length) return;
-        const focal = y + innerHeight * .5;
+        const focal = y + viewportHeight * .5;
         let nearest = 0;
         let distance = Infinity;
         items.forEach((item, i) => {
-          const d = Math.abs(item.y + Math.min(item.height, innerHeight * .4) / 2 - focal);
+          const d = Math.abs(item.y + Math.min(item.height, viewportHeight * .4) / 2 - focal);
           if (d < distance) { distance = d; nearest = i; }
         });
+        if (process.current === nearest) return;
+        process.current = nearest;
         items.forEach((item, i) => item.el.classList.toggle('is-current', i === nearest));
         const p = (nearest + 1) / items.length;
         section.dataset.processProgress = String(p);
         section.style.setProperty('--process-progress', String(p));
-        const count = section.querySelector('.process-orbit__count');
         if (count) count.textContent = String(nearest + 1).padStart(2, '0');
       });
     }
-    addEventListener('scroll', () => { if (!scrollFrame) scrollFrame = requestAnimationFrame(updateScroll); }, { passive: true });
-    addEventListener('resize', measure, { passive: true });
-    document.fonts?.ready.then(measure);
-    if ('ResizeObserver' in window) new ResizeObserver(() => { if (!scrollFrame) scrollFrame = requestAnimationFrame(measure); }).observe(document.querySelector('main') || body);
+    function schedule(measureAgain = false) {
+      needsMeasure ||= measureAgain;
+      if (!scrollFrame) scrollFrame = requestAnimationFrame(updateScroll);
+    }
+    addEventListener('scroll', () => schedule(), { passive: true });
+    addEventListener('resize', () => schedule(true), { passive: true });
+    document.fonts?.ready.then(() => schedule(true));
+    if ('ResizeObserver' in window) new ResizeObserver(() => schedule(true)).observe(document.querySelector('main') || body);
 
     // Original tubular V coordinates; only presentation and temporary offsets change.
     function createScene(canvas) {
@@ -139,6 +160,7 @@
       let pointerU = .5, pointerV = .5, targetU = .5, targetV = .5, strength = 0, targetStrength = 0;
       let entranceStart = null, formed = false, rippleStart = -10, rippleU = .5, rippleV = .5;
       let points = [], projected = [], readingAreas = [];
+      const shades = Array.from({ length: 48 }, (_, i) => ({ color: `rgba(229,234,239,${((i + .5) / 48).toFixed(3)})`, points: [] }));
       let clientX = null, clientY = null;
       canvas.dataset.frames = '0';
       function buildPoints() {
@@ -264,12 +286,31 @@
             if (gapX < 26 && gapY < 26) legibility = Math.min(legibility, .34 + .66 * clamp(Math.hypot(gapX, gapY) / 26));
           }
           const brightness = legibility * clamp(.21 + diffuse * .38 + spec * .29 + depthLight * .1 + sweep + scrollSweep + openingSweep + near * .22 + ripple * .15, .17, .96);
-          Object.assign(projected[i], { x: screenX, y: screenY, depth, brightness, size: (width < 500 ? .88 : 1.02) * perspective + diffuse * .19 + spec * .25 + near * .14 });
+          const dot = projected[i];
+          dot.x = screenX; dot.y = screenY; dot.depth = depth; dot.brightness = brightness;
+          dot.size = (width < 500 ? .88 : 1.02) * perspective + diffuse * .19 + spec * .25 + near * .14;
         });
-        projected.sort((a, b) => a.depth - b.depth);
-        for (const p of projected) {
-          ctx.fillStyle = `rgba(229,234,239,${p.brightness.toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+        if (width < 500 || !finePointer.matches || lowPower) {
+          // Same silver, same geometry, bounded shade batches. Thousands of
+          // individual Canvas fills/sorts compete with touch scrolling on phones.
+          shades.forEach(shade => { shade.points.length = 0; });
+          for (const p of projected) shades[Math.min(47, Math.floor(p.brightness * 48))].points.push(p);
+          for (const shade of shades) {
+            if (!shade.points.length) continue;
+            ctx.fillStyle = shade.color;
+            ctx.beginPath();
+            for (const p of shade.points) {
+              ctx.moveTo(p.x + p.size, p.y);
+              ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            }
+            ctx.fill();
+          }
+        } else {
+          projected.sort((a, b) => a.depth - b.depth);
+          for (const p of projected) {
+            ctx.fillStyle = `rgba(229,234,239,${p.brightness.toFixed(2)})`;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+          }
         }
       }
       function tick(now) {

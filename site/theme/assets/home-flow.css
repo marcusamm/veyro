@@ -5,14 +5,12 @@ body.template-index {
   background: var(--home-canvas);
   isolation: isolate;
 }
-.template-index::before {
-  content: '';
+.home-flow-atmosphere {
   position: fixed;
   inset: -20vh -8vw;
   z-index: -1;
   pointer-events: none;
   background: radial-gradient(ellipse at 16% 28%, #737b7520, transparent 48%), radial-gradient(ellipse at 88% 76%, #a96f4310, transparent 46%);
-  transform: translate3d(var(--home-light-x, 0px), var(--home-light-y, 0px), 0);
 }
 .template-index .home-hero,
 .template-index .project-gallery,
@@ -60,18 +58,25 @@ body.template-index {
 .template-index:not(.has-motion) .home-flow-item { translate: none; }
 .template-index.effects-paused .project-gallery__pin,
 .template-index:not(.has-motion) .project-gallery__pin { translate: none !important; }
-.template-index.effects-paused::before,
-.template-index:not(.has-motion)::before { transform: none; }
+.template-index.effects-paused .home-flow-atmosphere,
+.template-index:not(.has-motion) .home-flow-atmosphere { transform: none !important; }
 @media (max-width: 749px) {
   .template-index .project-gallery__footer { gap: 0; padding-block: 0 8px; }
+}
+@media (max-width: 749px), (pointer: coarse) {
+  /* Keep the shared black canvas, without a viewport-sized composited layer
+     or extra heading displacement competing with touch scrolling. */
+  .home-flow-atmosphere { display: none; }
+  .template-index .home-flow-item { translate: none; }
+  .template-index .site-header::before { background: #08090a; }
 }
 @media (prefers-reduced-motion: reduce) {
   .template-index .home-flow-item { translate: none; }
   .template-index .project-gallery__pin { translate: none !important; }
-  .template-index::before { transform: none; }
+  .home-flow-atmosphere { transform: none !important; }
 }
 @media print {
-  .template-index::before { display: none; }
+  .home-flow-atmosphere { display: none; }
   .template-index .home-flow-item { translate: none; }
   .template-index .project-gallery__pin { translate: none !important; }
 }

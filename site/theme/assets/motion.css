@@ -143,6 +143,14 @@
 .site-header--sticky { position: relative; }
 .site-header,.site-header.is-scrolled { background: transparent; backdrop-filter: none; }
 .site-header::before { content: ''; position: absolute; inset: 0; z-index: -1; background: #202020eF; backdrop-filter: blur(18px); pointer-events: none; }
+/* A scrolling page behind a fixed blur is expensive on mobile Safari. Keep the
+   same dark header without re-filtering the entire strip on every touch frame. */
+@media (max-width: 749px), (pointer: coarse) {
+ .site-header::before { background: #202020; backdrop-filter: none; -webkit-backdrop-filter: none; }
+ .template-index .site-header::before { background: #08090a; }
+ .studio-motion-ready .booking-preview__confirmation,
+ .studio-motion-ready .studio-scroll > span:last-child { animation: none; }
+}
 @media (min-width: 990px) { .no-js .site-header .nav { display: block; } .no-js .site-header .nav-toggle { display: none !important; } }
 .site-header .logo { margin-right: auto; }
 .home-hero__title > .hero-word-shell { color: #f6f5f2; }

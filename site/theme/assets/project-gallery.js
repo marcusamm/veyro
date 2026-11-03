@@ -5,6 +5,12 @@
   const clamp = (value, min = 0, max = 1) => Math.max(min, Math.min(max, value));
   const planeProperties = ['--x', '--y', '--z', '--rotate-y', '--plane-opacity', '--plane-shade'];
   const rootProperties = ['--gallery-steps', '--gallery-scroll-height', '--gallery-card-width', '--gallery-radius', '--gallery-progress', '--gallery-accent', '--gallery-depth-step', '--gallery-depth-y', '--gallery-light-y', '--gallery-pin-y'];
+  const setStyle = (element, property, value) => {
+    if (element.style.getPropertyValue(property) !== value) element.style.setProperty(property, value);
+  };
+  const setData = (element, key, value) => {
+    if (element.dataset[key] !== value) element.dataset[key] = value;
+  };
   const safeURL = value => {
     if (typeof value !== 'string' || !value.trim()) return null;
     try {
@@ -34,6 +40,8 @@
       this.depth = root.querySelector('[data-gallery-depth]');
       this.depthMarks = []; this.pinHeight = 0; this.depthStep = 0;
       this.reduce = matchMedia('(prefers-reduced-motion: reduce)');
+      this.touch = matchMedia('(pointer: coarse)');
+      this.viewportWidth = window.innerWidth;
       this.frame = 0; this.dirty = true; this.needsMeasure = true; this.destroyed = false;
       this.pageActive = true; this.inView = false; this.enhanced = false;
       this.focusIndex = null; this.focusPosition = null; this.position = 0; this.focusElement = null; this.activeIndex = -1;
@@ -57,7 +65,14 @@
         }
         this.invalidate();
       }, { passive: true });
-      listen(window, 'resize', () => this.invalidate(true), { passive: true });
+      listen(window, 'resize', () => {
+        // Safari's address bar sends resize events during a swipe. The pin uses
+        // stable svh units; changing its scroll range here makes it jump under
+        // the finger. Real layout changes are covered by ResizeObserver below.
+        const widthChanged = window.innerWidth !== this.viewportWidth;
+        this.viewportWidth = window.innerWidth;
+        if (widthChanged || !this.touch.matches) this.invalidate(true);
+      }, { passive: true });
       listen(window, 'load', () => this.invalidate(true));
       listen(document, 'visibilitychange', () => {
         if (document.hidden) this.cancel();
@@ -129,6 +144,8 @@
         visibility: plane.style.visibility, pointerEvents: plane.style.pointerEvents,
         properties: planeProperties.map(property => [property, plane.style.getPropertyValue(property)]),
       }));
+      this.planeStates = this.planes.map(() => ({ interactive: null }));
+      this.lastRender = null;
       this.root.style.setProperty('--gallery-steps', String(Math.max(1, this.planes.length)));
       // Decorative depth markers follow the same validated collection as the
       // previews. They contain only numbers and never become interactive.
@@ -158,6 +175,7 @@
     measure() {
       if (this.destroyed) return;
       this.needsMeasure = false;
+      this.lastRender = null;
       const viewport = window.innerHeight || document.documentElement.clientHeight;
       const cssTop = parseFloat(getComputedStyle(this.pin).top);
       const header = document.querySelector('.site-header')?.getBoundingClientRect().height || 0;
@@ -184,7 +202,9 @@
         return;
       }
       const pin = this.pin.getBoundingClientRect(), stage = this.stage.getBoundingClientRect();
-      this.step = Math.max(320, viewport - this.stickyTop);
+      // The rendered stable-height pin, not Safari's changing visual viewport,
+      // defines a project step. Address-bar collapse cannot stretch the track.
+      this.step = Math.max(320, pin.height);
       const height = pin.height + Math.max(1, this.planes.length - 1) * this.step;
       this.root.style.setProperty('--gallery-scroll-height', `${Math.ceil(height)}px`);
       const mobile = stage.width < 650;
@@ -254,40 +274,50 @@
       const edge = distance => Math.abs(distance) < bridge
         ? Math.pow(bridge - Math.abs(distance), 2) / (4 * bridge) : 0;
       const pinY = continuous ? edge(rawProgress * this.range) - edge((rawProgress - 1) * this.range) : 0;
-      this.root.style.setProperty('--gallery-pin-y', `${pinY.toFixed(3)}px`);
       // Direct travel: every scroll delta moves the previews, including
       // through the face-on position. There are no hold windows or snapping.
       let position = travel;
       if (this.focusIndex !== null) position = this.focusPosition ?? this.focusIndex;
       this.position = position;
       const active = clamp(Math.round(position), 0, last);
-      this.root.dataset.galleryMode = mode;
-      this.root.dataset.galleryProgress = progress.toFixed(4);
-      this.root.style.setProperty('--gallery-progress', progress.toFixed(4));
+      const signature = `${rawProgress}|${mode}|${position}|${this.focusIndex}`;
+      // Focus/observer notifications can arrive without a scroll change. Avoid
+      // re-invalidating the entire 3D subtree for an identical frame.
+      if (signature === this.lastRender) return;
+      this.lastRender = signature;
+      setStyle(this.root, '--gallery-pin-y', `${pinY.toFixed(3)}px`);
+      setData(this.root, 'galleryMode', mode);
+      setData(this.root, 'galleryProgress', progress.toFixed(4));
+      setStyle(this.root, '--gallery-progress', progress.toFixed(4));
       // Background layers share native progress at their own depth speeds.
       // Keyboard focus protects the current link without freezing the environment.
       const depthY = mode === '3d' ? this.pinHeight * .08 - travel * this.depthStep : 0;
       const lightY = mode === '3d' ? (.5 - (last ? travel / last : progress)) * this.pinHeight * .35 : 0;
-      this.root.style.setProperty('--gallery-depth-y', `${depthY.toFixed(2)}px`);
-      this.root.style.setProperty('--gallery-light-y', `${lightY.toFixed(2)}px`);
-      this.root.dataset.activeDemo = String(active);
-      this.root.dataset.galleryFocusLocked = String(this.focusIndex !== null);
+      setStyle(this.root, '--gallery-depth-y', `${depthY.toFixed(2)}px`);
+      setStyle(this.root, '--gallery-light-y', `${lightY.toFixed(2)}px`);
+      setData(this.root, 'activeDemo', String(active));
+      setData(this.root, 'galleryFocusLocked', String(this.focusIndex !== null));
       this.planes.forEach((plane, index) => {
         const offset = index - position, angle = offset * 96, radians = angle * Math.PI / 180;
         const opacity = clamp(1 - Math.abs(offset) / .78);
         const interactive = index === active;
-        plane.style.setProperty('--x', `${mode === '3d' ? Math.sin(radians) * this.radius : 0}px`);
-        plane.style.setProperty('--y', `${mode === '3d' ? -offset * this.pitch : 0}px`);
-        plane.style.setProperty('--z', `${mode === '3d' ? (Math.cos(radians) - 1) * this.radius : 0}px`);
-        plane.style.setProperty('--rotate-y', `${mode === '3d' ? angle : 0}deg`);
-        plane.style.setProperty('--plane-opacity', opacity.toFixed(4));
-        plane.style.setProperty('--plane-shade', (mode === '3d' ? .76 + .24 * Math.max(0, Math.cos(radians)) : 1).toFixed(4));
-        plane.style.visibility = opacity > .001 ? 'visible' : 'hidden';
-        plane.style.pointerEvents = interactive ? 'auto' : 'none';
-        plane.dataset.galleryActive = String(interactive);
-        plane.tabIndex = interactive ? 0 : -1;
-        plane.inert = !interactive;
-        plane.setAttribute('aria-hidden', String(!interactive));
+        setStyle(plane, '--x', `${mode === '3d' ? Math.sin(radians) * this.radius : 0}px`);
+        setStyle(plane, '--y', `${mode === '3d' ? -offset * this.pitch : 0}px`);
+        setStyle(plane, '--z', `${mode === '3d' ? (Math.cos(radians) - 1) * this.radius : 0}px`);
+        setStyle(plane, '--rotate-y', `${mode === '3d' ? angle : 0}deg`);
+        setStyle(plane, '--plane-opacity', opacity.toFixed(4));
+        const shaded = mode === '3d' && !this.touch.matches && window.innerWidth > 749;
+        setStyle(plane, '--plane-shade', (shaded ? .76 + .24 * Math.max(0, Math.cos(radians)) : 1).toFixed(4));
+        const visibility = opacity > .001 ? 'visible' : 'hidden';
+        if (plane.style.visibility !== visibility) plane.style.visibility = visibility;
+        if (this.planeStates[index].interactive !== interactive) {
+          this.planeStates[index].interactive = interactive;
+          plane.style.pointerEvents = interactive ? 'auto' : 'none';
+          plane.dataset.galleryActive = String(interactive);
+          plane.tabIndex = interactive ? 0 : -1;
+          plane.inert = !interactive;
+          plane.setAttribute('aria-hidden', String(!interactive));
+        }
       });
       if (active !== this.activeIndex) {
         this.activeIndex = active;
@@ -308,6 +338,8 @@
     }
 
     restorePlanes() {
+      this.lastRender = null;
+      this.planeStates = this.planes.map(() => ({ interactive: null }));
       this.planes.forEach((plane, index) => {
         const original = this.originalPlanes[index];
         for (const [name, value] of [['tabindex', original.tabindex], ['aria-hidden', original.ariaHidden], ['data-gallery-active', original.active]]) {

@@ -11,8 +11,9 @@ class Element {
     this.tagName = tag.toUpperCase(); this.children = []; this.parentElement = null;
     this.dataset = {}; this.attributes = new Map(); this.listeners = new Map(); this.inert = false;
     this.text = ''; this.classes = new Set(); this.focusVisible = false;
+    this.styleWrites = 0; this.attributeWrites = 0;
     const values = new Map();
-    this.style = { visibility: '', pointerEvents: '', setProperty: (key, value) => values.set(key, String(value)), getPropertyValue: key => values.get(key) || '', removeProperty: key => values.delete(key) };
+    this.style = { visibility: '', pointerEvents: '', setProperty: (key, value) => { this.styleWrites++; values.set(key, String(value)); }, getPropertyValue: key => values.get(key) || '', removeProperty: key => values.delete(key) };
     this.classList = { contains: name => this.classes.has(name), add: name => this.classes.add(name), remove: name => this.classes.delete(name), toggle: (name, force) => { const add = force ?? !this.classes.has(name); this.classes[add ? 'add' : 'delete'](name); return add; } };
   }
   set className(value) { this.classes = new Set(value.split(/\s+/).filter(Boolean)); }
@@ -25,7 +26,7 @@ class Element {
   get src() { return this.getAttribute('src'); }
   set tabIndex(value) { this.setAttribute('tabindex', String(value)); }
   get tabIndex() { return this.attributes.has('tabindex') ? Number(this.attributes.get('tabindex')) : this.tagName === 'A' ? 0 : -1; }
-  setAttribute(name, value) { if (name.startsWith('data-')) this.dataset[dataName(name)] = String(value); else this.attributes.set(name, String(value)); }
+  setAttribute(name, value) { this.attributeWrites++; if (name.startsWith('data-')) this.dataset[dataName(name)] = String(value); else this.attributes.set(name, String(value)); }
   getAttribute(name) { return name.startsWith('data-') ? this.dataset[dataName(name)] ?? null : this.attributes.get(name) ?? null; }
   removeAttribute(name) { if (name.startsWith('data-')) delete this.dataset[dataName(name)]; else this.attributes.delete(name); }
   append(...children) { for (const child of children) { child.parentElement = this; this.children.push(child); } }
@@ -67,7 +68,7 @@ function card(data) {
 
 // The actual shipped class runs against document geometry and native-link state.
 // CSS perspective, painting and real keyboard navigation are separately browser-reviewed.
-function fixture({ count = 3, demos, reduced = false, paused = false, motion = true, height = 900, width = 1440, pinHeight = 720, sticky = true, depth = true, io = true, absoluteTop = 400, withDepth = true, homepage = false } = {}) {
+function fixture({ count = 3, demos, reduced = false, paused = false, motion = true, height = 900, width = 1440, pinHeight = 720, sticky = true, depth = true, io = true, absoluteTop = 400, withDepth = true, homepage = false, touch = width < 750 } = {}) {
   const window = new Element(), document = new Element(), root = new Element();
   const body = new Element('body'); if (motion) body.classList.add('has-motion'); if (paused) body.classList.add('effects-paused'); if (homepage) body.classList.add('template-index');
   const make = (tag, key) => { const el = new Element(tag); el.setAttribute(`data-gallery-${key}`, ''); return el; };
@@ -95,7 +96,7 @@ function fixture({ count = 3, demos, reduced = false, paused = false, motion = t
   const ResizeObserver = Observer('resize'), IntersectionObserver = Observer('intersection');
   Object.assign(window, { CSS, ResizeObserver }); if (io) window.IntersectionObserver = IntersectionObserver;
   vm.runInNewContext(source, {
-    window, document, URL, CSS, matchMedia: () => media,
+    window, document, URL, CSS, matchMedia: query => query === '(pointer: coarse)' ? { matches: touch } : media,
     getComputedStyle: () => ({ top: '88px' }),
     requestAnimationFrame: callback => { const id = ++next; pending.set(id, callback); return id; },
     cancelAnimationFrame: id => pending.delete(id),
@@ -179,8 +180,8 @@ describe('Native-scroll helix showcase', () => {
       expect(state.frames).toBe(0);
       previous = current;
     }
-    // Traversal uses one viewport step per adjacent pair, with no extra hold step.
-    expect(state.instance.range).toBe((count - 1) * (state.window.innerHeight - state.instance.stickyTop));
+    // Each adjacent pair gets one stable rendered viewport step, with no hold.
+    expect(state.instance.range).toBe((count - 1) * state.instance.pinHeight);
     const last = geometry(state);
     state.progress(1.1); expect(geometry(state)).toEqual(last);
     state.progress(0); const first = geometry(state);
@@ -416,6 +417,44 @@ describe('Native-scroll helix showcase', () => {
     for (const target of [state.window, state.root, state.stage]) {
       for (const event of ['wheel', 'touchmove', 'pointerdown', 'pointermove', 'keydown', 'click']) expect(target.listeners.get(event) || []).toHaveLength(0);
     }
+  });
+
+  it('keeps native gallery progress stable while mobile browser chrome expands and collapses', () => {
+    const state = fixture({ homepage: true, width: 390, height: 844, pinHeight: 740 });
+    state.progress(.37);
+    const range = state.instance.range, before = geometry(state), reads = state.layoutReads;
+    const trackHeight = state.root.style.getPropertyValue('--gallery-scroll-height');
+    for (const height of [900, 930, 844, 900, 844]) {
+      state.window.innerHeight = height;
+      state.window.emit('resize');
+      expect(state.frames).toBe(0);
+      expect(state.instance.range).toBe(range);
+      expect(state.root.style.getPropertyValue('--gallery-scroll-height')).toBe(trackHeight);
+      expect(geometry(state)).toEqual(before);
+    }
+    expect(state.layoutReads).toBe(reads);
+    // A real width/orientation change still requests fresh geometry.
+    state.window.innerWidth = 844;
+    state.window.emit('resize');
+    expect(state.frames).toBe(1);
+    state.flush();
+    expect(state.frames).toBe(0);
+  });
+
+  it('does not rewrite preview styles or native-link state for duplicate scroll frames', () => {
+    const state = fixture();
+    state.progress(.2);
+    const elements = [state.root, ...state.planes];
+    const writes = () => elements.map(element => [element.styleWrites, element.attributeWrites]);
+    const before = writes(), beforeGeometry = geometry(state);
+    state.window.emit('scroll'); state.flush();
+    expect(writes()).toEqual(before);
+    const linkWrites = state.planes.map(plane => plane.attributeWrites);
+    state.progress(.21);
+    expect(state.planes.map(plane => plane.attributeWrites)).toEqual(linkWrites);
+    expect(geometry(state)).not.toEqual(beforeGeometry);
+    state.progress(.3);
+    expectActive(state, 1);
   });
 
   it('changes to a simple reduced mode for pause/reduced motion while native scroll still works', () => {
