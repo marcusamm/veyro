@@ -2,83 +2,67 @@
   assign fallback_eyebrow = 'public.gallery_eyebrow' | t
   assign fallback_heading = 'public.gallery_heading' | t
   assign fallback_text = 'public.gallery_description' | t
+  assign gallery_id = section.settings.anchor | default: 'et-udtryk-der-er-jeres' | handle
 -%}
-{%- comment -%}Original, rumlig fremvisning af Veyros tre eksisterende demoer. Alle er fiktive designkoncepter.{%- endcomment -%}
-<section class="project-gallery" id="{{ section.settings.anchor | default: 'et-udtryk-der-er-jeres' | handle }}" data-project-gallery>
+{%- comment -%}Native document scrolling drives the helix. Without JS every demo remains a normal link.{%- endcomment -%}
+<section class="project-gallery" id="{{ gallery_id }}" data-project-gallery aria-labelledby="GalleryHeading-{{ section.id }}">
   <div class="project-gallery__intro">
     <p class="project-gallery__eyebrow"><span aria-hidden="true"></span>{{ section.settings.eyebrow | default: fallback_eyebrow | escape }}</p>
-    <h2>{{ section.settings.heading | default: fallback_heading }}</h2>
+    <h2 id="GalleryHeading-{{ section.id }}">{{ section.settings.heading | default: fallback_heading }}</h2>
     <div class="project-gallery__text rte">{{ section.settings.text | default: fallback_text }}</div>
   </div>
-  <div class="project-gallery__stage" data-gallery-stage aria-label="{{ 'public.three_demo_websites' | t | escape }}">
-    <div class="gallery-orbit__lead" aria-hidden="true">{{ 'public.a_look' | t }}<br>{{ 'public.that_is_yours' | t }}</div>
-    <a class="project-gallery__plane project-gallery__plane--craft" href="/demo/holm-tomrer/" aria-label="{{ 'public.open_holm_concept' | t | escape }}">
-      <div class="project-gallery__float">
-        <figure class="project-gallery__surface">
-          <div class="project-gallery__image"><img src="/demo/_previews/holm-tomrer-960.jpg" srcset="/demo/_previews/holm-tomrer-960.jpg 960w, /demo/_previews/holm-tomrer-1920.jpg 1920w" sizes="(min-width: 990px) 46vw, 85vw" width="1920" height="1200" alt="{{ 'public.holm_image' | t | escape }}" loading="lazy" decoding="async"></div>
-          <figcaption><span>Holm Tømrer</span><span>{{ 'public.website' | t }} <span aria-hidden="true">↗</span></span></figcaption>
-        </figure>
+  <div class="project-gallery__track" data-gallery-track>
+    <div class="project-gallery__pin" data-gallery-pin>
+      <div class="project-gallery__topbar">
+        <p>{{ 'public.design_concept' | t }} <span data-gallery-count>01 / 03</span></p>
+        <a data-gallery-skip href="#{{ gallery_id }}-end">{{ 'public.gallery_skip' | t }} <span aria-hidden="true">↓</span></a>
       </div>
-    </a>
-    <a class="project-gallery__plane project-gallery__plane--salon" href="/demo/salon-nord/" aria-label="{{ 'public.open_salon_concept' | t | escape }}">
-      <div class="project-gallery__float">
-        <figure class="project-gallery__surface">
-          <div class="project-gallery__image"><img src="/demo/_previews/salon-nord-960.jpg" srcset="/demo/_previews/salon-nord-960.jpg 960w, /demo/_previews/salon-nord-1920.jpg 1920w" sizes="(min-width: 990px) 44vw, 85vw" width="1920" height="1200" alt="{{ 'public.salon_image' | t | escape }}" loading="lazy" decoding="async"></div>
-          <figcaption><span>Salon Nord</span><span>{{ 'public.booking' | t }} <span aria-hidden="true">↗</span></span></figcaption>
-        </figure>
+      <div class="project-gallery__stage" data-gallery-stage aria-label="{{ 'public.three_demo_websites' | t | escape }}">
+        <svg class="project-gallery__guides" viewBox="0 0 1000 600" preserveAspectRatio="none" fill="none" aria-hidden="true">
+          <path d="M160 0V600M840 0V600M500 0V600"/>
+          <ellipse cx="500" cy="95" rx="340" ry="70"/><ellipse cx="500" cy="300" rx="340" ry="70"/><ellipse cx="500" cy="505" rx="340" ry="70"/>
+        </svg>
+        <a class="project-gallery__plane" href="/demo/holm-tomrer/" aria-label="{{ 'public.open_holm_concept' | t | escape }}" data-demo-title="Holm Tømrer" data-demo-category="{{ 'public.website' | t | escape }}" data-demo-description="{{ 'public.craft_demo_description' | t | escape }}" data-demo-accent="#52726b">
+          <figure class="project-gallery__surface">
+            <div class="project-gallery__image"><img src="/demo/_previews/holm-tomrer-960.jpg" srcset="/demo/_previews/holm-tomrer-960.jpg 960w, /demo/_previews/holm-tomrer-1920.jpg 1920w" sizes="(min-width: 990px) 65vw, 88vw" width="1920" height="1200" alt="{{ 'public.holm_image' | t | escape }}" loading="lazy" decoding="async"></div>
+            <figcaption><span>Holm Tømrer</span><span>{{ 'public.website' | t }}</span><p>{{ 'public.craft_demo_description' | t }}</p></figcaption>
+          </figure>
+        </a>
+        <a class="project-gallery__plane" href="/demo/salon-nord/" aria-label="{{ 'public.open_salon_concept' | t | escape }}" data-demo-title="Salon Nord" data-demo-category="{{ 'public.booking' | t | escape }}" data-demo-description="{{ 'public.booking_demo_description' | t | escape }}" data-demo-accent="#9d745f">
+          <figure class="project-gallery__surface">
+            <div class="project-gallery__image"><img src="/demo/_previews/salon-nord-960.jpg" srcset="/demo/_previews/salon-nord-960.jpg 960w, /demo/_previews/salon-nord-1920.jpg 1920w" sizes="(min-width: 990px) 65vw, 88vw" width="1920" height="1200" alt="{{ 'public.salon_image' | t | escape }}" loading="lazy" decoding="async"></div>
+            <figcaption><span>Salon Nord</span><span>{{ 'public.booking' | t }}</span><p>{{ 'public.booking_demo_description' | t }}</p></figcaption>
+          </figure>
+        </a>
+        <a class="project-gallery__plane" href="/demo/lervaerk/" aria-label="{{ 'public.open_shop_concept' | t | escape }}" data-demo-title="Lerværk" data-demo-category="{{ 'public.online_shop' | t | escape }}" data-demo-description="{{ 'public.shop_demo_description' | t | escape }}" data-demo-accent="#778166">
+          <figure class="project-gallery__surface">
+            <div class="project-gallery__image"><img src="/demo/_previews/lervaerk-960.jpg?v=photo-20261101" srcset="/demo/_previews/lervaerk-960.jpg?v=photo-20261101 960w, /demo/_previews/lervaerk-1920.jpg?v=photo-20261101 1920w" sizes="(min-width: 990px) 65vw, 88vw" width="1920" height="1200" alt="{{ 'public.shop_image' | t | escape }}" loading="lazy" decoding="async"></div>
+            <figcaption><span>Lerværk</span><span>{{ 'public.online_shop' | t }}</span><p>{{ 'public.shop_demo_description' | t }}</p></figcaption>
+          </figure>
+        </a>
       </div>
-    </a>
-    <a class="project-gallery__plane project-gallery__plane--shop" href="/demo/lervaerk/" aria-label="{{ 'public.open_shop_concept' | t | escape }}">
-      <div class="project-gallery__float">
-        <figure class="project-gallery__surface">
-          <div class="project-gallery__image"><img src="/demo/_previews/lervaerk-960.jpg?v=photo-20261101" srcset="/demo/_previews/lervaerk-960.jpg?v=photo-20261101 960w, /demo/_previews/lervaerk-1920.jpg?v=photo-20261101 1920w" sizes="(min-width: 990px) 34vw, 85vw" width="1920" height="1200" alt="{{ 'public.shop_image' | t | escape }}" loading="lazy" decoding="async"></div>
-          <figcaption><span>Lerværk</span><span>{{ 'public.online_shop' | t }} <span aria-hidden="true">↗</span></span></figcaption>
-        </figure>
+      <div class="project-gallery__details">
+        <div class="project-gallery__identity"><span class="project-gallery__category" data-gallery-category>{{ 'public.website' | t }}</span><h3 data-gallery-title>Holm Tømrer</h3></div>
+        <p data-gallery-description>{{ 'public.craft_demo_description' | t }}</p>
+        <a class="project-gallery__open" data-gallery-open href="/demo/holm-tomrer/">{{ 'public.gallery_open' | t }} <span aria-hidden="true">↗</span></a>
       </div>
-    </a>
+      <div class="project-gallery__scroll"><span>{{ 'public.gallery_scroll' | t }}</span><div class="project-gallery__progress" aria-hidden="true"><span></span></div><span aria-hidden="true">↓</span></div>
+    </div>
   </div>
-  <div class="gallery-orbit__controls" data-gallery-controls hidden>
-    <p>{{ 'public.drag_to_rotate' | t }} <span aria-hidden="true">↔</span> {{ 'public.click_demo_to_open' | t }}</p>
-    <div><button type="button" data-gallery-prev aria-label="{{ 'public.previous_demo' | t | escape }}">←</button><button type="button" data-gallery-pause aria-label="{{ 'public.pause_rotation' | t | escape }}" aria-pressed="false"><span data-gallery-pause-icon aria-hidden="true">Ⅱ</span></button><button type="button" data-gallery-next aria-label="{{ 'public.next_demo' | t | escape }}">→</button><span data-gallery-current>Holm Tømrer</span></div>
-  </div>
-  <div class="project-gallery__dossiers" aria-label="{{ 'public.concept_contents' | t | escape }}">
-    <article class="project-gallery__dossier">
-      <div class="project-gallery__dossier-meta"><span>{{ 'public.website' | t }}</span><span>{{ 'public.design_concept' | t }}</span></div>
-      <h3>Holm Tømrer</h3>
-      <p>{{ 'public.craft_demo_description' | t }}</p>
-      <ul class="project-gallery__tags" role="list"><li>{{ 'public.services' | t }}</li><li>{{ 'public.projects' | t }}</li><li>{{ 'public.contact' | t }}</li></ul>
-      <a href="/demo/holm-tomrer/">{{ 'public.explore_website' | t }} <span aria-hidden="true">↗</span></a>
-    </article>
-    <article class="project-gallery__dossier">
-      <div class="project-gallery__dossier-meta"><span>{{ 'public.booking' | t }}</span><span>{{ 'public.design_concept' | t }}</span></div>
-      <h3>Salon Nord</h3>
-      <p>{{ 'public.booking_demo_description' | t }}</p>
-      <ul class="project-gallery__tags" role="list"><li>{{ 'public.treatments' | t }}</li><li>{{ 'public.staff' | t }}</li><li>{{ 'public.calendar' | t }}</li></ul>
-      <a href="/demo/salon-nord/book">{{ 'public.try_booking' | t }} <span aria-hidden="true">↗</span></a>
-    </article>
-    <article class="project-gallery__dossier">
-      <div class="project-gallery__dossier-meta"><span>{{ 'public.online_shop' | t }}</span><span>{{ 'public.design_concept' | t }}</span></div>
-      <h3>Lerværk</h3>
-      <p>{{ 'public.shop_demo_description' | t }}</p>
-      <ul class="project-gallery__tags" role="list"><li>{{ 'public.variants' | t }}</li><li>{{ 'public.stock' | t }}</li><li>{{ 'public.basket' | t }}</li></ul>
-      <a href="/demo/lervaerk/">{{ 'public.explore_shop' | t }} <span aria-hidden="true">↗</span></a>
-    </article>
-  </div>
-  <div class="project-gallery__footer">
+  <div class="project-gallery__footer" id="{{ gallery_id }}-end" tabindex="-1">
     <p>{{ 'public.fictional_concepts_credit' | t }}</p>
-    <span class="project-gallery__swipe" aria-hidden="true">{{ 'public.swipe_to_explore' | t }} <span>↔</span></span>
     <a href="/pages/eksempler">{{ 'public.all_examples' | t }} <span aria-hidden="true">↗</span></a>
   </div>
 </section>
 {% schema %}
 {
-  "name": "Svævende hjemmesidedemoer",
+  "name": "Hjemmesidedemoer med scroll",
   "settings": [
     { "type": "text", "id": "anchor", "label": "Anker-id", "default": "et-udtryk-der-er-jeres" },
     { "type": "text", "id": "eyebrow", "label": "Lille overskrift", "default": "Formet efter din forretning" },
     { "type": "inline_richtext", "id": "heading", "label": "Overskrift", "default": "Forskellige verdener.<br>Samme omhu." },
     { "type": "richtext", "id": "text", "label": "Tekst", "default": "<p>En hjemmeside skal ligne den virksomhed, der står bag. Se tre forskellige måder, det kan tage form på.</p>" }
   ],
-  "presets": [{ "name": "Svævende hjemmesidedemoer" }]
+  "presets": [{ "name": "Hjemmesidedemoer med scroll" }]
 }
 {% endschema %}
