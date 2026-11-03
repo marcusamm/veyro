@@ -10,7 +10,7 @@
   html[data-entrance='opening'] .site-header { opacity: 0; }
   html[data-entrance='opening'] .studio-motion-ready .hero-word,
   html[data-entrance='opening'] .studio-motion-ready .studio-wordmark > span,
-  html[data-entrance='opening'] .studio-motion-ready .studio-action { animation-play-state: paused; }
+  html[data-entrance='opening'] .studio-motion-ready .studio-action { animation: none; }
   html[data-entrance='revealing'] .site-entrance__surface { animation: entrance-surface-out .85s cubic-bezier(.76,0,.24,1) both; }
   html[data-entrance='revealing'] .site-entrance__wordmark > span { animation: entrance-letter-out .48s cubic-bezier(.64,0,.78,0) both; animation-delay: calc(var(--letter) * 28ms); }
   html[data-entrance='revealing'] .studio-art { animation: entrance-art-in 1.1s cubic-bezier(.16,1,.3,1) both !important; }

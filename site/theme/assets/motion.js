@@ -325,7 +325,14 @@
         rippleU = (event.clientX - r.left) / r.width; rippleV = (event.clientY - r.top) / r.height;
         rippleStart = elapsed;
       });
-      return { resize, sync, reveal() {
+      return { resize, sync, enter() {
+        // A restored homepage reuses its original canvas and geometry.
+        formed = false;
+        entranceStart = Math.max(performance.now(), window.VeyroEntrance?.revealAt || 0);
+        elapsed = 0; last = 0; rippleStart = -10;
+        targetX = targetY = pointerX = pointerY = strength = targetStrength = 0;
+        draw(0); sync();
+      }, reveal() {
         // Early interaction releases the intro without restarting an already-formed V.
         if (entranceStart !== null && entranceStart > performance.now()) entranceStart = performance.now();
       }, setScroll() { scroll = clamp((scrollY - scrollStart) / scrollRange); locatePointer(); } };
@@ -333,6 +340,10 @@
     const canvas = document.querySelector('[data-particle-scene]');
     const scene = canvas ? createScene(canvas) : null;
     addEventListener('veyro:entrance-reveal', () => scene?.reveal());
+    addEventListener('veyro:entrance-start', () => {
+      restorePreference();
+      scene?.enter();
+    });
 
     // Pointer-lit panels and tilt on project pictures; touch keeps the native interaction.
     document.querySelectorAll('.studio-introduction, .home-hero__project, .concepts__item .browser, .booking-preview').forEach(el => {
@@ -392,9 +403,14 @@
       try { sessionStorage.setItem('veyro-effects-paused', String(paused)); } catch (_) { /* Optional preference. */ }
       syncMotion();
     });
+    function restorePreference() {
+      try { paused = sessionStorage.getItem('veyro-effects-paused') === 'true'; } catch (_) { /* Keep this page's choice when storage is unavailable. */ }
+      syncMotion();
+    }
     reduce.addEventListener('change', syncMotion);
     document.addEventListener('visibilitychange', syncMotion);
     addEventListener('focus', syncMotion);
+    addEventListener('pageshow', event => { if (event.persisted) restorePreference(); });
 
     measure(); syncMotion();
   };
