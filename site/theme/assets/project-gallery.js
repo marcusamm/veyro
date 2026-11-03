@@ -5,7 +5,7 @@
   const clamp = (value, min = 0, max = 1) => Math.max(min, Math.min(max, value));
   const smoothstep = value => { const t = clamp(value); return t * t * (3 - 2 * t); };
   const planeProperties = ['--x', '--y', '--z', '--rotate-y', '--plane-opacity', '--plane-shade'];
-  const rootProperties = ['--gallery-steps', '--gallery-scroll-height', '--gallery-card-width', '--gallery-radius', '--gallery-progress', '--gallery-accent'];
+  const rootProperties = ['--gallery-steps', '--gallery-scroll-height', '--gallery-card-width', '--gallery-radius', '--gallery-progress', '--gallery-accent', '--gallery-depth-step', '--gallery-depth-y', '--gallery-light-y'];
   const safeURL = value => {
     if (typeof value !== 'string' || !value.trim()) return null;
     try {
@@ -32,6 +32,8 @@
       this.description = root.querySelector('[data-gallery-description]');
       this.count = root.querySelector('[data-gallery-count]');
       this.open = root.querySelector('[data-gallery-open]');
+      this.depth = root.querySelector('[data-gallery-depth]');
+      this.depthMarks = []; this.pinHeight = 0; this.depthStep = 0;
       this.reduce = matchMedia('(prefers-reduced-motion: reduce)');
       this.frame = 0; this.dirty = true; this.needsMeasure = true; this.destroyed = false;
       this.pageActive = true; this.inView = false; this.enhanced = false;
@@ -129,6 +131,17 @@
         properties: planeProperties.map(property => [property, plane.style.getPropertyValue(property)]),
       }));
       this.root.style.setProperty('--gallery-steps', String(Math.max(1, this.planes.length)));
+      // Decorative depth markers follow the same validated collection as the
+      // previews. They contain only numbers and never become interactive.
+      this.depthMarks.forEach(mark => mark.remove());
+      this.depthMarks = [];
+      if (this.depth) this.demos.forEach((_, index) => {
+        const mark = document.createElement('span');
+        mark.className = 'project-gallery__depth-mark';
+        mark.textContent = String(index + 1).padStart(2, '0');
+        mark.style.setProperty('--depth-index', String(index));
+        this.depth.append(mark); this.depthMarks.push(mark);
+      });
       this.activeIndex = -1; this.focusIndex = null; this.focusElement = null;
     }
 
@@ -163,6 +176,8 @@
       this.enhanced = canEnhance;
       if (!canEnhance) {
         this.root.style.removeProperty('--gallery-scroll-height');
+        this.root.style.setProperty('--gallery-depth-y', '0px');
+        this.root.style.setProperty('--gallery-light-y', '0px');
         this.restorePlanes();
         const rect = this.track.getBoundingClientRect();
         this.inView = rect.bottom > 0 && rect.top < viewport;
@@ -173,7 +188,9 @@
       const height = pin.height + this.planes.length * this.step;
       this.root.style.setProperty('--gallery-scroll-height', `${Math.ceil(height)}px`);
       const mobile = stage.width < 650;
-      const cardWidth = Math.max(1, Math.min(stage.width * (mobile ? .88 : .72), stage.height * 1.6 * .92, 880));
+      const cardWidth = Math.max(1, Math.min(stage.width * (mobile ? .96 : .78), stage.height * 1.6 * .92, 1080));
+      this.pinHeight = pin.height; this.depthStep = pin.height * .78;
+      this.root.style.setProperty('--gallery-depth-step', `${this.depthStep.toFixed(2)}px`);
       this.radius = stage.width * .35; this.pitch = stage.height * .56;
       this.root.style.setProperty('--gallery-card-width', `${cardWidth.toFixed(2)}px`);
       this.root.style.setProperty('--gallery-radius', `${this.radius.toFixed(2)}px`);
@@ -224,6 +241,12 @@
       this.root.dataset.galleryMode = mode;
       this.root.dataset.galleryProgress = progress.toFixed(4);
       this.root.style.setProperty('--gallery-progress', progress.toFixed(4));
+      // The environment moves throughout each scroll step, including the
+      // centered holds. It uses native progress, not the card's eased position.
+      const depthY = mode === '3d' ? this.pinHeight * .08 - progress * Math.max(0, this.planes.length - 1) * this.depthStep : 0;
+      const lightY = mode === '3d' ? (.5 - progress) * this.pinHeight * .35 : 0;
+      this.root.style.setProperty('--gallery-depth-y', `${depthY.toFixed(2)}px`);
+      this.root.style.setProperty('--gallery-light-y', `${lightY.toFixed(2)}px`);
       this.root.dataset.activeDemo = String(active);
       this.root.dataset.galleryFocusLocked = String(this.focusIndex !== null);
       this.planes.forEach((plane, index) => {
@@ -281,6 +304,7 @@
       this.cleanups.forEach(cleanup => cleanup());
       this.mutationObserver?.disconnect(); this.resizeObserver?.disconnect(); this.intersectionObserver?.disconnect();
       this.restorePlanes(); this.root.classList.remove('is-helix-ready');
+      this.depthMarks.forEach(mark => mark.remove()); this.depthMarks = [];
       this.originalRootProperties.forEach(([property, value]) => {
         if (value) this.root.style.setProperty(property, value); else this.root.style.removeProperty(property);
       });

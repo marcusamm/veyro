@@ -96,7 +96,7 @@
 /* Keep the richer sections close enough to read as one continuous story. */
 .template-index { --section-y: clamp(2.75rem, 4vw, 4rem); }
 .template-index .studio-introduction { margin-block: 1.5rem; }
-.template-index .project-gallery { margin-block: 1rem; }
+.template-index .project-gallery { margin: 0; }
 .template-index .studio-capabilities { padding-block: 2.5rem; }
 .template-index .booking-flow { padding-block: 3rem; }
 .template-index .packages { padding-block: 3.5rem; }
