@@ -1,22 +1,29 @@
-<section class="section not-found">
-  <div class="container not-found__inner">
-    <p class="label">{{ 'public.error_404' | t }}</p>
-    <h1 class="t-xl">{{ 'not_found.title' | t }}</h1>
-    <p class="lead">{{ 'not_found.text' | t }}</p>
-    <div class="actions">
-      {%- assign home_label = 'not_found.cta' | t -%}
-      {% render 'button', label: home_label, url: routes.root_url, style: 'primary' %}
-      {%- assign contact_label = 'footer.contact' | t -%}
-      {% render 'button', label: contact_label, url: pages['kontakt'].url, style: 'secondary' %}
+<section class="not-found" data-not-found-scene aria-labelledby="NotFoundTitle">
+  <canvas class="not-found__canvas" data-not-found-canvas aria-hidden="true"></canvas>
+  <div class="not-found__stage" data-not-found-stage aria-hidden="true">
+    <span class="not-found__fallback" data-not-found-fallback>404</span>
+  </div>
+  <div class="container not-found__content">
+    <p class="not-found__eyebrow">{{ 'public.error_404' | t }}</p>
+    <h1 id="NotFoundTitle">{{ 'not_found.title' | t }}</h1>
+    <p class="not-found__description">{{ 'not_found.text' | t }}</p>
+    <div class="not-found__actions">
+      <a class="not-found__action" href="{{ routes.root_url }}"><span>{{ 'not_found.cta' | t }}</span><span aria-hidden="true">↗</span></a>
+      <a class="not-found__action" href="{{ pages['eksempler'].url }}"><span>{{ 'not_found.examples' | t }}</span><span aria-hidden="true">↗</span></a>
     </div>
-    <nav class="not-found__links" aria-label="{{ 'public.popular_pages' | t | escape }}">
-      <h2 class="t-sm">{{ 'public.looking_for' | t }}</h2>
-      <ul role="list">
-        <li><a href="/pages/ydelser">{{ 'public.solutions' | t }}</a></li>
-        <li><a href="/pages/eksempler">{{ 'public.examples' | t }}</a></li>
-        <li><a href="/pages/priser">{{ 'public.prices' | t }}</a></li>
-        <li><a href="https://kunde.veyro.dk/login">{{ 'public.customer_login' | t }}</a></li>
-      </ul>
+  </div>
+  <div class="container not-found__bottom">
+    <div class="not-found__play">
+      <button class="not-found__burst" type="button" data-not-found-burst aria-describedby="NotFoundPlayHelp">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="m12 2 1.8 7.4L20 5l-4.4 6.2L23 13l-7.4 1.8L20 21l-6.2-4.4L12 24l-1.8-7.4L4 21l4.4-6.2L1 13l7.4-1.8L4 5l6.2 4.4Z" transform="translate(1 0) scale(.92)"/></svg>
+        <span>{{ 'not_found.play' | t }}</span>
+      </button>
+      <p class="not-found__hint" id="NotFoundPlayHelp">{{ 'not_found.play_hint' | t }}</p>
+    </div>
+    <nav class="not-found__nav" aria-label="{{ 'public.popular_pages' | t | escape }}">
+      <a href="{{ pages['ydelser'].url }}">{{ 'public.solutions' | t }}</a>
+      <a href="{{ pages['priser'].url }}">{{ 'public.prices' | t }}</a>
+      <a href="{{ pages['kontakt'].url }}">{{ 'footer.contact' | t }}</a>
     </nav>
   </div>
 </section>
