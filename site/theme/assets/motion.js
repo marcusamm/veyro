@@ -58,8 +58,9 @@
       });
     }
 
-    // Reveal once, close to the viewport. Tab focus always makes content visible immediately.
-    if ('IntersectionObserver' in window) {
+    // Inner pages reveal once. The homepage uses native-scroll text movement
+    // instead, so a section never waits for a separate timed entrance.
+    if (!body.classList.contains('template-index') && 'IntersectionObserver' in window) {
       const revealObserver = new IntersectionObserver(entries => entries.forEach(entry => {
         if (!entry.isIntersecting) return;
         entry.target.classList.add('is-visible');
