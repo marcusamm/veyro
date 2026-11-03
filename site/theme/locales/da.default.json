@@ -402,7 +402,10 @@
     "concept_booking_alt": "Skærmbillede fra bookingen hos Salon Nord, hvor kunden vælger dato og tid",
     "concept_product_alt": "Skærmbillede af en produktside i Lerværks webshop med valg af glasur og antal",
     "concept_home_alt": "Skærmbillede af forsiden hos Holm Tømrer med overskrift, knapper og et stort foto",
-    "example_domain": "jeresnavn.veyro.dk"
+    "example_domain": "jeresnavn.veyro.dk",
+    "gallery_skip": "Videre på siden",
+    "gallery_open": "Åbn demo",
+    "gallery_scroll": "Scroll for at udforske"
   },
   "pricing": {
     "conversion_note": "Vejledende omregning fra DKK. Endelig pris og valuta bekræftes i tilbuddet.",

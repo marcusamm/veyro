@@ -433,6 +433,33 @@ describe('Pakker og priser', () => {
     for (const k of ['aftal-en-demo', 'pakke-hjemmeside', 'pakke-booking', 'pakke-webshop', 'tilkoeb-eller-stoerre-aendring']) expect(r.html).toContain(`data-key="${k}"`);
   });
 
+  it.each(['', '/en', '/sv'])('galleriet har scroll-pin og native links uden autoplay-kontroller på %s', async prefix => {
+    const response = await site.get(`${prefix}/`);
+    expect(response.status).toBe(200);
+    const gallery = response.html.match(/<section\b[^>]*data-project-gallery[^>]*>([\s\S]*?)<\/section>/)?.[1];
+    expect(gallery).toBeTruthy();
+    expect(gallery).toContain('data-gallery-track');
+    expect(gallery).toContain('data-gallery-pin');
+    expect(gallery).toContain('data-gallery-stage');
+    expect(gallery).not.toMatch(/data-gallery-(?:prev|next|pause|controls)|gallery-orbit|gallery-curve/);
+    expect(gallery).not.toMatch(/MISSING:|>public\.[a-z_]+</);
+    const planes = gallery.match(/<a\b[^>]*class="project-gallery__plane"[^>]*>/g) || [];
+    expect(planes).toHaveLength(3);
+    for (const [index, url] of ['/demo/holm-tomrer/', '/demo/salon-nord/', '/demo/lervaerk/'].entries()) {
+      expect(planes[index]).toContain(`href="${url}"`);
+      expect(planes[index]).toMatch(/aria-label="[^"]+"/);
+      expect(planes[index]).toMatch(/data-demo-title="[^"]+"/);
+      expect(planes[index]).toMatch(/data-demo-description="[^"]+"/);
+      // Server fallback keeps every demo reachable when JavaScript is unavailable.
+      expect(planes[index]).not.toMatch(/aria-hidden="true"|tabindex="-1"|\binert(?:[\s=>])/);
+    }
+    expect(gallery).toMatch(/<a\b[^>]*data-gallery-open[^>]*href="\/demo\/holm-tomrer\/"/);
+    const skip = gallery.match(/<a\b[^>]*data-gallery-skip[^>]*href="#([^"]+)"/);
+    expect(skip).toBeTruthy();
+    expect(gallery).toContain(`id="${skip[1]}"`);
+    expect(gallery).toContain(`href="${prefix}/pages/eksempler"`);
+  });
+
   it('demoerne er statiske sider med noindex og mærkning, og skærmbillederne findes', async () => {
     const pages = ['/demo/holm-tomrer/', '/demo/holm-tomrer/ydelser', '/demo/holm-tomrer/projekter', '/demo/holm-tomrer/kontakt',
       '/demo/salon-nord/', '/demo/salon-nord/behandlinger', '/demo/salon-nord/book',

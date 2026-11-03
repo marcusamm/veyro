@@ -402,7 +402,10 @@
     "concept_booking_alt": "Screenshot of Salon Nord's booking flow, where the customer chooses a date and time",
     "concept_product_alt": "Screenshot of a product page in Lerværk's online shop with glaze and quantity options",
     "concept_home_alt": "Screenshot of Holm Tømrer's homepage with a heading, buttons and a large photo",
-    "example_domain": "yourname.veyro.dk"
+    "example_domain": "yourname.veyro.dk",
+    "gallery_skip": "Continue down the page",
+    "gallery_open": "Open demo",
+    "gallery_scroll": "Scroll to explore"
   },
   "pricing": {
     "conversion_note": "Approximate conversion from DKK. Final price and currency are confirmed in your quote.",
