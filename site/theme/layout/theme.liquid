@@ -64,6 +64,10 @@
     {{ 'studio-capabilities.css' | asset_url | stylesheet_tag }}
     {{ 'studio-depth.css' | asset_url | stylesheet_tag }}
     {{ 'brand.css' | asset_url | stylesheet_tag }}
+    {%- if request.page_type == '404' -%}
+      {{ 'not-found.css' | asset_url | stylesheet_tag }}
+      <script src="{{ 'not-found.js' | asset_url }}" defer="defer"></script>
+    {%- endif -%}
     {%- if request.page_type == 'index' and settings.animations -%}
       {{ 'entrance.css' | asset_url | stylesheet_tag }}
       {% render 'entrance-bootstrap' %}

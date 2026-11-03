@@ -148,8 +148,11 @@
   },
   "not_found": {
     "title": "Sidan finns inte",
-    "text": "Länken kan vara föråldrad eller sidan kan ha flyttats. Använd menyn eller gå till startsidan.",
-    "cta": "Gå till startsidan"
+    "text": "Länken kan vara inaktuell eller sidan kan ha flyttats. Vi hjälper dig att hitta rätt.",
+    "cta": "Gå till startsidan",
+    "examples": "Se våra arbeten",
+    "play": "Håll inne och dela upp",
+    "play_hint": "Släpp, så samlas det igen. Eller prova ett klick."
   },
   "password": {
     "heading": "Vi öppnar snart",

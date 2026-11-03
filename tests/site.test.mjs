@@ -110,6 +110,50 @@ describe('Hjemmesiden vises uden Shopify', () => {
     expect((await site.get('/account')).headers.get('location')).toBe('https://kunde.veyro.dk/login');
   });
 
+  it.each([
+    ['da', '', 'Siden findes ikke'],
+    ['en', '/en', 'Page not found'],
+    ['sv', '/sv', 'Sidan finns inte'],
+  ])('404 bevarer status, tilgængelig tekst og udveje på %s', async (language, prefix, title) => {
+    const home = `${prefix}/`;
+    const contact = `${prefix}/pages/kontakt`;
+    for (const missing of ['/findes-ikke', '/pages/findes-ikke', '/products/findes-ikke']) {
+      const route = prefix + missing;
+      const response = await site.get(route + '?utm_source=404-regression');
+      expect(response.status, route).toBe(404);
+      expect(response.headers.get('location'), route).toBeNull();
+      expect(response.headers.get('content-language'), route).toBe(language);
+      expect(response.headers.get('content-type'), route).toContain('text/html');
+      expect(response.headers.get('cache-control'), route).not.toMatch(/public|immutable/i);
+      expect(response.html, route).toContain(`lang="${language}"`);
+      expect(response.html, route).not.toMatch(/Liquid error|MISSING:|>not_found\.[a-z_]+</);
+      expect(response.html, route).toContain(`<link rel="canonical" href="${stack.site}${route}">`);
+      expect(response.html, route).not.toMatch(/<link\b[^>]*rel="alternate"/);
+      expect(response.html, route).not.toMatch(/<div\b[^>]*data-site-entrance/);
+
+      const main = response.html.match(/<main\b[^>]*id="MainContent"[^>]*>([\s\S]*?)<\/main>/)?.[1];
+      expect(main, route).toBeTruthy();
+      expect(main, route).toMatch(/class="[^"]*\bnot-found\b/);
+      const headings = [...main.matchAll(/<h1\b([^>]*)>([\s\S]*?)<\/h1>/g)];
+      expect(headings, route).toHaveLength(1);
+      expect(headings[0][1], route).not.toMatch(/aria-hidden="true"|\bhidden(?:\s|$)/);
+      expect(unescape(headings[0][2].replace(/<[^>]*>/g, '')).trim(), route).toBe(title);
+      // Recovery remains ordinary links, available even when decorative JS fails.
+      const links = [...main.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)];
+      for (const href of [home, contact]) {
+        const link = links.find(([, target]) => unescape(target) === href);
+        expect(link, `${route}: ${href}`).toBeTruthy();
+        expect(unescape(link[2].replace(/<[^>]*>/g, '')).trim(), `${route}: accessible link text`).not.toBe('');
+      }
+    }
+    const head = await fetch(stack.site + prefix + '/findes-ikke', {
+      method: 'HEAD', redirect: 'manual', headers: { Cookie: site.cookieHeader() },
+    });
+    expect(head.status).toBe(404);
+    expect(head.headers.get('content-language')).toBe(language);
+    expect(await head.text()).toBe('');
+  });
+
   it('robots.txt, sitemap og temafiler med lang cache', async () => {
     const robots = await site.get('/robots.txt');
     expect(robots.html).toContain('Sitemap: http://localhost:');

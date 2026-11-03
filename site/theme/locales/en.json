@@ -148,8 +148,11 @@
   },
   "not_found": {
     "title": "Page not found",
-    "text": "The link may be out of date, or the page may have moved. Use the menu or go to the homepage.",
-    "cta": "Go to the homepage"
+    "text": "The link may be out of date, or the page may have moved. Let’s get you back on track.",
+    "cta": "Go to the homepage",
+    "examples": "Explore our work",
+    "play": "Hold to break it apart",
+    "play_hint": "Release to bring it back. Or try a click."
   },
   "password": {
     "heading": "Opening soon",

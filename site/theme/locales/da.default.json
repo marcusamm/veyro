@@ -148,8 +148,11 @@
   },
   "not_found": {
     "title": "Siden findes ikke",
-    "text": "Linket er måske forældet, eller siden er flyttet. Brug menuen, eller gå til forsiden.",
-    "cta": "Gå til forsiden"
+    "text": "Linket er måske forældet, eller siden er flyttet. Vi hjælper dig tilbage på sporet.",
+    "cta": "Gå til forsiden",
+    "examples": "Se vores arbejde",
+    "play": "Hold inde og skil det ad",
+    "play_hint": "Slip, så samler det sig. Eller prøv et klik."
   },
   "password": {
     "heading": "Vi åbner snart",
