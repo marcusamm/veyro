@@ -24,6 +24,8 @@ export interface SitePage {
   template: string;
   body: string;
   published: boolean;
+  /** Historical legal text remains readable but is excluded from search indexes. */
+  archived?: boolean;
   description: string;
 }
 export interface SiteProduct {

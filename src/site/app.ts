@@ -168,7 +168,7 @@ site.get('/robots.txt', (c) => {
 site.get('/sitemap.xml', async (c) => {
   const data = await loadSite(c.env.DB);
   const o = canonicalOrigin(c.env);
-  const urls = ['/', ...data.pages.filter((p) => p.published).map((p) => `/pages/${p.handle}`), ...data.products.filter((p) => p.status === 'active').map((p) => `/products/${p.handle}`)];
+  const urls = ['/', ...data.pages.filter((p) => p.published && !p.archived).map((p) => `/pages/${p.handle}`), ...data.products.filter((p) => p.status === 'active').map((p) => `/products/${p.handle}`)];
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.flatMap((u) => SITE_LANGUAGES.map(language => `  <url><loc>${o}${localizedPath(u, language)}</loc>${SITE_LANGUAGES.map(code => `<xhtml:link rel="alternate" hreflang="${code}" href="${o}${localizedPath(u, code)}"/>`).join('')}</url>`)).join('\n')}\n</urlset>\n`;
   return c.body(xml, 200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
 });
@@ -403,6 +403,7 @@ async function respond(c: Context<SiteEnv>, path: string, forms: Record<string, 
   }
   const html = await pageHtml(c, data, path, r, forms, language);
   c.header('Content-Language', language);
+  if (r.type === 'page' && r.page?.archived) c.header('X-Robots-Tag', 'noindex, follow');
   if (status === 200 && c.req.method === 'GET' && !/bot|crawl|spider|slurp|preview|monitor/i.test(c.req.header('User-Agent') ?? '')) {
     c.executionCtx.waitUntil(countView(c.env.DB, localizedPath(path, language)).catch(() => {}));
   }

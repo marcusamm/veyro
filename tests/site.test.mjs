@@ -180,6 +180,33 @@ describe('Hjemmesiden vises uden Shopify', () => {
     expect((await site.get('/assets/favicon-192.png')).status).toBe(200);
   });
 
+  it('kildekodevilkåret er oversat, uden binding, og tidligere betingelser kan stadig læses', async () => {
+    const cases = [
+      ['', 'Hjemmesidens kildekode efter 12 måneder', 'Der er ingen binding som følge af denne bestemmelse.', 'den gratis første måned tæller med', 'Arkiveret version.'],
+      ['/en', 'Website source code after 12 months', 'This clause creates no minimum commitment.', 'the free first month counts', 'Archived version.'],
+      ['/sv', 'Webbplatsens källkod efter 12 månader', 'Denna bestämmelse innebär ingen bindningstid.', 'den första kostnadsfria månaden räknas med', 'Arkiverad version.'],
+    ];
+    for (const [prefix, heading, cancellation, freeMonth, archiveNotice] of cases) {
+      const current = await site.get(`${prefix}/pages/handelsbetingelser`);
+      expect(current.status).toBe(200);
+      expect(current.html).toContain('Version 2026-11-03');
+      for (const phrase of [heading, cancellation, freeMonth]) expect(current.html).toContain(phrase);
+      const archive = await site.get(`${prefix}/pages/handelsbetingelser-2026-10-21`);
+      expect(archive.status).toBe(200);
+      expect(archive.headers.get('x-robots-tag')).toBe('noindex, follow');
+      expect(archive.html).toContain(archiveNotice);
+      expect(archive.html).toContain('Version 2026-10-21');
+      expect(archive.html).not.toContain(heading);
+      const dpa = await site.get(`${prefix}/pages/databehandleraftale`);
+      expect(dpa.html).toContain('Version 2026-10-21');
+      expect(dpa.html).not.toContain('Version 2026-11-03');
+    }
+    const sitemap = await site.get('/sitemap.xml');
+    expect(sitemap.html).not.toContain('/pages/handelsbetingelser-2026-10-21');
+    // Keep this legal detail out of the homepage's main sales content.
+    expect((await site.get('/')).html).not.toContain('Hjemmesidens kildekode efter 12 måneder');
+  });
+
   it('kundepanelet på sit eget domæne er uændret', async () => {
     const r = await new Client(stack.base).get('/login');
     expect(r.status).toBe(200);
