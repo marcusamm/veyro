@@ -13,15 +13,15 @@
   </div>
   <div class="project-gallery__track" data-gallery-track>
     <div class="project-gallery__pin" data-gallery-pin>
+      <div class="project-gallery__environment" aria-hidden="true">
+        <div class="project-gallery__light"></div>
+        <div class="project-gallery__depth" data-gallery-depth></div>
+      </div>
       <div class="project-gallery__topbar">
         <p>{{ 'public.design_concept' | t }} <span data-gallery-count>01 / 03</span></p>
         <a data-gallery-skip href="#{{ gallery_id }}-end">{{ 'public.gallery_skip' | t }} <span aria-hidden="true">↓</span></a>
       </div>
       <div class="project-gallery__stage" data-gallery-stage aria-label="{{ 'public.three_demo_websites' | t | escape }}">
-        <svg class="project-gallery__guides" viewBox="0 0 1000 600" preserveAspectRatio="none" fill="none" aria-hidden="true">
-          <path d="M160 0V600M840 0V600M500 0V600"/>
-          <ellipse cx="500" cy="95" rx="340" ry="70"/><ellipse cx="500" cy="300" rx="340" ry="70"/><ellipse cx="500" cy="505" rx="340" ry="70"/>
-        </svg>
         <a class="project-gallery__plane" href="/demo/holm-tomrer/" aria-label="{{ 'public.open_holm_concept' | t | escape }}" data-demo-title="Holm Tømrer" data-demo-category="{{ 'public.website' | t | escape }}" data-demo-description="{{ 'public.craft_demo_description' | t | escape }}" data-demo-accent="#52726b">
           <figure class="project-gallery__surface">
             <div class="project-gallery__image"><img src="/demo/_previews/holm-tomrer-960.jpg" srcset="/demo/_previews/holm-tomrer-960.jpg 960w, /demo/_previews/holm-tomrer-1920.jpg 1920w" sizes="(min-width: 990px) 65vw, 88vw" width="1920" height="1200" alt="{{ 'public.holm_image' | t | escape }}" loading="lazy" decoding="async"></div>

@@ -66,11 +66,13 @@ function card(data) {
 
 // The actual shipped class runs against document geometry and native-link state.
 // CSS perspective, painting and real keyboard navigation are separately browser-reviewed.
-function fixture({ count = 3, demos, reduced = false, paused = false, motion = true, height = 900, width = 1440, pinHeight = 720, sticky = true, depth = true, io = true, absoluteTop = 400 } = {}) {
+function fixture({ count = 3, demos, reduced = false, paused = false, motion = true, height = 900, width = 1440, pinHeight = 720, sticky = true, depth = true, io = true, absoluteTop = 400, withDepth = true } = {}) {
   const window = new Element(), document = new Element(), root = new Element();
   const body = new Element('body'); if (motion) body.classList.add('has-motion'); if (paused) body.classList.add('effects-paused');
   const make = (tag, key) => { const el = new Element(tag); el.setAttribute(`data-gallery-${key}`, ''); return el; };
   const track = make('div', 'track'), pin = make('div', 'pin'), stage = make('div', 'stage');
+  const depthLayer = withDepth ? make('div', 'depth') : null;
+  if (depthLayer) { depthLayer.setAttribute('aria-hidden', 'true'); pin.append(depthLayer); }
   const title = make('h3', 'title'), category = make('span', 'category'), description = make('p', 'description'), counter = make('span', 'count'), open = make('a', 'open');
   const initial = Array.from({ length: count }, (_, index) => demo(index));
   stage.append(...initial.map(card)); pin.append(stage, title, category, description, counter, open); track.append(pin); root.append(track); body.append(root);
@@ -101,7 +103,7 @@ function fixture({ count = 3, demos, reduced = false, paused = false, motion = t
   const instance = new window.VeyroHelixShowcase(root, demos);
   const flush = () => { const callbacks = [...pending.values()]; pending.clear(); callbacks.forEach(callback => callback(16)); };
   return {
-    window, document, root, track, pin, stage, title, category, description, counter, open, media, observers, instance, initial,
+    window, document, root, track, pin, stage, depthLayer, title, category, description, counter, open, media, observers, instance, initial,
     get frames() { return pending.size; },
     get layoutReads() { return layoutReads; },
     get planes() { return stage.querySelectorAll('.project-gallery__plane'); },
@@ -164,6 +166,55 @@ describe('Native-scroll helix showcase', () => {
     state.progress(1 / 5);
     expect(visible(state)).toHaveLength(2);
     expect(state.planes.every(plane => plane.inert && plane.tabIndex === -1)).toBe(true);
+  });
+
+
+  it('moves the environment through settled holds and reverses exactly with native scroll', () => {
+    const state = fixture();
+    const scene = () => ['--gallery-depth-y', '--gallery-light-y'].map(property => parseFloat(state.root.style.getPropertyValue(property)));
+    state.progress(.05); expectSettled(state, 0); const start = scene();
+    state.progress(.2); expectSettled(state, 0); const later = scene();
+    expect(later[0]).toBeLessThan(start[0]); expect(later[1]).toBeLessThan(start[1]);
+    expect(state.frames).toBe(0);
+    state.progress(.8); expectSettled(state, 2);
+    state.progress(.2); expect(scene()).toEqual(later);
+    state.progress(.05); expect(scene()).toEqual(start);
+    // Keyboard focus protects the destination without freezing document depth.
+    state.focus(state.open); state.progress(.8); expectSettled(state, 0);
+    expect(scene()[0]).toBeLessThan(later[0]);
+  });
+
+  it('stops both environment layers for reduced motion and paused effects', () => {
+    const state = fixture();
+    const scene = () => ['--gallery-depth-y', '--gallery-light-y'].map(property => parseFloat(state.root.style.getPropertyValue(property)));
+    state.progress(.7); expect(scene()).not.toEqual([0, 0]);
+    state.reduce(true); expect(scene()).toEqual([0, 0]);
+    state.progress(.2); expect(scene()).toEqual([0, 0]);
+    state.reduce(false); expect(scene()).not.toEqual([0, 0]);
+    state.pause(true); expect(scene()).toEqual([0, 0]);
+    state.progress(.8); expect(scene()).toEqual([0, 0]);
+    state.pause(false); expect(scene()).not.toEqual([0, 0]);
+  });
+
+  it('keeps decorative depth markers in sync with accepted demos and cleans them on destroy', () => {
+    const state = fixture({ count: 5 });
+    expect(state.depthLayer.getAttribute('aria-hidden')).toBe('true');
+    expect(state.depthLayer.children.map(mark => mark.textContent)).toEqual(['01', '02', '03', '04', '05']);
+    expect(state.depthLayer.children.map(mark => mark.style.getPropertyValue('--depth-index'))).toEqual(['0', '1', '2', '3', '4']);
+    state.instance.setDemos([demo(0), { ...demo(1), url: 'javascript:bad()' }]);
+    expect(state.depthLayer.children.map(mark => mark.textContent)).toEqual(['01']);
+    state.instance.setDemos([]); expect(state.depthLayer.children).toHaveLength(0);
+    state.instance.setDemos([demo(0), demo(1)]); expect(state.depthLayer.children).toHaveLength(2);
+    state.instance.destroy(); expect(state.depthLayer.children).toHaveLength(0);
+    for (const property of ['--gallery-depth-step', '--gallery-depth-y', '--gallery-light-y']) expect(state.root.style.getPropertyValue(property)).toBe('');
+  });
+
+  it('supports the reusable component without a decorative background container', () => {
+    const state = fixture({ withDepth: false });
+    state.progress(.5); expectSettled(state, 1);
+    expect(state.instance.depthMarks).toEqual([]);
+    expect(Number.isFinite(parseFloat(state.root.style.getPropertyValue('--gallery-depth-y')))).toBe(true);
+    state.instance.destroy(); expect(state.frames).toBe(0);
   });
 
   it('coalesces scroll into one dirty frame and never starts an idle animation loop', () => {
