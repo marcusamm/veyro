@@ -78,6 +78,14 @@
   .project-gallery__topbar p { gap:8px; }
   .project-gallery__topbar a { gap:7px; }
 }
+/* Phone GPUs should composite the preview once, not run a changing image
+   filter and two large blurred shadow surfaces during every native swipe.
+   The static edge gradient and shallow shadow retain the 3D depth cues. */
+@media (hover:none), (max-width:749px) {
+  .project-gallery.is-helix-ready .project-gallery__image img { filter:none; }
+  .project-gallery.is-helix-ready .project-gallery__plane::before { display:none; }
+  .project-gallery.is-helix-ready .project-gallery__surface { box-shadow:0 10px 22px -14px #000a; }
+}
 @media print {
   .project-gallery.is-helix-ready .project-gallery__track { height:auto !important; }
   .project-gallery.is-helix-ready .project-gallery__pin { position:static; height:auto; min-height:0; display:block; padding:20px; }
