@@ -3,7 +3,6 @@
   'use strict';
   const instances = new WeakMap();
   const clamp = (value, min = 0, max = 1) => Math.max(min, Math.min(max, value));
-  const smoothstep = value => { const t = clamp(value); return t * t * (3 - 2 * t); };
   const planeProperties = ['--x', '--y', '--z', '--rotate-y', '--plane-opacity', '--plane-shade'];
   const rootProperties = ['--gallery-steps', '--gallery-scroll-height', '--gallery-card-width', '--gallery-radius', '--gallery-progress', '--gallery-accent', '--gallery-depth-step', '--gallery-depth-y', '--gallery-light-y'];
   const safeURL = value => {
@@ -37,7 +36,7 @@
       this.reduce = matchMedia('(prefers-reduced-motion: reduce)');
       this.frame = 0; this.dirty = true; this.needsMeasure = true; this.destroyed = false;
       this.pageActive = true; this.inView = false; this.enhanced = false;
-      this.focusIndex = null; this.focusElement = null; this.activeIndex = -1;
+      this.focusIndex = null; this.focusPosition = null; this.position = 0; this.focusElement = null; this.activeIndex = -1;
       this.step = 1; this.range = 1; this.top = 0; this.stickyTop = 0;
       this.radius = 0; this.pitch = 0; this.planes = []; this.demos = [];
       this.cleanups = [];
@@ -70,7 +69,7 @@
       listen(root, 'focusin', event => this.onFocus(event));
       listen(root, 'focusout', event => {
         if (this.focusElement?.contains(event.relatedTarget)) return;
-        this.focusIndex = null; this.focusElement = null;
+        this.focusIndex = null; this.focusPosition = null; this.focusElement = null;
         this.invalidate();
       });
       this.mutationObserver = new MutationObserver(() => this.invalidate());
@@ -142,7 +141,7 @@
         mark.style.setProperty('--depth-index', String(index));
         this.depth.append(mark); this.depthMarks.push(mark);
       });
-      this.activeIndex = -1; this.focusIndex = null; this.focusElement = null;
+      this.activeIndex = -1; this.focusIndex = null; this.focusPosition = null; this.focusElement = null;
     }
 
     setDemos(demos) {
@@ -185,7 +184,7 @@
       }
       const pin = this.pin.getBoundingClientRect(), stage = this.stage.getBoundingClientRect();
       this.step = Math.max(320, viewport - this.stickyTop);
-      const height = pin.height + this.planes.length * this.step;
+      const height = pin.height + Math.max(1, this.planes.length - 1) * this.step;
       this.root.style.setProperty('--gallery-scroll-height', `${Math.ceil(height)}px`);
       const mobile = stage.width < 650;
       const cardWidth = Math.max(1, Math.min(stage.width * (mobile ? .96 : .78), stage.height * 1.6 * .92, 1080));
@@ -206,7 +205,12 @@
       const index = this.planes.indexOf(plane);
       if (index >= 0) { this.focusIndex = index; this.focusElement = plane; }
       else if (this.open?.contains(event.target)) { this.focusIndex = Math.max(0, this.activeIndex); this.focusElement = this.open; }
-      else { this.focusIndex = null; this.focusElement = null; }
+      else { this.focusIndex = null; this.focusPosition = null; this.focusElement = null; }
+      if (this.focusIndex !== null) {
+        // Center keyboard focus for readability. A pointer must keep the exact
+        // position it pressed, otherwise a mobile preview can jump before release.
+        this.focusPosition = this.focusElement.matches?.(':focus-visible') ? this.focusIndex : this.position;
+      }
       this.invalidate();
     }
 
@@ -233,16 +237,17 @@
       // the gallery changing height after a font or an image finishes loading.
       this.top = this.track.getBoundingClientRect().top + window.scrollY;
       const progress = clamp((window.scrollY - this.top + this.stickyTop) / this.range);
-      const step = progress * this.planes.length;
-      const arriving = Math.floor(step + .24);
-      let position = clamp(arriving - 1 + smoothstep((step - (arriving - .24)) / .48), 0, this.planes.length - 1);
-      if (this.focusIndex !== null) position = this.focusIndex;
+      // Direct travel: every scroll delta moves the previews, including
+      // through the face-on position. There are no hold windows or snapping.
+      let position = progress * Math.max(0, this.planes.length - 1);
+      if (this.focusIndex !== null) position = this.focusPosition ?? this.focusIndex;
+      this.position = position;
       const active = Math.round(position), mode = this.mode();
       this.root.dataset.galleryMode = mode;
       this.root.dataset.galleryProgress = progress.toFixed(4);
       this.root.style.setProperty('--gallery-progress', progress.toFixed(4));
-      // The environment moves throughout each scroll step, including the
-      // centered holds. It uses native progress, not the card's eased position.
+      // Background layers share native progress at their own depth speeds.
+      // Keyboard focus protects the current link without freezing the environment.
       const depthY = mode === '3d' ? this.pinHeight * .08 - progress * Math.max(0, this.planes.length - 1) * this.depthStep : 0;
       const lightY = mode === '3d' ? (.5 - progress) * this.pinHeight * .35 : 0;
       this.root.style.setProperty('--gallery-depth-y', `${depthY.toFixed(2)}px`);
@@ -252,7 +257,7 @@
       this.planes.forEach((plane, index) => {
         const offset = index - position, angle = offset * 96, radians = angle * Math.PI / 180;
         const opacity = clamp(1 - Math.abs(offset) / .78);
-        const settled = index === active && Math.abs(offset) < .055;
+        const interactive = index === active;
         plane.style.setProperty('--x', `${mode === '3d' ? Math.sin(radians) * this.radius : 0}px`);
         plane.style.setProperty('--y', `${mode === '3d' ? -offset * this.pitch : 0}px`);
         plane.style.setProperty('--z', `${mode === '3d' ? (Math.cos(radians) - 1) * this.radius : 0}px`);
@@ -260,11 +265,11 @@
         plane.style.setProperty('--plane-opacity', opacity.toFixed(4));
         plane.style.setProperty('--plane-shade', (mode === '3d' ? .76 + .24 * Math.max(0, Math.cos(radians)) : 1).toFixed(4));
         plane.style.visibility = opacity > .001 ? 'visible' : 'hidden';
-        plane.style.pointerEvents = settled ? 'auto' : 'none';
-        plane.dataset.galleryActive = String(settled);
-        plane.tabIndex = settled ? 0 : -1;
-        plane.inert = !settled;
-        plane.setAttribute('aria-hidden', String(!settled));
+        plane.style.pointerEvents = interactive ? 'auto' : 'none';
+        plane.dataset.galleryActive = String(interactive);
+        plane.tabIndex = interactive ? 0 : -1;
+        plane.inert = !interactive;
+        plane.setAttribute('aria-hidden', String(!interactive));
       });
       if (active !== this.activeIndex) {
         this.activeIndex = active;
