@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import type { AppEnv, Env } from './env';
 import { cleanup } from './lib/db';
 import { logError } from './lib/errlog';
@@ -7,6 +8,8 @@ import { render } from './render';
 import account from './routes/account';
 import admin from './routes/admin';
 import auth from './routes/auth';
+import tools from './routes/tools';
+import { TOOLS_CSS, TOOLS_JS } from './views/tools-assets';
 import card from './routes/card';
 import offer from './routes/offer';
 import pub from './routes/public';
@@ -73,6 +76,8 @@ app.use('*', async (c, next) => {
 // Statiske filer
 const STATIC_CACHE = 'public, max-age=3600';
 app.get('/static/app.css', (c) => c.body(CSS, 200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
+app.get('/static/tools.css', (c) => c.body(TOOLS_CSS, 200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
+app.get('/static/tools.js', (c) => c.body(TOOLS_JS, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': STATIC_CACHE }));
 app.get('/static/app.js', (c) =>
   c.body(JS, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': STATIC_CACHE }),
 );
@@ -92,9 +97,11 @@ app.get('/healthz', (c) => c.text('ok'));
 app.route('/', webhook);
 
 // Session + CSRF for resten
+app.use('/tools/*', bodyLimit({ maxSize: 80 * 1024, onError: c => c.text('Request too large.', 413) }));
 app.use('*', sessionMiddleware);
 app.use('*', csrfMiddleware);
 
+app.route('/tools', tools);
 app.route('/', pub);
 app.route('/', auth);
 app.route('/', card);
