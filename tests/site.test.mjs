@@ -277,11 +277,11 @@ describe('Offentlige sprogversioner', () => {
     }
     const [en, sv, da] = await Promise.all(['/en/', '/sv/', '/'].map(p => site.get(p)));
     expect(en.html).toContain('Your business.');
-    expect(en.html).toContain('≈ EUR 26.63');
+    expect(en.html).toContain('EUR 29');
     expect(en.html).not.toContain('DKK 199');
     expect(en.html).not.toContain('Din forretning.');
     expect(sv.html).toContain('Ditt företag.');
-    expect(sv.html).toContain('≈ 292,32 SEK');
+    expect(sv.html).toContain('299 SEK');
     expect(sv.html).not.toContain('199 DKK');
     expect(sv.html).not.toContain('Din forretning.');
     expect(da.html).toContain('Din forretning.');
@@ -290,6 +290,66 @@ describe('Offentlige sprogversioner', () => {
       const r = await site.get(`/${language}/pages/findes-ikke`);
       expect(r.status).toBe(404);
       expect(r.headers.get('content-language')).toBe(language);
+    }
+  });
+
+  it.each([
+    {
+      prefix: '', website: '199 kr.', tiers: ['299 kr.', '399 kr.', '499 kr.'],
+      rows: [
+        ['299 kr.', '299 kr.', '399 kr.', '499 kr.'],
+        ['398 kr.', '398 kr.', '498 kr.', '598 kr.'],
+        ['497 kr.', '497 kr.', '597 kr.', '697 kr.'],
+        ['596 kr.', '596 kr.', '696 kr.', '796 kr.'],
+      ],
+      example: 'med 5 brugere koster 497 kr./md. ekskl. moms.',
+    },
+    {
+      prefix: '/en', website: 'EUR 29', tiers: ['EUR 39', 'EUR 55', 'EUR 69'],
+      rows: [
+        ['EUR 39', 'EUR 39', 'EUR 55', 'EUR 69'],
+        ['EUR 54', 'EUR 54', 'EUR 70', 'EUR 84'],
+        ['EUR 69', 'EUR 69', 'EUR 85', 'EUR 99'],
+        ['EUR 84', 'EUR 84', 'EUR 100', 'EUR 114'],
+      ],
+      note: 'Rounded guide prices based on our Danish prices.',
+      example: 'with 5 users costs EUR 69/month excluding VAT.',
+    },
+    {
+      prefix: '/sv', website: '299 SEK', tiers: ['449 SEK', '599 SEK', '749 SEK'],
+      rows: [
+        ['449 SEK', '449 SEK', '599 SEK', '749 SEK'],
+        ['598 SEK', '598 SEK', '748 SEK', '898 SEK'],
+        ['747 SEK', '747 SEK', '897 SEK', '1 047 SEK'],
+        ['896 SEK', '896 SEK', '1 046 SEK', '1 196 SEK'],
+      ],
+      note: 'Avrundade riktpriser baserade på våra danska priser.',
+      example: 'med 5 användare kostar 747 SEK/mån. exkl. moms.',
+    },
+  ])('bruger samme salgspriser i oversigt, niveauer og additive brugertotaler: $prefix', async test => {
+    const text = html => unescape(html.replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
+    for (const route of ['/', '/pages/priser']) {
+      const page = await site.get(test.prefix + route);
+      expect(page.html).toContain(`data-summary-price>${test.website}</strong>`);
+      expect(page.html).toContain(`data-summary-total>${test.website}</strong>`);
+      for (const price of test.tiers) expect(page.html).toContain(`data-price="${price}"`);
+      if (test.note) {
+        expect(page.html).toContain(test.note);
+        expect(page.html).not.toContain('≈');
+        expect(page.html).not.toContain('ECB,');
+      }
+    }
+    const pricing = await site.get(test.prefix + '/pages/priser');
+    const body = pricing.html.match(/<table class="table staff__table">[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/)?.[1];
+    expect(body).toBeTruthy();
+    const rows = [...body.matchAll(/<tr>([\s\S]*?)<\/tr>/g)]
+      .map(row => [...row[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(cell => text(cell[1])));
+    expect(rows).toEqual(test.rows);
+    expect(text(pricing.html)).toContain(test.example);
+    for (const route of ['/pages/booking', '/pages/webshop']) {
+      const product = await site.get(test.prefix + route);
+      expect(text(product.html)).toContain(test.tiers[0]);
+      if (test.note) expect(product.html).toContain(test.note);
     }
   });
 
@@ -412,7 +472,7 @@ describe('Pakker og priser', () => {
     const staff = r.html.match(/<table class="table staff__table">([\s\S]*?)<\/table>/)[1];
     const rows = [...staff.matchAll(/<tr>\s*<th scope="row">(\d+)[^<]*<\/th>([\s\S]*?)<\/tr>/g)].map(m => [m[1], ...[...m[2].matchAll(/<td[^>]*>([^<]+)<\/td>/g)].map(c => c[1])]);
     expect(rows).toEqual([['3', '299 kr.', '299 kr.', '399 kr.', '499 kr.'], ['4', '398 kr.', '398 kr.', '498 kr.', '598 kr.'], ['5', '497 kr.', '497 kr.', '597 kr.', '697 kr.'], ['6', '596 kr.', '596 kr.', '696 kr.', '796 kr.']]);
-    expect(r.html).toContain('Booking med 5 medarbejdere koster 497 kr./md. ekskl. moms');
+    expect(r.html).toContain('Booking med 5 brugere koster 497 kr./md. ekskl. moms');
     // De gamle planer kan ikke købes
     for (const h of ['starter', 'business', 'premium']) expect((await site.get('/products/' + h)).status).toBe(404);
   });
@@ -638,6 +698,10 @@ describe('Kurv og forespørgsel', () => {
       expect(product.status).toBe(200);
       expect(product.html).toContain(`name="site_language" value="${language}"`);
       expect(product.html).toContain('action="/cart/add"');
+      const rawUnitPrice = language === 'en' ? '≈ EUR 80.15' : '≈ 879,89 SEK';
+      expect(product.html).toContain(`class="product__price-current">${rawUnitPrice}</span>`);
+      expect(product.html).toContain(language === 'en' ? 'Approximate conversion from DKK.' : 'Ungefärlig omräkning från DKK.');
+      expect(product.html).toContain('ECB,');
       const added = await shopper.post('/cart/add', { id: 'business', site_language: language });
       expect(added.headers.get('location')).toBe(`/${language}/cart`);
       const cart = await shopper.get(`/${language}/cart`);
@@ -648,6 +712,8 @@ describe('Kurv og forespørgsel', () => {
       expect(changed.headers.get('location')).toBe(`/${language}/cart`);
       const updated = await shopper.get(`/${language}/cart`);
       expect(updated.html).toMatch(/site-header__count[^>]*>2</);
+      const rawTotal = language === 'en' ? '≈ EUR 160.30' : '≈ 1 759,77 SEK';
+      expect(updated.html.replace(/[\u00a0\u202f]/g, ' ')).toContain(`<strong>${rawTotal}</strong>`);
       const removed = await shopper.get(`/${language}/cart/change?line=1&quantity=0`);
       expect(removed.headers.get('location')).toBe(`/${language}/cart`);
       const empty = await shopper.get(`/${language}/cart`);
@@ -737,8 +803,8 @@ describe('Kontaktformularer', () => {
   it('gemmer og mailer det valgte webshopniveau med kanonisk DKK og korrekt lokal visningspris', async () => {
     const cases = [
       { prefix: '', id: '60', price: 299, shown: '299 kr.' },
-      { prefix: '/en', id: '120', price: 399, shown: '≈ EUR 53.39' },
-      { prefix: '/sv', id: '200', price: 499, shown: '≈ 732,99 SEK' },
+      { prefix: '/en', id: '120', price: 399, shown: 'EUR 55' },
+      { prefix: '/sv', id: '200', price: 499, shown: '749 SEK' },
     ];
     const billingBefore = sql('SELECT id, status, price_id, amount, currency FROM subscriptions ORDER BY id');
     for (const test of cases) {
@@ -762,6 +828,7 @@ describe('Kontaktformularer', () => {
         'Webshoppris DKK ekskl. moms': `${test.price} kr./md. ekskl. moms`,
         Webshopgrænser: `Op til ${test.id} salgbare varer og varianter i alt`,
       });
+      expect(JSON.parse(lead.fields)['Vist webshoppris']).toContain(test.shown);
       const mail = await waitFor(async () => (await emails()).slice(before).find(e => e.reply_to === email));
       expect(mail.text).toContain(`Webshopniveau: Webshop – op til ${test.id} varer og varianter i alt`);
       expect(mail.text).toContain(`${test.price} kr./md. ekskl. moms`);

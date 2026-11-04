@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest';
 // Exercise the production state/URL logic without a browser. Actual native
 // controls, layout and keyboard behavior are checked separately in the UI.
 const source = readFileSync(new URL('../site/theme/assets/plan-picker.js', import.meta.url), 'utf8');
-const prices = { da: ['299 kr.', '399 kr.', '499 kr.'], en: ['≈ EUR 40.01', '≈ EUR 53.39', '≈ EUR 66.77'], sv: ['≈ 439,21 SEK', '≈ 586,10 SEK', '≈ 732,99 SEK'] };
+const websitePrices = { da: '199 kr.', en: 'EUR 29', sv: '299 SEK' };
+const prices = { da: ['299 kr.', '399 kr.', '499 kr.'], en: ['EUR 39', 'EUR 55', 'EUR 69'], sv: ['449 SEK', '599 SEK', '749 SEK'] };
 function node({ text = '', hidden = false, data = {} } = {}) {
   const attributes = new Map(), listeners = new Map(), classes = new Set();
   return {
@@ -25,7 +26,7 @@ function fixture(lang = 'da', count = 1) {
     const fields = Object.fromEntries(['title', 'price', 'total', 'description', 'capacity', 'import', 'link', 'status'].map(name => [name, node({ hidden: ['capacity', 'import'].includes(name) })]));
     summary.querySelector = selector => fields[selector.slice('[data-summary-'.length, -1)] || null;
     const cards = ['hjemmeside', 'booking', 'webshop'].map((name, index) => {
-      const card = node({ data: { planTitle: name, planPrice: index === 2 ? prices[lang][0] : index === 1 ? '299 kr.' : '199 kr.', planLink: `${prefix}/pages/kontakt?ydelse=pakke-${name}#formular` } });
+      const card = node({ data: { planTitle: name, planPrice: index === 2 ? prices[lang][0] : index === 1 ? prices[lang][0] : websitePrices[lang], planLink: `${prefix}/pages/kontakt?ydelse=pakke-${name}#formular` } });
       const label = node({ hidden: true }), radio = node(), amount = node(), description = node({ text: `${name} description` }), primary = node(), details = node();
       primary.setAttribute('href', card.dataset.planLink);
       details.setAttribute('href', `${prefix}/pages/${name}`);
@@ -111,6 +112,9 @@ describe('Webshop picker state and enquiry propagation', () => {
   });
   it.each(['en', 'sv'])('preserves %s display currency and localized links without recalculating amounts', lang => {
     const { pickers: [picker] } = fixture(lang);
+    expect(picker.fields.price.textContent).toBe(websitePrices[lang]);
+    picker.choose(1);
+    expect(picker.fields.total.textContent).toBe(prices[lang][0]);
     for (let index = 0; index < 3; index++) { picker.chooseTier(index); expectTier(picker, lang, index); }
   });
   it('isolates multiple pickers and does not bind initialized pickers twice', () => {

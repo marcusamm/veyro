@@ -408,6 +408,8 @@
     "gallery_scroll": "Scrolla för att utforska"
   },
   "pricing": {
+    "rounded_note": "Avrundade riktpriser baserade på våra danska priser. Slutligt pris och valuta bekräftas i offerten.",
+    "staff_example": "Exempel: {{ plan }} med {{ users }} användare kostar {{ price }}/mån. exkl. moms.",
     "conversion_note": "Ungefärlig omräkning från DKK. Slutligt pris och valuta bekräftas i offerten.",
     "conversion_source": "ECB, 30 okt. 2026"
   },

@@ -2,7 +2,7 @@
 // Temaet ligger i site/theme og pakkes ind i theme.generated.ts (npm run build:site).
 import { Hash, Liquid, type Context, type Emitter, type Template, type TagToken, type TopLevelToken } from 'liquidjs';
 import { contentText, type SiteLanguage } from './localization';
-import { displayPrice, DISPLAY_EXCHANGE_RATE } from './currency';
+import { displayConvertedPrice, displayPlanTotal, displayPrice, DISPLAY_EXCHANGE_RATE } from './currency';
 import { THEME_ASSETS, THEME_FILES, THEME_VERSION } from './theme.generated';
 
 const stripComment = (t: string) => t.replace(/^\s*\/\*[\s\S]*?\*\/\s*/, '');
@@ -195,13 +195,16 @@ function createEngine(): Liquid {
   engine.registerFilter('handleize', handleize);
   const money = function (this: any, v: number, zeros: boolean) {
     const language = (this.context.globals.__hooks as RenderHooks)?.language ?? 'da';
-    return language === 'da' ? moneyText(v, zeros) : displayPrice(v / 100, language);
+    return language === 'da' ? moneyText(v, zeros) : displayConvertedPrice(v / 100, language);
   };
   engine.registerFilter('money', function (this: any, v: number) { return money.call(this, v, true); });
   engine.registerFilter('money_without_trailing_zeros', function (this: any, v: number) { return money.call(this, v, false); });
   engine.registerFilter('money_with_currency', function (this: any, v: number) { return money.call(this, v, true).replace(/ kr$/, ' DKK'); });
   // Numeric section settings are whole DKK; product/cart money filters above receive øre.
   engine.registerFilter('display_money', function (this: any, v: number) { return displayPrice(v, (this.context.globals.__hooks as RenderHooks)?.language ?? 'da'); });
+  engine.registerFilter('display_plan_total', function (this: any, base: number, count: number, extra: number) {
+    return displayPlanTotal(base, count, extra, (this.context.globals.__hooks as RenderHooks)?.language ?? 'da');
+  });
   engine.registerFilter('exchange_rate_source', () => DISPLAY_EXCHANGE_RATE.source);
   engine.registerFilter('font_face', () => '');
   engine.registerFilter('payment_button', () => '');

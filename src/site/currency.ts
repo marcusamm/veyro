@@ -10,6 +10,29 @@ export const DISPLAY_EXCHANGE_RATE = {
   source: 'https://www.bancaditalia.it/compiti/operazioni-cambi/cambio/cambi_rif_20261030/?com.dotmarketing.htmlpage.language=1',
 } as const;
 
+// Deliberate public price points, not exchange rates. Keyed by canonical DKK
+// package/add-on prices; stored quotes, products and subscriptions remain in DKK.
+export const PUBLIC_PRICE_POINTS: Readonly<Record<number, { en: number; sv: number }>> = {
+  99: { en: 15, sv: 149 },
+  199: { en: 29, sv: 299 },
+  299: { en: 39, sv: 449 },
+  399: { en: 55, sv: 599 },
+  499: { en: 69, sv: 749 },
+  599: { en: 79, sv: 899 },
+  1099: { en: 149, sv: 1599 },
+};
+
+function finiteAmount(value: number): number {
+  return Number.isFinite(Number(value)) ? Number(value) : 0;
+}
+
+function formatPrice(amount: number, language: PriceLanguage): string {
+  const number = new Intl.NumberFormat(language === 'sv' ? 'sv-SE' : language === 'da' ? 'da-DK' : 'en-GB', {
+    maximumFractionDigits: 2,
+  }).format(amount);
+  return language === 'da' ? `${number} kr.` : language === 'sv' ? `${number} SEK` : `EUR ${number}`;
+}
+
 /** Convert a DKK amount once, retaining precision until display rounding. */
 export function convertDkk(amount: number, language: PriceLanguage): number {
   if (language === 'da') return amount;
@@ -17,15 +40,38 @@ export function convertDkk(amount: number, language: PriceLanguage): number {
   return language === 'sv' ? eur * DISPLAY_EXCHANGE_RATE.sekPerEur : eur;
 }
 
-/** Input is whole DKK, never øre. Foreign prices are always approximate and use two decimals. */
-export function displayPrice(dkk: number, language: PriceLanguage): string {
-  const amount = Number.isFinite(Number(dkk)) ? Number(dkk) : 0;
-  if (language === 'da') return `${new Intl.NumberFormat('da-DK', { maximumFractionDigits: 2 }).format(amount)} kr.`;
+/** Informational conversion for product/cart amounts. Input is DKK, never øre. */
+export function displayConvertedPrice(dkk: number, language: PriceLanguage): string {
+  const amount = finiteAmount(dkk);
+  if (language === 'da') return formatPrice(amount, language);
   const number = new Intl.NumberFormat(language === 'sv' ? 'sv-SE' : 'en-GB', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(convertDkk(amount, language));
   return language === 'sv' ? `≈ ${number} SEK` : `≈ EUR ${number}`;
+}
+
+/** Advertised package/add-on prices. Unknown CMS prices retain explicit FX estimates. */
+export function displayPrice(dkk: number, language: PriceLanguage): string {
+  const amount = finiteAmount(dkk);
+  if (language === 'da') return formatPrice(amount, language);
+  const price = PUBLIC_PRICE_POINTS[amount]?.[language];
+  return price === undefined ? displayConvertedPrice(amount, language) : formatPrice(price, language);
+}
+
+/** Sum the chosen price points; converting a combined DKK total would disagree with them. */
+export function displayPlanTotal(baseDkk: number, extraCount: number, extraDkk: number, language: PriceLanguage): string {
+  const base = finiteAmount(baseDkk);
+  const extra = finiteAmount(extraDkk);
+  const count = Math.max(0, Math.floor(finiteAmount(extraCount)));
+  if (language === 'da') return formatPrice(base + count * extra, language);
+  const basePrice = PUBLIC_PRICE_POINTS[base]?.[language];
+  const extraPrice = PUBLIC_PRICE_POINTS[extra]?.[language];
+  // Only explicitly configured prices are advertised as fixed guide price points.
+  if (basePrice === undefined || (count > 0 && extraPrice === undefined)) {
+    return displayConvertedPrice(base + count * extra, language);
+  }
+  return formatPrice(basePrice + count * (extraPrice ?? 0), language);
 }
 
 /**
