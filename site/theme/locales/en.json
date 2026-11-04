@@ -408,6 +408,8 @@
     "gallery_scroll": "Scroll to explore"
   },
   "pricing": {
+    "rounded_note": "Rounded guide prices based on our Danish prices. Final price and currency are confirmed in your quote.",
+    "staff_example": "Example: {{ plan }} with {{ users }} users costs {{ price }}/month excluding VAT.",
     "conversion_note": "Approximate conversion from DKK. Final price and currency are confirmed in your quote.",
     "conversion_source": "ECB, 30 Oct 2026"
   },

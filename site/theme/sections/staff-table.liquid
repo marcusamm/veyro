@@ -1,6 +1,6 @@
 {%- comment -%}
   Brugere i Booking og Webshop: 3 er inkluderet, og hver ekstra bruger koster et fast beløb pr. måned.
-  Tabellen regnes ud fra indstillingerne: pris + (antal − inkluderede) × ekstrapris.
+  Tabellen lægger de viste lokale grund- og ekstrapriser sammen.
 {%- endcomment -%}
 {%- liquid
   assign inc = section.settings.included
@@ -25,11 +25,10 @@
         </thead>
         <tbody>
           {%- for n in (inc..max) -%}
-            {%- assign add = n | minus: inc | times: extra -%}
-            {%- assign a = section.settings.a_price | plus: add -%}
+            {%- assign extra_count = n | minus: inc -%}
             <tr><th scope="row">{{ n }}{% if n == inc %} {{ 'public.included_parentheses' | t }}{% endif %}</th>
-              {%- if section.settings.a_label != blank -%}<td class="num">{{ a | display_money }}</td>{%- endif -%}
-              {%- for tier in webshop_tiers -%}{%- assign tier_total = tier.price_dkk | plus: add -%}<td class="num">{{ tier_total | display_money }}</td>{%- endfor -%}
+              {%- if section.settings.a_label != blank -%}<td class="num">{{ section.settings.a_price | display_plan_total: extra_count, extra }}</td>{%- endif -%}
+              {%- for tier in webshop_tiers -%}<td class="num">{{ tier.price_dkk | display_plan_total: extra_count, extra }}</td>{%- endfor -%}
             </tr>
           {%- endfor -%}
         </tbody>
@@ -38,6 +37,11 @@
       <p class="staff__note">{{ 'webshop_tiers.staff_capacity_note' | t }}</p>
       <p class="pricing-table-hint">{{ 'webshop_tiers.scroll_hint' | t }}</p>
       {% render 'currency-note' %}
+      {%- if section.settings.a_label != blank -%}
+        {%- assign example_users = inc | plus: 2 -%}
+        {%- assign example_price = section.settings.a_price | display_plan_total: 2, extra -%}
+        <p class="staff__note">{{ 'pricing.staff_example' | t: plan: section.settings.a_label, users: example_users, price: example_price | escape }}</p>
+      {%- endif -%}
       {%- if section.settings.table_note != blank -%}<p class="staff__note">{{ section.settings.table_note | escape }}</p>{%- endif -%}
     </div>
   </div>

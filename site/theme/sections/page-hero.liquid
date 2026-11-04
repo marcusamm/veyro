@@ -72,7 +72,8 @@
         </div>
       {%- endif -%}
     </div>
-    {%- if section.settings.note contains '≈' or section.settings.facts contains '≈' or section.settings.text contains '≈' -%}{% render 'currency-note' %}{%- endif -%}
+    {%- assign price_content = section.settings.note | append: section.settings.facts | append: section.settings.text -%}
+    {%- if price_content contains 'EUR ' or price_content contains ' SEK' or price_content contains '≈' -%}{% render 'currency-note' %}{%- endif -%}
     <hr class="page-hero__rule">
   </div>
 </section>

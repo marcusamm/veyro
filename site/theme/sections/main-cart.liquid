@@ -46,7 +46,7 @@
           <button type="submit" name="update" class="btn btn--secondary btn--sm">{{ 'cart.update' | t }}</button>
         </div>
       </form>
-      {% render 'currency-note' %}
+      {% render 'currency-note', conversion: true %}
 
       <div class="cart__request card" id="forespoergsel">
         {%- form 'contact', id: fid, class: 'form js-validate', novalidate: 'novalidate' -%}
