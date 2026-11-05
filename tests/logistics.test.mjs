@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Client, ROOT, csrfFrom, login, setMockState, startStack } from './harness.mjs';
-import { SAMPLES } from '../src/lib/logistics-calculations.mjs';
+import { SAMPLES, tco } from '../src/lib/logistics-calculations.mjs';
 import { canonicalizeInput } from '../src/lib/logistics-input.mjs';
 
 let stack, anna, bo;
@@ -46,6 +46,18 @@ async function create(client, toolId = 'eoq', name = 'TEST Calculation', input =
 const route = (id, suffix = '') => `/api/calculations/${id}${suffix}`;
 const read = async (client, id) => client.get('/logistik' + route(id));
 const list = async (client, archived = false) => json(await client.get('/logistik/api/calculations' + (archived ? '?archived=1' : ''))).calculations;
+const capitalInput = () => ({
+  periodYears: 2, annualQuantity: 365, capital: { annualRatePercent: 10 },
+  alternatives: ['order', 'receipt'].map((paymentStart, index) => ({
+    id: `supplier-${index}`, name: `TEST Supplier ${index + 1}`, ordersPerYear: 12, residualValue: 0,
+    costs: [
+      { id: `purchase-${index}`, label: 'Materialer', amount: 1000, frequency: 'unit' },
+      { id: `storage-${index}`, label: 'Lager', amount: 1000, frequency: 'year' },
+    ],
+    capital: { purchaseCostId: `purchase-${index}`, leadDays: 30, paymentStart,
+      supplierCreditDays: 10, inventoryDays: 20, customerCreditDays: 0, interestMode: 'add' },
+  })),
+});
 
 beforeAll(async () => {
   stack = await startStack({ minMonths: 0 });
@@ -168,6 +180,66 @@ describe('Same Veyro account, optional login', () => {
 });
 
 describe('Private saved calculations', () => {
+  it('preserves explicitly selected purchase IDs and capital terms across save, reopen, update and copy', async () => {
+    const input = capitalInput();
+    const item = await create(anna, 'tco', 'TEST Capital terms', input);
+    const reopened = json(await read(anna, item.id)).calculation;
+    expect(reopened.input).toEqual(input);
+    expect(tco(reopened.input).alternatives.map(a => a.comparisonTotalCost)).toEqual([740000, 734000]);
+
+    const updated = structuredClone(input);
+    updated.alternatives[0].capital = { ...updated.alternatives[0].capital,
+      paymentStart: 'other', paymentStartDays: 5, interestMode: 'replace',
+      existingInterestCostId: 'storage-0', existingInterestAnnual: 500 };
+    const response = await post(anna, route(item.id), { name: 'TEST Capital revised', version: 1, input: JSON.stringify(updated) });
+    expect(response.status, response.html).toBe(200);
+    expect(json(response).calculation).toMatchObject({ version: 2, input: updated });
+    const copy = await post(anna, route(item.id, '/copy'), { name: 'TEST Capital copy', version: 2 });
+    expect(copy.status, copy.html).toBe(201);
+    expect(json(copy).calculation.input).toEqual(updated);
+    const copied = json(await read(anna, json(copy).calculation.id)).calculation;
+    expect(copied.input.alternatives[0].capital.purchaseCostId).toBe('purchase-0');
+    expect(copied.input.alternatives[0].capital.existingInterestCostId).toBe('storage-0');
+    expect(tco(copied.input).alternatives[0].comparisonTotalCost).toBe(738000);
+  });
+  it('opens and copies a pre-capital TCO record without adding defaults or rewriting stored input', async () => {
+    const owner = sql("SELECT id FROM customers WHERE email = 'logistics-anna@example.com'")[0].id;
+    const id = '00000000-0000-4000-8000-000000000002';
+    const raw = JSON.stringify(SAMPLES.tco).replaceAll("'", "''");
+    sql(`INSERT INTO logistics_calculations (id,customer_id,tool_id,name,input_json,created_at,updated_at)
+      VALUES ('${id}',${owner},'tco','TEST Older TCO','${raw}',1,1)`);
+    const before = sql(`SELECT input_json,version FROM logistics_calculations WHERE id = '${id}'`)[0];
+    const response = await read(anna, id), input = json(response).calculation.input;
+    expect(response.status).toBe(200);
+    expect(input).toEqual(SAMPLES.tco);
+    expect(input).not.toHaveProperty('capital');
+    expect(input.alternatives.every(a => !Object.hasOwn(a, 'capital'))).toBe(true);
+    expect(tco(input).alternatives.map(a => a.totalCost)).toEqual([733200, 719400]);
+    expect(sql(`SELECT input_json,version FROM logistics_calculations WHERE id = '${id}'`)[0]).toEqual(before);
+    const copy = await post(anna, route(id, '/copy'), { name: 'TEST Older TCO copy', version: 1 });
+    expect(copy.status, copy.html).toBe(201);
+    expect(json(copy).calculation.input).toEqual(SAMPLES.tco);
+    const save = await post(anna, route(id), { name: 'TEST Older TCO unchanged', version: 1, input: JSON.stringify(input) });
+    expect(save.status, save.html).toBe(200);
+    expect(json(save).calculation.input).toEqual(SAMPLES.tco);
+  });
+  it('rejects missing capital terms, invalid purchase references and excessive interest removal without saving', async () => {
+    const cases = [];
+    let input = capitalInput(); delete input.capital.annualRatePercent; cases.push(input);
+    input = capitalInput(); delete input.alternatives[0].capital.supplierCreditDays; cases.push(input);
+    input = capitalInput(); input.alternatives[0].capital.purchaseCostId = 'missing-cost'; cases.push(input);
+    input = capitalInput(); input.alternatives[0].capital.purchaseCostId = 'storage-0'; cases.push(input);
+    input = capitalInput(); input.alternatives[0].capital.paymentStart = 'other'; cases.push(input);
+    input = capitalInput(); input.alternatives[0].capital = { ...input.alternatives[0].capital,
+      interestMode: 'replace', existingInterestCostId: 'storage-0', existingInterestAnnual: 1001 }; cases.push(input);
+    const before = (await list(anna)).length;
+    for (const input of cases) {
+      const response = await post(anna, '/api/calculations', { name: 'TEST invalid capital', toolId: 'tco', input: JSON.stringify(input) });
+      expect(response.status, response.html).toBe(400);
+      expect(json(response).error).toBeTruthy();
+    }
+    expect((await list(anna)).length).toBe(before);
+  });
   it.each(['tco', 'eoq', 'genbestilling', 'abc'])('saves and reopens canonical %s input', async toolId => {
     const item = await create(anna, toolId, `TEST ${toolId}`);
     const response = await read(anna, item.id), saved = json(response).calculation;
