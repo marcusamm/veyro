@@ -6,7 +6,8 @@
       "template": "ydelser",
       "body": "",
       "published": true,
-      "description": "Hjemmesider, booking og webshops på Veyros platform samt website-optimering, Shopify-specialudvikling, fejlfinding, integrationer og hosting."
+      "description": "Hjemmesider, booking og webshops på Veyros platform samt website-optimering, Shopify-specialudvikling, fejlfinding, integrationer og hosting.",
+      "seo_title": "Hjemmesider, webshops, booking og hosting"
     },
     {
       "handle": "website-optimering",
@@ -14,7 +15,8 @@
       "template": "website-optimering",
       "body": "",
       "published": true,
-      "description": "Vi gennemgår hastighed, SEO, tilgængelighed og konvertering på jeres eksisterende hjemmeside eller Shopify-butik og laver en prioriteret plan."
+      "description": "Vi gennemgår hastighed, SEO, tilgængelighed og konvertering på jeres eksisterende hjemmeside eller Shopify-butik og laver en prioriteret plan.",
+      "seo_title": "Website-optimering: hastighed og teknisk SEO"
     },
     {
       "handle": "custom-losninger",
@@ -22,7 +24,17 @@
       "template": "custom-losninger",
       "body": "",
       "published": true,
-      "description": "Specialudvikling til Shopify: apps, tilpassede temaer, integrationer og automatisering efter et konkret tilbud."
+      "description": "Specialudvikling til Shopify: apps, tilpassede temaer, integrationer og automatisering efter et konkret tilbud.",
+      "seo_title": "Shopify-specialudvikling, temaer og integrationer"
+    },
+    {
+      "handle": "hosting",
+      "title": "Website hosting og vedligeholdelse",
+      "seo_title": "Website hosting og vedligeholdelse til virksomheder",
+      "template": "hosting",
+      "body": "",
+      "published": true,
+      "description": "Website hosting og vedligeholdelse til mindre virksomheder. Veyro hjælper med SSL, opdateringer, backup og fejl. Fast månedspris efter tilbud."
     },
     {
       "handle": "om-os",
@@ -30,7 +42,8 @@
       "template": "om-os",
       "body": "",
       "published": true,
-      "description": "Veyro bygger og driver hjemmesider, booking og webshops for mindre virksomheder fra Slagelse. Sådan arbejder vi."
+      "description": "Veyro bygger og driver hjemmesider, booking og webshops for mindre virksomheder fra Slagelse. Sådan arbejder vi.",
+      "seo_title": "Om Veyro – hjemmesider og hosting fra Slagelse"
     },
     {
       "handle": "kontakt",
@@ -46,7 +59,8 @@
       "template": "priser",
       "body": "",
       "published": true,
-      "description": "Hjemmeside 199 kr./md., Booking 299 kr./md. og Webshop fra 299 kr./md. ekskl. moms med op til 60 salgbare varer og varianter i alt. Gratis oprettelse, første måned gratis og ingen binding."
+      "description": "Hjemmeside 199 kr./md., Booking 299 kr./md. og Webshop fra 299 kr./md. ekskl. moms med op til 60 salgbare varer og varianter i alt. Gratis oprettelse, første måned gratis og ingen binding.",
+      "seo_title": "Priser på hjemmeside, booking og webshop"
     },
     {
       "handle": "eksempler",
@@ -62,7 +76,8 @@
       "template": "hjemmeside",
       "body": "",
       "published": true,
-      "description": "En hjemmeside på op til 5 sider for 199 kr./md. ekskl. moms med hosting, SSL, 3 korrekturrunder og mindre rettelser."
+      "description": "En hjemmeside på op til 5 sider for 199 kr./md. ekskl. moms med hosting, SSL, 3 korrekturrunder og mindre rettelser.",
+      "seo_title": "Hjemmeside til virksomheder med hosting"
     },
     {
       "handle": "booking",
@@ -70,7 +85,8 @@
       "template": "booking",
       "body": "",
       "published": true,
-      "description": "Hjemmeside med online booking for 299 kr./md. ekskl. moms. Kunderne booker, flytter og aflyser selv, og I får besked på mail."
+      "description": "Hjemmeside med online booking for 299 kr./md. ekskl. moms. Kunderne booker, flytter og aflyser selv, og I får besked på mail.",
+      "seo_title": "Hjemmeside med online booking til virksomheder"
     },
     {
       "handle": "webshop",
@@ -78,7 +94,8 @@
       "template": "webshop",
       "body": "",
       "published": true,
-      "description": "Webshop fra 299 kr./md. ekskl. moms. Vælg op til 60, 120 eller 200 salgbare varer og varianter i alt. Kategorier ændrer ikke prisen. Hosting og vedligeholdelse er med."
+      "description": "Webshop fra 299 kr./md. ekskl. moms. Vælg op til 60, 120 eller 200 salgbare varer og varianter i alt. Kategorier ændrer ikke prisen. Hosting og vedligeholdelse er med.",
+      "seo_title": "Webshop til virksomheder med hosting"
     },
     {
       "handle": "drift",
@@ -194,6 +211,10 @@
         {
           "title": "Webshop",
           "url": "/pages/webshop"
+        },
+        {
+          "title": "Hosting og vedligeholdelse",
+          "url": "/pages/hosting"
         },
         {
           "title": "Website-optimering",

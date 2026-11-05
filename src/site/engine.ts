@@ -1,7 +1,7 @@
 // Gengiver hjemmesidens tema (Shopify-Liquid) i Workeren med liquidjs.
 // Temaet ligger i site/theme og pakkes ind i theme.generated.ts (npm run build:site).
 import { Hash, Liquid, type Context, type Emitter, type Template, type TagToken, type TopLevelToken } from 'liquidjs';
-import { contentText, type SiteLanguage } from './localization';
+import { contentText, localizedPath, type SiteLanguage } from './localization';
 import { displayConvertedPrice, displayPlanTotal, displayPrice, DISPLAY_EXCHANGE_RATE } from './currency';
 import { THEME_ASSETS, THEME_FILES, THEME_VERSION } from './theme.generated';
 
@@ -174,6 +174,7 @@ function createEngine(): Liquid {
     return translate(key, o, (this.context.globals.__hooks as RenderHooks).language);
   });
   engine.registerFilter('content_t', function (this: any, value: string) { return contentText(value, (this.context.globals.__hooks as RenderHooks).language ?? 'da'); });
+  engine.registerFilter('localized_url', function (this: any, value: string) { return localizedPath(value, (this.context.globals.__hooks as RenderHooks).language ?? 'da'); });
   // Som hos Shopify: protokol-relative adresser (temaet sætter selv "https:" foran i delingsbilleder)
   engine.registerFilter('asset_url', function (this: any, f: string) {
     return `//${(this.context.globals.__hooks as RenderHooks).host}/assets/${f}?v=${THEME_VERSION}`;

@@ -34,8 +34,15 @@
             assign full_title = full_title | truncatewords: 8, ''
           endif
         endif
+        if settings.home_seo_title != blank
+          assign full_title = company | append: ' – ' | append: settings.home_seo_title
+        endif
+        if settings.home_seo_description != blank
+          assign page_description = settings.home_seo_description
+        endif
       else
-        assign full_title = page_title | append: ' – ' | append: company
+        assign search_title = page_seo_title | default: page_title
+        assign full_title = search_title | append: ' – ' | append: company
       endif
       if current_tags
         assign full_title = full_title | append: ' – ' | append: current_tags | join: ', '
@@ -51,7 +58,7 @@
       <meta name="description" content="{{ settings.company_tagline | escape }}">
     {%- endif -%}
 
-    {% render 'meta-tags', full_title: full_title %}
+    {% render 'meta-tags', full_title: full_title, page_description: page_description %}
 
     {{ 'manrope-latin-variable.woff2' | asset_url | preload_tag: as: 'font', type: 'font/woff2', crossorigin: 'anonymous' }}
 

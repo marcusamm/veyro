@@ -202,8 +202,8 @@
         "next": "<p>Fortæl, hvor siden ligger i dag, og hvad den kører på. Så får I et tilbud.</p>",
         "button_label": "Få et tilbud",
         "button_link": "/pages/kontakt?ydelse=hosting-og-vedligeholdelse#formular",
-        "secondary_label": "Læs vores serviceniveau (SLA)",
-        "secondary_link": "/pages/sla"
+        "secondary_label": "Læs om hosting og vedligeholdelse",
+        "secondary_link": "/pages/hosting"
       }
     },
     "paa_vej": {
