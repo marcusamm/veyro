@@ -93,6 +93,15 @@ site.use('*', async (c, next) => {
   }
 });
 
+// Hono matcher strengt: normalisér offentlige sideadresser, før routing og sprogvalg.
+// Sprogrødder, filer, demoer og POST-formularer beholder deres egne adresser.
+site.use('*', async (c, next) => {
+  if (c.req.method !== 'GET' && c.req.method !== 'HEAD') return next();
+  const url = new URL(c.req.url);
+  if (!/^\/(?:(?:en|sv)\/)?(?:(?:pages|products)\/[a-z0-9-]+|cart)\/$/.test(url.pathname)) return next();
+  return c.redirect(url.pathname.slice(0, -1) + url.search, 301);
+});
+
 /** Vælg sprog før gengivelse; gem kun et aktivt valg fra sprogvælgeren. */
 site.use('*', async (c, next) => {
   const decision = languageRedirect(c.req.raw, getCookie(c, LANGUAGE_COOKIE));
@@ -167,7 +176,8 @@ site.get('/favicon.ico', (c) => {
 
 site.get('/robots.txt', (c) => {
   if (!isCanonicalHost(c)) return c.text('User-agent: *\nDisallow: /\n');
-  return c.text(`User-agent: *\nDisallow: /cart\nDisallow: /contact\nDisallow: /en/cart\nDisallow: /sv/cart\n\nSitemap: ${canonicalOrigin(c.env)}/sitemap.xml\n`, 200, { 'Cache-Control': 'public, max-age=3600' });
+  // Kurven må crawles, så søgemaskiner kan læse dens noindex-header.
+  return c.text(`User-agent: *\nDisallow: /contact\n\nSitemap: ${canonicalOrigin(c.env)}/sitemap.xml\n`, 200, { 'Cache-Control': 'public, max-age=3600' });
 });
 
 site.get('/sitemap.xml', async (c) => {
@@ -408,6 +418,7 @@ async function respond(c: Context<SiteEnv>, path: string, forms: Record<string, 
   }
   const html = await pageHtml(c, data, path, r, forms, language);
   c.header('Content-Language', language);
+  if (r.type === 'cart') c.header('X-Robots-Tag', 'noindex, follow');
   if (r.type === 'page' && r.page?.archived) c.header('X-Robots-Tag', 'noindex, follow');
   if (status === 200 && c.req.method === 'GET' && !/bot|crawl|spider|slurp|preview|monitor/i.test(c.req.header('User-Agent') ?? '')) {
     c.executionCtx.waitUntil(countView(c.env.DB, localizedPath(path, language)).catch(() => {}));

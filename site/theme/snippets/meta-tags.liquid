@@ -14,7 +14,7 @@
 -%}
 <meta property="og:site_name" content="{{ company | escape }}">
 <meta property="og:url" content="{{ canonical_url }}">
-<meta property="og:title" content="{{ page_title | escape }}">
+<meta property="og:title" content="{{ full_title | escape }}">
 <meta property="og:type" content="{{ og_type }}">
 <meta property="og:locale" content="{% case request.locale.iso_code %}{% when 'en' %}en_GB{% when 'sv' %}sv_SE{% else %}da_DK{% endcase %}">
 <meta property="og:description" content="{{ page_description | default: settings.company_tagline | escape }}">
@@ -31,7 +31,7 @@
   <meta property="og:image:height" content="630">
 {%- endif -%}
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{ page_title | escape }}">
+<meta name="twitter:title" content="{{ full_title | escape }}">
 <meta name="twitter:description" content="{{ page_description | default: settings.company_tagline | escape }}">
 
 {%- if settings.schema_organization and request.page_type == 'index' -%}
@@ -65,12 +65,25 @@
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "ProfessionalService",
+      "@type": "WebSite",
+      "@id": {{ shop.url | append: '/#website' | json }},
       "name": {{ company | json }},
-      "url": {{ shop.url | append: routes.root_url | json }},
+      "alternateName": {{ shop.url | remove: 'https://' | remove: 'http://' | json }},
+      "url": {{ shop.url | append: '/' | json }},
+      "inLanguage": ["da", "en", "sv"],
+      "publisher": { "@id": {{ shop.url | append: '/#organization' | json }} }
+    }
+  </script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ProfessionalService",
+      "@id": {{ shop.url | append: '/#organization' | json }},
+      "name": {{ company | json }},
+      "url": {{ shop.url | append: '/' | json }},
       "description": {{ settings.company_tagline | json }},
       "areaServed": "DK",
-      "knowsLanguage": "da"
+      "knowsLanguage": ["da", "en", "sv"]
       {%- if settings.logo -%},"logo": {{ settings.logo | image_url: width: 600 | prepend: 'https:' | json }}{%- else -%},"logo": {{ shop.url | append: '/assets/favicon-192.png' | json }}{%- endif -%}
       {%- if has_email -%},"email": {{ settings.company_email | json }}{%- endif -%}
       {%- if has_phone -%},"telephone": {{ settings.company_phone | json }}{%- endif -%}

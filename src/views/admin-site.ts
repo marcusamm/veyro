@@ -324,6 +324,7 @@ export function pageEditorPage(args: {
         ? html`<input id="p-handle" type="text" name="handle" value="${f.handle ?? ''}" maxlength="60" placeholder="fx priser"><p class="hint">Bliver til veyro.dk/pages/&lt;adresse&gt;. Små bogstaver, tal og bindestreg. Tom = laves ud fra titlen.</p>`
         : html`<input id="p-handle" type="text" value="/pages/${p!.handle}" readonly>`}</div>
     </div>
+    <div class="field"><label for="p-seo-title">Titel til Google og deling (valgfri)</label><input id="p-seo-title" name="seo_title" type="text" value="${f.seo_title ?? ''}" maxlength="120"><p class="hint">Beskriv sidens ydelse kort. Virksomhedsnavnet tilføjes automatisk. Tom = sidens titel ovenfor.</p></div>
     <div class="field"><label for="p-desc">Beskrivelse til Google og deling (valgfri)</label><textarea id="p-desc" name="description" rows="2" maxlength="300">${f.description ?? ''}</textarea><p class="hint">Bruges i søgeresultater. Ca. 150 tegn. Tom = firmaets standardbeskrivelse.</p></div>
     <div class="field"><label class="check"><input type="checkbox" name="published" value="1"${f.published !== false ? raw(' checked') : ''}> Vis siden på hjemmesiden</label></div>
     ${isNew

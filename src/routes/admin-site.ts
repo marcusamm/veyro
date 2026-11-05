@@ -336,7 +336,7 @@ adminSite.post('/hjemmeside/sider/ny', async (c) => {
   const title = str('title').slice(0, 120);
   const handle = (str('handle') ? handleize(str('handle')) : handleize(title)).slice(0, 60);
   const copyFrom = str('copy_from');
-  const form = { title, handle: str('handle'), description: str('description'), body: str('body'), published: body['published'] === '1', copy_from: copyFrom };
+  const form = { title, seo_title: str('seo_title'), handle: str('handle'), description: str('description'), body: str('body'), published: body['published'] === '1', copy_from: copyFrom };
   if (!title) return pageView(c, null, { error: 'Skriv en titel.', status: 400, form });
   if (!HANDLE_RE.test(handle)) return pageView(c, null, { error: 'Adressen må kun indeholde små bogstaver, tal og bindestreg.', status: 400, form });
   const site = await loadSite(c.env.DB);
@@ -349,7 +349,7 @@ adminSite.post('/hjemmeside/sider/ny', async (c) => {
     if (site.templates[`page.${template}`]) return pageView(c, null, { error: 'Der findes allerede et layout med den adresse.', status: 409, form });
     await saveContent(c.env.DB, `template:page.${template}`, structuredClone(src), who(c), `Kopi af ${copyFrom}`);
   }
-  const page: SitePage = { handle, title, template, body: cleanHtml(form.body), published: form.published, description: form.description.slice(0, 300) };
+  const page: SitePage = { handle, title, seo_title: form.seo_title.slice(0, 120), template, body: cleanHtml(form.body), published: form.published, description: form.description.slice(0, 300) };
   await saveContent(c.env.DB, `page:${handle}`, page, who(c), 'Oprettet');
   return c.redirect(template ? `/admin/hjemmeside/sektioner/template:page.${template}?besked=oprettet` : `/admin/hjemmeside/side/${handle}?besked=oprettet`, 303);
 });
@@ -366,6 +366,7 @@ adminSite.post('/hjemmeside/side/:handle', async (c) => {
   const next: SitePage = {
     ...page,
     title,
+    seo_title: typeof body['seo_title'] === 'string' ? str('seo_title').slice(0, 120) : page.seo_title,
     description: str('description').slice(0, 300),
     published: body['published'] === '1',
     body: page.template ? page.body : cleanHtml(typeof body['body'] === 'string' ? (body['body'] as string).replace(/\r\n/g, '\n') : page.body).slice(0, 100000),
