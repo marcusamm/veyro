@@ -53,6 +53,7 @@ export function layout(opts: LayoutOpts, body: H): H {
     navItems = [
       navLink('/konto', 'Overblik', opts.nav === 'overblik'),
       navLink('/tools?lang=da', 'Gratis værktøjer', false),
+      navLink('/logistik/mine/', 'Mine logistikberegninger', false),
       navLink('/konto/plan', 'Skift plan', opts.nav === 'plan'),
       navLink('/konto/fakturaer', 'Fakturaer og betaling', opts.nav === 'fakturaer', 'Fakturaer'),
       navLink('/konto/henvendelser', 'Ændringsønsker og support', opts.nav === 'henvendelser', 'Support'),
