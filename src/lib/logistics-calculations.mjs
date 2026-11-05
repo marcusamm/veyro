@@ -28,6 +28,8 @@ export const SCHEMAS = Object.freeze({
     periodYears: { ...numeric(0, 100), exclusiveMin: true }, annualQuantity: numeric(), maxAlternatives: 3,
     alternative: { ordersPerYear: numeric(0, 1e6), residualValue: numeric(0, 1e12), maxCosts: MAX_TCO_COSTS },
     cost: { amount: numeric(0, 1e8), frequency: ['once', 'year', 'order', 'unit'] },
+    capital: { annualRatePercent: numeric(0, 1000), days: numeric(0, 3650),
+      paymentStart: ['order', 'receipt', 'other'], interestMode: ['add', 'replace', 'skip'], existingInterestAnnual: numeric(0, 1e12) },
   },
   abc: {
     thresholdA: { ...numeric(0, 100), exclusiveMin: true, exclusiveMax: true },
@@ -76,6 +78,19 @@ export const SAMPLES = freeze({
   ] },
 });
 
+/** User-specified fictitious financing example, never a current market-rate claim. */
+export const TCO_CAPITAL_SAMPLE = freeze({
+  periodYears: 3, annualQuantity: 3650, capital: { annualRatePercent: 10 },
+  alternatives: [
+    { id: 'capital-order', name: 'Betaling efter bestilling', ordersPerYear: 12, residualValue: 0,
+      costs: [{ id: 'order-purchase', label: 'Indkøbspris', amount: 100, frequency: 'unit' }],
+      capital: { purchaseCostId: 'order-purchase', leadDays: 30, paymentStart: 'order', supplierCreditDays: 10, inventoryDays: 20, customerCreditDays: 0, interestMode: 'add' } },
+    { id: 'capital-receipt', name: 'Betaling efter modtagelse', ordersPerYear: 12, residualValue: 0,
+      costs: [{ id: 'receipt-purchase', label: 'Indkøbspris', amount: 100, frequency: 'unit' }],
+      capital: { purchaseCostId: 'receipt-purchase', leadDays: 30, paymentStart: 'receipt', supplierCreditDays: 10, inventoryDays: 20, customerCreditDays: 0, interestMode: 'add' } },
+  ],
+});
+
 /** Explicit locale, strict grouping. Blank, exponent, currency and mixed formats are rejected. */
 export function parseNumber(value, format = 'da') {
   if (format !== 'da' && format !== 'en') throw new CalculationError('number_format', '', 'Vælg dansk eller engelsk talformat.');
@@ -112,8 +127,8 @@ function number(value, path, min = 0, max = 1e9, exclusive = false) {
   if ((exclusive ? n <= min : n < min) || n > max) throw new CalculationError('out_of_range', path, `Værdien i ${path} er uden for det tilladte interval.`);
   return n;
 }
-function label(value, path) {
-  if (typeof value !== 'string' || !value.trim() || value.trim().length > 160 || /[\u0000-\u001f\u007f]/.test(value)) throw new CalculationError('invalid_text', path, 'Angiv et navn på højst 160 tegn.');
+function label(value, path, message = 'Angiv et navn på højst 160 tegn.') {
+  if (typeof value !== 'string' || !value.trim() || value.trim().length > 160 || /[\u0000-\u001f\u007f]/.test(value)) throw new CalculationError('invalid_text', path, message);
   return value.trim();
 }
 function choice(value, allowed, path) {
@@ -224,6 +239,8 @@ export function tco(input) {
   const annualQuantity = number(input.annualQuantity, 'annualQuantity');
   const periodQuantity = resultNumber(periodYears * annualQuantity);
   const warnings = ['undiscounted'];
+  const capitalEnabled = input.capital !== undefined;
+  const annualRatePercent = capitalEnabled ? number(object(input.capital, 'capital').annualRatePercent, 'capital.annualRatePercent', 0, 1000) : null;
   const ids = new Set();
   const alternatives = rows(input.alternatives, 3, 'alternatives').map((raw, index) => {
     const path = `alternatives.${index}`;
@@ -249,15 +266,54 @@ export function tco(input) {
     });
     const grossCost = money(breakdown.reduce((sum, cost) => sum + cost.total, 0));
     const totalCost = money(grossCost - residualValue);
+    let capital;
+    if (capitalEnabled) {
+      const cp = `${path}.capital`, data = object(raw.capital, cp);
+      const purchaseCostId = label(data.purchaseCostId, `${cp}.purchaseCostId`, 'Vælg en eksisterende indkøbspris med frekvensen Pr. enhed.');
+      const purchase = breakdown.find(cost => cost.id === purchaseCostId);
+      if (!purchase || purchase.frequency !== 'unit') throw new CalculationError('purchase_cost', `${cp}.purchaseCostId`, 'Vælg en eksisterende indkøbspris med frekvensen Pr. enhed.');
+      const leadDays = number(data.leadDays, `${cp}.leadDays`, 0, 3650);
+      const paymentStart = choice(data.paymentStart, ['order', 'receipt', 'other'], `${cp}.paymentStart`);
+      const startDay = paymentStart === 'order' ? 0 : paymentStart === 'receipt' ? leadDays : number(data.paymentStartDays, `${cp}.paymentStartDays`, 0, 3650);
+      const supplierCreditDays = number(data.supplierCreditDays, `${cp}.supplierCreditDays`, 0, 3650);
+      const inventoryDays = number(data.inventoryDays, `${cp}.inventoryDays`, 0, 3650);
+      const customerCreditDays = number(data.customerCreditDays, `${cp}.customerCreditDays`, 0, 3650);
+      const interestMode = choice(data.interestMode, ['add', 'replace', 'skip'], `${cp}.interestMode`);
+      const paymentDay = resultNumber(startDay + supplierCreditDays);
+      const customerPaymentDay = resultNumber(leadDays + inventoryDays + customerCreditDays);
+      const netDays = resultNumber(customerPaymentDay - paymentDay);
+      const annualPurchase = resultNumber(annualQuantity * purchase.amount);
+      const averageCapital = resultNumber(annualPurchase * netDays / 365);
+      const annualCost = resultNumber(Math.max(averageCapital, 0) * annualRatePercent / 100);
+      const periodCost = money(annualCost * periodYears);
+      let removedInterest = 0;
+      if (interestMode === 'replace') {
+        const existingInterestCostId = label(data.existingInterestCostId, `${cp}.existingInterestCostId`, 'Vælg den eksisterende omkostningspost, der indeholder renten. Varekøbet kan ikke vælges som rentepost.');
+        const existing = breakdown.find(cost => cost.id === existingInterestCostId);
+        if (!existing || existingInterestCostId === purchaseCostId) throw new CalculationError('interest_cost', `${cp}.existingInterestCostId`, 'Vælg den eksisterende omkostningspost, der indeholder renten. Varekøbet kan ikke vælges som rentepost.');
+        const existingInterestAnnual = number(data.existingInterestAnnual, `${cp}.existingInterestAnnual`, 0, 1e12);
+        const exactRemoved = resultNumber(existingInterestAnnual * periodYears);
+        if (exactRemoved > existing.total + 1e-8) throw new CalculationError('interest_exceeds_cost', `${cp}.existingInterestAnnual`, 'Renten, der udskilles i perioden, må ikke overstige den valgte omkostningspost.');
+        removedInterest = money(exactRemoved);
+      }
+      const appliedCost = interestMode === 'skip' ? 0 : periodCost;
+      const timeline = [{ kind: 'order', day: 0 }, { kind: 'receipt', day: leadDays }, { kind: 'supplier', day: paymentDay }, { kind: 'customer', day: customerPaymentDay }].sort((a, b) => a.day - b.day);
+      capital = { purchaseCostId, interestMode, annualRatePercent, paymentDay, customerPaymentDay, netDays,
+        annualPurchase: money(annualPurchase), averageCapital: money(averageCapital), annualCost: money(annualCost), periodCost,
+        removedInterest, appliedCost, totalBeforeCapital: money(totalCost - removedInterest), timeline };
+      if (netDays < 0) warnings.push(`favourable_payment_terms:${id}`);
+      if (interestMode === 'skip') warnings.push(`capital_addition_skipped:${id}`);
+    }
+    const comparisonTotalCost = capital ? money(capital.totalBeforeCapital + capital.appliedCost) : totalCost;
     if (residualValue > grossCost) warnings.push(`residual_exceeds_cost:${id}`);
     if (annualQuantity > 0 && ordersPerYear === 0 && breakdown.some(cost => cost.frequency === 'order' && cost.amount > 0)) warnings.push(`zero_orders:${id}`);
-    return { id, name, breakdown, grossCost, residualValue, totalCost, costPerUnit: periodQuantity > 0 ? resultNumber(totalCost / periodQuantity) : null };
+    return { id, name, breakdown, grossCost, residualValue, totalCost, comparisonTotalCost, ...(capital ? { capital } : {}), costPerUnit: periodQuantity > 0 ? resultNumber(comparisonTotalCost / periodQuantity) : null };
   });
-  const lowestCost = Math.min(...alternatives.map(alt => alt.totalCost));
-  const lowestIds = alternatives.filter(alt => alt.totalCost === lowestCost).map(alt => alt.id);
+  const lowestCost = Math.min(...alternatives.map(alt => alt.comparisonTotalCost));
+  const lowestIds = alternatives.filter(alt => alt.comparisonTotalCost === lowestCost).map(alt => alt.id);
   if (annualQuantity === 0) warnings.push('no_unit_basis');
   if (!Number.isInteger(periodYears)) warnings.push('partial_year');
-  return { periodQuantity, alternatives: alternatives.map(alt => ({ ...alt, differenceFromLowest: money(alt.totalCost - lowestCost) })), lowestCost, lowestIds, warnings };
+  return { capitalEnabled, periodQuantity, alternatives: alternatives.map(alt => ({ ...alt, differenceFromLowest: money(alt.comparisonTotalCost - lowestCost) })), lowestCost, lowestIds, warnings };
 }
 
 export function abc(input) {

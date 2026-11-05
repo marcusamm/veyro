@@ -19,8 +19,8 @@ function number(value,path,strict){
   if(strict&&typeof value!=='number')fail('invalid_number',path,'Gemte tal skal være gyldige numeriske værdier.');
   try{return parseNumber(value);}catch(error){if(error instanceof CalculationError)error.path=path;throw error;}
 }
-function text(value,path){
-  if(typeof value!=='string'||!value.trim()||value.trim().length>160||/[\u0000-\u001f\u007f]/.test(value))fail('invalid_text',path,'Angiv et navn på højst 160 tegn.');
+function text(value,path,message='Angiv et navn på højst 160 tegn.'){
+  if(typeof value!=='string'||!value.trim()||value.trim().length>160||/[\u0000-\u001f\u007f]/.test(value))fail('invalid_text',path,message);
   return value.trim();
 }
 function choice(value,choices,path){
@@ -51,16 +51,37 @@ function normalize(toolId,raw,strict){
     object(raw,fields,'',strict);
     data=Object.fromEntries(fields.map(key=>[key,key==='mode'?mode:key==='safetyMode'?safetyMode:number(raw[key],key,strict)]));
   }else if(toolId==='tco'){
-    object(raw,['periodYears','annualQuantity','alternatives'],'',strict);
+    object(raw,['periodYears','annualQuantity','alternatives','capital'],'',strict);
+    const capitalEnabled=raw.capital!==undefined;
+    let capital;
+    if(capitalEnabled){
+      object(raw.capital,['annualRatePercent'],'capital',strict);
+      capital={annualRatePercent:number(raw.capital.annualRatePercent,'capital.annualRatePercent',strict)};
+    }
     data={periodYears:number(raw.periodYears,'periodYears',strict),annualQuantity:number(raw.annualQuantity,'annualQuantity',strict),alternatives:rows(raw.alternatives,3,'alternatives').map((alternative,index)=>{
       const path=`alternatives.${index}`;
-      object(alternative,['id','name','ordersPerYear','residualValue','costs'],path,strict);
-      return {id:text(!strict&&alternative.id===undefined?String(index+1):alternative.id,`${path}.id`),name:text(alternative.name,`${path}.name`),ordersPerYear:number(alternative.ordersPerYear,`${path}.ordersPerYear`,strict),residualValue:number(alternative.residualValue,`${path}.residualValue`,strict),costs:rows(alternative.costs,MAX_TCO_COSTS,`${path}.costs`).map((cost,costIndex)=>{
+      object(alternative,['id','name','ordersPerYear','residualValue','costs',...(capitalEnabled?['capital']:[])],path,strict);
+      let alternativeCapital;
+      if(capitalEnabled){
+        const cp=`${path}.capital`, source=object(alternative.capital,[],cp,false);
+        const paymentStart=choice(source.paymentStart,['order','receipt','other'],`${cp}.paymentStart`);
+        const interestMode=choice(source.interestMode,['add','replace','skip'],`${cp}.interestMode`);
+        const keys=['purchaseCostId','leadDays','paymentStart','supplierCreditDays','inventoryDays','customerCreditDays','interestMode',...(paymentStart==='other'?['paymentStartDays']:[]),...(interestMode==='replace'?['existingInterestCostId','existingInterestAnnual']:[])];
+        object(source,keys,cp,strict);
+        alternativeCapital={purchaseCostId:text(source.purchaseCostId,`${cp}.purchaseCostId`,'Vælg en eksisterende indkøbspris med frekvensen Pr. enhed.'),leadDays:number(source.leadDays,`${cp}.leadDays`,strict),paymentStart,
+          supplierCreditDays:number(source.supplierCreditDays,`${cp}.supplierCreditDays`,strict),inventoryDays:number(source.inventoryDays,`${cp}.inventoryDays`,strict),customerCreditDays:number(source.customerCreditDays,`${cp}.customerCreditDays`,strict),interestMode};
+        if(paymentStart==='other')alternativeCapital.paymentStartDays=number(source.paymentStartDays,`${cp}.paymentStartDays`,strict);
+        if(interestMode==='replace'){
+          alternativeCapital.existingInterestCostId=text(source.existingInterestCostId,`${cp}.existingInterestCostId`,'Vælg den eksisterende omkostningspost, der indeholder renten. Varekøbet kan ikke vælges som rentepost.');
+          alternativeCapital.existingInterestAnnual=number(source.existingInterestAnnual,`${cp}.existingInterestAnnual`,strict);
+        }
+      }
+      return {id:text(!strict&&alternative.id===undefined?String(index+1):alternative.id,`${path}.id`),name:text(alternative.name,`${path}.name`),ordersPerYear:number(alternative.ordersPerYear,`${path}.ordersPerYear`,strict),residualValue:number(alternative.residualValue,`${path}.residualValue`,strict),...(alternativeCapital?{capital:alternativeCapital}:{}),costs:rows(alternative.costs,MAX_TCO_COSTS,`${path}.costs`).map((cost,costIndex)=>{
         const costPath=`${path}.costs.${costIndex}`;
         object(cost,['id','label','amount','frequency'],costPath,strict);
         return {id:text(!strict&&cost.id===undefined?String(costIndex+1):cost.id,`${costPath}.id`),label:text(cost.label,`${costPath}.label`),amount:number(cost.amount,`${costPath}.amount`,strict),frequency:choice(cost.frequency,['once','year','order','unit'],`${costPath}.frequency`)};
       })};
-    })};
+    }),...(capital?{capital}:{})};
   }else{
     object(raw,['thresholdA','thresholdB','items'],'',strict);
     data={thresholdA:number(raw.thresholdA,'thresholdA',strict),thresholdB:number(raw.thresholdB,'thresholdB',strict),items:rows(raw.items,MAX_ABC_ROWS,'items').map((item,index)=>{
