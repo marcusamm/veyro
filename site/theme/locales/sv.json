@@ -186,8 +186,8 @@
     "request_placeholder": "Till exempel när du vill komma igång eller vad din hemsida ska kunna göra."
   },
   "public": {
-    "agency_intro": "En liten digital byrå. Nära din verksamhet.",
-    "agency_services": "Hemsidor, bokning och webbutiker för mindre företag. Vi designar, sätter upp och hjälper er i vardagen.",
+    "agency_intro": "Veyro · Digital byrå i Slagelse",
+    "agency_services": "Vi bygger hemsidor, bokningslösningar och webbshoppar för mindre företag i Danmark. Design, webbhotell och underhåll hos en kontakt.",
     "our_solutions": "Våra lösningar",
     "website": "Hemsida",
     "booking": "Bokning",
@@ -405,7 +405,8 @@
     "example_domain": "ertnamn.veyro.dk",
     "gallery_skip": "Fortsätt på sidan",
     "gallery_open": "Öppna demo",
-    "gallery_scroll": "Scrolla för att utforska"
+    "gallery_scroll": "Scrolla för att utforska",
+    "hosting": "Webbhotell"
   },
   "pricing": {
     "rounded_note": "Avrundade riktpriser baserade på våra danska priser. Slutligt pris och valuta bekräftas i offerten.",

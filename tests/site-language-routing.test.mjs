@@ -161,6 +161,19 @@ describe('Language routing boundaries', () => {
     expectRedirect(languageRedirect(visitor('/pages/priser?lang=sv', { country: 'DK', headers: { 'User-Agent': userAgent } })), '/sv/pages/priser', 'sv');
   });
 
+  it.each([
+    ['desktop', 'Mozilla/5.0 (compatible; Google-InspectionTool/1.0)'],
+    ['mobile', 'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36 (compatible; Google-InspectionTool/1.0)'],
+  ])('keeps Danish URLs stable for Google URL Inspection on %s without verified-bot metadata', (_, userAgent) => {
+    const headers = { 'User-Agent': userAgent };
+    for (const country of ['US', 'SE']) {
+      for (const method of ['GET', 'HEAD']) {
+        expect(languageRedirect(visitor('/pages/hosting', { country, method, headers }))).toBeNull();
+      }
+    }
+    expectRedirect(languageRedirect(visitor('/pages/hosting?lang=en', { country: 'SE', headers })), '/en/pages/hosting', 'en');
+  });
+
   it('recognizes verified bots without depending on their user-agent string', () => {
     const cf = { country: 'SE', botManagement: { verifiedBot: true } };
     expect(languageRedirect(visitor('/', { cf }))).toBeNull();

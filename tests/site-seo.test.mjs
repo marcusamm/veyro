@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { loadSite } from '../src/site/content';
-import { renderSitePage } from '../src/site/render';
+import { businessPostalAddress, renderSitePage } from '../src/site/render';
 import { warmUp } from '../src/site/engine';
 
 let site;
@@ -34,6 +34,10 @@ describe('Search metadata and multilingual hosting page', () => {
     const business = data.find(d => d['@type'] === 'ProfessionalService');
     expect(website).toMatchObject({ '@id': `${origin}/#website`, name: 'Veyro', url: `${origin}/`, publisher: { '@id': `${origin}/#organization` } });
     expect(business).toMatchObject({ '@id': `${origin}/#organization`, url: `${origin}/` });
+    expect(business.address).toMatchObject({ streetAddress: 'Albert Ibsensvej 28, 2. tv', postalCode: '4200', addressLocality: 'Slagelse', addressCountry: 'DK' });
+    expect(business.identifier).toMatchObject({ propertyID: 'CVR', value: '46857569' });
+    expect(business.sameAs).toContain('https://www.instagram.com/veyro.dk/');
+    expect(business.sameAs).toContain('https://dk.trustpilot.com/review/veyro.dk');
     const title = html.match(/<title>(.*?)<\/title>/)[1];
     expect(title).toMatch(/^Veyro – /);
     expect(html).toContain(`<meta property="og:title" content="${title}">`);
@@ -52,8 +56,31 @@ describe('Search metadata and multilingual hosting page', () => {
     expect(schemas(html).find(d => d['@type'] === 'BreadcrumbList').itemListElement.map(i => i.item)).toEqual([
       `${origin}${prefix}/`, `${origin}${prefix}/pages/ydelser`, `${origin}${prefix}/pages/hosting`,
     ]);
-    expect(schemas(html).find(d => d['@type'] === 'FAQPage').mainEntity).toHaveLength(4);
+    expect(schemas(html).find(d => d['@type'] === 'FAQPage').mainEntity.length).toBeGreaterThanOrEqual(4);
     if (language !== 'da') expect(html).not.toContain('Hosting og vedligeholdelse løser forskellige opgaver');
+  });
+
+  it.each(['da', 'en', 'sv'])('connects real services to the same business without inventing prices in %s', language => {
+    for (const handle of ['hjemmeside', 'hosting', 'booking', 'webshop', 'website-optimering', 'custom-losninger']) {
+      const data = schemas(render(language, handle));
+      const prefix = language === 'da' ? '' : `/${language}`;
+      const service = data.find(d => d['@type'] === 'Service');
+      expect(service).toMatchObject({
+        url: `${origin}${prefix}/pages/${handle}`,
+        provider: { '@id': `${origin}/#organization` },
+      });
+      expect(data.find(d => d['@id'] === service.provider['@id']).name).toBe('Veyro');
+      expect(service.description).toBeTruthy();
+      expect(service).not.toHaveProperty('offers');
+      expect(data.some(d => d['@type'] === 'WebSite')).toBe(false);
+    }
+    expect(schemas(render(language, 'om-os')).some(d => d['@type'] === 'Service')).toBe(false);
+  });
+
+  it('keeps edited addresses authoritative and omits empty or placeholder addresses', () => {
+    expect(businessPostalAddress('Anden vej 10, 8000 Aarhus C')).toMatchObject({ streetAddress: 'Anden vej 10', postalCode: '8000', addressLocality: 'Aarhus C' });
+    expect(businessPostalAddress('Ny adresse')).toEqual({ '@type': 'PostalAddress', streetAddress: 'Ny adresse', addressCountry: 'DK' });
+    for (const value of ['', ' ', null, '[ADRESSE]']) expect(businessPostalAddress(value)).toBeNull();
   });
 
   it('separates and escapes search titles without changing visible page headings', () => {

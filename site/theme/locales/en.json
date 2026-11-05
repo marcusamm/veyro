@@ -186,8 +186,8 @@
     "request_placeholder": "For example, when you would like to get started or what your website needs to do."
   },
   "public": {
-    "agency_intro": "A small digital studio. Close to your business.",
-    "agency_services": "Websites, booking and online shops for small businesses. We design, set up and help you with the day-to-day.",
+    "agency_intro": "Veyro · Digital studio in Slagelse",
+    "agency_services": "We build websites, booking solutions and online shops for small businesses in Denmark. Design, hosting and maintenance with one point of contact.",
     "our_solutions": "Our solutions",
     "website": "Website",
     "booking": "Booking",
@@ -405,7 +405,8 @@
     "example_domain": "yourname.veyro.dk",
     "gallery_skip": "Continue down the page",
     "gallery_open": "Open demo",
-    "gallery_scroll": "Scroll to explore"
+    "gallery_scroll": "Scroll to explore",
+    "hosting": "Hosting"
   },
   "pricing": {
     "rounded_note": "Rounded guide prices based on our Danish prices. Final price and currency are confirmed in your quote.",

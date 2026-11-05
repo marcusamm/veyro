@@ -186,8 +186,8 @@
     "request_placeholder": "Fx hvornår du gerne vil i gang, eller hvad din hjemmeside skal kunne."
   },
   "public": {
-    "agency_intro": "Et lille digitalt bureau. Tæt på din forretning.",
-    "agency_services": "Hjemmeside, booking og webshop til mindre virksomheder. Vi designer, sætter op og hjælper jer videre i hverdagen.",
+    "agency_intro": "Veyro · Digitalt bureau i Slagelse",
+    "agency_services": "Vi bygger hjemmesider, booking og webshops til mindre virksomheder i Danmark. Design, hosting og vedligeholdelse samlet hos én kontakt.",
     "our_solutions": "Vores løsninger",
     "website": "Hjemmeside",
     "booking": "Booking",
@@ -405,7 +405,8 @@
     "example_domain": "jeresnavn.veyro.dk",
     "gallery_skip": "Videre på siden",
     "gallery_open": "Åbn demo",
-    "gallery_scroll": "Scroll for at udforske"
+    "gallery_scroll": "Scroll for at udforske",
+    "hosting": "Hosting"
   },
   "pricing": {
     "rounded_note": "Afrundede, vejledende priser baseret på vores danske priser. Endelig pris og valuta bekræftes i tilbuddet.",
