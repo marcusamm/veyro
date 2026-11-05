@@ -28,11 +28,16 @@ export function dayOf(unixSec: number): string {
 export function midnight(day: string): number {
   const [y, m, d] = day.split('-').map(Number);
   const utc = Date.UTC(y!, m! - 1, d!) / 1000;
-  // Forskydningen kan skifte ved sommertid; den gælder kl. 12 samme dag
-  const name = cphOffset.formatToParts(new Date((utc + 12 * 3600) * 1000)).find((p) => p.type === 'timeZoneName')?.value ?? 'GMT+01:00';
-  const mm = /GMT([+-])(\d{2}):?(\d{2})?/.exec(name);
-  const off = mm ? (mm[1] === '-' ? -1 : 1) * (Number(mm[2]) * 3600 + Number(mm[3] ?? 0) * 60) : 3600;
-  return utc - off;
+  // Find forskydningen ved selve midnat. På datoen for sommertidsskift er
+  // forskydningen ved middag forskellig fra forskydningen ved midnat.
+  let result = utc;
+  for (let i = 0; i < 2; i++) {
+    const name = cphOffset.formatToParts(new Date(result * 1000)).find((p) => p.type === 'timeZoneName')?.value ?? 'GMT+01:00';
+    const mm = /GMT([+-])(\d{2}):?(\d{2})?/.exec(name);
+    const off = mm ? (mm[1] === '-' ? -1 : 1) * (Number(mm[2]) * 3600 + Number(mm[3] ?? 0) * 60) : 3600;
+    result = utc - off;
+  }
+  return result;
 }
 
 export function addDays(day: string, n: number): string {

@@ -95,12 +95,15 @@
     "preferences": "Inställningar",
     "preferences_text": "Kommer ihåg dina val, till exempel språk och inställningar.",
     "analytics": "Statistik",
-    "analytics_text": "Hjälper oss att förstå hur sidan används så att vi kan förbättra den.",
+    "analytics_text": "Mäter besök, återkommande webbläsare, sidvisningar, aktiv tid och ungefärligt land och stad. Endast efter ditt val; uppgifterna raderas efter 90 dagar.",
     "marketing": "Marknadsföring",
     "marketing_text": "Visar våra omdömen från Trustpilot. Trustpilot använder egna cookies från trustpilot.com.",
     "read_more": "Läs cookiepolicyn",
     "dialog_label": "Cookiesamtycke",
-    "saved": "Ditt val har sparats."
+    "saved": "Ditt val har sparats.",
+    "analytics_disclosure": "Med ditt samtycke använder vi även våra egna statistikkakor för att förstå besök, återkommande webbläsare, visade sidor, aktiv tid och ungefärligt land och stad. Besöksuppgifter och webbläsar-id sparas i upp till 90 dagar; besökskakan upphör efter 30 minuters inaktivitet. Du kan alltid stänga av statistik i Cookieinställningar.",
+    "analytics_privacy_signal": "Din webbläsare har skickat en integritetssignal (GPC eller Do Not Track). Statistik är därför avstängd, även om du väljer Acceptera alla.",
+    "save_error": "Webbläsaren kunde inte spara ditt val. Statistik och marknadsföring är avstängda på den här sidan."
   },
   "products": {
     "add_to_cart": "Lägg i varukorgen",

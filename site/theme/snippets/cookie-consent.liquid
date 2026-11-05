@@ -1,6 +1,6 @@
 {%- comment -%}
   Cookiebanner. Valget gemmes i browseren (localStorage) i 12 måneder.
-  Siden bruger kun nødvendige cookies og – med samtykke – Trustpilots widget (markedsføring).
+  Statistik og Trustpilots widget (markedsføring) kræver hvert sit samtykke.
   Afvis og accepter er lige synlige (Datatilsynets vejledning).
   Ikke-nødvendige scripts må kun indlæses efter samtykke – se docs/OPSAETNING.md.
 {%- endcomment -%}
@@ -9,6 +9,8 @@
     <h2 class="h5 cookie__title">{{ settings.cookie_banner_heading | escape }}</h2>
     <div class="rte small cookie__text">
       {{ settings.cookie_banner_text }}
+      <p>{{ 'cookies.analytics_disclosure' | t }}</p>
+      <p hidden data-cookie-privacy-signal>{{ 'cookies.analytics_privacy_signal' | t }}</p>
       {%- if settings.cookie_page != blank -%}
         <p><a href="{{ settings.cookie_page.url }}">{{ 'cookies.read_more' | t }}</a></p>
       {%- elsif settings.privacy_page != blank -%}
@@ -25,6 +27,11 @@
           <span><strong>{{ 'cookies.necessary' | t }}</strong><span class="small muted">{{ 'cookies.necessary_text' | t }}</span></span>
         </label>
         <label class="toggle">
+          <input type="checkbox" name="analytics" data-consent="analytics">
+          <span class="toggle__ui" aria-hidden="true"></span>
+          <span><strong>{{ 'cookies.analytics' | t }}</strong><span class="small muted">{{ 'cookies.analytics_text' | t }}</span></span>
+        </label>
+        <label class="toggle">
           <input type="checkbox" name="marketing" data-consent="marketing">
           <span class="toggle__ui" aria-hidden="true"></span>
           <span><strong>{{ 'cookies.marketing' | t }}</strong><span class="small muted">{{ 'cookies.marketing_text' | t }}</span></span>
@@ -38,6 +45,7 @@
       <button type="button" class="btn btn--secondary btn--sm" data-cookie-action="save" hidden>{{ 'cookies.save' | t }}</button>
       <button type="button" class="btn btn--secondary btn--sm" data-cookie-action="accept">{{ 'cookies.accept_all' | t }}</button>
     </div>
+    <p class="small" hidden role="alert" data-cookie-error>{{ 'cookies.save_error' | t }}</p>
     <p class="visually-hidden" aria-live="polite" data-cookie-status></p>
   </div>
 </div>

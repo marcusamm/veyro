@@ -101,6 +101,7 @@ export function statsPage(args: { stats: Stats; prev: Stats; snap: Snapshot; mon
     <select id="periode" name="periode">${periodOptions.map((o) => html`<option value="${o.key}"${o.key === per.key ? raw(' selected') : ''}>${o.label}</option>`)}</select>
     <button class="btn btn-secondary btn-small" type="submit">Vis</button>
     <a class="btn btn-primary btn-small" href="/admin/statistik/excel?periode=${per.key}" download>Download Excel</a>
+    <a class="btn btn-secondary btn-small" href="/admin/besoegende">Besøgende og besøgsforløb →</a>
   </form>
 
   <div class="grid kpi-grid">

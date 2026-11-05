@@ -17,6 +17,8 @@ import pub from './routes/public';
 import webhook from './routes/webhook';
 import adminSite from './routes/admin-site';
 import adminStats from './routes/admin-stats';
+import adminVisitors from './routes/admin-visitors';
+import { purgeSiteAnalytics } from './lib/site-analytics';
 import adminPoa from './routes/admin-poa';
 import adminNda from './routes/admin-nda';
 import kasse from './routes/kasse';
@@ -133,6 +135,7 @@ app.route('/admin', adminProspects);
 app.route('/admin', adminCosts);
 app.route('/admin', adminSite);
 app.route('/admin', adminStats);
+app.route('/admin', adminVisitors);
 app.route('/admin', adminPoa);
 app.route('/admin', adminNda);
 app.route('/admin', admin);
@@ -166,6 +169,7 @@ export default {
     if (event.cron === FREQUENT_CRON) return;
     ctx.waitUntil(cleanup(env.DB));
     ctx.waitUntil(purgeOldLeads(env.DB));
+    ctx.waitUntil(purgeSiteAnalytics(env.DB).catch(err => logError(env.DB, 'Besøgsstatistik oprydning', err)));
     // Fuldmagter: udløb, opbevaringspolitik og genforsøg på mails
     ctx.waitUntil(
       (async () => {
