@@ -19,6 +19,9 @@ export async function render(
     isCustomer = !!(await getCustomerByEmail(c.env.DB, session.email));
   }
   const agreementsNav = !!session && !!isCustomer && !opts.admin && (await agreementsAccess(c.env, session.email));
+  const legacyToolsNav = !!session && !!isCustomer && !opts.admin && !!(await c.env.DB.prepare(
+    'SELECT 1 AS found FROM tool_projects p JOIN customers c ON c.id = p.customer_id WHERE c.email = ? LIMIT 1',
+  ).bind(session.email).first());
   return c.html(
     layout(
       {
@@ -28,6 +31,7 @@ export async function render(
         nav: opts.nav,
         isAdmin: admin,
         customerNav: !!session && !!isCustomer && !opts.admin,
+        legacyToolsNav,
         adminNav: !!opts.admin && admin,
         agreementsNav,
         // Kassens medarbejdere uden for ADMIN_EMAILS ser kun kassen

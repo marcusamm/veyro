@@ -13,6 +13,8 @@ export interface LayoutOpts {
   isAdmin?: boolean;
   /** Vis kunde-navigation (kun når brugeren er kunde) */
   customerNav?: boolean;
+  /** Kun konti med planer fra den tidligere værktøjsløsning. */
+  legacyToolsNav?: boolean;
   adminNav?: boolean;
   /** Vis "Aftaler og dokumenter" (kunden har adgang til fuldmagter eller har dokumenter) */
   agreementsNav?: boolean;
@@ -52,12 +54,12 @@ export function layout(opts: LayoutOpts, body: H): H {
   } else if (opts.customerNav) {
     navItems = [
       navLink('/konto', 'Overblik', opts.nav === 'overblik'),
-      navLink('/tools?lang=da', 'Gratis værktøjer', false),
-      navLink('/logistik/mine/', 'Mine logistikberegninger', false),
+      navLink('/logistik/', 'Logistikberegner', false),
       navLink('/konto/plan', 'Skift plan', opts.nav === 'plan'),
       navLink('/konto/fakturaer', 'Fakturaer og betaling', opts.nav === 'fakturaer', 'Fakturaer'),
       navLink('/konto/henvendelser', 'Ændringsønsker og support', opts.nav === 'henvendelser', 'Support'),
     ];
+    if (opts.legacyToolsNav) navItems.push(navLink('/tools/legacy?lang=da', 'Tidligere gemte planer', false));
     if (opts.agreementsNav) navItems.push(navLink('/konto/aftaler', 'Aftaler og dokumenter', opts.nav === 'aftaler' || opts.nav === 'fuldmagter', 'Aftaler'));
     if (opts.isAdmin) navItems.push(navLink('/admin', 'Admin', false));
   } else if (opts.staffNav) {

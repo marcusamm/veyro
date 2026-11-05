@@ -55,6 +55,31 @@ beforeAll(async () => {
 afterAll(async () => { await stack?.stop(); });
 
 describe('Same Veyro account, optional login', () => {
+  it('replaces the old marketing entrypoints and account navigation without hiding earlier saved plans', async () => {
+    const marketing = new Client(stack.site);
+    marketing.cookies.set('veyro_language', 'da');
+    for (const url of ['/tools', '/tools/', '/en/tools', '/en/tools/', '/sv/tools', '/sv/tools/']) {
+      const response = await marketing.get(url);
+      expect(response.status).toBe(302);
+      expect(response.headers.get('location')).toBe(stack.base + '/logistik/');
+    }
+    for (const [url, label] of [['/', 'Logistikberegner'], ['/en/', 'Logistics calculator'], ['/sv/', 'Logistikberäknare']]) {
+      const response = await marketing.get(url);
+      expect(response.status).toBe(200);
+      expect(response.html).toContain(`href="https://kunde.veyro.dk/logistik/">${label}</a>`);
+      expect(response.html).not.toContain('href="https://kunde.veyro.dk/tools');
+    }
+    const before = await anna.get('/konto');
+    expect(before.status).toBe(200);
+    expect(before.html).toContain('href="/logistik/">Logistikberegner</a>');
+    expect(before.html).not.toContain('Gratis værktøjer');
+    expect(before.html).not.toContain('Mine logistikberegninger');
+    expect(before.html).not.toContain('Tidligere gemte planer');
+    const owner = sql("SELECT id FROM customers WHERE email = 'logistics-anna@example.com'")[0].id;
+    sql(`INSERT INTO tool_projects (id, customer_id, template_id, name, currency, data_json, created_at, updated_at) VALUES ('00000000-0000-4000-8000-000000000001', ${owner}, 'stock', 'TEST Earlier plan', 'DKK', '{}', 1, 1)`);
+    expect((await anna.get('/konto')).html).toContain('href="/tools/legacy?lang=da">Tidligere gemte planer</a>');
+    expect((await bo.get('/konto')).html).not.toContain('Tidligere gemte planer');
+  });
   it('serves public calculators and the account shell without setting an identity cookie', async () => {
     const client = new Client(stack.base);
     for (const url of ['/logistik/', '/logistik/vaerktoejer/eoq/', '/logistik/mine/', '/logistik/assets/account.mjs']) {

@@ -18,7 +18,7 @@ function sql(query) {
   return JSON.parse(out)[0].results;
 }
 async function requestLink(email, lang = 'en', client = new Client(stack.base)) {
-  const home = await client.get(`/tools?lang=${lang}`);
+  const home = await client.get(`/tools/legacy?lang=${lang}`);
   const result = await client.post('/tools/sign-in', { _csrf: csrfFrom(home.html), name: 'TEST ' + email.split('@')[0], email, lang });
   expect(result.status).toBe(200);
   const mail = (await emails()).filter(m => m.to[0] === email).at(-1);
@@ -33,11 +33,11 @@ async function signup(email, lang = 'en') {
   expect(confirmation.status).toBe(200);
   const result = await flow.client.post('/tools/verify', { _csrf: csrfFrom(confirmation.html), token: url.searchParams.get('token'), lang });
   expect(result.status).toBe(303);
-  expect(result.headers.get('location')).toBe(`/tools?lang=${lang}`);
+  expect(result.headers.get('location')).toBe(`/tools/legacy?lang=${lang}`);
   return { ...flow, result, token: url.searchParams.get('token') };
 }
 async function create(client, templateId = 'stock', name = 'TEST Stock plan', lang = 'en') {
-  const page = await client.get(`/tools?lang=${lang}`);
+  const page = await client.get(`/tools/legacy?lang=${lang}`);
   const res = await client.post('/tools/projects', { _csrf: csrfFrom(page.html), templateId, name, lang });
   expect(res.status).toBe(303);
   const location = res.headers.get('location');
@@ -64,6 +64,34 @@ beforeAll(async () => {
   bo = (await signup('tools-bo@example.com', 'sv')).client;
 });
 afterAll(async () => { await stack?.stop(); });
+
+describe('Replacement and access to earlier plans', () => {
+  it.each(['/tools', '/tools/', '/tools?lang=da', '/tools?lang=en', '/tools/?lang=sv'])('forwards %s to the logistics calculator', async path => {
+    const page = await new Client(stack.base).get(path);
+    expect(page.status).toBe(302);
+    expect(page.headers.get('location')).toBe('/logistik/');
+  });
+
+  it.each([['da', 'Åbn logistikberegneren'], ['en', 'Open the logistics calculator'], ['sv', 'Öppna logistikkalkylatorn']])('keeps earlier plans reachable with a replacement notice in %s', async (lang, label) => {
+    const page = await anna.get(`/tools/legacy?lang=${lang}`);
+    expect(page.status).toBe(200);
+    expect(page.html).toContain(`href="/logistik/">${label}`);
+    expect(page.html).toContain(`/tools/legacy?lang=${lang}#plans`);
+  });
+
+  it('accepts already-issued old login links and returns to earlier plans', async () => {
+    const flow = await requestLink('tools-old-link@example.com', 'sv');
+    const url = new URL(flow.link);
+    const token = url.searchParams.get('token');
+    sql(`UPDATE login_tokens SET next='/tools?lang=sv' WHERE token_hash='${hash(token)}'`);
+    const confirmation = await flow.client.get(url.pathname + url.search);
+    expect(confirmation.status).toBe(200);
+    const response = await flow.client.post('/tools/verify', { _csrf: csrfFrom(confirmation.html), token, lang: 'en' });
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe('/tools/legacy?lang=sv');
+    expect((await flow.client.get(response.headers.get('location'))).html).toContain('tools-old-link@example.com');
+  });
+});
 
 describe('Free verified Veyro accounts', () => {
   it.each([['en', 'Your sign-in link'], ['da', 'Dit login-link'], ['sv', 'Din inloggningslänk']])('creates a free account after email verification in %s', async (lang, subject) => {
@@ -110,7 +138,7 @@ describe('Free verified Veyro accounts', () => {
     const flow = await requestLink('tools-expired@example.com');
     const token = new URL(flow.link).searchParams.get('token');
     sql(`UPDATE login_tokens SET expires_at=1 WHERE token_hash='${hash(token)}'`);
-    const home = await flow.client.get('/tools?lang=en');
+    const home = await flow.client.get('/tools/legacy?lang=en');
     const result = await flow.client.post('/tools/verify', { _csrf: csrfFrom(home.html), token, lang: 'en' });
     expect(result.status).toBe(400);
     expect(sql("SELECT id FROM customers WHERE email='tools-expired@example.com'")).toEqual([]);
@@ -124,7 +152,7 @@ describe('Free verified Veyro accounts', () => {
     const { waitFor } = await import('./harness.mjs');
     const mail = await waitFor(async () => (await emails()).find(m => m.to[0] === 'tools-anna@example.com' && m.text.includes('/login/bekraeft')));
     const token = mail.text.match(/\/login\/bekraeft\?token=([A-Za-z0-9_-]+)/)[1];
-    const toolsPage = await client.get('/tools?lang=en');
+    const toolsPage = await client.get('/tools/legacy?lang=en');
     const wrong = await client.post('/tools/verify', { _csrf: csrfFrom(toolsPage.html), token, lang: 'en' });
     expect(wrong.status).toBe(400);
     expect(sql(`SELECT used_at FROM login_tokens WHERE token_hash = '${hash(token)}'`)[0].used_at).toBeNull();
@@ -136,7 +164,7 @@ describe('Free verified Veyro accounts', () => {
     const email = 'tools-mail-failure@example.com';
     await setMockState(stack.mock, { failEmailTo: [email] });
     const client = new Client(stack.base);
-    const page = await client.get('/tools?lang=en');
+    const page = await client.get('/tools/legacy?lang=en');
     const res = await client.post('/tools/sign-in', { _csrf: csrfFrom(page.html), name: 'TEST Failure', email, lang: 'en' });
     expect(res.status).toBe(503);
     expect(res.html).toContain('could not send');
@@ -147,7 +175,7 @@ describe('Free verified Veyro accounts', () => {
 
   it('rate limits link requests and rejects invalid names and email addresses', async () => {
     const client = new Client(stack.base);
-    const page = await client.get('/tools?lang=en');
+    const page = await client.get('/tools/legacy?lang=en');
     const base = { _csrf: csrfFrom(page.html), name: 'TEST Rate', email: 'tools-rate@example.com', lang: 'en' };
     expect((await client.post('/tools/sign-in', { ...base, email: 'bad' })).status).toBe(400);
     expect((await client.post('/tools/sign-in', { ...base, name: '' })).status).toBe(400);
@@ -157,7 +185,7 @@ describe('Free verified Veyro accounts', () => {
 
   it('requires CSRF and rejects cross-origin writes before sending email', async () => {
     const client = new Client(stack.base);
-    const page = await client.get('/tools?lang=en');
+    const page = await client.get('/tools/legacy?lang=en');
     const form = { name: 'TEST CSRF', email: 'tools-csrf@example.com', lang: 'en' };
     expect((await client.post('/tools/sign-in', form)).status).toBe(403);
     expect((await client.post('/tools/sign-in', { ...form, _csrf: csrfFrom(page.html) }, { Origin: 'https://attacker.example' })).status).toBe(403);
@@ -168,7 +196,7 @@ describe('Free verified Veyro accounts', () => {
 describe('Private planning workspaces', () => {
   it('requires sign-in for reading, creating and previewing private work', async () => {
     const client = new Client(stack.base);
-    const home = await client.get('/tools?lang=en');
+    const home = await client.get('/tools/legacy?lang=en');
     const csrf = csrfFrom(home.html);
     expect((await client.get('/tools/projects/00000000-0000-0000-0000-000000000000?lang=en')).status).toBe(303);
     expect((await client.post('/tools/projects', { _csrf: csrf, templateId: 'stock', name: 'TEST', lang: 'en' })).status).toBe(303);
@@ -212,7 +240,7 @@ describe('Private planning workspaces', () => {
   it('denies another account read, save, duplicate, archive and restore access', async () => {
     const { id } = await create(anna, 'budget', 'TEST Anna private budget');
     const before = project(id);
-    const page = await bo.get('/tools?lang=sv');
+    const page = await bo.get('/tools/legacy?lang=sv');
     const csrf = csrfFrom(page.html);
     expect(page.html).not.toContain('TEST Anna private budget');
     expect((await bo.get(`/tools/projects/${id}?lang=sv`)).status).toBe(404);
@@ -294,7 +322,7 @@ describe('Private planning workspaces', () => {
       }
     }
     expect(project(id)).toEqual(before);
-    const home = await anna.get('/tools?lang=en');
+    const home = await anna.get('/tools/legacy?lang=en');
     expect((await anna.post('/tools/projects', { _csrf: csrfFrom(home.html), templateId: 'javascript', name: 'TEST Bad template', lang: 'en' })).status).toBe(400);
   });
 
@@ -315,7 +343,7 @@ describe('Private planning workspaces', () => {
   });
 
   it('rejects oversized requests before form processing', async () => {
-    const page = await anna.get('/tools?lang=en');
+    const page = await anna.get('/tools/legacy?lang=en');
     const res = await anna.post('/tools/projects', { _csrf: csrfFrom(page.html), templateId: 'stock', name: 'x'.repeat(100_000), lang: 'en' });
     expect(res.status).toBe(413);
   });
@@ -327,12 +355,12 @@ describe('Private planning workspaces', () => {
     sql(`WITH RECURSIVE seq(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n<49)
       INSERT INTO tool_projects(id, customer_id, template_id, name, currency, data_json, version, created_at, updated_at)
       SELECT printf('00000000-0000-0000-0000-%012d',n), ${row.customer_id}, template_id, 'TEST Quota '||n, currency, data_json, 1, created_at, updated_at FROM seq, tool_projects WHERE id='${id}'`);
-    const home = await flow.client.get('/tools?lang=en');
+    const home = await flow.client.get('/tools/legacy?lang=en');
     const full = await flow.client.post('/tools/projects', { _csrf: csrfFrom(home.html), templateId: 'stock', name: 'TEST Over quota', lang: 'en' });
     expect(full.status).toBe(409);
     expect(sql(`SELECT count(*) AS n FROM tool_projects WHERE customer_id=${row.customer_id} AND archived_at IS NULL`)[0].n).toBe(50);
     expect((await postProject(flow.client, id, 'archive', { version: '1' })).status).toBe(303);
-    const available = await flow.client.get('/tools?lang=en');
+    const available = await flow.client.get('/tools/legacy?lang=en');
     const racing = await Promise.all(['A', 'B'].map(suffix => flow.client.post('/tools/projects', {
       _csrf: csrfFrom(available.html), templateId: 'stock', name: 'TEST Released slot ' + suffix, lang: 'en',
     })));
@@ -349,7 +377,7 @@ describe('Private planning workspaces', () => {
       WITH RECURSIVE seq(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n<199)
       INSERT INTO tool_projects(id, customer_id, template_id, name, currency, data_json, version, created_at, updated_at, archived_at)
       SELECT printf('11111111-1111-1111-1111-%012d',n), ${row.customer_id}, template_id, 'TEST Archived '||n, currency, data_json, 1, created_at, updated_at, 1 FROM seq, tool_projects WHERE id='${id}'`);
-    const home = await flow.client.get('/tools?lang=en');
+    const home = await flow.client.get('/tools/legacy?lang=en');
     const full = await flow.client.post('/tools/projects', { _csrf: csrfFrom(home.html), templateId: 'stock', name: 'TEST Over storage', lang: 'en' });
     expect(full.status).toBe(409);
     expect(full.html).toContain('200 saved plans');
@@ -361,7 +389,7 @@ describe('Private planning workspaces', () => {
     const { id } = await create(flow.client, 'eoq', 'TEST Logout plan', 'da');
     const page = await flow.client.get(`/tools/projects/${id}?lang=da`);
     const res = await flow.client.post('/tools/logout', { _csrf: csrfFrom(page.html), lang: 'da' });
-    expect(res.headers.get('location')).toBe('/tools?lang=da');
+    expect(res.headers.get('location')).toBe('/tools/legacy?lang=da');
     expect((await flow.client.get(`/tools/projects/${id}?lang=da`)).status).toBe(303);
   });
 });

@@ -4,9 +4,8 @@ Gratis beregningsværktøjer til logistik og indkøb. Brugeren opretter eller å
 
 ## Adresser og sprog
 
-- `https://veyro.dk/tools` sender til arbejdsrummet på kontodomænet med dansk valgt.
-- `https://veyro.dk/en/tools` og `https://veyro.dk/sv/tools` vælger engelsk og svensk.
-- `https://kunde.veyro.dk/tools?lang=da|en|sv` viser skabeloner og kontoformular uden login, og brugerens planer efter login.
+- Løsningen er erstattet af [Logistikberegner](https://kunde.veyro.dk/logistik/). `/tools` på kontodomænet og `/tools`, `/en/tools`, `/sv/tools` på salgshjemmesiden viderestiller dertil.
+- `https://kunde.veyro.dk/tools/legacy?lang=da|en|sv` bevarer adgangen til tidligere planer. Kun konti med gamle planer ser linket “Tidligere gemte planer” i kundepanelet.
 - `/tools/projects/:id?lang=…` åbner én privat plan. Sprogskift ændrer teksterne, ikke de gemte tal.
 
 Arbejdsrummet bruger `APP_URL` som kontoens adresse og til links i login-mails. I produktion er værdien `https://kunde.veyro.dk`. Login-cookien er bundet til det enkelte domæne; salgssiden sender derfor brugeren til kontodomænet. Uden et udtrykkeligt `lang` vælges dansk for Danmark, svensk for Sverige og ellers engelsk ud fra Cloudflares landekode.
