@@ -6,8 +6,8 @@
         "show_breadcrumbs": true,
         "parent_label": "Løsninger",
         "parent_link": "/pages/ydelser",
-        "heading": "En hjemmeside, der passer til din forretning",
-        "text": "<p>Op til 5 sider med design tilpasset jer, kontaktformular, hosting og vedligeholdelse. Vi sætter siden op, og vi holder den ved lige.</p>",
+        "heading": "Hjemmeside til mindre virksomheder",
+        "text": "<p>Veyro bygger jeres hjemmeside med op til 5 sider, design tilpasset virksomheden og en kontaktformular. Hosting og teknisk vedligeholdelse er med, så I har én kontakt til både opstart og hverdagen bagefter.</p>",
         "primary_label": "Aftal en demo",
         "primary_link": "/pages/kontakt?ydelse=pakke-hjemmeside#formular",
         "secondary_label": "Se priser",
@@ -127,6 +127,13 @@
             "question": "Hvad sker der, hvis vi opsiger?",
             "answer": "<p>I kan opsige når som helst i kundepanelet eller på mail. Opsigelsen gælder fra udgangen af den periode, I har betalt for. I ejer jeres eget indhold og jeres data og kan inden for 30 dage efter ophøret få dem udleveret. Veyro beholder rettighederne til software, skabeloner og kode, og domæner, der tilhører jer, overføres efter aftale. <a href=\"/pages/handelsbetingelser\">Læs handelsbetingelserne</a>.</p>"
           }
+        },
+        "question_6": {
+          "type": "question",
+          "settings": {
+            "question": "Hvilken løsning skal vi vælge: hjemmeside, booking eller webshop?",
+            "answer": "<p>Vælg Hjemmeside, når kunderne skal læse om jeres ydelser og kontakte jer. Skal de selv vælge en tid, er <a href=\"/pages/booking\">en hjemmeside med online booking</a> mere relevant. Vil I sælge produkter online, skal I se på <a href=\"/pages/webshop\">vores webshop</a>. Har I allerede en god side, kan <a href=\"/pages/hosting\">hosting og vedligeholdelse</a> være nok. Se indhold og pris for hver løsning på <a href=\"/pages/priser\">prissiden</a>.</p>"
+          }
         }
       },
       "block_order": [
@@ -134,7 +141,8 @@
         "question_2",
         "question_3",
         "question_4",
-        "question_5"
+        "question_5",
+        "question_6"
       ]
     },
     "cta": {

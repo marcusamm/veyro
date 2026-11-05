@@ -6,7 +6,7 @@
         "show_breadcrumbs": true,
         "parent_label": "Løsninger",
         "parent_link": "/pages/ydelser",
-        "heading": "Website hosting med nogen til at passe siden",
+        "heading": "Website hosting og vedligeholdelse til virksomheder",
         "text": "<p>Veyro hjælper mindre virksomheder med hosting og vedligeholdelse af deres hjemmeside. Har I allerede en side, aftaler vi den løbende pasning hos jeres nuværende udbyder eller hos os. I får én teknisk kontakt og en fast månedspris efter tilbud.</p>",
         "primary_label": "Få et tilbud",
         "primary_link": "/pages/kontakt?ydelse=hosting-og-vedligeholdelse#formular",
@@ -130,13 +130,21 @@
             "question": "Kan vi få en ny hjemmeside med hosting?",
             "answer": "<p>Ja. Har I brug for en ny side, samler <a href=\"/pages/hjemmeside\">Hjemmeside-pakken</a> design, opsætning, hosting og teknisk vedligeholdelse. Har I brug for online booking eller salg af varer, kan I læse om <a href=\"/pages/booking\">Booking</a> og <a href=\"/pages/webshop\">Webshop</a>.</p>"
           }
+        },
+        "item_5": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad skal I vide for at give et tilbud på hosting?",
+            "answer": "<p>Send et link til hjemmesiden, navnet på den nuværende udbyder og den platform, I bruger, hvis I kender den. Fortæl også om kontaktformularer, booking, webshop eller integrationer, der skal blive ved med at virke. Så kan vi vurdere, om siden kan flyttes, eller om vedligeholdelse hos den nuværende udbyder er den bedste løsning. Adgang og en eventuel flytning aftaler vi, før arbejdet starter.</p>"
+          }
         }
       },
       "block_order": [
         "item_1",
         "item_2",
         "item_3",
-        "item_4"
+        "item_4",
+        "item_5"
       ]
     },
     "cta": {
@@ -152,11 +160,20 @@
         "show_email": true,
         "email_prefix": "Eller skriv til"
       }
+    },
+    "begreber": {
+      "type": "rich-text",
+      "settings": {
+        "anchor": "webhotel-domaene-mail",
+        "heading": "Webhotel, domæne og mail – hvad er forskellen?",
+        "text": "<p><strong>Webhotel eller hosting</strong> er den tekniske plads, hvor hjemmesiden kører. <strong>Domænet</strong> er adressen, kunderne skriver i browseren. <strong>Mail på domænet</strong> er en separat tjeneste, fx kontakt@jeresfirma.dk. De tre dele kan ligge hos forskellige udbydere.</p><p>Hos Veyro aftaler vi hosting og vedligeholdelse ud fra jeres hjemmeside. Domæne og mail er ikke inkluderet i vores hjemmesidepakker. I kan bruge jeres eget domæne, købe et gennem os mod betaling eller bruge en gratis adresse som jeresnavn.veyro.dk.</p><p>Før en flytning afklarer vi, hvem der administrerer domæne og mail, og hvilke indstillinger der skal bevares. En ny host behøver ikke betyde, at I også skal skifte mailudbyder.</p>"
+      }
     }
   },
   "order": [
     "hero",
     "indhold",
+    "begreber",
     "forloeb",
     "faq",
     "cta"

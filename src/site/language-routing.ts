@@ -22,7 +22,8 @@ export function languageRedirect(request: Request, preference?: string): { locat
   // Shared localized links always retain their language. Crawlers can access every canonical URL.
   if (current.language !== 'da') return null;
   const bot = request.cf?.botManagement as { verifiedBot?: boolean } | undefined;
-  if (bot?.verifiedBot || /bot|crawl|spider|slurp|preview|facebookexternalhit|lighthouse/i.test(request.headers.get('User-Agent') ?? '')) return null;
+  // Search Console's URL Inspection uses Google-InspectionTool, which does not contain "bot".
+  if (bot?.verifiedBot || /bot|crawl|spider|slurp|preview|facebookexternalhit|lighthouse|google-inspectiontool/i.test(request.headers.get('User-Agent') ?? '')) return null;
 
   const country = typeof request.cf?.country === 'string' ? request.cf.country.toUpperCase() : '';
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);

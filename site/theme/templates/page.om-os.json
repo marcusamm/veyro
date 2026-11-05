@@ -4,8 +4,8 @@
       "type": "page-hero",
       "settings": {
         "show_breadcrumbs": true,
-        "heading": "Om Veyro",
-        "text": "<p>Veyro laver hjemmesider, booking og webshops til mindre virksomheder og holder dem ved lige for en fast månedspris. Vi hjælper også med optimering, fejlfinding, integrationer og specialudvikling på Shopify, WordPress, WooCommerce og specialudviklede sider.</p>",
+        "heading": "Veyro – webbureau i Slagelse",
+        "text": "<p>Veyro er et digitalt bureau med base i Slagelse. Vi bygger <a href=\"/pages/hjemmeside\">hjemmesider til mindre virksomheder</a> i Danmark og samler design, opsætning, <a href=\"/pages/hosting\">hosting og vedligeholdelse</a> hos én kontakt. Vi laver også <a href=\"/pages/booking\">online booking</a> og <a href=\"/pages/webshop\">webshops</a> og hjælper med optimering, fejlfinding og specialudvikling på eksisterende sider.</p>",
         "primary_label": "Aftal en demo",
         "primary_link": "/pages/kontakt?ydelse=aftal-en-demo#formular",
         "secondary_label": "Se priser",

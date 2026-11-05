@@ -72,6 +72,19 @@ export function pageDrop(p: SitePage) {
   return { id: p.handle, handle: p.handle, title: p.title, url: `/pages/${p.handle}`, content: p.body, template_suffix: p.template || null };
 }
 
+/** Keep the editable address as the source; only split an unambiguous Danish postcode. */
+export function businessPostalAddress(value: unknown) {
+  if (typeof value !== 'string' || !value.trim() || value.includes('[')) return null;
+  const address = value.trim();
+  const parts = address.match(/^(.+),\s*(\d{4})\s+([^,]+)$/);
+  return {
+    '@type': 'PostalAddress',
+    streetAddress: parts ? parts[1]!.trim() : address,
+    ...(parts ? { postalCode: parts[2]!, addressLocality: parts[3]!.trim() } : {}),
+    addressCountry: 'DK',
+  };
+}
+
 export function cartDrop(site: SiteData, lines: CartLine[]) {
   const items = [];
   let total = 0;
@@ -206,6 +219,8 @@ export function renderSitePage(site: SiteData, req: RenderRequest): string {
   const globals: Record<string, unknown> = {
     __hooks: hooks,
     settings,
+    company_postal_address: businessPostalAddress(settings.company_address),
+    page_is_service: req.type === 'page' && ['hjemmeside', 'hosting', 'booking', 'webshop', 'website-optimering', 'custom-losninger'].includes(req.page?.handle ?? ''),
     pages,
     linklists: lists,
     cart: cartDrop(site, req.cart),

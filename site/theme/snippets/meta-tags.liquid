@@ -34,7 +34,8 @@
 <meta name="twitter:title" content="{{ full_title | escape }}">
 <meta name="twitter:description" content="{{ page_description | default: settings.company_tagline | escape }}">
 
-{%- if settings.schema_organization and request.page_type == 'index' -%}
+{%- if settings.schema_organization -%}
+{%- if request.page_type == 'index' or request.page_type == 'page' -%}
   {%- liquid
     assign has_email = false
     unless settings.company_email contains '['
@@ -62,6 +63,7 @@
     endunless
   -%}
   {%- unless company contains '[' -%}
+  {%- if request.page_type == 'index' -%}
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -74,6 +76,7 @@
       "publisher": { "@id": {{ shop.url | append: '/#organization' | json }} }
     }
   </script>
+  {%- endif -%}
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -87,15 +90,31 @@
       {%- if settings.logo -%},"logo": {{ settings.logo | image_url: width: 600 | prepend: 'https:' | json }}{%- else -%},"logo": {{ shop.url | append: '/assets/favicon-192.png' | json }}{%- endif -%}
       {%- if has_email -%},"email": {{ settings.company_email | json }}{%- endif -%}
       {%- if has_phone -%},"telephone": {{ settings.company_phone | json }}{%- endif -%}
-      {%- if has_address -%},"address": { "@type": "PostalAddress", "streetAddress": {{ settings.company_address | json }}, "addressCountry": "DK" }{%- endif -%}
-      {%- if has_cvr -%},"vatID": {{ 'DK' | append: settings.company_cvr | json }}{%- endif -%}
+      {%- if has_address -%},"address": {{ company_postal_address | json }}{%- endif -%}
+      {%- if has_cvr -%},"identifier": { "@type": "PropertyValue", "propertyID": "CVR", "value": {{ settings.company_cvr | json }} }{%- endif -%}
       {%- assign same_as = '' -%}
-      {%- assign social_keys = 'social_linkedin,social_instagram,social_facebook,social_github' | split: ',' -%}
+      {%- assign social_keys = 'social_linkedin,social_instagram,social_facebook,social_github,trustpilot_url' | split: ',' -%}
       {%- for key in social_keys -%}
-        {%- if settings[key] != blank -%}{%- assign same_as = same_as | append: settings[key] | append: '|' -%}{%- endif -%}
+        {%- if settings[key] != blank -%}{%- unless settings[key] contains '[' -%}{%- assign same_as = same_as | append: settings[key] | append: '|' -%}{%- endunless -%}{%- endif -%}
       {%- endfor -%}
       {%- if same_as != blank -%},"sameAs": {{ same_as | split: '|' | json }}{%- endif -%}
     }
   </script>
+  {%- if page_is_service -%}
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      "@id": {{ canonical_url | append: '#service' | json }},
+      "name": {{ page.title | json }},
+      "url": {{ canonical_url | json }},
+      "description": {{ page_description | json }},
+      "provider": { "@id": {{ shop.url | append: '/#organization' | json }} },
+      "areaServed": { "@type": "Country", "name": "DK" },
+      "mainEntityOfPage": {{ canonical_url | json }}
+    }
+  </script>
+  {%- endif -%}
   {%- endunless -%}
+{%- endif -%}
 {%- endif -%}

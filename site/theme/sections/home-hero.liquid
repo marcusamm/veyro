@@ -8,7 +8,7 @@
         <p class="studio-label">{{ 'public.agency_intro' | t }}</p>
         <h1 class="home-hero__title">{{ section.settings.heading }}</h1>
         <p class="studio-message__description">{{ 'public.agency_services' | t }}</p>
-        <nav class="studio-specialties" aria-label="{{ 'public.our_solutions' | t | escape }}"><a href="/pages/hjemmeside">{{ 'public.website' | t }} <span aria-hidden="true">↗</span></a><a href="/pages/booking">{{ 'public.booking' | t }} <span aria-hidden="true">↗</span></a><a href="/pages/webshop">{{ 'public.online_shop' | t }} <span aria-hidden="true">↗</span></a></nav>
+        <nav class="studio-specialties" aria-label="{{ 'public.our_solutions' | t | escape }}"><a href="/pages/hjemmeside">{{ 'public.website' | t }} <span aria-hidden="true">↗</span></a><a href="/pages/booking">{{ 'public.booking' | t }} <span aria-hidden="true">↗</span></a><a href="/pages/webshop">{{ 'public.online_shop' | t }} <span aria-hidden="true">↗</span></a><a href="/pages/hosting">{{ 'public.hosting' | t }} <span aria-hidden="true">↗</span></a></nav>
       </div>
       <div class="studio-action">
         <p class="studio-price"><span>{{ 'public.websites_from' | t }}</span>{% if request.locale.iso_code == 'da' %}<strong>199 <small>{{ 'public.dkk_per_month' | t }}</small></strong>{% else %}<strong class="studio-price__converted">{{ 199 | display_money }}<small>{{ 'subscriptions.per_month' | t }}</small></strong>{% endif %}<span>{{ 'public.excluding_vat' | t }}</span></p>
