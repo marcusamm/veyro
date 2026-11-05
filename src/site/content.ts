@@ -20,6 +20,8 @@ export interface TemplateData {
 export interface SitePage {
   handle: string;
   title: string;
+  /** Optional search title; leaves the visible heading and navigation label unchanged. */
+  seo_title?: string;
   /** '' = standard tekstside (templates/page.json), ellers templates/page.<template>.json */
   template: string;
   body: string;
@@ -118,7 +120,9 @@ export async function loadSite(db: D1Database): Promise<SiteData> {
       else delete templates[key.slice(9)];
     } else if (key.startsWith('group:') && value) groups[key.slice(6)] = value as TemplateData;
     else if (key.startsWith('page:')) {
-      if (value && !(value as { deleted?: boolean }).deleted) pages.set(key.slice(5), value as SitePage);
+      // Older saved pages predate the separate search title. Inherit only that new
+      // field; an explicitly saved empty string still opts back into the visible title.
+      if (value && !(value as { deleted?: boolean }).deleted) pages.set(key.slice(5), { seo_title: pages.get(key.slice(5))?.seo_title, ...(value as SitePage) });
       else pages.delete(key.slice(5));
     } else if (key.startsWith('product:')) {
       if (value && !(value as { deleted?: boolean }).deleted) products.set(key.slice(8), value as SiteProduct);

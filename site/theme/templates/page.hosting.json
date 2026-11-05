@@ -1,0 +1,164 @@
+{
+  "sections": {
+    "hero": {
+      "type": "page-hero",
+      "settings": {
+        "show_breadcrumbs": true,
+        "parent_label": "Løsninger",
+        "parent_link": "/pages/ydelser",
+        "heading": "Website hosting med nogen til at passe siden",
+        "text": "<p>Veyro hjælper mindre virksomheder med hosting og vedligeholdelse af deres hjemmeside. Har I allerede en side, aftaler vi den løbende pasning hos jeres nuværende udbyder eller hos os. I får én teknisk kontakt og en fast månedspris efter tilbud.</p>",
+        "primary_label": "Få et tilbud",
+        "primary_link": "/pages/kontakt?ydelse=hosting-og-vedligeholdelse#formular",
+        "secondary_label": "Se hvad vi hjælper med",
+        "secondary_link": "#indhold",
+        "facts": "Pris | Fast månedspris efter tilbud\nHosting | Hos jer eller hos os efter aftale\nSvar | 24–48 timer på hverdage"
+      }
+    },
+    "indhold": {
+      "type": "info-grid",
+      "settings": {
+        "anchor": "indhold",
+        "layout": "rows",
+        "heading": "Hosting og vedligeholdelse løser forskellige opgaver",
+        "text": "<p>Hosting gør hjemmesiden tilgængelig på nettet. Vedligeholdelse er arbejdet med at holde den opdateret og håndtere fejl. Vi aftaler begge dele ud fra jeres platform, adgang og behov.</p>"
+      },
+      "blocks": {
+        "item_1": {
+          "type": "item",
+          "settings": {
+            "title": "Hosting og SSL",
+            "text": "<p>Skal hjemmesiden ligge hos Veyro, indgår hosting og SSL i den aftale, vi laver med jer. Vi undersøger først, om jeres nuværende løsning kan flyttes, og hvilke adgange det kræver.</p>"
+          }
+        },
+        "item_2": {
+          "type": "item",
+          "settings": {
+            "title": "Opdateringer, backup og fejl",
+            "text": "<p>Vi hjælper med opdateringer, sikkerhedskopier, overvågning og fejl. Tilbuddet beskriver, hvad vi vedligeholder, og hvad der fortsat håndteres af jeres platform eller andre leverandører.</p>"
+          }
+        },
+        "item_3": {
+          "type": "item",
+          "settings": {
+            "title": "Mindre rettelser og fast kontakt",
+            "text": "<p>Mindre rettelser kan indgå i vedligeholdelsen. Vi aftaler omfanget på forhånd og svarer på henvendelser inden for 24–48 timer på hverdage. Svartid er tiden til et svar, ikke et løfte om, at en fejl er løst.</p>"
+          }
+        },
+        "item_4": {
+          "type": "item",
+          "settings": {
+            "title": "Et tilbud med tydelige grænser",
+            "text": "<p>Ny funktionalitet, større ændringer samt licenser og abonnementer hos tredjepart aftales særskilt. Se også vores <a href=\"/pages/sla\">serviceniveau for hosting og support</a>, og få det konkrete omfang beskrevet i jeres tilbud.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "item_1",
+        "item_2",
+        "item_3",
+        "item_4"
+      ]
+    },
+    "forloeb": {
+      "type": "steps",
+      "settings": {
+        "anchor": "forloeb",
+        "heading": "Sådan kommer I videre med jeres hjemmeside"
+      },
+      "blocks": {
+        "item_1": {
+          "type": "step",
+          "settings": {
+            "title": "Send et link",
+            "text": "<p>Fortæl, hvilken platform siden bruger, hvor den ligger, og hvad I vil have hjælp til. Har I fejl eller særlige krav, så tag dem med.</p>"
+          }
+        },
+        "item_2": {
+          "type": "step",
+          "settings": {
+            "title": "Aftal drift og eventuel flytning",
+            "text": "<p>Vi afklarer adgang, opgaver, pris og ansvar. Hvis siden skal flyttes, aftaler vi også domæne, eventuel mail, tidspunkt og test, før noget ændres.</p>"
+          }
+        },
+        "item_3": {
+          "type": "step",
+          "settings": {
+            "title": "Følg op på den aftalte løsning",
+            "text": "<p>Ved en flytning kontrollerer vi de aftalte sider og funktioner. Herefter passer vi hjemmesiden inden for det aftalte omfang, og I ved, hvor I skal henvende jer.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "item_1",
+        "item_2",
+        "item_3"
+      ]
+    },
+    "faq": {
+      "type": "faq",
+      "settings": {
+        "anchor": "faq",
+        "heading": "Spørgsmål om website hosting",
+        "schema": true
+      },
+      "blocks": {
+        "item_1": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad koster hosting hos Veyro?",
+            "answer": "<p>Hosting og vedligeholdelse af en eksisterende hjemmeside har en fast månedspris efter tilbud. Prisen afhænger af siden og de opgaver, vi skal overtage. Hosting og vedligeholdelse er allerede med i vores pakker <a href=\"/pages/hjemmeside\">Hjemmeside</a>, <a href=\"/pages/booking\">Booking</a> og <a href=\"/pages/webshop\">Webshop</a>. Se de aktuelle <a href=\"/pages/priser\">pakkepriser</a>.</p>"
+          }
+        },
+        "item_2": {
+          "type": "question",
+          "settings": {
+            "question": "Skal vi flytte fra vores nuværende udbyder?",
+            "answer": "<p>Nej. Vi kan også aftale vedligeholdelse hos jeres nuværende udbyder. Mulighederne afhænger af platformen og den adgang, I kan give os. En Shopify-butik hostes fortsat af Shopify; dér hjælper vi med <a href=\"/pages/custom-losninger\">tema, funktioner og integrationer</a>.</p>"
+          }
+        },
+        "item_3": {
+          "type": "question",
+          "settings": {
+            "question": "Bliver en langsom hjemmeside hurtig med ny hosting?",
+            "answer": "<p>Hosting er kun én del af hastigheden. Billeder, scripts, tema og plugins kan også gøre siden langsom. Hvis hastighed er problemet, kan vi starte med <a href=\"/pages/website-optimering\">website-optimering og målinger</a>, før I beslutter at flytte.</p>"
+          }
+        },
+        "item_4": {
+          "type": "question",
+          "settings": {
+            "question": "Kan vi få en ny hjemmeside med hosting?",
+            "answer": "<p>Ja. Har I brug for en ny side, samler <a href=\"/pages/hjemmeside\">Hjemmeside-pakken</a> design, opsætning, hosting og teknisk vedligeholdelse. Har I brug for online booking eller salg af varer, kan I læse om <a href=\"/pages/booking\">Booking</a> og <a href=\"/pages/webshop\">Webshop</a>.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "item_1",
+        "item_2",
+        "item_3",
+        "item_4"
+      ]
+    },
+    "cta": {
+      "type": "cta-banner",
+      "settings": {
+        "anchor": "kom-i-gang",
+        "heading": "Hvem passer jeres hjemmeside i dag?",
+        "text": "<p>Send os linket og fortæl, hvad I gerne vil slippe for at håndtere selv. Så vurderer vi mulighederne og vender tilbage med næste skridt.</p>",
+        "label": "Få et tilbud",
+        "link": "/pages/kontakt?ydelse=hosting-og-vedligeholdelse#formular",
+        "secondary_label": "",
+        "secondary_link": "",
+        "show_email": true,
+        "email_prefix": "Eller skriv til"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "indhold",
+    "forloeb",
+    "faq",
+    "cta"
+  ]
+}

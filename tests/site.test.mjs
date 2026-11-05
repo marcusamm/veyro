@@ -154,9 +154,56 @@ describe('Hjemmesiden vises uden Shopify', () => {
     expect(await head.text()).toBe('');
   });
 
+  it.each(['', '/en', '/sv'])('normaliserer afsluttende skråstreg på offentlige GET/HEAD-sider (%s)', async (prefix) => {
+    for (const path of ['/pages/priser', '/products/starter', '/cart']) {
+      const query = '?utm_source=seo%20test&ydelse=hosting-og-vedligeholdelse';
+      for (const method of ['GET', 'HEAD']) {
+        const response = await fetch(stack.site + prefix + path + '/' + query, {
+          method, redirect: 'manual', headers: { Cookie: site.cookieHeader() },
+        });
+        expect(response.status, `${method} ${prefix}${path}/`).toBe(301);
+        expect(response.headers.get('location')).toBe(prefix + path + query);
+        if (method === 'HEAD') expect(await response.text()).toBe('');
+        else await response.text();
+      }
+    }
+    // Hjemmesider og eksplicitte sprogrødder skal fortsat ende med skråstreg.
+    const root = await site.get(prefix + '/');
+    expect(root.status).toBe(200);
+    expect(root.headers.get('location')).toBeNull();
+    expect(root.html).toContain(`<link rel="canonical" href="${stack.site}${prefix}/">`);
+  });
+
+  it('normalisering ændrer ikke formular-POST eller asset-adresser', async () => {
+    for (const path of ['/contact/', '/pages/priser/', '/en/cart/']) {
+      const response = await site.post(path);
+      expect(response.status, path).toBe(404);
+      expect(response.headers.get('location'), path).toBeNull();
+    }
+    const asset = await site.get('/assets/base.css');
+    expect(asset.status).toBe(200);
+    expect(asset.headers.get('location')).toBeNull();
+    const missingAsset = await site.get('/assets/base.css/');
+    expect(missingAsset.status).toBe(404);
+    expect(missingAsset.headers.get('location')).toBeNull();
+  });
+
+  it.each(['', '/en', '/sv'])('kurven kan crawles, men skal ikke indekseres (%s)', async (prefix) => {
+    for (const method of ['GET', 'HEAD']) {
+      const response = await fetch(stack.site + prefix + '/cart', {
+        method, redirect: 'manual', headers: { Cookie: site.cookieHeader() },
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers.get('x-robots-tag')).toBe('noindex, follow');
+      await response.text();
+    }
+  });
+
   it('robots.txt, sitemap og temafiler med lang cache', async () => {
     const robots = await site.get('/robots.txt');
     expect(robots.html).toContain('Sitemap: http://localhost:');
+    expect(robots.html).toContain('Disallow: /contact\n');
+    expect(robots.html).not.toMatch(/^Disallow:\s*\/(?:en\/|sv\/)?cart/m);
     const sm = await site.get('/sitemap.xml');
     expect(sm.html).toContain('/pages/ydelser</loc>');
     expect(sm.html).not.toContain('/products/business</loc>');

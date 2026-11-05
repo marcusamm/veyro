@@ -119,6 +119,8 @@
   {
     "name": "SEO og deling",
     "settings": [
+      { "type": "text", "id": "home_seo_title", "label": "Forsidens titel i søgemaskiner", "default": "Hjemmesider, hosting og webshops til virksomheder", "info": "Virksomhedsnavnet sættes foran. Ændrer ikke den synlige overskrift." },
+      { "type": "textarea", "id": "home_seo_description", "label": "Forsidens beskrivelse i søgemaskiner", "default": "Veyro bygger og driver hjemmesider, webshops og booking til mindre virksomheder. Få hosting, vedligeholdelse og personlig hjælp fra vores team i Slagelse." },
       { "type": "image_picker", "id": "share_image", "label": "Standardbillede ved deling", "info": "Bruges, når en side ikke har sit eget billede. Anbefalet 1200 × 630 px." },
       { "type": "checkbox", "id": "schema_organization", "label": "Tilføj strukturerede data for virksomheden (JSON-LD)", "info": "Pladsholdere i Virksomhed-felterne udelades automatisk.", "default": true }
     ]

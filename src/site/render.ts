@@ -214,6 +214,7 @@ export function renderSitePage(site: SiteData, req: RenderRequest): string {
     request: { locale: { iso_code: language }, page_type: req.type, design_mode: false, origin: req.canonicalOrigin, host: req.host, path: publicPath },
     template: { name: req.type, suffix: tplName.startsWith('page.') ? tplName.slice(5) : null, directory: null },
     page_title: contentText(title, language),
+    page_seo_title: req.page?.seo_title || null,
     page_description: description || null,
     canonical_url: req.canonicalOrigin + publicPath,
     site_languages: SITE_LANGUAGES.map(code => ({ code, label: { da: 'Dansk', en: 'English', sv: 'Svenska' }[code], url: localizedPath(req.type === '404' ? '/' : req.path, code) + `?lang=${code}`, canonical: req.canonicalOrigin + localizedPath(req.type === '404' ? '/' : req.path, code), current: language === code })),
