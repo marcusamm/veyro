@@ -9,6 +9,7 @@ import account from './routes/account';
 import admin from './routes/admin';
 import auth from './routes/auth';
 import tools from './routes/tools';
+import logistics from './routes/logistics';
 import { TOOLS_CSS, TOOLS_JS } from './views/tools-assets';
 import card from './routes/card';
 import offer from './routes/offer';
@@ -93,15 +94,29 @@ app.get('/favicon.ico', (c) => c.redirect('/favicon.svg', 301));
 app.get('/robots.txt', (c) => c.text('User-agent: *\nDisallow: /\n', 200, { 'Cache-Control': STATIC_CACHE }));
 app.get('/healthz', (c) => c.text('ok'));
 
+// Anonymous logistics tools and the account shell contain no identity or saved data.
+// Serve them before cookies/database middleware; account APIs/auth always continue below.
+app.get('/logistik', (c) => c.redirect('/logistik/', 308));
+app.get('/logistik/*', async (c, next) => {
+  if (/^\/logistik\/(?:api|login|verify|logout)(?:\/|$)/.test(c.req.path)) return next();
+  if (!c.env.ASSETS) return c.text('Logistikværktøjer er midlertidigt utilgængelige.', 503);
+  const response = await c.env.ASSETS.fetch(c.req.raw);
+  const headers = new Headers(response.headers);
+  headers.set('Cache-Control', c.req.path.startsWith('/logistik/mine') ? 'no-store' : 'public, max-age=300');
+  return new Response(response.body, { status: response.status, headers });
+});
+
 // Stripe-webhook: før session/CSRF (verificeres med signatur i stedet)
 app.route('/', webhook);
 
 // Session + CSRF for resten
 app.use('/tools/*', bodyLimit({ maxSize: 80 * 1024, onError: c => c.text('Request too large.', 413) }));
+app.use('/logistik/*', bodyLimit({ maxSize: 512 * 1024, onError: c => c.json({ code: 'body_too_large', error: 'Beregningen fylder for meget. Reducér antallet af rækker eller tekstlængden.' }, 413) }));
 app.use('*', sessionMiddleware);
 app.use('*', csrfMiddleware);
 
 app.route('/tools', tools);
+app.route('/logistik', logistics);
 app.route('/', pub);
 app.route('/', auth);
 app.route('/', card);
