@@ -95,12 +95,15 @@
     "preferences": "Preferences",
     "preferences_text": "Remember your choices, such as language and settings.",
     "analytics": "Analytics",
-    "analytics_text": "Help us understand how the site is used so we can improve it.",
+    "analytics_text": "Measures visits, returning browsers, pageviews, active time and approximate country and city. Only with your choice; records are deleted after 90 days.",
     "marketing": "Marketing",
     "marketing_text": "Show our Trustpilot reviews. Trustpilot sets its own cookies from trustpilot.com.",
     "read_more": "Read the cookie policy",
     "dialog_label": "Cookie consent",
-    "saved": "Your choice has been saved."
+    "saved": "Your choice has been saved.",
+    "analytics_disclosure": "With your consent, we also use our own statistics cookies to understand visits, returning browsers, pages viewed, active time and approximate country and city. Visit records and the browser ID are kept for up to 90 days; the visit cookie expires after 30 minutes of inactivity. You can turn statistics off at any time in Cookie settings.",
+    "analytics_privacy_signal": "Your browser has sent a privacy signal (GPC or Do Not Track). Statistics are therefore off, including if you select Accept all.",
+    "save_error": "Your browser could not save your choice. Statistics and marketing are off on this page."
   },
   "products": {
     "add_to_cart": "Add to basket",

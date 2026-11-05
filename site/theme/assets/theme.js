@@ -432,10 +432,13 @@
     const status = banner.querySelector('[data-cookie-status]');
     const STORE_KEY = 'theme-cookie-consent';
     const MAX_AGE = 1000 * 60 * 60 * 24 * 365;
+    const privacySignal = () => navigator.globalPrivacyControl === true ||
+      navigator.doNotTrack === '1' || window.doNotTrack === '1';
     const stored = () => {
       try {
         const d = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
-        return d && d.consent && Date.now() - d.t < MAX_AGE ? d.consent : null;
+        const age = Date.now() - d?.t;
+        return d && d.consent && Number.isFinite(d.t) && age >= 0 && age < MAX_AGE ? d : null;
       } catch (e) {
         return null;
       }
@@ -456,28 +459,43 @@
       btn('customize').hidden = show;
       btn('customize').setAttribute('aria-expanded', String(show));
       if (show) {
-        const c = stored() || {};
+        const record = stored();
+        const c = record?.consent || {};
         prefs.querySelectorAll('[data-consent]').forEach((input) => {
-          input.checked = !!c[input.dataset.consent];
+          const analytics = input.dataset.consent === 'analytics';
+          input.checked = analytics ? record?.v === 2 && c.analytics === true && !privacySignal() : !!c[input.dataset.consent];
+          if (analytics) input.disabled = privacySignal();
         });
       }
-      if (show) prefs.querySelector('[data-consent]')?.focus();
+      if (show) prefs.querySelector('[data-consent]:not(:disabled)')?.focus();
     };
 
     const save = (choice) => {
       const consent = {
-        analytics: !!choice.analytics,
+        analytics: !!choice.analytics && !privacySignal(),
         marketing: !!choice.marketing,
         preferences: !!choice.preferences,
         sale_of_data: !!choice.marketing,
       };
+      let persisted = false;
       try {
-        localStorage.setItem(STORE_KEY, JSON.stringify({ v: 1, t: Date.now(), consent }));
-      } catch (e) {}
+        localStorage.setItem(STORE_KEY, JSON.stringify({ v: 2, t: Date.now(), consent }));
+        persisted = true;
+      } catch (e) {
+        // If storage is blocked, an old acceptance must not override a new rejection.
+        try { localStorage.removeItem(STORE_KEY); } catch (_) {}
+      }
+      window.__veyroConsentStorageFailed = !persisted;
       const done = () => {
-        if (status) status.textContent = strings.cookiesSaved || '';
-        close();
-        document.dispatchEvent(new CustomEvent('theme:consent', { detail: consent }));
+        const error = banner.querySelector('[data-cookie-error]');
+        if (error) error.hidden = persisted;
+        if (persisted) {
+          if (status) status.textContent = strings.cookiesSaved || '';
+          close();
+        }
+        document.dispatchEvent(new CustomEvent('theme:consent', {
+          detail: persisted ? consent : { analytics: false, marketing: false, preferences: false, sale_of_data: false },
+        }));
       };
       done();
     };
@@ -492,8 +510,24 @@
     });
     document.querySelectorAll('[data-cookie-open]').forEach((el) => el.addEventListener('click', () => open(true)));
 
-    // Valget gemmes kun i browseren (localStorage). Banneret vises, indtil der er truffet et valg.
-    if (!stored()) open();
+    const sync = () => {
+      const record = stored();
+      const note = banner.querySelector('[data-cookie-privacy-signal]');
+      if (note) note.hidden = !privacySignal();
+      // Version 1 did not disclose visitor statistics. Ask for a fresh choice.
+      if (record?.v !== 2) open();
+      else close();
+    };
+    window.addEventListener('storage', (event) => {
+      if (event.key === STORE_KEY || event.key === null) {
+        window.__veyroConsentStorageFailed = false;
+        sync();
+        if (!prefs.hidden) showPrefs(true);
+        document.dispatchEvent(new CustomEvent('theme:consent', { detail: stored()?.consent || {} }));
+      }
+    });
+    document.addEventListener('theme:consent-expired', sync);
+    sync();
   }
 
   /* ---------- Produktvarianter (pakker) ---------- */

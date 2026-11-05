@@ -65,19 +65,30 @@
               const SRC = 'https://widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js';
               const box = document.currentScript.previousElementSibling;
               const category = box.dataset.trustpilotConsent || 'marketing';
+              const emptyWidget = box.querySelector('.trustpilot-widget').cloneNode(false);
               const allowed = () => {
+                if (window.__veyroConsentStorageFailed) return false;
                 try {
                   const d = JSON.parse(localStorage.getItem('theme-cookie-consent') || 'null');
-                  return !!(d && d.consent && d.consent[category]);
+                  const age = Date.now() - d?.t;
+                  const valid = d && Number.isFinite(d.t) && age >= 0 && age < 365 * 24 * 60 * 60 * 1000;
+                  const analyticsAllowed = category !== 'analytics' || d?.v === 2 &&
+                    navigator.globalPrivacyControl !== true && navigator.doNotTrack !== '1' && window.doNotTrack !== '1';
+                  return !!(valid && analyticsAllowed && d.consent && d.consent[category]);
                 } catch (e) {
                   return false;
                 }
               };
-              const render = () => window.Trustpilot && window.Trustpilot.loadFromElement(box.querySelector('.trustpilot-widget'), true);
+              const render = () => allowed() && window.Trustpilot && window.Trustpilot.loadFromElement(box.querySelector('.trustpilot-widget'), true);
               const update = () => {
                 const ok = allowed();
                 box.querySelector('[data-trustpilot-consent-note]').hidden = ok;
-                if (!ok || box.dataset.loaded) return;
+                if (!ok) {
+                  if (box.dataset.loaded) box.querySelector('.trustpilot-widget').replaceWith(emptyWidget.cloneNode(false));
+                  delete box.dataset.loaded;
+                  return;
+                }
+                if (box.dataset.loaded) return;
                 box.dataset.loaded = 'true';
                 if (window.Trustpilot) return render();
                 let script = document.querySelector(`script[src="${SRC}"]`);
@@ -91,6 +102,10 @@
               };
               update();
               document.addEventListener('theme:consent', update);
+              window.addEventListener('storage', (event) => {
+                if (event.key === 'theme-cookie-consent' || event.key === null) update();
+              });
+              setInterval(update, 30000);
             })();
           </script>
         {%- elsif request.design_mode -%}

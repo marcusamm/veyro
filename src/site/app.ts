@@ -19,6 +19,7 @@ import { LANGUAGE_COOKIE, languageRedirect } from './language-routing';
 import { cartDrop, renderSitePage, type CartLine, type RenderRequest } from './render';
 import { displayPrice } from './currency';
 import { normalizeWebshopTierId, webshopTier } from './webshop-tiers';
+import analytics, { analyticsPage } from './analytics';
 
 warmUp();
 
@@ -135,6 +136,8 @@ function sameOrigin(c: Context<SiteEnv>): boolean {
 }
 
 // ---------- Statiske filer ----------
+
+site.route('/analytics', analytics);
 
 // The logistics calculator replaces the old free-tools landing pages.
 for (const path of ['/tools', '/en/tools', '/sv/tools']) {
@@ -425,7 +428,11 @@ async function respond(c: Context<SiteEnv>, path: string, forms: Record<string, 
   if (status === 200 && c.req.method === 'GET' && !/bot|crawl|spider|slurp|preview|monitor/i.test(c.req.header('User-Agent') ?? '')) {
     c.executionCtx.waitUntil(countView(c.env.DB, localizedPath(path, language)).catch(() => {}));
   }
-  return c.html(personalize(c, data, html, language), status);
+  let output = personalize(c, data, html, language);
+  if (status === 200 && c.req.method === 'GET' && isCanonicalHost(c) && analyticsPage(data, localizedPath(path, language))) {
+    output = output.replace(/<body(?=[\s>])/, '<body data-analytics-page="true"');
+  }
+  return c.html(output, status);
 }
 
 /** ?kontakt=ok&form=<id> efter en vellykket formular viser takkebeskeden i den formular */

@@ -3,7 +3,7 @@ import { brandMark } from './brand-mark';
 
 export type H = ReturnType<typeof html>;
 
-export type NavKey = 'overblik' | 'aftaler' | 'fuldmagter' | 'admin-fuldmagter' | 'admin-nda' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer' | 'admin-abonnementer' | 'admin-tilbud' | 'admin-hjemmeside' | 'admin-forespoergsler' | 'admin-statistik' | 'admin-kasse' | 'admin-kundeemner';
+export type NavKey = 'overblik' | 'aftaler' | 'fuldmagter' | 'admin-fuldmagter' | 'admin-nda' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer' | 'admin-abonnementer' | 'admin-tilbud' | 'admin-hjemmeside' | 'admin-forespoergsler' | 'admin-statistik' | 'admin-besoegende' | 'admin-kasse' | 'admin-kundeemner';
 
 export interface LayoutOpts {
   title: string;
@@ -39,6 +39,7 @@ export function layout(opts: LayoutOpts, body: H): H {
       navLink('/admin', 'Oversigt', opts.nav === 'admin'),
       navLink('/admin/kasse', 'Kasse', opts.nav === 'admin-kasse'),
       navLink('/admin/statistik', 'Statistik', opts.nav === 'admin-statistik'),
+      navLink('/admin/besoegende', 'Besøgende', opts.nav === 'admin-besoegende'),
       navLink('/admin/hjemmeside', 'Hjemmeside', opts.nav === 'admin-hjemmeside'),
       navLink('/admin/kundeemner', 'Kundeemner', opts.nav === 'admin-kundeemner'),
       navLink('/admin/forespoergsler', 'Forespørgsler', opts.nav === 'admin-forespoergsler'),
