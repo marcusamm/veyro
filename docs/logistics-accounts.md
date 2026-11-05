@@ -2,6 +2,8 @@
 
 Den selvstændige danske frontend findes under `/logistik/` på samme host som kundepanelet. Den bruger de eksisterende Veyro-kunder, mailbekræftelse og sessionscookies. Der oprettes ingen abonnementer eller Stripe-kunder ved gratis tilmelding.
 
+Løsningen erstatter den tidligere indgang “Gratis værktøjer”. Kundepanelet har én indgang, “Logistikberegner”, og hjemmesidens footer linker samme sted. `/tools` (og `/en/tools`, `/sv/tools` på salgshjemmesiden) viderestiller til `/logistik/`. Konti med tidligere gemte `tool_projects` får desuden linket “Tidligere gemte planer” til `/tools/legacy?lang=da`; deres data og direkte projektlinks bevares uden automatisk konvertering mellem forskellige beregningsmodeller.
+
 Gæsteberegninger og CSV-import sker i browseren. Kontoens API kontaktes for loginstatus; beregningsinput sendes først ved et eksplicit Gem. En valgfri login-kladde opbevares i sessionStorage i den oprindelige fane, højst to timer, og slettes ved genoptagelse eller logout. Login-siden genkender også login, der bekræftes i en anden fane.
 
 Migration `0016_logistics_calculations.sql` tilføjer en separat tabel. Alle operationer filtrerer på den verificerede konto. Der er versionskontrol ved ændringer og atomiske grænser på 50 aktive/200 samlede beregninger. En kopi af brugerens eksplicit indsendte input kan redde en versionskonflikt; kopiering fra listen kræver den viste version. Arkiv kan gendannes. Eksisterende `/tools`-data er uændrede.

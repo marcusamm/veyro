@@ -20,7 +20,9 @@ const nameValue = (value: unknown) => text(value).trim().replace(/\s+/g, ' ');
 const versionValue = (value: unknown) => /^\d{1,10}$/.test(text(value)) && Number(value) > 0 ? Number(value) : null;
 const currencyValue = (value: unknown): ToolCurrency | null => value === 'DKK' || value === 'EUR' || value === 'SEK' ? value : null;
 const validId = (id: string) => /^[a-f0-9-]{36}$/.test(id);
-const target = (lang: Language, id?: string) => `/tools${id ? `/projects/${id}` : ''}?lang=${lang}`;
+const target = (lang: Language, id?: string) => `/tools${id ? `/projects/${id}` : '/legacy'}?lang=${lang}`;
+// Accept login links issued before the new calculator replaced the tools landing page.
+const tokenDestination = (next: string | null | undefined) => /^\/tools(?:\/legacy)?\?lang=(da|en|sv)$/.exec(next ?? '');
 
 function language(c: C, body?: Form): Language {
   const value = body?.lang ?? c.req.query('lang');
@@ -76,6 +78,9 @@ function validationMessage(lang: Language, err?: unknown): string {
 tools.use('*', async (c, next) => {
   c.header('Cache-Control', 'private, no-store');
   c.header('X-Robots-Tag', 'noindex, nofollow');
+  if ((c.req.method === 'GET' || c.req.method === 'HEAD') && (c.req.path === '/tools' || c.req.path === '/tools/')) {
+    return c.redirect('/logistik/', 302);
+  }
   if ((c.req.path.startsWith('/tools/projects') || c.req.path === '/tools/preview') && !c.get('session')) {
     return c.req.path === '/tools/preview'
       ? c.json({ error: toolsCopy(language(c)).errors.signInRequired }, 401)
@@ -84,7 +89,7 @@ tools.use('*', async (c, next) => {
   await next();
 });
 
-tools.get('/', async (c) => {
+tools.get('/legacy', async (c) => {
   const lang = language(c);
   const key = c.req.query('notice');
   const notices = toolsCopy(lang).notices;
@@ -128,7 +133,7 @@ async function toolToken(c: C, token: string): Promise<boolean> {
   if (!/^[A-Za-z0-9_-]{32,64}$/.test(token)) return false;
   const row = await c.env.DB.prepare(`SELECT next FROM login_tokens WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?`)
     .bind(await sha256Hex(token), nowSec()).first<{ next: string | null }>();
-  return !!row && /^\/tools\?lang=(da|en|sv)$/.test(row.next ?? '');
+  return !!row && !!tokenDestination(row.next);
 }
 tools.get('/verify', async (c) => {
   const lang = language(c);
@@ -142,11 +147,12 @@ tools.post('/verify', async (c) => {
   const token = text(body.token);
   if (!await toolToken(c, token)) return home(c, lang, { error: toolsCopy(lang).errors.invalidLink }, 400);
   const data = await consumeLoginToken(c.env, token);
-  if (!data || !data.signup || !/^\/tools\?lang=(da|en|sv)$/.test(data.next ?? '')) return home(c, lang, { error: toolsCopy(lang).errors.invalidLink }, 400);
+  const destination = tokenDestination(data?.next);
+  if (!data || !data.signup || !destination) return home(c, lang, { error: toolsCopy(lang).errors.invalidLink }, 400);
   if (!await getCustomerByEmail(c.env.DB, data.email)) await upsertCustomer(c.env.DB, { email: data.email, name: data.name });
   if (c.get('session')) await destroySession(c);
   await createSession(c, data.email);
-  return c.redirect(data.next!, 303);
+  return c.redirect(target(destination[1] as Language), 303);
 });
 tools.post('/logout', async (c) => {
   const lang = language(c, await c.req.parseBody());

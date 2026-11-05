@@ -136,9 +136,11 @@ function sameOrigin(c: Context<SiteEnv>): boolean {
 
 // ---------- Statiske filer ----------
 
-// Free planning tools use the existing account origin and its host-only login cookie.
-for (const [path, language] of [['/tools', 'da'], ['/en/tools', 'en'], ['/sv/tools', 'sv']] as const) {
-  site.get(path, (c) => c.redirect(`${(c.env.APP_URL || 'https://kunde.veyro.dk').replace(/\/+$/, '')}/tools?lang=${language}`, 302));
+// The logistics calculator replaces the old free-tools landing pages.
+for (const path of ['/tools', '/en/tools', '/sv/tools']) {
+  for (const route of [path, `${path}/`]) {
+    site.get(route, (c) => c.redirect(`${(c.env.APP_URL || 'https://kunde.veyro.dk').replace(/\/+$/, '')}/logistik/`, 302));
+  }
 }
 
 site.get('/assets/:name', (c) => {
