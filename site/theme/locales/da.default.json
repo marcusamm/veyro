@@ -103,7 +103,8 @@
     "saved": "Dit valg er gemt.",
     "analytics_disclosure": "Med dit samtykke bruger vi også vores egne statistikcookies til at forstå besøg, tilbagevendende browsere, viste sider, aktiv tid og omtrentligt land og by. Besøgsdata og browser-id gemmes i op til 90 dage; besøgets cookie udløber efter 30 minutters inaktivitet. Du kan altid slå statistik fra i Cookieindstillinger.",
     "analytics_privacy_signal": "Din browser har sendt et signal om ikke at blive sporet (GPC eller Do Not Track). Statistik er derfor slået fra, også hvis du vælger Accepter alle.",
-    "save_error": "Browseren kunne ikke gemme dit valg. Statistik og markedsføring er slået fra på denne side."
+    "save_error": "Browseren kunne ikke gemme dit valg. Statistik og markedsføring er slået fra på denne side.",
+    "tiktok_disclosure": "Med dit samtykke til markedsføring bruger vi også TikTok Pixel til at måle annoncer og opbygge målgrupper. TikTok modtager oplysninger om sidebesøg, browser og enhed, IP-adresse og cookie-id’er. Du kan trække samtykket tilbage i Cookieindstillinger. Vi sender ikke formularfelter eller kundeoplysninger til pixlen."
   },
   "products": {
     "add_to_cart": "Læg i kurv",

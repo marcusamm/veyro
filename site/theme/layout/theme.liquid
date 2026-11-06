@@ -88,6 +88,11 @@
     <script src="{{ 'language-switch.js' | asset_url }}" defer="defer"></script>
     <script src="{{ 'theme.js' | asset_url }}" defer="defer"></script>
     <script src="{{ 'analytics.js' | asset_url }}" defer="defer"></script>
+    {%- if request.host == 'veyro.dk' -%}
+      {%- unless template.name == '404' or template.name == 'cart' -%}
+        <script src="{{ 'tiktok.js' | asset_url }}" defer="defer"></script>
+      {%- endunless -%}
+    {%- endif -%}
     <script src="{{ 'motion.js' | asset_url }}" defer="defer"></script>
     <script src="{{ 'plan-picker.js' | asset_url }}" defer="defer"></script>
     <script src="{{ 'project-gallery.js' | asset_url }}" defer="defer"></script>
