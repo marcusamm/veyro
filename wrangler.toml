@@ -12,7 +12,11 @@ routes = [
   { pattern = "kunde.veyro.dk", custom_domain = true },
   { pattern = "ny.veyro.dk", custom_domain = true },
   { pattern = "veyro.dk", custom_domain = true },
-  { pattern = "www.veyro.dk", custom_domain = true }
+  { pattern = "www.veyro.dk", custom_domain = true },
+  { pattern = "logistikvaerktojer.dk", custom_domain = true },
+  { pattern = "www.logistikvaerktojer.dk", custom_domain = true },
+  { pattern = "xn--logistikvrktjer-5lb32a.dk", custom_domain = true },
+  { pattern = "www.xn--logistikvrktjer-5lb32a.dk", custom_domain = true }
 ]
 
 # Demoer (fiktive designkoncepter) på veyro.dk/demo/…: statiske filer i public/demo.
