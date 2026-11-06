@@ -21,7 +21,7 @@
         url.searchParams.delete('webshop_niveau');
       }
       url.hash = location.hash;
-      link.href = url.pathname + url.search + url.hash;
+      link.href = url.href;
     });
   };
   updateLinks();

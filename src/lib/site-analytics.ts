@@ -88,7 +88,7 @@ export function analyticsSource(referrer?: string, campaign?: string): string {
     if (!['https:', 'http:'].includes(url.protocol)) return 'Direkte / ukendt';
     const host = url.hostname.toLowerCase();
     if (host.startsWith('[') || /^\d+\.\d+\.\d+\.\d+$/.test(host)) return 'Direkte / ukendt';
-    if (host === 'veyro.dk' || host.endsWith('.veyro.dk') || ['localhost', '127.0.0.1', '[::1]'].includes(host)) return 'Direkte / ukendt';
+    if (host === 'veyro.dk' || host.endsWith('.veyro.dk') || host === 'veyro.se' || host.endsWith('.veyro.se') || ['localhost', '127.0.0.1', '[::1]'].includes(host)) return 'Direkte / ukendt';
     return clean(host, 253) || 'Direkte / ukendt';
   } catch { return 'Direkte / ukendt'; }
 }

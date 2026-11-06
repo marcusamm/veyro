@@ -1,4 +1,4 @@
-import { languagePath, localizedPath, SITE_LANGUAGES, type SiteLanguage } from './localization';
+import { canonicalLanguageUrl, isSwedishHost, languagePath, localizedPath, SITE_LANGUAGES, type SiteLanguage } from './localization';
 
 export const LANGUAGE_COOKIE = 'veyro_language';
 
@@ -30,4 +30,45 @@ export function languageRedirect(request: Request, preference?: string): { locat
   const language = isLanguage(preference) ? preference : country === 'SE' ? 'sv' : country === 'DK' || (!country && local) ? 'da' : 'en';
   if (language === 'da') return null;
   return { location: localizedPath(current.path, language) + url.search };
+}
+
+/** Production Swedish URLs live at veyro.se; development/preview language paths remain local. */
+export function domainLanguageRedirect(request: Request, preference?: string, primaryOrigin = 'https://veyro.dk'): { location: string; selectedLanguage?: SiteLanguage; status?: 301 | 302 } | null {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return null;
+  const url = new URL(request.url);
+  const swedish = isSwedishHost(url.hostname);
+  const primary = url.hostname === 'veyro.dk';
+  if (!swedish && !primary) return languageRedirect(request, preference);
+  const current = languagePath(url.pathname);
+  const selected = url.searchParams.get('lang');
+
+  if (publicPage(current.path) && isLanguage(selected)) {
+    if (swedish && selected !== 'sv') {
+      // The destination must consume ?lang itself and set its own host-bound cookie.
+      // Removing it here would let country detection redirect a Danish choice back to Sweden.
+      return { location: canonicalLanguageUrl(current.path, selected, primaryOrigin) + url.search };
+    }
+    url.searchParams.delete('lang');
+    return {
+      location: selected === 'sv'
+        ? (swedish ? current.path : canonicalLanguageUrl(current.path, selected, primaryOrigin)) + url.search
+        : localizedPath(current.path, selected) + url.search,
+      selectedLanguage: selected,
+    };
+  }
+
+  if (current.language === 'sv') {
+    return { location: canonicalLanguageUrl(current.path, 'sv', primaryOrigin) + url.search, status: 301 };
+  }
+  if (swedish) {
+    if (current.language === 'en') return { location: canonicalLanguageUrl(current.path, 'en', primaryOrigin) + url.search, status: 301 };
+    return null; // An explicit Swedish domain wins over geolocation and any old preference cookie.
+  }
+  const decision = languageRedirect(request, preference);
+  if (!decision) return null;
+  const target = new URL(decision.location, url.origin);
+  const language = languagePath(target.pathname);
+  return language.language === 'sv'
+    ? { ...decision, location: canonicalLanguageUrl(language.path, 'sv', primaryOrigin) + target.search }
+    : decision;
 }

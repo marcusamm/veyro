@@ -96,7 +96,20 @@ jobs:
           check https://ny.veyro.dk/pages/kontakt 200
           check https://ny.veyro.dk/cart 200
           check https://veyro.dk/en/ 200
-          check https://veyro.dk/sv/ 200
+          check https://veyro.dk/sv/ 301
+          check https://veyro.se/ 200
+          check https://veyro.se/pages/priser 200
+          check https://veyro.se/pages/kontakt 200
+          check https://veyro.se/sitemap.xml 200
+          check https://www.veyro.se/ 301
+          destination=$(curl -s -o /dev/null -w '%{redirect_url}' 'https://veyro.dk/sv/pages/priser?test=redirect')
+          if [ "$destination" != 'https://veyro.se/pages/priser?test=redirect' ]; then
+            echo '::error::Den gamle svenske adresse viderestiller forkert'; exit 1
+          fi
+          curl -fsS --cookie 'veyro_language=da' https://veyro.se/ -o /tmp/veyro-sv.html
+          if grep -q 'lang="sv"' /tmp/veyro-sv.html && grep -q 'canonical" href="https://veyro.se/"' /tmp/veyro-sv.html && grep -q 'SEK' /tmp/veyro-sv.html; then
+            echo 'OK svensk forside, canonical og SEK'
+          else echo '::error::veyro.se mangler svensk indhold eller metadata'; exit 1; fi
           # Juridiske sider på veyro.dk med indholdet, kunderne accepterer i kundepanelet
           side() {
             check "$1" 200

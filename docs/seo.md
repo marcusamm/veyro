@@ -1,5 +1,13 @@
 # Veyro SEO
 
+## Svensk domæne, 6. november 2026
+
+Den svenske version har nu `https://veyro.se` som kanonisk origin uden `/sv`-præfiks. Gamle `veyro.dk/sv/...`-adresser får 301 til samme side på `.se`, inklusive søgeparametre. Hvert domænes sitemap indeholder kun dets egne kanoniske sider; alle sprog har gensidige `hreflang`-henvisninger. HTML-canonical, Open Graph, service- og produktadresser samt brødkrummer følger sprogets domæne. Veyros danske virksomhedsidentitet og adresse bevares; der oprettes ingen svensk virksomhed i strukturerede data.
+
+Prøveværten forbliver `noindex`. Den svenske forside og kontaktformular er svenske uanset IP-land eller gamle sprogpræferencer, og formularens valgte niveau/pris beregnes fra de eksisterende SEK-priser. Automatisk landebaseret viderestilling gælder kun de relevante offentlige `.dk`-sider og er fortsat undtaget for crawlers.
+
+Næste eksterne trin: tilføj/verificér `veyro.se` i Search Console og indsend `https://veyro.se/sitemap.xml`. Dette er ikke udført som en del af domæneændringen. Det danske sitemap forbliver på samme adresse.
+
 ## Implementeret 5. november 2026
 
 - `/pages/hosting` forklarer hosting og vedligeholdelse, aftalt omfang og næste skridt. Danske, engelske og svenske versioner følger eksisterende sprogstruktur og sitemap.

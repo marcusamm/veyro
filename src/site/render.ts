@@ -1,7 +1,7 @@
 // Bygger Shopify-lignende Liquid-objekter ud fra indholdet og gengiver en hel side.
 import type { SiteData, SitePage, SiteProduct, SectionData, TemplateData } from './content';
 import { Color, translate, engine, parsedFile, sectionSchema, themeSettingsSchema, type FormState, type RenderHooks, type SettingDef } from './engine';
-import { contentText, localizedContent, localizedPath, localizeLinks, SITE_LANGUAGES, type SiteLanguage } from './localization';
+import { canonicalLanguageUrl, contentText, isSwedishHost, localizedContent, localizedPath, localizeLinks, SITE_LANGUAGES, type SiteLanguage } from './localization';
 import { THEME_FILES } from './theme.generated';
 import { displayPrice } from './currency';
 import { WEBSHOP_TIERS } from './webshop-tiers';
@@ -181,7 +181,10 @@ export function renderSitePage(site: SiteData, req: RenderRequest): string {
   const originalPageContent = req.page?.body;
   site = localizedContent(site, language);
   req = { ...req, page: req.page ? site.pages.find(p => p.handle === req.page!.handle) : undefined, product: req.product ? site.products.find(p => p.handle === req.product!.handle) : undefined };
-  const publicPath = language === 'da' ? req.path : `/${language}${req.path}`;
+  const publicPath = language === 'da' || (language === 'sv' && isSwedishHost(req.host)) ? req.path : `/${language}${req.path}`;
+  const canonicalUrl = canonicalLanguageUrl(req.path, language, req.canonicalOrigin);
+  const publicOrigin = new URL(canonicalUrl).origin;
+  const productionHost = ['veyro.dk', 'www.veyro.dk', 'veyro.se', 'www.veyro.se'].includes(req.host.toLowerCase());
   const pages: Record<string, unknown> = {};
   for (const p of site.pages) if (p.published) pages[p.handle] = pageDrop(p);
   const lists = linklists(site, req.path);
@@ -207,6 +210,7 @@ export function renderSitePage(site: SiteData, req: RenderRequest): string {
     path: publicPath,
     language,
     host: req.host,
+    canonicalOrigin: req.canonicalOrigin,
     renderGroup: (name) => {
       const g = site.groups[name];
       if (!g) return '';
@@ -225,14 +229,19 @@ export function renderSitePage(site: SiteData, req: RenderRequest): string {
     linklists: lists,
     cart: cartDrop(site, req.cart),
     shop: { name: site.shop.name, email: site.shop.email, url: req.canonicalOrigin, domain: req.host, currency: 'DKK' },
-    routes: { root_url: localizedPath('/', language), cart_url: '/cart', cart_add_url: '/cart/add', cart_change_url: '/cart/change', cart_update_url: '/cart/update', cart_clear_url: '/cart/clear', search_url: '/search', account_url: 'https://kunde.veyro.dk/login' },
-    request: { locale: { iso_code: language }, page_type: req.type, design_mode: false, origin: req.canonicalOrigin, host: req.host, path: publicPath },
+    routes: { root_url: localizedPath('/', language, req.host), cart_url: '/cart', cart_add_url: '/cart/add', cart_change_url: '/cart/change', cart_update_url: '/cart/update', cart_clear_url: '/cart/clear', search_url: '/search', account_url: 'https://kunde.veyro.dk/login' },
+    request: { locale: { iso_code: language }, page_type: req.type, design_mode: false, origin: publicOrigin, host: req.host, path: publicPath },
     template: { name: req.type, suffix: tplName.startsWith('page.') ? tplName.slice(5) : null, directory: null },
     page_title: contentText(title, language),
     page_seo_title: req.page?.seo_title || null,
     page_description: description || null,
-    canonical_url: req.canonicalOrigin + publicPath,
-    site_languages: SITE_LANGUAGES.map(code => ({ code, label: { da: 'Dansk', en: 'English', sv: 'Svenska' }[code], url: localizedPath(req.type === '404' ? '/' : req.path, code) + `?lang=${code}`, canonical: req.canonicalOrigin + localizedPath(req.type === '404' ? '/' : req.path, code), current: language === code })),
+    canonical_url: canonicalUrl,
+    site_languages: SITE_LANGUAGES.map(code => {
+      const targetPath = req.type === '404' ? '/' : req.path;
+      const canonical = canonicalLanguageUrl(targetPath, code, req.canonicalOrigin);
+      const url = productionHost ? canonical : localizedPath(targetPath, code);
+      return { code, label: { da: 'Dansk', en: 'English', sv: 'Svenska' }[code], url: url + `?lang=${code}`, canonical, current: language === code };
+    }),
     language_label: { da: 'Vælg sprog', en: 'Choose language', sv: 'Välj språk' }[language],
     current_page: 1,
     current_tags: null,
@@ -265,5 +274,5 @@ export function renderSitePage(site: SiteData, req: RenderRequest): string {
 
   let main = '';
   if (tpl) for (const id of tpl.order) if (tpl.sections[id]) main += renderSection(id, tpl.sections[id]);
-  return localizeLinks(engine().renderSync(parsedFile('layout/theme.liquid'), { content_for_layout: main }, { globals }) as string, language);
+  return localizeLinks(engine().renderSync(parsedFile('layout/theme.liquid'), { content_for_layout: main }, { globals }) as string, language, req.host);
 }

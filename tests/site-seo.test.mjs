@@ -8,7 +8,7 @@ const origin = 'https://veyro.dk';
 const schemas = html => [...html.matchAll(/<script\b[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)].map(m => JSON.parse(m[1]));
 const render = (language, handle) => renderSitePage(site, {
   type: handle ? 'page' : 'index', language, path: handle ? `/pages/${handle}` : '/',
-  host: 'veyro.dk', canonicalOrigin: origin, cart: [],
+  host: language === 'sv' ? 'veyro.se' : 'veyro.dk', canonicalOrigin: origin, cart: [],
   page: handle ? site.pages.find(p => p.handle === handle) : undefined,
 });
 
@@ -32,7 +32,8 @@ describe('Search metadata and multilingual hosting page', () => {
     const data = schemas(html);
     const website = data.find(d => d['@type'] === 'WebSite');
     const business = data.find(d => d['@type'] === 'ProfessionalService');
-    expect(website).toMatchObject({ '@id': `${origin}/#website`, name: 'Veyro', url: `${origin}/`, publisher: { '@id': `${origin}/#organization` } });
+    const publicOrigin = language === 'sv' ? 'https://veyro.se' : origin;
+    expect(website).toMatchObject({ '@id': `${publicOrigin}/#website`, name: 'Veyro', url: `${publicOrigin}/`, publisher: { '@id': `${origin}/#organization` } });
     expect(business).toMatchObject({ '@id': `${origin}/#organization`, url: `${origin}/` });
     expect(business.address).toMatchObject({ streetAddress: 'Albert Ibsensvej 28, 2. tv', postalCode: '4200', addressLocality: 'Slagelse', addressCountry: 'DK' });
     expect(business.identifier).toMatchObject({ propertyID: 'CVR', value: '46857569' });
@@ -48,13 +49,14 @@ describe('Search metadata and multilingual hosting page', () => {
 
   it.each(['da', 'en', 'sv'])('renders useful hosting content and matching breadcrumb URLs in %s', language => {
     const html = render(language, 'hosting');
-    const prefix = language === 'da' ? '' : `/${language}`;
+    const prefix = language === 'en' ? '/en' : '';
+    const publicOrigin = language === 'sv' ? 'https://veyro.se' : origin;
     expect(html.match(/<h1\b/g)).toHaveLength(1);
     expect(html).not.toMatch(/Liquid error|MISSING:/);
-    expect(html).toContain(`<link rel="canonical" href="${origin}${prefix}/pages/hosting">`);
+    expect(html).toContain(`<link rel="canonical" href="${publicOrigin}${prefix}/pages/hosting">`);
     expect(html).toContain(`href="${prefix}/pages/kontakt?ydelse=hosting-og-vedligeholdelse#formular"`);
     expect(schemas(html).find(d => d['@type'] === 'BreadcrumbList').itemListElement.map(i => i.item)).toEqual([
-      `${origin}${prefix}/`, `${origin}${prefix}/pages/ydelser`, `${origin}${prefix}/pages/hosting`,
+      `${publicOrigin}${prefix}/`, `${publicOrigin}${prefix}/pages/ydelser`, `${publicOrigin}${prefix}/pages/hosting`,
     ]);
     expect(schemas(html).find(d => d['@type'] === 'FAQPage').mainEntity.length).toBeGreaterThanOrEqual(4);
     if (language !== 'da') expect(html).not.toContain('Hosting og vedligeholdelse løser forskellige opgaver');
@@ -63,10 +65,11 @@ describe('Search metadata and multilingual hosting page', () => {
   it.each(['da', 'en', 'sv'])('connects real services to the same business without inventing prices in %s', language => {
     for (const handle of ['hjemmeside', 'hosting', 'booking', 'webshop', 'website-optimering', 'custom-losninger']) {
       const data = schemas(render(language, handle));
-      const prefix = language === 'da' ? '' : `/${language}`;
+      const prefix = language === 'en' ? '/en' : '';
+      const publicOrigin = language === 'sv' ? 'https://veyro.se' : origin;
       const service = data.find(d => d['@type'] === 'Service');
       expect(service).toMatchObject({
-        url: `${origin}${prefix}/pages/${handle}`,
+        url: `${publicOrigin}${prefix}/pages/${handle}`,
         provider: { '@id': `${origin}/#organization` },
       });
       expect(data.find(d => d['@id'] === service.provider['@id']).name).toBe('Veyro');
@@ -111,7 +114,7 @@ describe('Search metadata and multilingual hosting page', () => {
     ['sv', 'Nej. Vi optimerar den där den ligger.', 'Läs om webbhotell och underhåll'],
   ])('links optimisation to hosting within the translated FAQ in %s', (language, answer, label) => {
     const html = render(language, 'website-optimering');
-    const prefix = language === 'da' ? '' : `/${language}`;
+    const prefix = language === 'en' ? '/en' : '';
     expect(html).toContain(`<p>${answer} <a href="${prefix}/pages/hosting">${label}</a>`);
   });
 });

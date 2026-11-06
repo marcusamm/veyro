@@ -13,6 +13,8 @@ routes = [
   { pattern = "ny.veyro.dk", custom_domain = true },
   { pattern = "veyro.dk", custom_domain = true },
   { pattern = "www.veyro.dk", custom_domain = true },
+  { pattern = "veyro.se", custom_domain = true },
+  { pattern = "www.veyro.se", custom_domain = true },
   { pattern = "logistikvaerktojer.dk", custom_domain = true },
   { pattern = "www.logistikvaerktojer.dk", custom_domain = true },
   { pattern = "xn--logistikvrktjer-5lb32a.dk", custom_domain = true },
@@ -69,7 +71,7 @@ NOTIFY_EMAIL = "kontakt@veyro.dk"
 EMAIL_FROM = "Veyro <kontakt@veyro.dk>"
 DEV_MODE = "0"
 # Salgshjemmesiden (README, afsnit 15).
-SITE_HOSTS = "veyro.dk,www.veyro.dk,ny.veyro.dk"
+SITE_HOSTS = "veyro.dk,www.veyro.dk,veyro.se,www.veyro.se,ny.veyro.dk"
 SITE_URL = "https://veyro.dk"
 # Veyros bankkonto (Revolut Business) til bankoverførsel. Står i fodnoten på fakturaer fra admin.
 BANK_IBAN = "LT14 3250 0850 3228 8130"
