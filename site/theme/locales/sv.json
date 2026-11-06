@@ -104,7 +104,7 @@
     "analytics_disclosure": "Med ditt samtycke använder vi även våra egna statistikkakor för att förstå besök, återkommande webbläsare, visade sidor, aktiv tid och ungefärligt land och stad. Besöksuppgifter och webbläsar-id sparas i upp till 90 dagar; besökskakan upphör efter 30 minuters inaktivitet. Du kan alltid stänga av statistik i Cookieinställningar.",
     "analytics_privacy_signal": "Din webbläsare har skickat en integritetssignal (GPC eller Do Not Track). Statistik är därför avstängd, även om du väljer Acceptera alla.",
     "save_error": "Webbläsaren kunde inte spara ditt val. Statistik och marknadsföring är avstängda på den här sidan.",
-    "tiktok_disclosure": "Med samtycke till marknadsföring använder vi även TikTok Pixel för annonsmätning och målgrupper. TikTok får information om sidbesök, webbläsare och enhet, IP-adress och cookie-id. Återkalla samtycket i Cookieinställningar. Vi skickar inte formulärfält eller kunduppgifter till pixeln."
+    "tiktok_disclosure": "Med samtycke till marknadsföring använder vi även TikTok Pixel och Events API för annonsmätning och målgrupper. TikTok får information om sidbesök, webbläsare och enhet, IP-adress och cookie-id. Återkalla samtycket i Cookieinställningar. Vi skickar inte formulärfält eller kunduppgifter till pixeln."
   },
   "products": {
     "add_to_cart": "Lägg i varukorgen",

@@ -21,6 +21,7 @@ import { cartDrop, renderSitePage, type CartLine, type RenderRequest } from './r
 import { displayPrice } from './currency';
 import { normalizeWebshopTierId, webshopTier } from './webshop-tiers';
 import analytics, { analyticsPage } from './analytics';
+import tiktok from './tiktok';
 
 warmUp();
 
@@ -140,6 +141,7 @@ function sameOrigin(c: Context<SiteEnv>): boolean {
 // ---------- Statiske filer ----------
 
 site.route('/analytics', analytics);
+site.route('/marketing/tiktok', tiktok);
 
 // The logistics calculator replaces the old free-tools landing pages.
 for (const path of ['/tools', '/en/tools', '/sv/tools']) {
