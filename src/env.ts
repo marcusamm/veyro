@@ -59,6 +59,8 @@ export interface Env {
   STRIPE_SECRET_KEY: string;
   STRIPE_WEBHOOK_SECRET: string;
   RESEND_API_KEY?: string;
+  /** TikTok Events API: production Worker secret, never a public theme setting. */
+  TIKTOK_EVENTS_ACCESS_TOKEN?: string;
 }
 
 export interface SessionInfo {
