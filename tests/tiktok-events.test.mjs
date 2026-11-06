@@ -19,7 +19,7 @@ describe('TikTok server relay',()=>{
     expect(r.status).toBe(200);expect(await r.json()).toEqual({accepted:true});
     const [url,options]=upstream.mock.calls[0];
     expect(url).toBe('https://business-api.tiktok.com/open_api/v1.3/event/track/');
-    expect(options.headers['Access-Token']).toBe(token);expect(options.redirect).toBe('error');
+    expect(options.headers['Access-Token']).toBe(token);expect(options.redirect).toBe('manual');
     const payload=JSON.parse(options.body),e=payload.data[0];
     expect(payload.event_source_id).toBe('DBMMVK3C77UDLIGRBECG');
     expect(e.event_id).toBe(b.eventId);expect(e.event).toBe('Pageview');
@@ -60,6 +60,6 @@ describe('TikTok server relay',()=>{
     upstream.mockRejectedValueOnce(new Error(token));
     expect((await send()).status).toBe(503);
     upstream.mockResolvedValueOnce(new Response('not-json'));
-    expect((await send()).status).toBe(503);
+    expect((await send()).status).toBe(502);
   });
 });

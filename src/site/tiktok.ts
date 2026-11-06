@@ -43,7 +43,8 @@ tiktok.post('/events', async c => {
     const bucket = await sha256Hex(`${Math.floor(Date.now() / 86400000)}:${ip}`);
     if (!await rateLimit(c.env.DB, `tiktok:${bucket}`, 60, 60)) return c.json({ accepted: false }, 429);
     const response = await fetch(ENDPOINT, {
-      method: 'POST', redirect: 'error', signal: AbortSignal.timeout(5000),
+      // Workers supports manual/follow only. Never forward the token across redirects.
+      method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(5000),
       headers: { 'Content-Type': 'application/json', 'Access-Token': c.env.TIKTOK_EVENTS_ACCESS_TOKEN },
       body: JSON.stringify({ event_source: 'web', event_source_id: PIXEL_ID, data: [{
         event: 'Pageview', event_time: Math.floor(Date.now() / 1000), event_id: body.eventId,
@@ -52,10 +53,10 @@ tiktok.post('/events', async c => {
         page: { url: `https://veyro.dk${path === '/en' ? '/en/' : path}` },
       }] }),
     });
-    const result = await response.json() as { code?: number };
-    if (!response.ok || result.code !== 0) {
+    const result = await response.json().catch(() => null) as { code?: number } | null;
+    if (!response.ok || result?.code !== 0) {
       // Vendor error messages can echo payloads. Log only the numeric status/code.
-      console.warn('TikTok Events API rejected event', response.status, typeof result.code === 'number' ? result.code : 'invalid_response');
+      console.warn('TikTok Events API rejected event', response.status, typeof result?.code === 'number' ? result?.code : 'invalid_response');
       return c.json({ accepted: false }, 502);
     }
     return c.json({ accepted: true });
