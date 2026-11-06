@@ -1,7 +1,7 @@
 import { nowSec } from './crypto';
 import type { validateLogisticsInput } from './logistics-input.mjs';
 
-export type LogisticsToolId = 'tco' | 'eoq' | 'genbestilling' | 'abc';
+export type LogisticsToolId = 'tco' | 'eoq' | 'genbestilling' | 'abc' | 'ladmeter' | 'luftfragt' | 'palletransport' | 'containertransport' | 'biltransport';
 export type LogisticsInput = ReturnType<typeof validateLogisticsInput>;
 export interface LogisticsCalculation {
   id: string; toolId: LogisticsToolId; name: string; input: LogisticsInput; version: number;

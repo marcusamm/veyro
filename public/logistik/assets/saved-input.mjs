@@ -1,3 +1,5 @@
+import {transportCalculators} from './transport-calculations.mjs';
+import {normalizeTransportInput} from './transport-input.mjs';
 import {CalculationError, parseNumber, eoq, rop, tco, abc, MAX_ABC_ROWS, MAX_TCO_COSTS} from './calculations.mjs';
 export {CalculationError, CalculationError as LogisticsValidationError};
 export const MAX_SAVED_INPUT_BYTES = 128 * 1024;
@@ -33,6 +35,7 @@ function rows(value,max,path){
 }
 
 function normalize(toolId,raw,strict){
+  if(Object.hasOwn(transportCalculators,toolId)){const data=normalizeTransportInput(toolId,raw,strict);transportCalculators[toolId](data);return data;}
   if(!Object.hasOwn(calculators,toolId))fail('unknown_tool','toolId','Vælg et af de understøttede værktøjer.');
   // Only these explicitly selected fields ever leave the calculator. Browser
   // FormData also contains import preferences and dynamic control names.

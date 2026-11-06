@@ -1,3 +1,4 @@
+import {TRANSPORT_TOOLS} from './transport-registry.mjs';
 /** Shared published content for navigation, search, guides and Excel downloads. */
 export const TOOLS = [
   {
@@ -180,4 +181,5 @@ export const TOOLS = [
       { title: 'SAP Library · ABC Analysis', url: 'https://help.sap.com/saphelp_SCM700_ehp01/helpdata/en/91/0c9537ef68b16be10000009b38f8cf/content.htm?no_cache=true' },
     ],
   },
+  ...TRANSPORT_TOOLS,
 ];

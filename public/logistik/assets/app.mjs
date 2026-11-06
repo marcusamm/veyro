@@ -1,3 +1,5 @@
+import {initTransportCalculator} from './transport-ui.mjs';
+import {TRANSPORT_IDS} from './transport-contract.mjs';
 import {syncCapital,readCapital,loadCapital,capitalResult} from './tco-capital-ui.mjs';
 import {eoq,rop,tco,abc,SAMPLES,MAX_ABC_ROWS,MAX_TCO_COSTS,TCO_CAPITAL_SAMPLE,CalculationError} from './calculations.mjs';
 import {previewImport,exportABC} from './import.mjs';
@@ -29,7 +31,7 @@ if(search){
   const update=()=>{
     const query=search.value.trim();matches=searchTools(query);active=-1;
     if(!query){close();$('#search-status').textContent='';return;}
-    list.innerHTML=matches.length?matches.map(({tool,reason},i)=>`<a id="suggestion-${i}" role="option" aria-selected="false" href="${sitePath(tool.path)}"><span class="search-type">Beregner + Excel-skabelon · ${e(tool.category)}</span><strong>${e(tool.title)} ↗</strong><small>${e(tool.description)}</small><small>${e(reason)}</small></a>`).join(''):`<div class="no-results">Ingen sikre match. Prøv <strong>lager, bestilling, omkostninger eller ABC</strong> — eller <a href="${sitePath('/vaerktoejer/')}">se alle fire værktøjer</a>.</div>`;
+    list.innerHTML=matches.length?matches.map(({tool,reason},i)=>`<a id="suggestion-${i}" role="option" aria-selected="false" href="${sitePath(tool.path)}"><span class="search-type">Beregner + Excel-skabelon · ${e(tool.category)}</span><strong>${e(tool.title)} ↗</strong><small>${e(tool.description)}</small><small>${e(reason)}</small></a>`).join(''):`<div class="no-results">Ingen sikre match. Prøv <strong>lager, bestilling, omkostninger eller ABC</strong> — eller <a href="${sitePath('/vaerktoejer/')}">se alle værktøjer</a>.</div>`;
     list.hidden=false;search.setAttribute('aria-expanded','true');search.removeAttribute('aria-activedescendant');$('#search-status').textContent=`${matches.length} relevante værktøjer.`;
   };
   search.addEventListener('input',update);search.addEventListener('focus',()=>{if(search.value.trim())update();});
@@ -45,7 +47,7 @@ if(search){
 }
 
 const form=typeof document==='undefined'?null:$('#calculator');
-if(form) initCalculator(form.dataset.tool);
+if(form){if(TRANSPORT_IDS.includes(form.dataset.tool))initTransportCalculator(form.dataset.tool);else initCalculator(form.dataset.tool);}
 
 function initCalculator(id){
   const resultBox=$('#results'),panel=$('#result-panel'),status=$('#result-status'),errors=$('#input-errors');

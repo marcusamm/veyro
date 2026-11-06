@@ -1,4 +1,4 @@
-export type LogisticsToolId = 'eoq' | 'genbestilling' | 'tco' | 'abc';
+export type LogisticsToolId = 'eoq' | 'genbestilling' | 'tco' | 'abc' | 'ladmeter' | 'luftfragt' | 'palletransport' | 'containertransport' | 'biltransport';
 export type LogisticsInput = Record<string, unknown>;
 export {CalculationError, CalculationError as LogisticsValidationError} from './logistics-calculations.mjs';
 export const MAX_SAVED_INPUT_BYTES: number;
