@@ -1,5 +1,5 @@
 # Opdaterer databasen og publicerer kundepanelet og hjemmesiden (kunde.veyro.dk og ny.veyro.dk).
-# Køres ved nye migrationer på main eller manuelt fra Actions: "Deploy kundepanel".
+# Køres ved nye migrationer/logistik-assets på main eller manuelt fra Actions.
 # Migrationerne tilføjer kun nye kolonner og tabeller; eksisterende data bevares.
 # Tilbagerulning af databasen: se "Tilbagerulning" i loggen (D1 Time Travel-bogmærke fra før migrationerne).
 name: Deploy kundepanel
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['migrations/**']
+    paths: ['migrations/**', 'public/logistik/**']
 
 concurrency:
   group: deploy-kundepanel
