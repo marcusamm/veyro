@@ -472,15 +472,17 @@ describe('Mobil og adgang', () => {
 
 describe('Fortrolighedsaftale: side og skabelon på veyro.dk', () => {
   it('forsiden viser fortrolighedsaftalen, siden findes og skabelonen er mærket som skabelon', async () => {
-    const front = await (await fetch(`${stack.site}/`)).text();
+    // These assertions target Danish copy; automatic country detection may choose English.
+    const danish = { headers: { Cookie: 'veyro_language=da' } };
+    const front = await (await fetch(`${stack.site}/`, danish)).text();
     expect(front).toContain('Jeres oplysninger er fortrolige');
     expect(front).toContain('/pages/fortrolighedsaftale');
-    const page = await fetch(`${stack.site}/pages/fortrolighedsaftale`);
+    const page = await fetch(`${stack.site}/pages/fortrolighedsaftale`, danish);
     expect(page.status).toBe(200);
     const html = await page.text();
     expect(html).toContain('/fortrolighedsaftale-skabelon.pdf');
     expect(html).toContain('ikke en MitID-underskrift');
-    const pdf = await fetch(`${stack.site}/fortrolighedsaftale-skabelon.pdf`);
+    const pdf = await fetch(`${stack.site}/fortrolighedsaftale-skabelon.pdf`, danish);
     expect(pdf.status).toBe(200);
     expect(pdf.headers.get('content-type')).toBe('application/pdf');
     const bytes = Buffer.from(await pdf.arrayBuffer());
