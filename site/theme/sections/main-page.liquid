@@ -49,6 +49,9 @@
         </nav>
       {%- endif -%}
       <div class="rte rte--long doc__body">
+        {% if request.host == 'veyro.dk' %}{% if page.handle == 'cookiepolitik' or page.handle == 'privatlivspolitik' %}
+        <section aria-labelledby="tiktok-privacy"><h2 id="tiktok-privacy">TikTok Pixel</h2><p>{{ 'cookies.tiktok_disclosure' | t }}</p><p><a href="https://www.tiktok.com/legal/page/eea/privacy-policy/da">TikTok Privacy Policy</a> · <a href="https://ads.tiktok.com/help/article/using-cookies-with-tiktok-pixel">TikTok cookies</a></p><button type="button" class="link-button" data-cookie-open>{{ 'cookies.customize' | t }}</button></section>
+        {% endif %}{% endif %}
         {{ intro }}
         {%- for part in parts offset: 1 -%}
           {%- assign source_heading = source_parts[forloop.index] | split: '</h2>' | first | strip_html | strip -%}

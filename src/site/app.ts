@@ -69,11 +69,11 @@ site.use('*', async (c, next) => {
     [
       "default-src 'self'",
       // Trustpilots widget indlæses kun efter samtykke (se sections/trustpilot.liquid)
-      `script-src 'self' 'nonce-${nonce}' https://widget.trustpilot.com`,
+      `script-src 'self' 'nonce-${nonce}' https://widget.trustpilot.com https://analytics.tiktok.com`,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https://*.trustpilot.com",
+      "img-src 'self' data: https://*.trustpilot.com https://analytics.tiktok.com https://*.analytics.tiktok.com",
       "font-src 'self'",
-      "connect-src 'self' https://*.trustpilot.com",
+      "connect-src 'self' https://*.trustpilot.com https://analytics.tiktok.com https://*.analytics.tiktok.com",
       'frame-src https://widget.trustpilot.com',
       "form-action 'self'",
       "frame-ancestors 'none'",

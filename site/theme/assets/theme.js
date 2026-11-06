@@ -474,6 +474,7 @@
       const consent = {
         analytics: !!choice.analytics && !privacySignal(),
         marketing: !!choice.marketing,
+        tiktok: banner.hasAttribute('data-tiktok-consent') && !!choice.marketing && !privacySignal(),
         preferences: !!choice.preferences,
         sale_of_data: !!choice.marketing,
       };
@@ -515,7 +516,7 @@
       const note = banner.querySelector('[data-cookie-privacy-signal]');
       if (note) note.hidden = !privacySignal();
       // Version 1 did not disclose visitor statistics. Ask for a fresh choice.
-      if (record?.v !== 2) open();
+      if (record?.v !== 2 || (banner.hasAttribute('data-tiktok-consent') && record?.consent?.marketing && !Object.hasOwn(record.consent, 'tiktok'))) open();
       else close();
     };
     window.addEventListener('storage', (event) => {

@@ -103,7 +103,8 @@
     "saved": "Your choice has been saved.",
     "analytics_disclosure": "With your consent, we also use our own statistics cookies to understand visits, returning browsers, pages viewed, active time and approximate country and city. Visit records and the browser ID are kept for up to 90 days; the visit cookie expires after 30 minutes of inactivity. You can turn statistics off at any time in Cookie settings.",
     "analytics_privacy_signal": "Your browser has sent a privacy signal (GPC or Do Not Track). Statistics are therefore off, including if you select Accept all.",
-    "save_error": "Your browser could not save your choice. Statistics and marketing are off on this page."
+    "save_error": "Your browser could not save your choice. Statistics and marketing are off on this page.",
+    "tiktok_disclosure": "With marketing consent, we also use TikTok Pixel to measure advertising and build audiences. TikTok receives page-visit, browser and device information, IP address and cookie identifiers. Withdraw consent in Cookie settings. We do not send form fields or customer details to the pixel."
   },
   "products": {
     "add_to_cart": "Add to basket",

@@ -70,6 +70,7 @@ NDA_SIGNERS = "efe@veyro.dk,marcus@veyro.dk"
 NOTIFY_EMAIL = "kontakt@veyro.dk"
 EMAIL_FROM = "Veyro <kontakt@veyro.dk>"
 DEV_MODE = "0"
+# TikTok på .dk indlæses kun efter et nyt markedsføringssamtykke.
 # Salgshjemmesiderne: dansk/engelsk på .dk og svensk på .se (README, afsnit 15).
 SITE_HOSTS = "veyro.dk,www.veyro.dk,veyro.se,www.veyro.se,ny.veyro.dk"
 SITE_URL = "https://veyro.dk"
