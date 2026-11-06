@@ -1,0 +1,557 @@
+{
+  "sourceFile": "Skabeloner_til_distributionseksamen (1).xlsx",
+  "sha256": "48814f95b14d3ec70a69dc75ecaf9878f87cabe5a79d051cb95a3eccae2d96b0",
+  "note": "Values and formulas read from the original supplied file. Cached results are independent regression expectations, not recalculation evidence. Money is compared after rounding to øre.",
+  "sheets": {
+    "Bil": {
+      "B5": {
+        "value": 125000,
+        "formula": null
+      },
+      "B6": {
+        "value": 330000,
+        "formula": null
+      },
+      "B7": {
+        "value": 45000,
+        "formula": null
+      },
+      "B8": {
+        "value": 35,
+        "formula": null
+      },
+      "B9": {
+        "value": 3.5,
+        "formula": null
+      },
+      "B10": {
+        "value": 12.5,
+        "formula": null
+      },
+      "B11": {
+        "value": 0.9,
+        "formula": null
+      },
+      "B12": {
+        "value": 2000,
+        "formula": null
+      },
+      "B13": {
+        "value": 500,
+        "formula": null
+      },
+      "B14": {
+        "value": 0.9,
+        "formula": null
+      },
+      "B18": {
+        "value": 100,
+        "formula": null
+      },
+      "B19": {
+        "value": 70,
+        "formula": null
+      },
+      "B20": {
+        "value": 99,
+        "formula": null
+      },
+      "B21": {
+        "value": 154,
+        "formula": null
+      },
+      "B22": {
+        "value": 198,
+        "formula": null
+      },
+      "B23": {
+        "value": 165,
+        "formula": null
+      },
+      "B24": {
+        "value": 110,
+        "formula": null
+      },
+      "B25": {
+        "value": 198,
+        "formula": null
+      },
+      "B26": {
+        "value": 176,
+        "formula": null
+      },
+      "B27": {
+        "value": 143,
+        "formula": null
+      },
+      "B28": {
+        "value": 110,
+        "formula": null
+      },
+      "B29": {
+        "value": 63,
+        "formula": null
+      },
+      "C34": {
+        "value": 1586,
+        "formula": "=SUM(B18:B29)"
+      },
+      "C35": {
+        "value": 55510,
+        "formula": "=SUM(C18:C29)"
+      },
+      "C36": {
+        "value": 1772209,
+        "formula": "=H30"
+      },
+      "C37": {
+        "value": 330000,
+        "formula": "=$B$6"
+      },
+      "C38": {
+        "value": 45000,
+        "formula": "=$B$7"
+      },
+      "C39": {
+        "value": 2147209,
+        "formula": "=IF(ISNUMBER(H61),SUM(C36:C38)+H61,\"Udfyld gebyrer\")"
+      },
+      "C40": {
+        "value": 38.6814808142677,
+        "formula": "=IF(AND(ISNUMBER(C39),C35>0),C39/C35,\"\")"
+      },
+      "C41": {
+        "value": 1353.8518284993695,
+        "formula": "=IF(AND(ISNUMBER(C39),C34>0),C39/C34,\"\")"
+      },
+      "C42": {
+        "value": 0,
+        "formula": "=H61"
+      }
+    },
+    "Lufttransport": {
+      "B2": {
+        "value": 5,
+        "formula": null
+      },
+      "B3": {
+        "value": 20,
+        "formula": null
+      },
+      "B4": {
+        "value": 55,
+        "formula": null
+      },
+      "B5": {
+        "value": 95,
+        "formula": null
+      },
+      "B6": {
+        "value": 25,
+        "formula": null
+      },
+      "B9": {
+        "value": 100,
+        "formula": "=IF(AND(ISNUMBER(B2),B2>0,ISNUMBER(B3),B3>=0),B2*B3,\"\")"
+      },
+      "B10": {
+        "value": 0.653125,
+        "formula": "=IF(AND(B2>0,B4>0,B5>0,B6>0),B2*B4*B5*B6/1000000,\"\")"
+      },
+      "B11": {
+        "value": 108.85416666666667,
+        "formula": "=IF(AND(ISNUMBER(B10),E10>0),B10*1000000/E10,\"\")"
+      },
+      "B12": {
+        "value": 108.85416666666667,
+        "formula": "=IF(AND(ISNUMBER(B9),ISNUMBER(B11),ISNUMBER(E11),E11>=0),IF(E11=0,MAX(B9,B11),ROUNDUP(MAX(B9,B11)/E11,0)*E11),\"\")"
+      },
+      "D3": {
+        "value": "Minimumsfragt",
+        "formula": null
+      },
+      "D4": {
+        "value": 0,
+        "formula": null
+      },
+      "D5": {
+        "value": 100,
+        "formula": null
+      },
+      "D6": {
+        "value": 200,
+        "formula": null
+      },
+      "D7": {
+        "value": 300,
+        "formula": null
+      },
+      "D8": {
+        "value": 400,
+        "formula": null
+      },
+      "D9": {
+        "value": 600,
+        "formula": null
+      },
+      "D10": {
+        "value": "Volumenvægtsfaktor",
+        "formula": null
+      },
+      "D11": {
+        "value": "Afrunding til kg-trin",
+        "formula": null
+      },
+      "D12": {
+        "value": "Valgt rate",
+        "formula": null
+      },
+      "E3": {
+        "value": 950,
+        "formula": null
+      },
+      "E4": {
+        "value": 24,
+        "formula": null
+      },
+      "E5": {
+        "value": 22,
+        "formula": null
+      },
+      "E6": {
+        "value": 20,
+        "formula": null
+      },
+      "E7": {
+        "value": 18.5,
+        "formula": null
+      },
+      "E8": {
+        "value": 17.5,
+        "formula": null
+      },
+      "E9": {
+        "value": 16.25,
+        "formula": null
+      },
+      "E10": {
+        "value": 6000,
+        "formula": null
+      },
+      "E11": {
+        "value": 0,
+        "formula": null
+      },
+      "E12": {
+        "value": 22,
+        "formula": "=IF(E13=\"OK\",VLOOKUP(B12,D4:E9,2,TRUE),\"\")"
+      },
+      "C17": {
+        "value": 2394.791666666667,
+        "formula": "=IF(E13=\"OK\",MAX(E3,B12*E12),\"\")"
+      },
+      "C23": {
+        "value": 2394.791666666667,
+        "formula": "=IF(AND(ISNUMBER(C17),ISNUMBER(C18)),SUM(C17:C18),\"Kontrollér input/gebyrer\")"
+      }
+    },
+    "Paller": {
+      "B4": {
+        "value": 20,
+        "formula": null
+      },
+      "B5": {
+        "value": 950,
+        "formula": null
+      },
+      "B7": {
+        "value": 90000,
+        "formula": null
+      },
+      "B9": {
+        "value": 7.45,
+        "formula": null
+      },
+      "B10": {
+        "value": "2026-10-13 09:00:00",
+        "formula": null
+      },
+      "B11": {
+        "value": "2026-10-16 10:00:00",
+        "formula": null
+      },
+      "C15": {
+        "value": 380,
+        "formula": null
+      },
+      "C17": {
+        "value": 1,
+        "formula": null
+      },
+      "C20": {
+        "value": 7600,
+        "formula": "=IF(ISNUMBER(C19),SUM(C18:C19),\"Udfyld gebyrer\")"
+      },
+      "C21": {
+        "value": 380,
+        "formula": "=IF(AND(ISNUMBER(C20),$B$4>0),C20/$B$4,\"\")"
+      },
+      "C22": {
+        "value": 4,
+        "formula": null
+      },
+      "C23": {
+        "value": 3.0416666666642413,
+        "formula": "=IF(AND(ISNUMBER($B$10),ISNUMBER($B$11),$B$11>=$B$10),$B$11-$B$10,\"\")"
+      },
+      "C24": {
+        "value": -0.9583333333357587,
+        "formula": "=IF(AND(ISNUMBER(C23),ISNUMBER(C22),ISNUMBER(C28),C28>=0,C22>=C28),C23-C22,\"\")"
+      },
+      "C26": {
+        "value": 3,
+        "formula": "=IF(ISNUMBER(C20),RANK(C20,$C$20:$F$20,1),\"\")"
+      },
+      "C28": {
+        "value": 3,
+        "formula": null
+      },
+      "D15": {
+        "value": 8200,
+        "formula": null
+      },
+      "D17": {
+        "value": 1,
+        "formula": null
+      },
+      "D20": {
+        "value": 8200,
+        "formula": "=IF(ISNUMBER(D19),SUM(D18:D19),\"Udfyld gebyrer\")"
+      },
+      "D21": {
+        "value": 410,
+        "formula": "=IF(AND(ISNUMBER(D20),$B$4>0),D20/$B$4,\"\")"
+      },
+      "D22": {
+        "value": 3,
+        "formula": null
+      },
+      "D23": {
+        "value": 3.0416666666642413,
+        "formula": "=IF(AND(ISNUMBER($B$10),ISNUMBER($B$11),$B$11>=$B$10),$B$11-$B$10,\"\")"
+      },
+      "D24": {
+        "value": 0.04166666666424135,
+        "formula": "=IF(AND(ISNUMBER(D23),ISNUMBER(D22),ISNUMBER(D28),D28>=0,D22>=D28),D23-D22,\"\")"
+      },
+      "D26": {
+        "value": 4,
+        "formula": "=IF(ISNUMBER(D20),RANK(D20,$C$20:$F$20,1),\"\")"
+      },
+      "D28": {
+        "value": 2,
+        "formula": null
+      },
+      "E15": {
+        "value": 44,
+        "formula": null
+      },
+      "E17": {
+        "value": 7.45,
+        "formula": "=$B$9"
+      },
+      "E20": {
+        "value": 6556,
+        "formula": "=IF(ISNUMBER(E19),SUM(E18:E19),\"Udfyld gebyrer\")"
+      },
+      "E21": {
+        "value": 327.8,
+        "formula": "=IF(AND(ISNUMBER(E20),$B$4>0),E20/$B$4,\"\")"
+      },
+      "E22": {
+        "value": 4,
+        "formula": null
+      },
+      "E23": {
+        "value": 3.0416666666642413,
+        "formula": "=IF(AND(ISNUMBER($B$10),ISNUMBER($B$11),$B$11>=$B$10),$B$11-$B$10,\"\")"
+      },
+      "E24": {
+        "value": -0.9583333333357587,
+        "formula": "=IF(AND(ISNUMBER(E23),ISNUMBER(E22),ISNUMBER(E28),E28>=0,E22>=E28),E23-E22,\"\")"
+      },
+      "E26": {
+        "value": 2,
+        "formula": "=IF(ISNUMBER(E20),RANK(E20,$C$20:$F$20,1),\"\")"
+      },
+      "E28": {
+        "value": 2,
+        "formula": null
+      },
+      "F15": {
+        "value": 750,
+        "formula": null
+      },
+      "F17": {
+        "value": 7.45,
+        "formula": "=$B$9"
+      },
+      "F20": {
+        "value": 5587.5,
+        "formula": "=IF(ISNUMBER(F19),SUM(F18:F19),\"Udfyld gebyrer\")"
+      },
+      "F21": {
+        "value": 279.375,
+        "formula": "=IF(AND(ISNUMBER(F20),$B$4>0),F20/$B$4,\"\")"
+      },
+      "F22": {
+        "value": 3,
+        "formula": null
+      },
+      "F23": {
+        "value": 3.0416666666642413,
+        "formula": "=IF(AND(ISNUMBER($B$10),ISNUMBER($B$11),$B$11>=$B$10),$B$11-$B$10,\"\")"
+      },
+      "F24": {
+        "value": 0.04166666666424135,
+        "formula": "=IF(AND(ISNUMBER(F23),ISNUMBER(F22),ISNUMBER(F28),F28>=0,F22>=F28),F23-F22,\"\")"
+      },
+      "F26": {
+        "value": 1,
+        "formula": "=IF(ISNUMBER(F20),RANK(F20,$C$20:$F$20,1),\"\")"
+      },
+      "F28": {
+        "value": 3,
+        "formula": null
+      }
+    },
+    "Container": {
+      "B4": {
+        "value": 450000,
+        "formula": null
+      },
+      "B5": {
+        "value": 0.12,
+        "formula": null
+      },
+      "B6": {
+        "value": 365,
+        "formula": null
+      },
+      "B7": {
+        "value": 6.61,
+        "formula": null
+      },
+      "B8": {
+        "value": 7.45,
+        "formula": null
+      },
+      "B9": {
+        "value": 1,
+        "formula": null
+      },
+      "C14": {
+        "value": 45,
+        "formula": null
+      },
+      "C15": {
+        "value": 25448.5,
+        "formula": "=IF(AND(ISNUMBER(C25),C25>=0,ISNUMBER(C27),C27>0,$B$9>0),C25*C27*$B$9,\"\")"
+      },
+      "C20": {
+        "value": 25448.5,
+        "formula": "=IF(AND(ISNUMBER(C15),ISNUMBER(C16)),SUM(C15:C16),\"Kontrollér fragt/gebyrer\")"
+      },
+      "C21": {
+        "value": 6657.534246575343,
+        "formula": "=IF(AND(ISNUMBER(C29),$B$4>=0,$B$5>=0,$B$6>0,$B$9>0),C29*$C$10*$B$9,\"\")"
+      },
+      "C22": {
+        "value": 32106.034246575342,
+        "formula": "=IF(AND(ISNUMBER(C20),ISNUMBER(C21)),SUM(C20:C21),\"Kontrollér input\")"
+      },
+      "C25": {
+        "value": 3850,
+        "formula": null
+      },
+      "C26": {
+        "value": "USD",
+        "formula": null
+      },
+      "C27": {
+        "value": 6.61,
+        "formula": "=IF(C26=\"USD\",$B$7,IF(C26=\"EUR\",$B$8,IF(C26=\"DKK\",1,\"\")))"
+      },
+      "C28": {
+        "value": 0,
+        "formula": null
+      },
+      "C29": {
+        "value": 45,
+        "formula": "=IF(AND(ISNUMBER(C14),C14>=0,ISNUMBER(C28)),MAX(0,C14-C28),\"\")"
+      },
+      "D14": {
+        "value": 56,
+        "formula": null
+      },
+      "D15": {
+        "value": 21416.4,
+        "formula": "=IF(AND(ISNUMBER(D25),D25>=0,ISNUMBER(D27),D27>0,$B$9>0),D25*D27*$B$9,\"\")"
+      },
+      "D20": {
+        "value": 21416.4,
+        "formula": "=IF(AND(ISNUMBER(D15),ISNUMBER(D16)),SUM(D15:D16),\"Kontrollér fragt/gebyrer\")"
+      },
+      "D21": {
+        "value": 8284.931506849316,
+        "formula": "=IF(AND(ISNUMBER(D29),$B$4>=0,$B$5>=0,$B$6>0,$B$9>0),D29*$C$10*$B$9,\"\")"
+      },
+      "D22": {
+        "value": 29701.331506849318,
+        "formula": "=IF(AND(ISNUMBER(D20),ISNUMBER(D21)),SUM(D20:D21),\"Kontrollér input\")"
+      },
+      "D25": {
+        "value": 3240,
+        "formula": null
+      },
+      "D26": {
+        "value": "USD",
+        "formula": null
+      },
+      "D27": {
+        "value": 6.61,
+        "formula": "=IF(D26=\"USD\",$B$7,IF(D26=\"EUR\",$B$8,IF(D26=\"DKK\",1,\"\")))"
+      },
+      "D28": {
+        "value": 0,
+        "formula": null
+      },
+      "D29": {
+        "value": 56,
+        "formula": "=IF(AND(ISNUMBER(D14),D14>=0,ISNUMBER(D28)),MAX(0,D14-D28),\"\")"
+      }
+    },
+    "Ladmeter": {
+      "D3": {
+        "value": 8,
+        "formula": null
+      },
+      "D4": {
+        "value": 0.75,
+        "formula": null
+      },
+      "D6": {
+        "value": 2.5,
+        "formula": "=IF(AND(COUNT(D3:D4)=2,D3>0,D4>0,ISNUMBER(D7),D7>0,D7=INT(D7),ISNUMBER(D8),D8>0),D3*D4*D7/D8,\"\")"
+      },
+      "D7": {
+        "value": 1,
+        "formula": null
+      },
+      "D8": {
+        "value": 2.4,
+        "formula": null
+      }
+    }
+  }
+}
