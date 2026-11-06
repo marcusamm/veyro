@@ -85,7 +85,7 @@
       "name": {{ company | json }},
       "url": {{ shop.url | append: '/' | json }},
       "description": {{ settings.company_tagline | json }},
-      "areaServed": "DK",
+      "areaServed": ["DK", "SE"],
       "knowsLanguage": ["da", "en", "sv"]
       {%- if settings.logo -%},"logo": {{ settings.logo | image_url: width: 600 | prepend: 'https:' | json }}{%- else -%},"logo": {{ shop.url | append: '/assets/favicon-192.png' | json }}{%- endif -%}
       {%- if has_email -%},"email": {{ settings.company_email | json }}{%- endif -%}
@@ -110,7 +110,7 @@
       "url": {{ canonical_url | json }},
       "description": {{ page_description | json }},
       "provider": { "@id": {{ shop.url | append: '/#organization' | json }} },
-      "areaServed": { "@type": "Country", "name": "DK" },
+      "areaServed": [{ "@type": "Country", "name": "DK" }, { "@type": "Country", "name": "SE" }],
       "mainEntityOfPage": {{ canonical_url | json }}
     }
   </script>
