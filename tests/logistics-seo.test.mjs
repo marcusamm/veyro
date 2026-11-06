@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import worker from '../src/index';
-import { logisticsRobots, publicLogisticsRequest } from '../src/lib/logistics-seo';
+import { logisticsRobots, publicLogisticsRequest, PUBLIC_LOGISTICS_PATHS } from '../src/lib/logistics-seo';
 
 const origin = 'https://kunde.veyro.dk';
 const sitemap = readFileSync(new URL('../public/logistik/sitemap.xml', import.meta.url), 'utf8');
-const paths = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match => new URL(match[1]).pathname);
+const paths = [...PUBLIC_LOGISTICS_PATHS];
+const publicSitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match => new URL(match[1]));
 const closed = 'User-agent: *\nDisallow: /\n';
 
 // Evaluate standard wildcard/end-anchor and longest-match robots precedence,
@@ -31,6 +32,8 @@ describe('Public logistics crawl boundary', () => {
 
   it('allows every canonical page in the published sitemap, using exact route rules', () => {
     expect(paths).toHaveLength(13);
+    expect(publicSitemapUrls.map(url => url.origin)).toEqual(paths.map(() => 'https://xn--logistikvrktjer-5lb32a.dk'));
+    expect(publicSitemapUrls.map(url => url.pathname)).toEqual(paths.map(path => path.slice('/logistik'.length)));
     for (const path of paths) {
       expect(robots).toContain(`Allow: ${path}$\n`);
       expect(allowed(robots, path), path).toBe(true);

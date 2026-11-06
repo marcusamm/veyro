@@ -75,12 +75,12 @@ describe('Same Veyro account, optional login', () => {
     for (const url of ['/tools', '/tools/', '/en/tools', '/en/tools/', '/sv/tools', '/sv/tools/']) {
       const response = await marketing.get(url);
       expect(response.status).toBe(302);
-      expect(response.headers.get('location')).toBe(stack.base + '/logistik/');
+      expect(response.headers.get('location')).toBe('https://xn--logistikvrktjer-5lb32a.dk/');
     }
     for (const [url, label] of [['/', 'Logistikberegner'], ['/en/', 'Logistics calculator'], ['/sv/', 'Logistikberäknare']]) {
       const response = await marketing.get(url);
       expect(response.status).toBe(200);
-      expect(response.html).toContain(`href="https://kunde.veyro.dk/logistik/">${label}</a>`);
+      expect(response.html).toContain(`href="https://xn--logistikvrktjer-5lb32a.dk/">${label}</a>`);
       expect(response.html).not.toContain('href="https://kunde.veyro.dk/tools');
     }
     const before = await anna.get('/konto');

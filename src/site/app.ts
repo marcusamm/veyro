@@ -1,5 +1,6 @@
 // Salgshjemmesiden veyro.dk. Kører i samme Worker som kundepanelet, men på sine egne domæner (SITE_HOSTS).
 import { Hono, type Context } from 'hono';
+import { LOGISTICS_ORIGIN } from '../logistics-site';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import type { Env } from '../env';
 import { sha256Hex } from '../lib/crypto';
@@ -142,7 +143,7 @@ site.route('/analytics', analytics);
 // The logistics calculator replaces the old free-tools landing pages.
 for (const path of ['/tools', '/en/tools', '/sv/tools']) {
   for (const route of [path, `${path}/`]) {
-    site.get(route, (c) => c.redirect(`${(c.env.APP_URL || 'https://kunde.veyro.dk').replace(/\/+$/, '')}/logistik/`, 302));
+    site.get(route, (c) => c.redirect(`${LOGISTICS_ORIGIN}/`, 302));
   }
 }
 

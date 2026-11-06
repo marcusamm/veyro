@@ -43,6 +43,7 @@ import { KASSE_CSS, KASSE_JS } from './views/kasse-assets';
 import { ICON_PNG, INTER_TIGHT_WOFF2, LOGO_PNG } from './views/brand';
 import { errorPage } from './views/pages';
 import { isSavedLogisticsView, logisticsRobots, publicLogisticsRequest } from './lib/logistics-seo';
+import { fetchLogisticsSite, isLogisticsSiteRequest } from './logistics-site';
 
 const app = new Hono<AppEnv>();
 
@@ -164,6 +165,7 @@ const FREQUENT_CRON = '*/10 * * * *';
 export default {
   // Salgshjemmesiden (veyro.dk) og kundepanelet (kunde.veyro.dk) kører i samme Worker; domænet afgør hvilken.
   fetch(req: Request, env: Env, ctx: ExecutionContext) {
+    if (isLogisticsSiteRequest(req)) return fetchLogisticsSite(req, env, (request, bindings) => app.fetch(request, bindings, ctx));
     return isSiteRequest(req, env) ? site.fetch(req, env, ctx) : app.fetch(req, env, ctx);
   },
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {

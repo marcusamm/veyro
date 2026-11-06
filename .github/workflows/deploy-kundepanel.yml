@@ -1,5 +1,5 @@
-# Opdaterer databasen og publicerer kundepanelet og hjemmesiden (kunde.veyro.dk og ny.veyro.dk).
-# Køres ved nye migrationer/logistik-assets på main eller manuelt fra Actions.
+# Opdaterer databasen og publicerer kundepanelet, salgssiden og logistikværktøjer.dk.
+# Køres ved nye migrationer/logistik-assets/domæner på main eller manuelt fra Actions.
 # Migrationerne tilføjer kun nye kolonner og tabeller; eksisterende data bevares.
 # Tilbagerulning af databasen: se "Tilbagerulning" i loggen (D1 Time Travel-bogmærke fra før migrationerne).
 name: Deploy kundepanel
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['migrations/**', 'public/logistik/**']
+    paths: ['migrations/**', 'public/logistik/**', 'public/logistics-site/**', 'src/logistics-site.ts', 'wrangler.toml']
 
 concurrency:
   group: deploy-kundepanel
@@ -71,6 +71,20 @@ jobs:
           check https://kunde.veyro.dk/logistik/login 200
           check https://kunde.veyro.dk/logistik/vaerktoejer/eoq/ 200
           check https://kunde.veyro.dk/logistik/api/calculations 401
+          logistics=https://xn--logistikvrktjer-5lb32a.dk
+          check "$logistics/" 200
+          check "$logistics/vaerktoejer/eoq/" 200
+          check "$logistics/mine/" 200
+          check "$logistics/logistik/login" 200
+          check "$logistics/logistik/api/calculations" 401
+          check "$logistics/sitemap.xml" 200
+          for host in logistikvaerktojer.dk www.logistikvaerktojer.dk www.xn--logistikvrktjer-5lb32a.dk; do
+            check "https://$host/vaerktoejer/eoq/?test=redirect" 308
+            destination=$(curl -s -o /dev/null -w '%{redirect_url}' "https://$host/vaerktoejer/eoq/?test=redirect")
+            if [ "$destination" != "$logistics/vaerktoejer/eoq/?test=redirect" ]; then
+              echo "::error::$host har forkert viderestilling"; exit 1
+            fi
+          done
           # Login fra start til slut: send e-mail-formularen med en adresse uden konto (ingen mail sendes)
           jar=$(mktemp)
           csrf=$(curl -s -c "$jar" https://kunde.veyro.dk/login | sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' | head -1)
