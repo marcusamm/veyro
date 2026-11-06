@@ -92,4 +92,26 @@ describe('Search metadata and multilingual hosting page', () => {
     expect(html).toContain('<title>Website &lt;test&gt; &amp; hosting – Veyro</title>');
     expect(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/)[1]).not.toContain('Website &lt;test&gt;');
   });
+
+  it.each([
+    ['da', 'Webbureau i Slagelse – hjemmesider og hosting'],
+    ['en', 'Web studio in Slagelse – websites and hosting'],
+    ['sv', 'Webbyrå i Slagelse – hemsidor och webbhotell'],
+  ])('gives the about page a descriptive title with the brand once in %s', (language, expected) => {
+    const html = render(language, 'om-os');
+    const title = html.match(/<title>(.*?)<\/title>/)[1];
+    expect(title).toBe(`${expected} – Veyro`);
+    expect(title.match(/Veyro/g)).toHaveLength(1);
+    expect(html).toContain(`<meta property="og:title" content="${title}">`);
+  });
+
+  it.each([
+    ['da', 'Nej. Vi optimerer den, hvor den ligger.', 'Læs om hosting og vedligeholdelse'],
+    ['en', 'No. We optimise it where it is hosted.', 'Read about hosting and maintenance'],
+    ['sv', 'Nej. Vi optimerar den där den ligger.', 'Läs om webbhotell och underhåll'],
+  ])('links optimisation to hosting within the translated FAQ in %s', (language, answer, label) => {
+    const html = render(language, 'website-optimering');
+    const prefix = language === 'da' ? '' : `/${language}`;
+    expect(html).toContain(`<p>${answer} <a href="${prefix}/pages/hosting">${label}</a>`);
+  });
 });

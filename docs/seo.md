@@ -45,3 +45,41 @@ Næste indsats uden for hjemmesiden er ensartede virksomhedsoplysninger og links
 Kør `npm run build:site`, `npm run typecheck` og de relevante site-tests. Kontrollér efter deploy de faktiske HTML-titler, interne links og sitemap. D1-indhold kan overskrive standardmenuer og sektioner; gamle gemte sider arver kun det nye `seo_title`, medmindre feltet er gemt eksplicit. Skift ikke eksisterende kundetekster eller menuer ukritisk for at gennemtvinge standardindhold.
 
 Referencer: [Googles SEO-guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide), [webstedsnavn i Google](https://developers.google.com/search/docs/appearance/site-names), [virksomhedsdata](https://developers.google.com/search/docs/appearance/structured-data/organization), [anmodning om nyt crawl](https://developers.google.com/search/docs/crawling-indexing/ask-google-to-recrawl), [Google-InspectionTool](https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers#google-inspectiontool), [Business Profile-krav](https://support.google.com/business/answer/3038177).
+
+## Gennemgang 6. november 2026
+
+Robins [SEO-tjek](https://teamrobin.com/da/test-dit-firma/seotjek) beskriver scanning af titler, indhold, teknik, trafik og lokal synlighed efterfulgt af rådgivning. En rapportscore ændrer ikke hjemmesiden og er ikke en Google-placering. Veyros gennemgang tager derfor udgangspunkt i konkrete HTTP-svar, indhold og målinger.
+
+### Fund og rettelser
+
+- Kundedomænets rod-`robots.txt` blokerede hele domænet, inklusive 13 offentlige logistikværktøjssider. Den tillader nu de præcise offentlige sider og nødvendige ressourcer og annoncerer `/logistik/sitemap.xml`. En robots-fil i en undermappe kan ikke ophæve reglerne i roden. Login, API'er, kontosider og gemte visninger er fortsat uden for den offentlige crawlerliste. Private visninger får også `X-Robots-Tag: noindex, nofollow`; adgangskontrol er fortsat den egentlige beskyttelse af brugerdata. Preview-værter forbliver lukkede.
+- Om os-sidens søgetitel nævnte Veyro to gange. Den beskriver nu webbureauet i Slagelse, med ét afsluttende brandnavn, på dansk, engelsk og svensk.
+- Optimeringssiden linker kontekstuelt til hosting og vedligeholdelse i alle tre sprog.
+- Eksempelbilleder har responsive WebP-varianter og JPEG-fallback. De tre galleribilleder fylder samlet 170.502 bytes mod 230.106 bytes ved samme bredde på 960 px (26 % mindre). Ny 768 px-størrelse fylder 121.598 bytes. Billedudsnit, design og animation bevares. Filnavne indeholder indholdshash og kan derfor caches længe uden at fastholde gamle billeder. Effektive eksisterende mobile JPEG'er bevares, hvor WebP ville fylde mere.
+- Galleriets navngivne gruppe har korrekt semantik, og demolinks bruger deres synlige tekst som tilgængeligt navn.
+
+### Udgangspunkt før rettelserne
+
+Live HTTP-gennemgang: 60 sitemap-URL'er svarede 200 med korrekt sprog, selvrefererende canonical, én H1 og beskrivelse. 122 yderligere interne links virkede. Sprog-alternativer, JSON-LD, ægte 404, viderestilling fra www og noindex på fiktive demoer/prøveværten fungerede allerede.
+
+Lighthouse 13.6.0, simuleret mobil, enkeltmålinger fra 6. november:
+
+| Side | Performance | Tilgængelighed | Best practices | SEO | LCP | TBT | CLS |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Forside | 96 | 94 | 100 | 100 | 1,6 s | 100 ms | 0 |
+| Hjemmeside | 99 | 96 | 100 | 100 | 2,1 s | 0 ms | 0,001 |
+
+Laboratoriemålinger kan variere og er ikke faktiske brugerdata/Core Web Vitals eller et bevis på høj placering. Lighthouse SEO dækker et begrænset sæt tekniske kontroller.
+
+Search Console blev åbnet i Chrome-profilen med `marcus@veyro.dk`. Sitemaprapporten viste "Dit sitemap blev behandlet", senest læst 5. november med 57 registrerede sider; det aktuelle sitemap indeholder 60. Dette beviser modtagelse, ikke indeksering. Der er endnu ikke dokumenteret et søgetrafik- eller placeringsudgangspunkt i denne gennemgang.
+
+### Fortsat arbejde
+
+1. Brug URL-inspektion på forsiden og de vigtigste ydelsessider; registrér Googles canonical og faktiske indekseringsstatus. Undgå gentagne indsendelser af samme sitemap/URL uden grund.
+2. Registrér klik, eksponeringer, CTR og placering efter land og søgeforespørgsel, og sammenlign tilsvarende 28-dagesperioder. Prioritér nyttigt indhold ud fra disse data frem for at tilføje flere søgeord til allerede dækkende sider.
+3. Udgiv godkendte, ægte kundecases med konkrete leverancer og dokumenterede resultater. De nuværende fiktive demoer skal fortsat være tydeligt mærket.
+4. Hold virksomhedens officielle profiler og kontaktoplysninger konsistente. Google Business Profile kræver, at virksomheden er berettiget efter Googles regler; der er ikke oprettet en profil eller købt omtale/links.
+
+Drift: Efter nye previewbilleder køres `python3 scripts/optimize-demo-previews.py` (Pillow er kun et forfatterværktøj), derefter `npm run build:site`. De genererede WebP-filer, manifest og Liquid-kilde gemmes sammen. Tilføjes en offentlig logistikside, skal rodens allowliste også opdateres; testen sammenholder listen med sitemap.
+
+Validering: Typecheck, genereret tema og 298 relevante tests bestået. Desktop- og mobilgalleri kontrolleret i browser; 390 px-visningen bruger de nye 480 px-billeder uden vandret overflydning. En separat gennemgang fandt ingen ændring af login, adgangskontrol, database eller betalingsflow.

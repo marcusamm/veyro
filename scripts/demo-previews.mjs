@@ -4,7 +4,10 @@
 // Desktop tages ved 960 × 600 (1x og 2x), mobil ved 390 × 640 (2x), og telefonrammen ved 390 × 844 (2x).
 // Enkelte motiver kan vælges med fx SHOTS=lervaerk-kurv,holm-tomrer-phone. Demo-baren skjules, fordi
 // mærkningen står under billedet på Veyros side.
+// WebP-varianter opdateres til sidst. Kræver Python 3 + Pillow med WebP; kan også
+// køres alene uden browser: python3 scripts/optimize-demo-previews.py.
 import { mkdirSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { ROOT, startStack } from '../tests/harness.mjs';
@@ -80,3 +83,7 @@ try {
 } finally {
   await stack.stop();
 }
+
+const optimized = spawnSync('python3', [path.join(ROOT, 'scripts/optimize-demo-previews.py')], { cwd: ROOT, stdio: 'inherit' });
+if (optimized.error) throw optimized.error;
+if (optimized.status !== 0) throw new Error('WebP previews were not regenerated. Install Pillow with WebP support, then run scripts/optimize-demo-previews.py.');

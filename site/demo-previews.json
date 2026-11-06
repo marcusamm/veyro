@@ -1,0 +1,318 @@
+{
+  "quality": 88,
+  "screenshots": {
+    "holm-tomrer": {
+      "desktop": {
+        "source": "holm-tomrer-1920.jpg",
+        "source_bytes": 271773,
+        "variants": [
+          {
+            "file": "holm-tomrer-480.2540cf00476b.webp",
+            "width": 480,
+            "height": 300,
+            "bytes": 26866,
+            "sha256": "2540cf00476b01e283c148d58f92fb88a75efa4916c621549b33b0ef83fbe8cc"
+          },
+          {
+            "file": "holm-tomrer-768.30bd052bacf4.webp",
+            "width": 768,
+            "height": 480,
+            "bytes": 56408,
+            "sha256": "30bd052bacf40f3dfaad00d3d541506c397dd565f8d14c7a0e85b15cf1232489"
+          },
+          {
+            "file": "holm-tomrer-960.c3aee6a9698d.webp",
+            "width": 960,
+            "height": 600,
+            "bytes": 80324,
+            "sha256": "c3aee6a9698da485a292d669b6fbfd8c44c2b082b1b2e4b0d8d5b23438521453"
+          },
+          {
+            "file": "holm-tomrer-1920.67f473fb9e50.webp",
+            "width": 1920,
+            "height": 1200,
+            "bytes": 196650,
+            "sha256": "67f473fb9e504aa0562c6338639cfe716e0eeeea6dc3d84793c6a005686424d9"
+          }
+        ]
+      },
+      "mobile": {
+        "source": "holm-tomrer-mobil.jpg",
+        "source_bytes": 152265,
+        "variants": [
+          {
+            "file": "holm-tomrer-mobil-480.4f05028cc2ef.webp",
+            "width": 480,
+            "height": 788,
+            "bytes": 56696,
+            "sha256": "4f05028cc2efa1e2afea29866baf9f179c4b0f90692b7f7cd9898130933a54e0"
+          },
+          {
+            "file": "holm-tomrer-mobil-780.881d9d70f13c.webp",
+            "width": 780,
+            "height": 1280,
+            "bytes": 123762,
+            "sha256": "881d9d70f13c6b95b00dbed592ff0418f5ec8809120077e202f106079ac07187"
+          }
+        ]
+      }
+    },
+    "salon-nord": {
+      "desktop": {
+        "source": "salon-nord-1920.jpg",
+        "source_bytes": 240288,
+        "variants": [
+          {
+            "file": "salon-nord-480.0d5d115834c8.webp",
+            "width": 480,
+            "height": 300,
+            "bytes": 20676,
+            "sha256": "0d5d115834c836b05eb7c3408f9b04febb1a5f79589c65dca59df05347f4fe12"
+          },
+          {
+            "file": "salon-nord-768.bf53552e6b06.webp",
+            "width": 768,
+            "height": 480,
+            "bytes": 43532,
+            "sha256": "bf53552e6b06323500def090f6a9fff0c3c1e99094af1b51b81523fb2e0b06ff"
+          },
+          {
+            "file": "salon-nord-960.88cddb0fbf8f.webp",
+            "width": 960,
+            "height": 600,
+            "bytes": 60766,
+            "sha256": "88cddb0fbf8fb28fa436cab4a02eb08313b82cc6f4c259f5e2fc1a502a0a3e18"
+          },
+          {
+            "file": "salon-nord-1920.35854ca81ad3.webp",
+            "width": 1920,
+            "height": 1200,
+            "bytes": 187500,
+            "sha256": "35854ca81ad335277744769199b7a3711674b66d4dccf8ef2d5e41335be8ea37"
+          }
+        ]
+      },
+      "mobile": {
+        "source": "salon-nord-mobil.jpg",
+        "source_bytes": 108487,
+        "variants": [
+          {
+            "file": "salon-nord-mobil-480.2a2d47f82675.webp",
+            "width": 480,
+            "height": 788,
+            "bytes": 39162,
+            "sha256": "2a2d47f82675eb222b34ab32a509a4d16951c3c785fb3e985474d57970dada8b"
+          },
+          {
+            "file": "salon-nord-mobil-780.dfb277333852.webp",
+            "width": 780,
+            "height": 1280,
+            "bytes": 83674,
+            "sha256": "dfb2773338526b00ab1106016b82b529c28387d9349c0cf491da51e562bc5701"
+          }
+        ]
+      }
+    },
+    "lervaerk": {
+      "desktop": {
+        "source": "lervaerk-1920.jpg",
+        "source_bytes": 114347,
+        "variants": [
+          {
+            "file": "lervaerk-480.1932c8442578.webp",
+            "width": 480,
+            "height": 300,
+            "bytes": 11230,
+            "sha256": "1932c844257822b6c1014eb226371a231ba543fd1d0e7c4613b61a3fa68be0f9"
+          },
+          {
+            "file": "lervaerk-768.1a0f837a4707.webp",
+            "width": 768,
+            "height": 480,
+            "bytes": 21658,
+            "sha256": "1a0f837a470725d6326aaa5bd978a8734d6d47ce3310f688509bc6fa05b1d0d2"
+          },
+          {
+            "file": "lervaerk-960.ca1f3ceb3bd9.webp",
+            "width": 960,
+            "height": 600,
+            "bytes": 29412,
+            "sha256": "ca1f3ceb3bd935b70e55cf4c69b2da2b86f40315eefc27911fca808a4c1cc4ae"
+          },
+          {
+            "file": "lervaerk-1920.6677bc59c87f.webp",
+            "width": 1920,
+            "height": 1200,
+            "bytes": 65694,
+            "sha256": "6677bc59c87ffc5f82cc29d03e8d53d13286dd325c57d9969d29a71af732774f"
+          }
+        ]
+      },
+      "mobile": {
+        "source": "lervaerk-mobil.jpg",
+        "source_bytes": 34919,
+        "variants": []
+      }
+    },
+    "salon-nord-booking": {
+      "desktop": {
+        "source": "salon-nord-booking-1920.jpg",
+        "source_bytes": 112261,
+        "variants": [
+          {
+            "file": "salon-nord-booking-480.51d0f0075953.webp",
+            "width": 480,
+            "height": 300,
+            "bytes": 11136,
+            "sha256": "51d0f00759534e9d29005e364ea99c0e200a8da5b2faaecd99851d555e5736dd"
+          },
+          {
+            "file": "salon-nord-booking-768.63ca49a510c1.webp",
+            "width": 768,
+            "height": 480,
+            "bytes": 20724,
+            "sha256": "63ca49a510c12b0b81a351a7a7df3cb6fa9039fe653e936013f3be0fa69bfae3"
+          },
+          {
+            "file": "salon-nord-booking-960.9fe7e861a625.webp",
+            "width": 960,
+            "height": 600,
+            "bytes": 27408,
+            "sha256": "9fe7e861a625ec50deb82c22c881d813610796fc1dc1d296ef9b5d1eaa4cf71d"
+          },
+          {
+            "file": "salon-nord-booking-1920.942ffe85570a.webp",
+            "width": 1920,
+            "height": 1200,
+            "bytes": 65802,
+            "sha256": "942ffe85570a690020ebcbed3b6423db3b29d9230d27b9d9364bbdeee7b868f5"
+          }
+        ]
+      },
+      "mobile": {
+        "source": "salon-nord-booking-mobil.jpg",
+        "source_bytes": 82623,
+        "variants": [
+          {
+            "file": "salon-nord-booking-mobil-480.f3694a11613c.webp",
+            "width": 480,
+            "height": 788,
+            "bytes": 27708,
+            "sha256": "f3694a11613cf9d212f7f544a302db91940cea95fd679d29407dbcbffa636d66"
+          },
+          {
+            "file": "salon-nord-booking-mobil-780.e07fec200c92.webp",
+            "width": 780,
+            "height": 1280,
+            "bytes": 51324,
+            "sha256": "e07fec200c923dc396c7268f4785aad6772e1a1ad5182822df580da14e131ab2"
+          }
+        ]
+      }
+    },
+    "lervaerk-produkt": {
+      "desktop": {
+        "source": "lervaerk-produkt-1920.jpg",
+        "source_bytes": 112721,
+        "variants": [
+          {
+            "file": "lervaerk-produkt-480.8323b709df89.webp",
+            "width": 480,
+            "height": 300,
+            "bytes": 10280,
+            "sha256": "8323b709df89a605a369eb6d490ade1dd2df447777dfa87b488b8f2ba15bf587"
+          },
+          {
+            "file": "lervaerk-produkt-768.672a2803e7f7.webp",
+            "width": 768,
+            "height": 480,
+            "bytes": 19008,
+            "sha256": "672a2803e7f761d1ae4cee40790160f57a777ad7ecbd74ea0aebcda002d82a8d"
+          },
+          {
+            "file": "lervaerk-produkt-960.401491789133.webp",
+            "width": 960,
+            "height": 600,
+            "bytes": 27474,
+            "sha256": "401491789133a2e6d5189502f7a6ea6eda5d1065d5ff2fba38662900734a7722"
+          },
+          {
+            "file": "lervaerk-produkt-1920.4f48d74c9b21.webp",
+            "width": 1920,
+            "height": 1200,
+            "bytes": 63804,
+            "sha256": "4f48d74c9b21f751817169712e9a39bdfac452ca6216665a49d7e6104f890bbd"
+          }
+        ]
+      },
+      "mobile": {
+        "source": "lervaerk-produkt-mobil.jpg",
+        "source_bytes": 31923,
+        "variants": []
+      }
+    },
+    "lervaerk-kurv": {
+      "desktop": {
+        "source": "lervaerk-kurv-1920.jpg",
+        "source_bytes": 83108,
+        "variants": [
+          {
+            "file": "lervaerk-kurv-480.053208535770.webp",
+            "width": 480,
+            "height": 300,
+            "bytes": 8110,
+            "sha256": "0532085357700522b7bba951d6287625f5068b4a08132911f7ab5fcf87d239f0"
+          },
+          {
+            "file": "lervaerk-kurv-768.07c7e870338f.webp",
+            "width": 768,
+            "height": 480,
+            "bytes": 15036,
+            "sha256": "07c7e870338f0e9b2aa4525ab307514154a99e31cac8de14082e49f81daad245"
+          },
+          {
+            "file": "lervaerk-kurv-960.249d11090e9f.webp",
+            "width": 960,
+            "height": 600,
+            "bytes": 19718,
+            "sha256": "249d11090e9fc6e6bfceb304129a2575d38226289e81a8d137dd0919290817bd"
+          },
+          {
+            "file": "lervaerk-kurv-1920.92acfb3fdaf6.webp",
+            "width": 1920,
+            "height": 1200,
+            "bytes": 42074,
+            "sha256": "92acfb3fdaf6cac3aaf1d3fce513cbdbcab27879a07db2a03a2a6d0e771f963a"
+          }
+        ]
+      },
+      "mobile": {
+        "source": "lervaerk-kurv-mobil.jpg",
+        "source_bytes": 28762,
+        "variants": []
+      }
+    },
+    "holm-tomrer-phone": {
+      "phone": {
+        "source": "holm-tomrer-phone-780.jpg",
+        "source_bytes": 181509,
+        "variants": [
+          {
+            "file": "holm-tomrer-phone-390.cb526ada877c.webp",
+            "width": 390,
+            "height": 844,
+            "bytes": 49208,
+            "sha256": "cb526ada877c34d4dfc776b9fba0bc4f5d65b5e8a9e1194f902e2728fee6ab71"
+          },
+          {
+            "file": "holm-tomrer-phone-780.d14e231848f2.webp",
+            "width": 780,
+            "height": 1688,
+            "bytes": 137512,
+            "sha256": "d14e231848f2f034f42dc5e513f06d23537e84249f4babfd5d00d25acffc5688"
+          }
+        ]
+      }
+    }
+  }
+}
