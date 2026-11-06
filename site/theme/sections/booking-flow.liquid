@@ -13,9 +13,9 @@
       <div class="booking-flow__details"><p>{{ 'public.click_to_overview' | t }}</p><div><span>{{ 'public.services_available_times' | t }}</span><span>{{ 'public.email_confirmation' | t }}</span><span>{{ 'public.reschedule_cancel' | t }}</span></div></div>
     </div>
     <figure class="booking-flow__figure">
-      <a class="demo-snapshot" href="/demo/salon-nord/book?behandling=dameklip" aria-label="{{ 'public.try_salon_flow' | t | escape }}">
+      <a class="demo-snapshot" href="/demo/salon-nord/book?behandling=dameklip">
         <span class="capability-browser__chrome" aria-hidden="true"><span><i></i><i></i><i></i></span><span>{{ 'public.salon_booking_demo' | t }}</span><span>↗</span></span>
-        <picture><source media="(max-width: 499px)" srcset="/demo/_previews/salon-nord-booking-mobil.jpg"><img src="/demo/_previews/salon-nord-booking-960.jpg" srcset="/demo/_previews/salon-nord-booking-960.jpg 960w, /demo/_previews/salon-nord-booking-1920.jpg 1920w" sizes="(min-width: 990px) 45vw, 90vw" width="960" height="600" loading="lazy" alt="{{ 'public.booking_flow_alt' | t | escape }}"></picture>
+        <picture>{% render 'demo-sources', shot: 'salon-nord-booking', sizes: '(min-width: 990px) 45vw, 90vw', mobile: true, mobile_breakpoint: '499px', desktop_breakpoint: '500px' %}<source media="(max-width: 499px)" srcset="/demo/_previews/salon-nord-booking-mobil.jpg"><img src="/demo/_previews/salon-nord-booking-960.jpg" srcset="/demo/_previews/salon-nord-booking-960.jpg 960w, /demo/_previews/salon-nord-booking-1920.jpg 1920w" sizes="(min-width: 990px) 45vw, 90vw" width="960" height="600" loading="lazy" alt="{{ 'public.booking_flow_alt' | t | escape }}"></picture>
         <span class="demo-snapshot__action">{{ 'public.try_full_booking' | t }} <span aria-hidden="true">↗</span></span>
       </a>
       <figcaption>{{ 'public.booking_screenshot_note' | t }}</figcaption>

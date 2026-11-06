@@ -183,7 +183,7 @@
           "type": "question",
           "settings": {
             "question": "Skal vi flytte hjemmesiden til jer?",
-            "answer": "<p>Nej. Vi optimerer den, hvor den ligger.</p>"
+            "answer": "<p>Nej. Vi optimerer den, hvor den ligger. <a href=\"/pages/hosting\">Læs om hosting og vedligeholdelse</a>, hvis I også har brug for løbende pasning.</p>"
           }
         }
       },

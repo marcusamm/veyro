@@ -21,22 +21,22 @@
         <p>{{ 'public.design_concept' | t }} <span data-gallery-count>01 / 03</span></p>
         <a data-gallery-skip href="#{{ gallery_id }}-end">{{ 'public.gallery_skip' | t }} <span aria-hidden="true">↓</span></a>
       </div>
-      <div class="project-gallery__stage" data-gallery-stage aria-label="{{ 'public.three_demo_websites' | t | escape }}">
+      <div class="project-gallery__stage" data-gallery-stage role="group" aria-label="{{ 'public.three_demo_websites' | t | escape }}">
         <a class="project-gallery__plane" href="/demo/holm-tomrer/" aria-label="{{ 'public.open_holm_concept' | t | escape }}" data-demo-title="Holm Tømrer" data-demo-category="{{ 'public.website' | t | escape }}" data-demo-description="{{ 'public.craft_demo_description' | t | escape }}" data-demo-accent="#52726b">
           <figure class="project-gallery__surface">
-            <div class="project-gallery__image"><img src="/demo/_previews/holm-tomrer-960.jpg" srcset="/demo/_previews/holm-tomrer-960.jpg 960w, /demo/_previews/holm-tomrer-1920.jpg 1920w" sizes="(min-width: 990px) 65vw, 88vw" width="1920" height="1200" alt="{{ 'public.holm_image' | t | escape }}" loading="lazy" decoding="async"></div>
+            <div class="project-gallery__image"><picture>{% render 'demo-sources', shot: 'holm-tomrer', sizes: '(min-width: 990px) 65vw, 88vw' %}<img src="/demo/_previews/holm-tomrer-960.jpg" srcset="/demo/_previews/holm-tomrer-960.jpg 960w, /demo/_previews/holm-tomrer-1920.jpg 1920w" sizes="(min-width: 990px) 65vw, 88vw" width="1920" height="1200" alt="{{ 'public.holm_image' | t | escape }}" loading="lazy" decoding="async"></picture></div>
             <figcaption><span>Holm Tømrer</span><span>{{ 'public.website' | t }}</span><p>{{ 'public.craft_demo_description' | t }}</p></figcaption>
           </figure>
         </a>
         <a class="project-gallery__plane" href="/demo/salon-nord/" aria-label="{{ 'public.open_salon_concept' | t | escape }}" data-demo-title="Salon Nord" data-demo-category="{{ 'public.booking' | t | escape }}" data-demo-description="{{ 'public.booking_demo_description' | t | escape }}" data-demo-accent="#9d745f">
           <figure class="project-gallery__surface">
-            <div class="project-gallery__image"><img src="/demo/_previews/salon-nord-960.jpg" srcset="/demo/_previews/salon-nord-960.jpg 960w, /demo/_previews/salon-nord-1920.jpg 1920w" sizes="(min-width: 990px) 65vw, 88vw" width="1920" height="1200" alt="{{ 'public.salon_image' | t | escape }}" loading="lazy" decoding="async"></div>
+            <div class="project-gallery__image"><picture>{% render 'demo-sources', shot: 'salon-nord', sizes: '(min-width: 990px) 65vw, 88vw' %}<img src="/demo/_previews/salon-nord-960.jpg" srcset="/demo/_previews/salon-nord-960.jpg 960w, /demo/_previews/salon-nord-1920.jpg 1920w" sizes="(min-width: 990px) 65vw, 88vw" width="1920" height="1200" alt="{{ 'public.salon_image' | t | escape }}" loading="lazy" decoding="async"></picture></div>
             <figcaption><span>Salon Nord</span><span>{{ 'public.booking' | t }}</span><p>{{ 'public.booking_demo_description' | t }}</p></figcaption>
           </figure>
         </a>
         <a class="project-gallery__plane" href="/demo/lervaerk/" aria-label="{{ 'public.open_shop_concept' | t | escape }}" data-demo-title="Lerværk" data-demo-category="{{ 'public.online_shop' | t | escape }}" data-demo-description="{{ 'public.shop_demo_description' | t | escape }}" data-demo-accent="#778166">
           <figure class="project-gallery__surface">
-            <div class="project-gallery__image"><img src="/demo/_previews/lervaerk-960.jpg?v=photo-20261101" srcset="/demo/_previews/lervaerk-960.jpg?v=photo-20261101 960w, /demo/_previews/lervaerk-1920.jpg?v=photo-20261101 1920w" sizes="(min-width: 990px) 65vw, 88vw" width="1920" height="1200" alt="{{ 'public.shop_image' | t | escape }}" loading="lazy" decoding="async"></div>
+            <div class="project-gallery__image"><picture>{% render 'demo-sources', shot: 'lervaerk', sizes: '(min-width: 990px) 65vw, 88vw' %}<img src="/demo/_previews/lervaerk-960.jpg?v=photo-20261101" srcset="/demo/_previews/lervaerk-960.jpg?v=photo-20261101 960w, /demo/_previews/lervaerk-1920.jpg?v=photo-20261101 1920w" sizes="(min-width: 990px) 65vw, 88vw" width="1920" height="1200" alt="{{ 'public.shop_image' | t | escape }}" loading="lazy" decoding="async"></picture></div>
             <figcaption><span>Lerværk</span><span>{{ 'public.online_shop' | t }}</span><p>{{ 'public.shop_demo_description' | t }}</p></figcaption>
           </figure>
         </a>

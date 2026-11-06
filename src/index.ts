@@ -42,6 +42,7 @@ import { CSS, FAVICON, JS } from './views/assets';
 import { KASSE_CSS, KASSE_JS } from './views/kasse-assets';
 import { ICON_PNG, INTER_TIGHT_WOFF2, LOGO_PNG } from './views/brand';
 import { errorPage } from './views/pages';
+import { isSavedLogisticsView, logisticsRobots, publicLogisticsRequest } from './lib/logistics-seo';
 
 const app = new Hono<AppEnv>();
 
@@ -70,6 +71,9 @@ app.use('*', async (c, next) => {
   h.set('Referrer-Policy', 'same-origin'); // ikke no-referrer: så sender browsere Origin: null på egne formularer
   h.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
   h.set('Cross-Origin-Opener-Policy', 'same-origin');
+  // The customer portal remains private to search; only the anonymous library
+  // on its canonical host is indexable. This does not replace authentication.
+  if (!publicLogisticsRequest(new URL(c.req.url), c.env.APP_URL)) h.set('X-Robots-Tag', 'noindex, nofollow');
   if (new URL(c.req.url).protocol === 'https:') {
     h.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
@@ -93,7 +97,7 @@ app.get('/static/inter-tight.woff2', (c) =>
   c.body(INTER_TIGHT_WOFF2, 200, { 'Content-Type': 'font/woff2', 'Cache-Control': 'public, max-age=31536000, immutable' }),
 );
 app.get('/favicon.ico', (c) => c.redirect('/favicon.svg', 301));
-app.get('/robots.txt', (c) => c.text('User-agent: *\nDisallow: /\n', 200, { 'Cache-Control': STATIC_CACHE }));
+app.get('/robots.txt', (c) => c.text(logisticsRobots(new URL(c.req.url), c.env.APP_URL), 200, { 'Cache-Control': STATIC_CACHE }));
 app.get('/healthz', (c) => c.text('ok'));
 
 // Anonymous logistics tools and the account shell contain no identity or saved data.
@@ -104,7 +108,7 @@ app.get('/logistik/*', async (c, next) => {
   if (!c.env.ASSETS) return c.text('Logistikværktøjer er midlertidigt utilgængelige.', 503);
   const response = await c.env.ASSETS.fetch(c.req.raw);
   const headers = new Headers(response.headers);
-  headers.set('Cache-Control', c.req.path.startsWith('/logistik/mine') ? 'no-store' : 'public, max-age=300');
+  headers.set('Cache-Control', c.req.path.startsWith('/logistik/mine') || isSavedLogisticsView(new URL(c.req.url)) ? 'no-store' : 'public, max-age=300');
   return new Response(response.body, { status: response.status, headers });
 });
 

@@ -170,6 +170,11 @@ site.get('/demo/*', async (c) => {
   const out = new Response(res.body, res);
   out.headers.set('X-Robots-Tag', 'noindex, nofollow');
   if (res.status === 404) return c.text('Ikke fundet', 404, { 'X-Robots-Tag': 'noindex, nofollow' });
+  // These generated filenames include the hash of the encoded image bytes.
+  // HTML and unversioned JPEG originals retain the asset service's revalidation.
+  if ((res.status === 200 || res.status === 304) && /^\/demo\/_previews\/[a-z0-9-]+\.[a-f0-9]{12}\.webp$/.test(c.req.path)) {
+    out.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+  }
   return out;
 });
 

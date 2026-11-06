@@ -39,7 +39,9 @@
 <div class="browser" data-concept="{{ name | default: 'craft' }}">
   <div class="browser__bar" aria-hidden="true"><span class="browser__url">veyro.dk{{ path }}</span></div>
   <a class="browser__shot" href="{{ path }}" tabindex="-1">
+    {%- capture preview_sizes -%}{% if wide %}(min-width: 1280px) 1152px, 100vw{% else %}(min-width: 990px) 58vw, 100vw{% endif %}{%- endcapture -%}
     <picture>
+      {% render 'demo-sources', shot: shot, sizes: preview_sizes, mobile: true %}
       <source media="(max-width: 599px)" srcset="/demo/_previews/{{ shot }}-mobil.jpg{{ shot_version }}" width="780" height="1280">
       <img src="/demo/_previews/{{ shot }}-960.jpg{{ shot_version }}" srcset="/demo/_previews/{{ shot }}-960.jpg{{ shot_version }} 960w, /demo/_previews/{{ shot }}-1920.jpg{{ shot_version }} 1920w" sizes="{% if wide %}(min-width: 1280px) 1152px, 100vw{% else %}(min-width: 990px) 58vw, 100vw{% endif %}" width="1920" height="1200" alt="{{ alt }}" loading="{{ loading }}" fetchpriority="{{ priority }}" decoding="async">
     </picture>

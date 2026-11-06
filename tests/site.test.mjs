@@ -545,10 +545,14 @@ describe('Pakker og priser', () => {
     expect(gallery).toContain('Fiktive designkoncepter — lavet af Veyro');
     for (const demo of ['/demo/holm-tomrer/', '/demo/salon-nord/', '/demo/lervaerk/']) expect(gallery).toContain(`href="${demo}"`);
     const capabilities = section('section studio-capabilities');
+    // Visible action text supplies the link name in every locale; do not replace
+    // it with a different aria-label that voice-control users cannot match.
+    expect(capabilities).not.toMatch(/<a class="demo-snapshot"[^>]+aria-label=/);
     for (const screenshot of ['holm-tomrer-960.jpg', 'holm-tomrer-phone-780.jpg', 'salon-nord-booking-960.jpg', 'lervaerk-kurv-960.jpg']) expect(capabilities).toContain('/demo/_previews/' + screenshot);
     for (const demo of ['/demo/holm-tomrer/', '/demo/salon-nord/book?behandling=dameklip', '/demo/lervaerk/']) expect(capabilities).toContain(`href="${demo}"`);
     expect(capabilities).not.toMatch(/capability-website__body|capability-booking__selection|capability-shop__order/);
     const flow = section('section booking-flow');
+    expect(flow).not.toMatch(/<a class="demo-snapshot"[^>]+aria-label=/);
     expect(flow).toContain('Skærmbillede fra Salon Nords bookingdemo. Ingen tid bliver booket.');
     expect(flow).not.toMatch(/<form|<button/);
     // Pakkerne: tre kan bestilles, to er på vej
@@ -575,6 +579,7 @@ describe('Pakker og priser', () => {
     expect(gallery).toContain('data-gallery-track');
     expect(gallery).toContain('data-gallery-pin');
     expect(gallery).toContain('data-gallery-stage');
+    expect(gallery).toMatch(/data-gallery-stage role="group" aria-label="[^"]+"/);
     expect(gallery).not.toMatch(/data-gallery-(?:prev|next|pause|controls)|gallery-orbit|gallery-curve/);
     expect(gallery).not.toMatch(/MISSING:|>public\.[a-z_]+</);
     const planes = gallery.match(/<a\b[^>]*class="project-gallery__plane"[^>]*>/g) || [];
@@ -612,7 +617,19 @@ describe('Pakker og priser', () => {
       const r = await site.get('/demo/_previews/' + f);
       expect(r.status, f).toBe(200);
       expect(r.headers.get('content-type'), f).toBe('image/jpeg');
+      expect(r.headers.get('cache-control'), f).not.toContain('immutable');
     }
+    const previews = JSON.parse(readFileSync(path.join(ROOT, 'site/demo-previews.json'), 'utf8'));
+    for (const shot of ['holm-tomrer', 'salon-nord', 'lervaerk']) {
+      const f = previews.screenshots[shot].desktop.variants[0].file;
+      const r = await site.get('/demo/_previews/' + f);
+      expect(r.status, f).toBe(200);
+      expect(r.headers.get('content-type'), f).toBe('image/webp');
+      expect(r.headers.get('cache-control'), f).toBe('public, max-age=31536000, immutable');
+    }
+    const missingPreview = await site.get('/demo/_previews/missing.0123456789ab.webp');
+    expect(missingPreview.status).toBe(404);
+    expect(missingPreview.headers.get('cache-control')).not.toContain('immutable');
     expect((await site.get('/demo/findes-ikke/')).status).toBe(404);
     const root = await site.get('/demo');
     expect(root.status).toBe(302);
