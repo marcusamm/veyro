@@ -4,9 +4,10 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Client, ROOT, csrfFrom, login, setMockState, startStack } from './harness.mjs';
 import { SAMPLES, tco } from '../src/lib/logistics-calculations.mjs';
+import { TRANSPORT_SAMPLES, transportCalculators } from '../src/lib/logistics-transport-calculations.mjs';
 import { canonicalizeInput } from '../src/lib/logistics-input.mjs';
 
-let stack, anna, bo;
+let stack, anna, bo, transportOwner;
 const hash = text => createHash('sha256').update(text).digest('hex');
 const json = response => JSON.parse(response.html);
 const emails = async () => (await fetch(stack.mock.url + '/__mock/emails')).json();
@@ -63,6 +64,7 @@ beforeAll(async () => {
   stack = await startStack({ minMonths: 0 });
   anna = await signup('logistics-anna@example.com', 'TEST Anna');
   bo = await signup('logistics-bo@example.com', 'TEST Bo');
+  transportOwner = await signup('logistics-transport@example.com', 'TEST Transport');
 });
 afterAll(async () => { await stack?.stop(); });
 
@@ -250,6 +252,42 @@ describe('Private saved calculations', () => {
     const entries = await list(anna);
     expect(entries.some(row => row.id === saved.id)).toBe(true);
     expect(entries[0]).not.toHaveProperty('input');
+  });
+  it.each(['ladmeter', 'luftfragt', 'palletransport', 'containertransport', 'biltransport'])('saves, edits, copies and isolates transport input for %s', async toolId => {
+    const input = canonicalizeInput(toolId, TRANSPORT_SAMPLES[toolId]);
+    const item = await create(transportOwner, toolId, `TEST ${toolId}`, input);
+    const reopened = json(await read(transportOwner, item.id)).calculation;
+    expect(reopened.input).toEqual(input);
+    expect(transportCalculators[toolId](reopened.input)).toEqual(transportCalculators[toolId](input));
+    expect((await read(bo, item.id)).status).toBe(404);
+    expect((await post(bo, route(item.id, '/copy'), { name: 'TEST foreign copy', version: 1 })).status).toBe(404);
+    const changed = structuredClone(input);
+    const fees = changed.fees || changed.offers[0].fees;
+    fees.push({ id: 'manual-fee', name: 'TEST Optional', enabled: true, kind: 'fixed', rate: 100,
+      currency: 'EUR', fx: 7.45, basis: null, manualBase: null });
+    const response = await post(transportOwner, route(item.id), { name: `TEST ${toolId} edited`, version: 1, input: JSON.stringify(changed) });
+    expect(response.status, response.html).toBe(200);
+    expect(json(response).calculation).toMatchObject({ version: 2, input: changed });
+    const copy = await post(transportOwner, route(item.id, '/copy'), { name: `TEST ${toolId} copy`, version: 2 });
+    expect(copy.status, copy.html).toBe(201);
+    expect(json(copy).calculation.input).toEqual(changed);
+    const disabled = structuredClone(changed);
+    (disabled.fees || disabled.offers[0].fees).at(-1).enabled = false;
+    const revise = await post(transportOwner, route(item.id), { name: `TEST ${toolId} inactive`, version: 2, input: JSON.stringify(disabled) });
+    expect(revise.status, revise.html).toBe(200);
+    expect(transportCalculators[toolId](json(revise).calculation.input)).toEqual(transportCalculators[toolId](input));
+  });
+  it('serves all five transport calculators and workbooks to anonymous visitors', async () => {
+    const client = new Client(stack.base);
+    for (const toolId of ['ladmeter', 'luftfragt', 'palletransport', 'containertransport', 'biltransport']) {
+      const page = await client.get(`/logistik/vaerktoejer/${toolId}/`);
+      expect(page.status).toBe(200);
+      expect(page.html).toContain(`data-tool="${toolId}"`);
+      expect(page.headers.get('set-cookie')).toBeNull();
+      const file = await client.get(`/logistik/downloads/${toolId}.xlsx`);
+      expect(file.status).toBe(200);
+      expect(file.html.slice(0, 2)).toBe('PK');
+    }
   });
   it('updates with version control, blocks duplicate saves, and rescues the conflicting draft as a copy', async () => {
     const original = await create(anna), nextInput = { ...SAMPLES.eoq, annualDemand: 24000 };

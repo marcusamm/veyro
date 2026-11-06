@@ -24,8 +24,8 @@ describe('Saved logistics input boundary',()=>{
     expect(Buffer.byteLength(JSON.stringify(input))).toBeLessThan(MAX_SAVED_INPUT_BYTES);
   });
   it('server modules exactly match the deployed browser calculation modules',async()=>{
-    for(const [server,browser] of [['logistics-calculations.mjs','calculations.mjs'],['logistics-input.mjs','saved-input.mjs']]){
-      const actual=(await readFile(new URL(`../src/lib/${server}`,import.meta.url),'utf8')).replace(/^\/\/ Generated[^\n]*\n/,'').replace("from './logistics-calculations.mjs'","from './calculations.mjs'");
+    for(const [server,browser] of [['logistics-calculations.mjs','calculations.mjs'],['logistics-input.mjs','saved-input.mjs'],['logistics-transport-calculations.mjs','transport-calculations.mjs'],['logistics-transport-input.mjs','transport-input.mjs'],['logistics-transport-contract.mjs','transport-contract.mjs']]){
+      const actual=(await readFile(new URL(`../src/lib/${server}`,import.meta.url),'utf8')).replace(/^\/\/ Generated[^\n]*\n/,'').replace(/from '\.\/logistics-(calculations|transport-calculations|transport-input|transport-contract)\.mjs'/g,"from './$1.mjs'");
       const expected=await readFile(new URL(`../public/logistik/assets/${browser}`,import.meta.url),'utf8');
       expect(actual).toBe(expected);
     }

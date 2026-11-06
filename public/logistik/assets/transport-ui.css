@@ -1,0 +1,110 @@
+.transport-form { min-width: 0; }
+.transport-group { margin: 0 0 32px; padding: 0; }
+.transport-group + .transport-group { padding-top: 28px; border-top: 1px solid var(--line); }
+.transport-group-heading { margin-bottom: 18px; }
+.transport-group-heading h3 { margin: 0 0 8px; font-size: 1.14rem; }
+.transport-group-heading p { margin: 0; color: var(--muted); font-size: .94rem; line-height: 1.5; }
+.transport-row, .transport-offer, .transport-fee { min-width: 0; margin: 0 0 18px; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--white); }
+.transport-row legend, .transport-offer legend, .transport-fee legend { max-width: 100%; padding: 0 8px; color: var(--ink); font-weight: 600; font-size: .94rem; }
+.transport-row-top { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 18px; }
+.transport-row-top > .field { flex: 1; min-width: 0; margin: 0; }
+.transport-remove { flex: 0 0 auto; margin-bottom: 8px; }
+.transport-form .field-grid { align-items: start; }
+.transport-form .field-grid > *, .transport-form .field, .transport-form .input-wrap { min-width: 0; }
+.transport-form input, .transport-form select { width: 100%; max-width: 100%; min-width: 0; }
+.transport-form input[type="checkbox"] { width: 20px; height: 20px; flex: 0 0 20px; accent-color: var(--ink); }
+.transport-form input[aria-invalid="true"], .transport-form select[aria-invalid="true"] { border-color: #ad3828; outline: 2px solid #ad382833; }
+.transport-form input[type="datetime-local"] { appearance: auto; -webkit-appearance: auto; font-size: .94rem; }
+.transport-form .input-wrap .unit { max-width: 40%; font-size: .78rem; white-space: normal; text-align: right; }
+.transport-form .input-wrap:has(.unit) input { padding-right: 80px; }
+.transport-form .inline-hint { font-weight: 400; font-size: .85em; }
+.transport-currency-note { align-self: center; margin: 24px 0 0; padding: 10px 0; color: var(--muted); font-size: .86rem; line-height: 1.5; }
+.transport-fees { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line); }
+.transport-fees .transport-group-heading h3 { font-size: 1rem; }
+.transport-fee { padding: 16px; background: var(--paper); }
+.transport-fee.is-disabled { border-style: dashed; }
+.transport-fee.is-disabled legend { color: var(--muted); }
+.transport-fee-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.transport-fee-toolbar .text-button { flex-shrink: 0; font-size: .86rem; }
+.transport-check { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-size: .92rem; }
+.transport-fee > .field { margin-bottom: 18px; }
+.transport-no-fees { padding: 12px 16px; color: var(--muted); background: var(--soft); border-radius: 10px; font-size: .9rem; }
+.transport-form .callout { font-size: .9rem; line-height: 1.55; }
+.transport-form button { white-space: normal; }
+.transport-form button:disabled { cursor: not-allowed; opacity: .45; }
+.transport-form .calculate-actions { position: relative; gap: 14px; flex-wrap: wrap; }
+.transport-form .calculate-actions > .fine { flex-basis: 100%; }
+.transport-result-offer { margin: 20px 0; padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--white); }
+.transport-result-offer.lowest { border: 2px solid var(--ink); padding: 21px; }
+.transport-offer-result-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.transport-offer-result-top h3 { margin: 0; overflow-wrap: anywhere; font-size: 1.12rem; }
+.transport-offer-result-top > span { color: var(--muted); font-size: .82rem; }
+.transport-result-price { display: block; margin: 16px 0; font-size: clamp(1.55rem,3vw,2rem); font-weight: 500; letter-spacing: -.04em; }
+.transport-result-offer .result-metrics { gap: 16px; }
+.transport-result-offer .result-metrics dd { font-size: 1.1rem; }
+.transport-result-offer table { font-size: .9rem; }
+body:has(.transport-form) #results details table,
+.transport-result-offer table { width: 100%; max-width: 100%; table-layout: fixed; border-collapse: collapse; margin: 14px 0; }
+body:has(.transport-form) #results details table th,
+body:has(.transport-form) #results details table td,
+.transport-result-offer table th,
+.transport-result-offer table td { padding: 12px 0; border-bottom: 1px solid var(--line); vertical-align: top; line-height: 1.5; overflow-wrap: anywhere; }
+body:has(.transport-form) #results details table th,
+.transport-result-offer table th { width: 62%; padding-right: 16px; text-align: left; font-weight: 400; color: var(--muted); }
+body:has(.transport-form) #results details table td,
+.transport-result-offer table td { width: 38%; text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
+body:has(.transport-form) #results details table tr:last-child th,
+body:has(.transport-form) #results details table tr:last-child td,
+.transport-result-offer table tr:last-child th,
+.transport-result-offer table tr:last-child td { border-bottom: 0; }
+body:has(.transport-form) #result-panel,
+body:has(.transport-form) #results,
+body:has(.transport-form) #results .result-metrics > div,
+body:has(.transport-form) #results details { min-width: 0; max-width: 100%; }
+body:has(.transport-form) #results .result-metrics dd,
+body:has(.transport-form) #results .primary-result strong,
+.transport-result-price { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.transport-fee-result { margin-top: 20px; }
+.transport-fee-result summary { cursor: pointer; font-size: .94rem; }
+.transport-fee-result ul { margin: 0; padding: 0; list-style: none; }
+.transport-fee-result li { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.transport-fee-result li > div { display: flex; justify-content: space-between; gap: 16px; line-height: 1.45; }
+.transport-fee-result li strong { font-size: .9rem; font-weight: 500; overflow-wrap: anywhere; }
+.transport-fee-result li span { flex-shrink: 0; font-size: .9rem; }
+.transport-fee-result li small { display: block; margin-top: 6px; color: var(--muted); font-size: .8rem; line-height: 1.5; }
+.transport-total { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding-top: 20px; border-top: 1px solid var(--line); }
+.transport-total strong { font-size: 1.35rem; font-weight: 500; }
+.transport-payment { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; padding: 12px 0; border-block: 1px solid var(--line); font-size: .84rem; }
+.transport-form ~ * { min-width: 0; }
+#results .table-scroll td small { display: block; margin-top: 6px; color: var(--muted); font-size: .8rem; }
+@media (max-width: 1100px) and (min-width: 901px) {
+  .transport-form .field-grid { grid-template-columns: 1fr; }
+  .transport-row-top { align-items: start; flex-direction: column; gap: 10px; }
+  .transport-row-top > .field { width: 100%; }
+}
+@media (max-width: 560px) {
+  .transport-row, .transport-offer { padding: 14px; border-radius: 12px; }
+  .transport-fee { padding: 12px; }
+  .transport-form .field-grid { grid-template-columns: 1fr; gap: 16px; }
+  .transport-row-top { align-items: start; flex-direction: column; gap: 10px; }
+  .transport-row-top > .field { width: 100%; }
+  .transport-remove { margin-bottom: 0; }
+  .transport-currency-note { margin-top: 0; }
+  .transport-group { margin-bottom: 26px; }
+  .transport-result-offer { padding: 16px; }
+  .transport-result-offer.lowest { padding: 15px; }
+  .transport-result-offer .result-metrics { grid-template-columns: 1fr; }
+  body:has(.transport-form) #results details table,
+  .transport-result-offer table { font-size: .86rem; }
+  body:has(.transport-form) #results details table th,
+  .transport-result-offer table th { width: 56%; padding-right: 12px; }
+  body:has(.transport-form) #results details table td,
+  .transport-result-offer table td { width: 44%; }
+  .transport-fee-result li > div { flex-wrap: wrap; gap: 4px 16px; }
+  .transport-fee-toolbar { gap: 8px; flex-wrap: wrap; }
+}
+@media print {
+  .transport-result-offer { break-inside: avoid; }
+  .transport-result-offer.lowest { border-width: 1px; }
+  .transport-form { display: none; }
+}

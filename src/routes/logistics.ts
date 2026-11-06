@@ -15,7 +15,7 @@ const DESTINATION = '/logistik/mine/';
 const text = (v: unknown) => typeof v === 'string' ? v : '';
 const nameValue = (v: unknown) => text(v).trim().replace(/\s+/g, ' ');
 const validName = (v: string, max = 120) => v.length > 0 && v.length <= max && !/[\u0000-\u001f\u007f]/.test(v);
-const toolId = (v: unknown): v is LogisticsToolId => v === 'tco' || v === 'eoq' || v === 'genbestilling' || v === 'abc';
+const toolId = (v: unknown): v is LogisticsToolId => v === 'tco' || v === 'eoq' || v === 'genbestilling' || v === 'abc' || v === 'ladmeter' || v === 'luftfragt' || v === 'palletransport' || v === 'containertransport' || v === 'biltransport';
 const validId = (v: string) => /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(v);
 const versionValue = (v: unknown) => /^[1-9]\d{0,9}$/.test(text(v)) && Number(v) <= 2147483647 ? Number(v) : null;
 const failure = (c: C, code: string, error: string, status: 400 | 401 | 404 | 409 | 413 | 429 | 503, path?: string) =>
@@ -72,7 +72,7 @@ logistics.post('/api/calculations', async (c) => {
   const body = await c.req.parseBody();
   const name = nameValue(body.name);
   if (!validName(name)) return failure(c, 'invalid_name', 'Giv beregningen et navn på højst 120 tegn.', 400);
-  if (!toolId(body.toolId)) return failure(c, 'invalid_tool', 'Vælg et af de fire understøttede værktøjer.', 400);
+  if (!toolId(body.toolId)) return failure(c, 'invalid_tool', 'Vælg et af de understøttede værktøjer.', 400);
   const input = inputValue(body, body.toolId);
   if (!await writeAllowed(c)) return limited(c);
   // An existing admin/staff session is already verified too; its first explicit save
