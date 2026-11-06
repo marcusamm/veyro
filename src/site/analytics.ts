@@ -6,7 +6,7 @@ import { sha256Hex } from '../lib/crypto';
 import { rateLimit } from '../lib/db';
 import { ANALYTICS_CONSENT_VERSION, ANALYTICS_RETENTION_SECONDS, ANALYTICS_SESSION_SECONDS, recordAnalyticsEvent, type AnalyticsContext } from '../lib/site-analytics';
 import { loadSite, type SiteData } from './content';
-import { languagePath } from './localization';
+import { isSwedishHost, languagePath, localizedPath, SWEDISH_ORIGIN } from './localization';
 
 const analytics = new Hono<{ Bindings: Env }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -54,7 +54,7 @@ analytics.post('/events', async c => {
     clear();
     return c.body(null, 204);
   }
-  if (url.host !== new URL(c.env.SITE_URL || 'https://veyro.dk').host) return c.body(null, 204);
+  if (url.host !== new URL(c.env.SITE_URL || 'https://veyro.dk').host && url.origin !== SWEDISH_ORIGIN) return c.body(null, 204);
   if (!['pageview', 'engagement'].includes(String(body.type)) || typeof body.eventId !== 'string' || !UUID.test(body.eventId) || typeof body.path !== 'string') return c.json({ accepted: false }, 400);
   for (const key of ['activeSeconds', 'scrollDepth']) {
     if (body[key] !== undefined && (typeof body[key] !== 'number' || !Number.isFinite(body[key]) || body[key] < 0)) return c.json({ accepted: false }, 400);
@@ -68,7 +68,9 @@ analytics.post('/events', async c => {
     if (!await rateLimit(c.env.DB, key, 240, 60)) return c.json({ accepted: false }, 429);
     const cf = c.req.raw.cf;
     const receipt = await recordAnalyticsEvent(c.env.DB, {
-      type: body.type as 'pageview' | 'engagement', eventId: body.eventId, path: body.path,
+      type: body.type as 'pageview' | 'engagement', eventId: body.eventId,
+      // Keep Swedish reports distinct from Danish paths in the shared analytics store.
+      path: isSwedishHost(url.hostname) ? localizedPath(languagePath(body.path).path, 'sv') : body.path,
       activeSeconds: body.activeSeconds as number | undefined, scrollDepth: body.scrollDepth as number | undefined,
       referrer: typeof body.referrer === 'string' ? body.referrer.slice(0, 1024) : undefined,
       campaignSource: typeof body.campaignSource === 'string' ? body.campaignSource.slice(0, 30) : undefined,

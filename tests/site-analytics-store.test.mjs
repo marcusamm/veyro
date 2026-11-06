@@ -164,6 +164,9 @@ describe('Consent analytics persistence and reports', () => {
   it('retains only coarse safe source information', () => {
     expect(analyticsSource('https://example.com/path?email=a@example.com#details')).toBe('example.com');
     expect(analyticsSource('https://veyro.dk/pages/priser')).toBe('Direkte / ukendt');
+    expect(analyticsSource('https://veyro.se/pages/priser')).toBe('Direkte / ukendt');
+    expect(analyticsSource('https://www.veyro.se/pages/priser')).toBe('Direkte / ukendt');
+    expect(analyticsSource('https://evilveyro.se/pages/priser')).toBe('evilveyro.se');
     expect(analyticsSource('https://other.example','email')).toBe('email (kampagne)');
     expect(analyticsSource(undefined,'person@example.com')).toBe('Direkte / ukendt');
     expect(analyticsSource('javascript:alert(1)')).toBe('Direkte / ukendt');

@@ -560,7 +560,9 @@
   const NEW_HASH = { '#pakke-basis': '#pakke-hjemmeside', '#webdesign': '' };
   function redirectOldAnchors() {
     const { pathname, hash, search } = window.location;
-    const prefix = ['en', 'sv'].includes(document.documentElement.lang) ? '/' + document.documentElement.lang : '';
+    const language = document.documentElement.lang;
+    const swedishDomain = ['veyro.se', 'www.veyro.se'].includes(window.location.hostname);
+    const prefix = ['en', 'sv'].includes(language) && !(language === 'sv' && swedishDomain) ? '/' + language : '';
     if (pathname !== prefix + '/pages/ydelser' || !OLD_ANCHORS[hash]) return;
     window.location.replace(prefix + OLD_ANCHORS[hash] + search + (hash in NEW_HASH ? NEW_HASH[hash] : hash));
   }

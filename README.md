@@ -368,7 +368,9 @@ Kunden kan selv skifte kort, hente fakturaer og opsige i kundepanelet, og via St
 
 ## 15. Hjemmesiden veyro.dk
 
-Salgshjemmesiden kører nu i samme Worker som kundepanelet. Domænet afgør, hvad der vises: `kunde.veyro.dk` er kundepanelet, og domænerne i `SITE_HOSTS` (`veyro.dk`, `www.veyro.dk`, `ny.veyro.dk`) er hjemmesiden. `www` sendes videre til `veyro.dk`.
+Salgshjemmesiden kører nu i samme Worker som kundepanelet. Domænet afgør, hvad der vises: `kunde.veyro.dk` er kundepanelet, og domænerne i `SITE_HOSTS` (`veyro.dk`, `www.veyro.dk`, `veyro.se`, `www.veyro.se`, `ny.veyro.dk`) er hjemmesiden. `www` sendes videre til det respektive hoveddomæne.
+
+**Svensk domæne.** `veyro.se` viser den eksisterende svenske oversættelse og SEK-priser direkte i roden, uanset besøgendes land. `veyro.dk/sv/...` viderestiller permanent til den tilsvarende `.se`-adresse; forespørgselsparametre bevares. Sprogvalg og svensk landedetektion på `.dk` fører til `.se`. Dansk/engelsk vælges på `.dk`, med en nødvendig præferencecookie på destinationsdomænet. Lokale prøveværter bevarer `/sv`-stier. De to produktionsdomæner har hver sit sitemap med gensidige `hreflang`-henvisninger. Samme virksomhed, D1-indhold, kundelogin og priser genbruges. Kurv og samtykke er fortsat knyttet til det enkelte domæne; de kopieres ikke mellem domænerne. Svenske henvendelser registreres med kildedomæne og sprog, og statistik bruger fortsat `/sv` som sprognøgle internt.
 
 **Indhold.** Temaet ligger i `site/theme` og gengives i Workeren med skabelonsproget Liquid (biblioteket `liquidjs`). Der er ingen forbindelse til Shopify; navne som `shopify-section` i HTML'en er kun interne klassenavne fra temaets oprindelse. Standardindholdet (sider, menuer, abonnementer, juridiske tekster) ligger i `site/content.json`. Alt, der rettes i admin, gemmes i D1 (`site_content`), og den tidligere version lægges i `site_content_history`, så alt kan gendannes. Efter ændringer i `site/` køres `npm run build:site`, som pakker temaet ind i `src/site/theme.generated.ts` (testene fejler, hvis den er glemt).
 
@@ -396,7 +398,7 @@ Salgshjemmesiden kører nu i samme Worker som kundepanelet. Domænet afgør, hva
 
 ### Udrulning og tilbagerulning
 
-veyro.dk, www.veyro.dk og ny.veyro.dk peger på Workeren (de står i `routes` i `wrangler.toml`); domænet blev flyttet fra Shopify 20. oktober 2026, og Shopify bruges ikke længere.
+veyro.dk, www.veyro.dk, veyro.se, www.veyro.se og ny.veyro.dk peger på Workeren (de står i `routes` i `wrangler.toml`); det danske domæne blev flyttet fra Shopify 20. oktober 2026, og Shopify bruges ikke længere.
 
 1. Flet ændringer til `main`, og kør **Actions › Deploy kundepanel › Run workflow**. Den kører typecheck og temakontrol, viser et D1 Time Travel-bogmærke, kører manglende migrationer, udruller og tjekker kunde.veyro.dk, ny.veyro.dk og de juridiske sider på veyro.dk.
 2. Tjek bagefter `https://veyro.dk`, en formular og kurven.

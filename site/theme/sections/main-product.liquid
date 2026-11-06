@@ -104,7 +104,7 @@
   "@type": "Product",
   "name": {{ product.title | json }},
   "description": {{ product.description | strip_html | json }},
-  "url": {{ request.origin | append: product.url | json }},
+  "url": {{ canonical_url | json }},
   {%- if product.featured_image -%}"image": {{ product.featured_image | image_url: width: 1200 | prepend: 'https:' | json }},{%- endif -%}
   "offers": {
     "@type": "Offer",

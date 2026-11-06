@@ -18,8 +18,8 @@ function node({ text = '', hidden = false, data = {} } = {}) {
     classList: { contains: c => classes.has(c), add: c => classes.add(c), toggle(c, enabled) { if (enabled) classes.add(c); else classes.delete(c); } },
   };
 }
-function fixture(lang = 'da', count = 1) {
-  const prefix = lang === 'da' ? '' : `/${lang}`;
+function fixture(lang = 'da', count = 1, origin = 'https://veyro.dk') {
+  const prefix = lang === 'da' || (lang === 'sv' && origin === 'https://veyro.se') ? '' : `/${lang}`;
   const pickers = Array.from({ length: count }, () => {
     const picker = node();
     const summary = node();
@@ -55,11 +55,11 @@ function fixture(lang = 'da', count = 1) {
     return Object.assign(picker, { cards, summary, fields });
   });
   const document = { readyState: 'complete', getElementById: () => ({ textContent: '{"planSelected":"{title}: {price}"}' }), querySelectorAll: () => pickers };
-  const context = vm.createContext({ document, window: { location: { href: `https://veyro.dk${prefix}/pages/priser` } }, URL });
+  const context = vm.createContext({ document, window: { location: { href: `${origin}${prefix}/pages/priser` } }, URL });
   vm.runInContext(source, context);
   return { pickers, context };
 }
-function expectTier(picker, lang, index) {
+function expectTier(picker, lang, index, prefix = lang === 'da' ? '' : `/${lang}`) {
   const card = picker.cards[2], option = card.input.options[index], amount = prices[lang][index];
   expect(card.radio.checked).toBe(true);
   expect(card.amount.textContent).toBe(amount);
@@ -75,12 +75,12 @@ function expectTier(picker, lang, index) {
   expect(card.nodes['[data-plan-from]'].hidden).toBe(true);
   for (const link of [card.primary, picker.fields.link]) {
     const url = new URL(link.getAttribute('href'), 'https://veyro.dk');
-    expect(url.pathname).toBe(`${lang === 'da' ? '' : `/${lang}`}/pages/kontakt`);
+    expect(url.pathname).toBe(`${prefix}/pages/kontakt`);
     expect(url.searchParams.get('ydelse')).toBe('pakke-webshop');
     expect(url.searchParams.getAll('webshop_niveau')).toEqual([option.value]);
     expect(url.hash).toBe('#formular');
   }
-  expect(card.details.getAttribute('href')).toBe(`${lang === 'da' ? '' : `/${lang}`}/pages/webshop`);
+  expect(card.details.getAttribute('href')).toBe(`${prefix}/pages/webshop`);
 }
 
 describe('Webshop picker state and enquiry propagation', () => {
@@ -116,6 +116,15 @@ describe('Webshop picker state and enquiry propagation', () => {
     picker.choose(1);
     expect(picker.fields.total.textContent).toBe(prices[lang][0]);
     for (let index = 0; index < 3; index++) { picker.chooseTier(index); expectTier(picker, lang, index); }
+  });
+  it('keeps Swedish root enquiry links and the same SEK tier prices on veyro.se', () => {
+    const { pickers: [picker] } = fixture('sv', 1, 'https://veyro.se');
+    expect(picker.fields.price.textContent).toBe('299 SEK');
+    for (let index = 0; index < 3; index++) {
+      picker.chooseTier(index);
+      expectTier(picker, 'sv', index, '');
+      expect(new URL(picker.fields.link.getAttribute('href'), 'https://veyro.se').origin).toBe('https://veyro.se');
+    }
   });
   it('isolates multiple pickers and does not bind initialized pickers twice', () => {
     const { pickers, context } = fixture('da', 2);

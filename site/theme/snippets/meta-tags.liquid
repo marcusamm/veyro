@@ -68,10 +68,10 @@
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
-      "@id": {{ shop.url | append: '/#website' | json }},
+      "@id": {{ request.origin | append: '/#website' | json }},
       "name": {{ company | json }},
-      "alternateName": {{ shop.url | remove: 'https://' | remove: 'http://' | json }},
-      "url": {{ shop.url | append: '/' | json }},
+      "alternateName": {{ request.origin | remove: 'https://' | remove: 'http://' | json }},
+      "url": {{ request.origin | append: '/' | json }},
       "inLanguage": ["da", "en", "sv"],
       "publisher": { "@id": {{ shop.url | append: '/#organization' | json }} }
     }

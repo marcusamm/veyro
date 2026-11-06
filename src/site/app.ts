@@ -15,8 +15,8 @@ import { latestTemplate, veyroInfo } from '../lib/nda';
 import { sampleNdaPdf } from '../lib/nda-docs';
 import { asset, THEME_VERSION, translate, warmUp, type FormState } from './engine';
 import { blockEmailKey, countView, createLead, ipHash, isBlockedSender, LEAD_KIND_LABEL, markLeadNotified, type LeadCartLine, type LeadKind } from './leads';
-import { languagePath, localizedPath, SITE_LANGUAGES, type SiteLanguage } from './localization';
-import { LANGUAGE_COOKIE, languageRedirect } from './language-routing';
+import { canonicalLanguageUrl, isSwedishHost, languagePath, localizedPath, requestLanguage, SITE_LANGUAGES, SWEDISH_ORIGIN, type SiteLanguage } from './localization';
+import { LANGUAGE_COOKIE, domainLanguageRedirect } from './language-routing';
 import { cartDrop, renderSitePage, type CartLine, type RenderRequest } from './render';
 import { displayPrice } from './currency';
 import { normalizeWebshopTierId, webshopTier } from './webshop-tiers';
@@ -41,14 +41,15 @@ function canonicalOrigin(env: Env): string {
   return (env.SITE_URL || 'https://veyro.dk').replace(/\/+$/, '');
 }
 function isCanonicalHost(c: Context<SiteEnv>): boolean {
-  return new URL(c.req.url).host === new URL(canonicalOrigin(c.env)).host;
+  const host = new URL(c.req.url).host;
+  return host === new URL(canonicalOrigin(c.env)).host || host === new URL(SWEDISH_ORIGIN).host;
 }
 
 // ---------- Sikkerhed og headers ----------
 
 site.use('*', async (c, next) => {
   const url = new URL(c.req.url);
-  c.set('siteLanguage', languagePath(url.pathname).language);
+  c.set('siteLanguage', requestLanguage(url.pathname, url.hostname));
   // www.veyro.dk → veyro.dk, og http → https på de rigtige adresser (ikke ved lokal udvikling)
   const www = url.hostname.startsWith('www.') && siteHosts(c.env).includes(url.hostname.slice(4));
   const insecure = url.protocol === 'http:' && url.hostname !== 'localhost' && canonicalOrigin(c.env).startsWith('https:');
@@ -106,7 +107,7 @@ site.use('*', async (c, next) => {
 
 /** Vælg sprog før gengivelse; gem kun et aktivt valg fra sprogvælgeren. */
 site.use('*', async (c, next) => {
-  const decision = languageRedirect(c.req.raw, getCookie(c, LANGUAGE_COOKIE));
+  const decision = domainLanguageRedirect(c.req.raw, getCookie(c, LANGUAGE_COOKIE), canonicalOrigin(c.env));
   if (!decision) return next();
   if (decision.selectedLanguage) {
     setCookie(c, LANGUAGE_COOKIE, decision.selectedLanguage, {
@@ -116,7 +117,7 @@ site.use('*', async (c, next) => {
   }
   // A country/preference redirect must never be reused for another visitor.
   c.header('Cache-Control', 'private, no-store');
-  return c.redirect(decision.location, 302);
+  return c.redirect(decision.location, decision.status ?? 302);
 });
 
 /** Formularer må kun sendes fra siden selv */
@@ -188,14 +189,17 @@ site.get('/favicon.ico', (c) => {
 site.get('/robots.txt', (c) => {
   if (!isCanonicalHost(c)) return c.text('User-agent: *\nDisallow: /\n');
   // Kurven må crawles, så søgemaskiner kan læse dens noindex-header.
-  return c.text(`User-agent: *\nDisallow: /contact\n\nSitemap: ${canonicalOrigin(c.env)}/sitemap.xml\n`, 200, { 'Cache-Control': 'public, max-age=3600' });
+  const origin = isSwedishHost(new URL(c.req.url).hostname) ? SWEDISH_ORIGIN : canonicalOrigin(c.env);
+  return c.text(`User-agent: *\nDisallow: /contact\n\nSitemap: ${origin}/sitemap.xml\n`, 200, { 'Cache-Control': 'public, max-age=3600' });
 });
 
 site.get('/sitemap.xml', async (c) => {
   const data = await loadSite(c.env.DB);
   const o = canonicalOrigin(c.env);
+  const host = new URL(c.req.url).hostname;
+  const languages: readonly SiteLanguage[] = isSwedishHost(host) ? ['sv'] : new URL(o).hostname === 'veyro.dk' ? ['da', 'en'] : SITE_LANGUAGES;
   const urls = ['/', ...data.pages.filter((p) => p.published && !p.archived).map((p) => `/pages/${p.handle}`), ...data.products.filter((p) => p.status === 'active').map((p) => `/products/${p.handle}`)];
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.flatMap((u) => SITE_LANGUAGES.map(language => `  <url><loc>${o}${localizedPath(u, language)}</loc>${SITE_LANGUAGES.map(code => `<xhtml:link rel="alternate" hreflang="${code}" href="${o}${localizedPath(u, code)}"/>`).join('')}</url>`)).join('\n')}\n</urlset>\n`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.flatMap((u) => languages.map(language => `  <url><loc>${canonicalLanguageUrl(u, language, o)}</loc>${SITE_LANGUAGES.map(code => `<xhtml:link rel="alternate" hreflang="${code}" href="${canonicalLanguageUrl(u, code, o)}"/>`).join('')}</url>`)).join('\n')}\n</urlset>\n`;
   return c.body(xml, 200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
 });
 
@@ -284,8 +288,9 @@ const qty = (v: unknown, fallback: number) => {
 };
 
 const cartLanguage = (c: Context<SiteEnv>, body?: Record<string, unknown>): SiteLanguage => {
+  const url = new URL(c.req.url);
   const value = body?.site_language;
-  const language = value === 'en' || value === 'sv' ? value : languagePath(new URL(c.req.url).pathname).language;
+  const language = isSwedishHost(url.hostname) ? 'sv' : value === 'en' || value === 'sv' ? value : languagePath(url.pathname).language;
   c.set('siteLanguage', language);
   return language;
 };
@@ -297,14 +302,14 @@ site.post('/cart/add', async (c) => {
   const handle = String(body['id'] ?? '');
   const data = await loadSite(c.env.DB);
   const product = data.products.find((p) => p.handle === handle && p.status === 'active');
-  if (!product) return c.redirect(localizedPath('/cart', cartLanguage(c, body)), 303);
+  if (!product) return c.redirect(localizedPath('/cart', cartLanguage(c, body), new URL(c.req.url).hostname), 303);
   const lines = readCart(c);
   const add = Math.max(1, qty(body['quantity'], 1));
   const line = lines.find((l) => l.handle === handle);
   if (line) line.quantity = Math.min(MAX_QTY, line.quantity + add);
   else lines.push({ handle, quantity: add });
   writeCart(c, lines);
-  return c.redirect(localizedPath('/cart', cartLanguage(c, body)), 303);
+  return c.redirect(localizedPath('/cart', cartLanguage(c, body), new URL(c.req.url).hostname), 303);
 });
 
 async function updateCart(c: Context<SiteEnv>) {
@@ -322,7 +327,7 @@ async function updateCart(c: Context<SiteEnv>) {
     if (l && updates[i] != null) l.quantity = qty(updates[i], l.quantity);
   });
   writeCart(c, lines);
-  return c.redirect(localizedPath('/cart', cartLanguage(c, body)), 303);
+  return c.redirect(localizedPath('/cart', cartLanguage(c, body), new URL(c.req.url).hostname), 303);
 }
 site.post('/cart', updateCart);
 site.post('/cart/update', updateCart);
@@ -339,7 +344,7 @@ const changeCart = async (c: Context<SiteEnv>) => {
     if (l) l.quantity = q;
     writeCart(c, lines);
   }
-  return c.redirect(localizedPath('/cart', cartLanguage(c)), 303);
+  return c.redirect(localizedPath('/cart', cartLanguage(c), new URL(c.req.url).hostname), 303);
 };
 site.get('/cart/change', changeCart);
 site.get('/en/cart/change', changeCart);
@@ -350,7 +355,7 @@ site.post('/cart/clear', async (c) => {
   const body = await c.req.parseBody();
   cartLanguage(c, body);
   writeCart(c, []);
-  return c.redirect(localizedPath('/cart', cartLanguage(c, body)), 303);
+  return c.redirect(localizedPath('/cart', cartLanguage(c, body), new URL(c.req.url).hostname), 303);
 });
 site.post('/cart/clear.js', (c) => {
   if (!sameOrigin(c)) return c.json({ error: 'forbidden' }, 403);
@@ -411,16 +416,16 @@ function personalize(c: Context<SiteEnv>, data: SiteData, html: string, language
   // Kurven vises kun i headeren, når der ligger noget i den
   const badge =
     count > 0
-      ? `<a class="site-header__cart" href="${localizedPath('/cart', language)}">${{ da: 'Kurv', en: 'Cart', sv: 'Varukorg' }[language]} <span class="site-header__count" aria-label="${translate('cart.count', { count }, language)}">${count}</span></a>`
+      ? `<a class="site-header__cart" href="${localizedPath('/cart', language, new URL(c.req.url).hostname)}">${{ da: 'Kurv', en: 'Cart', sv: 'Varukorg' }[language]} <span class="site-header__count" aria-label="${translate('cart.count', { count }, language)}">${count}</span></a>`
       : '';
   const nonce = c.get('nonce');
   return html.replace('<!--cart-count-->', badge).replace(/<script(?=[\s>])/g, `<script nonce="${nonce}"`);
 }
 
 async function respond(c: Context<SiteEnv>, path: string, forms: Record<string, FormState> | null = null, status: 200 | 404 | 422 | 429 = 200) {
+  const language = requestLanguage(path, new URL(c.req.url).hostname);
   const localized = languagePath(path);
   path = localized.path;
-  const language = localized.language;
   const data = await loadSite(c.env.DB);
   let r = resolvePath(data, path);
   if (!r) {
@@ -482,7 +487,7 @@ site.post('/contact', async (c) => {
   // Kun egne stier. "\" og "/./" kan ellers normaliseres til "//andet-domæne" i URL-parseren.
   if (!/^\/(?![\/\\])/.test(returnTo) || returnTo.includes('\\') || new URL(returnTo, 'http://x').pathname.startsWith('//')) returnTo = '/';
   const returnPath = returnTo.split(/[?#]/)[0] || '/';
-  const language = languagePath(returnPath).language;
+  const language = requestLanguage(returnPath, new URL(c.req.url).hostname);
   c.set('siteLanguage', language);
   const errorText = (key: string) => translate(`forms.server.${key}`, {}, language);
 
@@ -495,6 +500,9 @@ site.post('/contact', async (c) => {
   const webshopChoice = normalizeWebshopTierId(rawWebshopChoice) ?? rawWebshopChoice;
   // Enquiry details are derived from our tier model, never from a submitted price or limit.
   for (const key of ['Webshopniveau-id', 'Webshoppris DKK ekskl. moms', 'Vist webshoppris', 'Webshopgrænser', 'Webshopimport']) delete fields[key];
+  // Record the actual source and locale; submitted fields cannot impersonate another site.
+  fields['Hjemmesidesprog'] = language;
+  fields['Kildedomæne'] = new URL(c.req.url).hostname;
   // Honningkrukke: robotter udfylder det skjulte felt. Lad som om det lykkedes.
   const success = () => {
     const u = new URL(returnTo, 'http://x');
@@ -575,7 +583,8 @@ site.post('/contact', async (c) => {
   // Besked til Veyro. Fejler e-mailen, ligger forespørgslen stadig i admin.
   if (c.env.NOTIFY_EMAIL) {
     const lines = [
-      `${LEAD_KIND_LABEL[kind]} fra veyro.dk${fields['Formular'] ? ` (${fields['Formular']})` : ''}.`,
+      `${LEAD_KIND_LABEL[kind]} fra ${new URL(c.req.url).hostname}${fields['Formular'] ? ` (${fields['Formular']})` : ''}.`,
+      `Hjemmesidesprog: ${language}`,
       `Navn: ${fields['name'] || '–'}`,
       `E-mail: ${email}`,
       ...(fields['Telefon'] ? [`Telefon: ${fields['Telefon']}`] : []),
