@@ -4,6 +4,7 @@ import { SalonCore, resendMailer } from './core.js';
 
 function kvStorage(storage) {
   return {
+    transaction: (fn) => storage.transaction(async txn => fn(kvStorage(txn))),
     get: (key) => storage.get(key),
     put: (key, value) => storage.put(key, value),
     delete: (key) => storage.delete(key),
