@@ -2,13 +2,14 @@
 // samme instans én ad gangen: to kunder kan ikke få samme tid, og bookingmotoren er den samme som i browseren.
 // Ingen afhængigheder af Cloudflare her, så logikken kan testes med vitest (se tests/server.test.mjs).
 import * as E from '../site/assets/booking-engine.js';
+import { ShopCore, ShopError } from './shop.js';
 import { SALON, defaultState, PHOTOS } from '../site/assets/data.js';
 
 const DAY_MS = 86400000;
 const SESSION_DAYS = 30;
 const LOGIN_MINUTES = 20;
 const ARCHIVE_AFTER_DAYS = 60;
-const LIMITS = { book: [20, 3600_000], find: [40, 3600_000], login: [5, 3600_000] };
+const LIMITS = { book: [20, 3600_000], find: [40, 3600_000], login: [5, 3600_000], shop: [20, 3600_000] };
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -102,6 +103,7 @@ export class SalonCore {
     this.now = clock;
     this.hits = new Map();
     this.loaded = null;
+    this.shop = new ShopCore(this);
   }
 
   site() { return (this.env.SITE_URL || 'https://sbb.veyro.dk').replace(/\/$/, ''); }
@@ -211,7 +213,7 @@ export class SalonCore {
     try {
       return await this.route(req);
     } catch (e) {
-      if (e instanceof HttpError) return json({ error: e.message }, e.status);
+      if (e instanceof HttpError || e instanceof ShopError) return json({ error: e.message }, e.status);
       console.error(e);
       return json({ error: 'Der skete en fejl. Prøv igen, eller ring til os.' }, 500);
     }
@@ -228,6 +230,8 @@ export class SalonCore {
     const p = url.pathname;
     const m = req.method;
     const ip = req.headers.get('cf-connecting-ip') || '';
+
+    if (p.startsWith('/api/shop/') || p === '/api/admin/shop' || p.startsWith('/api/admin/shop/')) return this.shop.handle(req);
 
     if (p === '/internal/cron' && m === 'POST') return json(await this.cron());
 
@@ -363,6 +367,7 @@ export class SalonCore {
 
   /** Køres dagligt: påmindelser for i morgen og arkivering af gamle bookinger. */
   async cron() {
+    await this.shop.serial(() => this.shop.sweep(true));
     const state = await this.engineState();
     const today = E.utcToZoned(this.now()).date;
     const tomorrow = E.addDays(today, 1);
