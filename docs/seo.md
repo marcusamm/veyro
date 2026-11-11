@@ -1,5 +1,27 @@
 # Veyro SEO
 
+## Synlighed i Google og AI-søgning, 11. november 2026
+
+Målet er, at kunder kan finde Veyro via Google, ChatGPT-søgning og Claude, når de leder efter dansk webhosting, hjemmesider og vedligeholdelse. Forsiden beholder Veyro først i søgetitlen og beskriver webhosting med dansk support. Den eksisterende hostingside er fortsat den fælles destination for hostingrelaterede søgninger.
+
+- Hosting gør den danske virksomhed og kontakt i Slagelse tydelig. Et synligt FAQ-svar skelner mellem dansk support og serverplacering. Eksisterende hjemmesiders hosting/vedligeholdelse er efter tilbud, mens hosting indgår i hjemmesidepakkerne.
+- Forsidens nye hosting-FAQ linker til hostingsiden og forklarer pakkerne. Nye tekster og metadata er oversat til engelsk og svensk. Priser og aftaler bevares.
+- `ChatGPT-User` og `Claude-User` bevarer nu den efterspurgte sides sprog, også når hentningen kommer fra USA/Sverige uden Cloudflares verified-bot-metadata. Søgecrawlere som `OAI-SearchBot`, `Claude-SearchBot`, Googlebot og Bingbot var allerede undtaget fra geolokation. Et eksplicit sprogvalg virker fortsat. Undtagelsen giver ingen ekstra rettigheder eller adgang til private data.
+- Begge offentlige domæners aktuelle `robots.txt` tillader offentligt indhold via wildcard og annoncerer eget sitemap. Der er ingen specifik blokering af de nævnte søgecrawlere. Privat kundeindhold og previews får ingen nye tilladelser. Træningscrawlere er ikke nødvendige for søgesynlighed, og deres eksisterende indstillinger ændres ikke.
+- Indholdet leveres i serverrenderet HTML med eksisterende virksomhedsidentitet, Service-data, lokale canonical-adresser og hreflang. Ingen nye billeder, scripts, afhængigheder eller særlige AI-filer.
+
+### Verifikation og begrænsning
+
+Site-build, TypeScript og 156 tests i SEO, sprogvalg, svensk gengivelse/domæner og valuta bestået. De nye regressionstests dækker AI-søgning/hentning fra USA og Sverige, GET/HEAD, eksplicit sprogvalg samt uændret behandling af kontostier og POST.
+
+Før ændringen bestod alle 60 offentlige sitemap-adresser HTTP-kontrollen: status 200, egen canonical, ét H1, beskrivelse og gyldige strukturerede data. Requests fra vores netværk med Googlebot, Bingbot, OAI-SearchBot, Claude-SearchBot, ChatGPT-User og Claude-User som User-Agent fik 200 uden challenge. Det dokumenterer ikke adgang fra udbydernes faktiske IP-adresser; Cloudflare-regler på kontoniveau og crawlerlogfiler kunne ikke inspiceres med den tilgængelige CLI-adgang.
+
+Google angiver, at almindelig SEO også gælder for AI Overviews og AI Mode; der kræves ikke særlige AI-filer eller et særligt schema. OpenAI bruger OAI-SearchBot til søgning og ChatGPT-User til visse brugerbestilte hentninger. Anthropic skelner tilsvarende mellem Claude-SearchBot, Claude-User og træningscrawleren ClaudeBot. Indeksering og omtale/anbefaling i et AI-svar er ikke garanteret.
+
+Kilder: [Google AI features](https://developers.google.com/search/docs/appearance/ai-features), [OpenAI Crawlers](https://developers.openai.com/api/docs/bots), [Anthropic crawlers](https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler).
+
+Efter nyt crawl: mål Danmark i Search Console på Veyro, dansk webhosting, hosting med dansk support og hjemmeside med hosting, plus de relevante landingssider. Sammenlign klik, eksponeringer, CTR og gennemsnitlig placering over sammenlignelige 28-dagesperioder. AI-svar bør stikprøves med samme neutrale spørgsmål, land/sprog og dato; et enkelt svar er ikke en stabil placering. Der er endnu ingen aflæst ny målebaseline eller dokumenteret placeringseffekt. Næste indholdsarbejde bør bygge på rigtige kundeprojekter og verificerbare erfaringer samt korrekte eksterne virksomhedsprofiler.
+
 ## Svensk domæne, 6. november 2026
 
 Den svenske version har nu `https://veyro.se` som kanonisk origin uden `/sv`-præfiks. Gamle `veyro.dk/sv/...`-adresser får 301 til samme side på `.se`, inklusive søgeparametre. Hvert domænes sitemap indeholder kun dets egne kanoniske sider; alle sprog har gensidige `hreflang`-henvisninger. HTML-canonical, Open Graph, service- og produktadresser samt brødkrummer følger sprogets domæne. Veyros danske virksomhedsidentitet og adresse bevares; der oprettes ingen svensk virksomhed i strukturerede data.

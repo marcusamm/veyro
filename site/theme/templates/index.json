@@ -261,6 +261,13 @@
             "question": "Hvad sker der, hvis vi opsiger?",
             "answer": "<p>I kan opsige når som helst i kundepanelet eller på mail. Opsigelsen gælder fra udgangen af den periode, I har betalt for. I ejer jeres eget indhold og jeres data og kan inden for 30 dage efter ophøret få dem udleveret. Veyro beholder rettighederne til software, skabeloner og kode, og domæner, der tilhører jer, overføres efter aftale. <a href=\"/pages/handelsbetingelser\">Læs handelsbetingelserne</a>.</p>"
           }
+        },
+        "question_hosting": {
+          "type": "question",
+          "settings": {
+            "question": "Tilbyder Veyro webhosting med dansk support?",
+            "answer": "<p>Ja. Veyro er et dansk webbureau i Slagelse. Vi hjælper mindre virksomheder med <a href=\"/pages/hosting\">webhosting og vedligeholdelse med dansk support</a>. For en eksisterende hjemmeside aftales omfang og fast månedspris i et tilbud. Hosting og teknisk vedligeholdelse er allerede inkluderet i pakkerne Hjemmeside, Booking og Webshop.</p>"
+          }
         }
       },
       "block_order": [
@@ -268,7 +275,8 @@
         "question_2",
         "question_3",
         "question_4",
-        "question_5"
+        "question_5",
+        "question_hosting"
       ]
     },
     "contact": {
