@@ -6,8 +6,8 @@
         "show_breadcrumbs": true,
         "parent_label": "Løsninger",
         "parent_link": "/pages/ydelser",
-        "heading": "Website hosting og vedligeholdelse til virksomheder",
-        "text": "<p>Veyro hjælper mindre virksomheder med hosting og vedligeholdelse af deres hjemmeside. Har I allerede en side, aftaler vi den løbende pasning hos jeres nuværende udbyder eller hos os. I får én teknisk kontakt og en fast månedspris efter tilbud.</p>",
+        "heading": "Webhosting med dansk support og vedligeholdelse",
+        "text": "<p>Veyro er et dansk webbureau i Slagelse. Vi hjælper mindre virksomheder med webhosting og vedligeholdelse, så I har én kontakt til hjemmesidens drift. Har I allerede en side, afklarer vi, om den skal blive hos jeres nuværende udbyder eller flyttes til os. Omfang og månedspris aftales på forhånd.</p>",
         "primary_label": "Få et tilbud",
         "primary_link": "/pages/kontakt?ydelse=hosting-og-vedligeholdelse#formular",
         "secondary_label": "Se hvad vi hjælper med",
@@ -99,7 +99,7 @@
       "type": "faq",
       "settings": {
         "anchor": "faq",
-        "heading": "Spørgsmål om website hosting",
+        "heading": "Spørgsmål om webhosting",
         "schema": true
       },
       "blocks": {
@@ -137,6 +137,20 @@
             "question": "Hvad skal I vide for at give et tilbud på hosting?",
             "answer": "<p>Send et link til hjemmesiden, navnet på den nuværende udbyder og den platform, I bruger, hvis I kender den. Fortæl også om kontaktformularer, booking, webshop eller integrationer, der skal blive ved med at virke. Så kan vi vurdere, om siden kan flyttes, eller om vedligeholdelse hos den nuværende udbyder er den bedste løsning. Adgang og en eventuel flytning aftaler vi, før arbejdet starter.</p>"
           }
+        },
+        "dansk_hosting": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad betyder dansk webhosting hos Veyro?",
+            "answer": "<p>I får en dansk virksomhed og kontakt i Slagelse, som hjælper med hjemmesidens hosting og vedligeholdelse. Dansk support er ikke det samme som et løfte om, at alle servere eller data befinder sig i Danmark. Vi bruger blandt andet Cloudflare. Krav til dataplacering og underleverandører skal afklares i den konkrete aftale; se vores <a href=\"/pages/databehandleraftale\">databehandleraftale</a>.</p>"
+          }
+        },
+        "ai_hosting": {
+          "type": "question",
+          "settings": {
+            "question": "Hvad betyder webhosting med AI?",
+            "answer": "<p>AI bruges ofte til at bygge en hjemmeside eller skrive indhold. Hjemmesiden har stadig brug for hosting, SSL og vedligeholdelse. Hos Veyro kan I få vurderet hosting og drift af en AI-bygget hjemmeside ud fra dens platform, kode og funktioner. Det er ikke en pakke til at køre eller træne egne AI-modeller, og AI-funktioner er ikke automatisk inkluderet. <a href=\"#ai-hjemmeside\">Læs, hvad vi afklarer før en flytning</a>.</p>"
+          }
         }
       },
       "block_order": [
@@ -144,7 +158,9 @@
         "item_2",
         "item_3",
         "item_4",
-        "item_5"
+        "item_5",
+        "dansk_hosting",
+        "ai_hosting"
       ]
     },
     "cta": {
@@ -168,12 +184,23 @@
         "heading": "Webhotel, domæne og mail – hvad er forskellen?",
         "text": "<p><strong>Webhotel eller hosting</strong> er den tekniske plads, hvor hjemmesiden kører. <strong>Domænet</strong> er adressen, kunderne skriver i browseren. <strong>Mail på domænet</strong> er en separat tjeneste, fx kontakt@jeresfirma.dk. De tre dele kan ligge hos forskellige udbydere.</p><p>Hos Veyro aftaler vi hosting og vedligeholdelse ud fra jeres hjemmeside. Domæne og mail er ikke inkluderet i vores hjemmesidepakker. I kan bruge jeres eget domæne, købe et gennem os mod betaling eller bruge en gratis adresse som jeresnavn.veyro.dk.</p><p>Før en flytning afklarer vi, hvem der administrerer domæne og mail, og hvilke indstillinger der skal bevares. En ny host behøver ikke betyde, at I også skal skifte mailudbyder.</p>"
       }
+    },
+    "ai_hjemmeside": {
+      "type": "rich-text",
+      "settings": {
+        "anchor": "ai-hjemmeside",
+        "heading": "Webhosting til en hjemmeside lavet med AI",
+        "text": "<p>Har I lavet en hjemmeside med AI og brug for hjælp til at få den online? Send os et link og fortæl, hvilket værktøj I har brugt. Vi undersøger, om siden kan eksporteres, hostes og vedligeholdes hos os, eller om den skal blive på den eksisterende platform.</p><p>AI kan hjælpe med at skabe hjemmesidens indhold og kode. Webhosting er driften, der gør siden tilgængelig. En flot forhåndsvisning fortæller derfor ikke alene, om kontaktformular, booking og betaling virker, når siden går live.</p><h3>Det afklarer vi før en flytning</h3><ul><li><strong>Platform og adgang:</strong> Kan kode og indhold eksporteres, og har I de nødvendige rettigheder og adgange?</li><li><strong>Funktioner og data:</strong> Hvad kræver formularer, login, booking, webshop og eventuelle integrationer?</li><li><strong>Domæne og mail:</strong> Hvilke adresser og indstillinger skal bevares?</li><li><strong>Drift og pris:</strong> Hvem vedligeholder hvad, hvilke abonnementer skal fortsætte, og hvordan tester vi løsningen?</li></ul><p>Mulighederne afhænger af jeres konkrete løsning. Vi aftaler arbejdet og prisen, før vi ændrer noget. Har I i stedet brug for en ny side, kan I læse om <a href=\"/pages/hjemmeside\">en hjemmeside med design, hosting og vedligeholdelse</a>.</p>",
+        "link_label": "Få vurderet jeres hjemmeside",
+        "link": "/pages/kontakt?ydelse=hosting-og-vedligeholdelse#formular"
+      }
     }
   },
   "order": [
     "hero",
     "indhold",
     "begreber",
+    "ai_hjemmeside",
     "forloeb",
     "faq",
     "cta"
