@@ -2,10 +2,13 @@
 // Bookinger, behandlinger og tider ligger på serveren (/api, se worker/). Browseren bruger samme bookingmotor
 // til at vise ledige tider, og serveren tjekker tiden igen, når kunden bekræfter.
 import * as E from './booking-engine.js';
-import { mountShop, mountShopAdmin } from './shop.js?v=20261110';
+import { mountShop, mountShopAdmin, mountFeaturedProducts } from './shop.js?v=crisp-opening-2';
+import { icon } from './icons.js?v=crisp-opening-2';
+import { homepage, mountEditorial } from './editorial-home.js?v=crisp-opening-2';
 import { SALON, PHOTOS, SERVICE_PHOTOS } from './data.js';
 
 const app = document.getElementById('app');
+document.querySelector('a[href="#main"]')?.addEventListener('click',e=>{e.preventDefault();const main=document.getElementById('main');if(main){main.tabIndex=-1;main.focus();main.scrollIntoView();}});
 
 // ---------- server ----------
 let state = null; // { settings, services, barbers, bookings } – offentlig udgave, eller fuld udgave i admin
@@ -137,53 +140,11 @@ function todayLine() {
 }
 
 // ---------- fælles layout ----------
-// Logo: to bogstaver (S og B) i en cirkel, delt af en lodret streg, de to brødre side om side.
-const LOGO_MARK = '<svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M22 10.5v23" stroke="currentColor" stroke-width="1.1"/><text y="26.8" font-size="13.5" font-weight="500" fill="currentColor" font-family="Inter, Arial, sans-serif" text-anchor="middle"><tspan x="15.4">S</tspan><tspan x="28.8">B</tspan></text></svg>';
 function logo() {
-  return `<a class="logo" href="#/" aria-label="StyleByBrothers, til forsiden"><span class="logo-mark">${LOGO_MARK}</span><span class="logo-name">StyleBy<span>Brothers</span><small>Barbershop · Slagelse</small></span></a>`;
+ return `<a class="logo ed-logo" href="#/" aria-label="StyleByBrothers, til forsiden"><span>StyleByBrothers</span><small>Barbershop / Slagelse</small></a>`;
 }
-
-function header() {
-  return `<div class="topbar"><div class="wrap"><span>Herrefrisør i Slagelse · ${SALON.street}</span><a href="${SALON.phoneHref}">Ring ${SALON.phone.replace('+45 ', '')} <span aria-hidden="true">↗</span></a></div></div>
-  <header class="site-header">
-    <nav class="nav wrap" aria-label="Hovedmenu">
-      ${logo()}
-      <ul class="nav-links">
-        <li><a href="#/#priser">Behandlinger</a></li>
-        <li><a href="#/#galleri">Vores klip</a></li>
-        <li><a href="#/shop">Webshop ↗</a></li><li><a href="#/#salonen">Salonen</a></li>
-        <li><a href="#/#find-os">Find os</a></li>
-      </ul>
-      <div class="nav-right"><a href="#/min-booking">Min booking</a><a class="sbb-book" ${bookAttrs()}>Book tid <span aria-hidden="true">↗</span></a></div>
-      <button class="menu-btn" data-act="menu" aria-expanded="false" aria-controls="menu">Menu</button>
-      <a class="nav-book sbb-book" ${bookAttrs()}>Book tid <span aria-hidden="true">↗</span></a>
-    </nav>
-    <div class="mobile-menu wrap" id="menu" hidden>
-      <ul>
-        <li><a href="#/#priser">Behandlinger & priser</a></li>
-        <li><a href="#/#galleri">Vores klip</a></li>
-        <li><a href="#/shop">Webshop ↗</a></li><li><a href="#/#salonen">Salonen</a></li>
-        <li><a href="#/#find-os">Find os</a></li>
-        <li><a href="#/min-booking">Flyt eller aflys en tid</a></li>
-      </ul>
-      <p>${SALON.street}, ${SALON.city} · <a href="${SALON.phoneHref}">${SALON.phone}</a></p>
-    </div>
-  </header>`;
-}
-
-function footer() {
-  return `<footer class="site-footer"><div class="wrap">
-    ${currentView === 'home' ? `<div class="sbb-footer-cta"><div><p class="sbb-kicker">Næste klip starter her.</p><h2>Vi ses i stolen.</h2></div><a class="sbb-book" ${bookAttrs()}>Find en ledig tid <span aria-hidden="true">↗</span></a></div>` : ''}
-    <div class="foot-cols">
-      <div class="foot-brand">${logo()}<p>Klip, fades og skæg.<br>Midt i Slagelse.</p></div>
-      <div><h3>Besøg os</h3><p>${SALON.street}<br>${SALON.city}</p><p><a href="${SALON.maps}" target="_blank" rel="noopener">Vis på kort ↗</a></p></div>
-      <div><h3>Kontakt</h3><p><a href="${SALON.phoneHref}">${SALON.phone}</a></p><p>CVR ${SALON.cvr}</p></div>
-      <div><h3>Din tid</h3><p><a ${bookAttrs()}>Book tid ↗</a></p><p><a href="#/min-booking">Flyt eller aflys</a></p><p><a href="#/shop">Webshop ↗</a></p></div>
-      <div><h3>Følg med</h3><p><a href="${SALON.instagram}" target="_blank" rel="noopener">Instagram ↗</a></p><p><a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook ↗</a></p></div>
-    </div>
-    <div class="foot-bottom"><span>© ${new Date().getFullYear()} StyleByBrothers</span><a href="#/privatliv">Privatliv og cookies</a><a href="#/admin">Log ind</a><span class="credit">Webudvikling: <a href="https://veyro.dk" target="_blank" rel="noopener">Veyro.dk</a></span></div>
-  </div></footer>`;
-}
+function header(){return `<header class="site-header ed-header"><nav class="nav ed-wrap" aria-label="Hovedmenu"><button class="menu-btn" data-act="menu" aria-label="Menu" aria-expanded="false" aria-controls="menu">${icon('menu')} <span>Menu</span></button>${logo()}<a class="nav-book" ${bookAttrs()}>Book tid</a></nav><div class="mobile-menu ed-menu" id="menu" hidden><ul><li><a href="#/#priser">Behandlinger & priser</a></li><li><a href="#/#galleri">Vores klip</a></li><li><a href="#/shop">Webshop</a></li><li><a href="#/#salonen">Salonen</a></li><li><a href="#/#find-os">Find os</a></li><li><a href="#/min-booking">Min booking</a></li></ul><p>${SALON.street}, ${SALON.city}<br><a href="${SALON.phoneHref}">${SALON.phone}</a></p></div></header>`;}
+function footer(){return `<footer class="site-footer ed-footer"><div class="ed-wrap"><div class="ed-footer-top">${logo()}<p>${SALON.street}<br>${SALON.city}</p><a href="${SALON.phoneHref}">${SALON.phone}</a><span>CVR ${SALON.cvr}</span></div><div class="foot-bottom"><span>© ${new Date().getFullYear()} StyleByBrothers</span><a href="#/privatliv">Privatliv og cookies</a><a href="#/admin">Administration</a><span class="credit">Website af <a href="https://veyro.dk" target="_blank" rel="noopener">Veyro</a></span></div></div></footer>`;}
 
 // ---------- forside ----------
 const LOOKS = [
@@ -196,54 +157,16 @@ const LOOKS = [
 let homeObserver;
 let motionPaused = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+let cleanupEditorial;
 function renderHome(scrollTo) {
-  const services = state.services.filter((s) => s.active);
-  const open = todayLine();
-  const team = state.barbers.filter((b) => b.active);
-  const haircut = services.find((s) => s.id === 'herreklip');
-  app.innerHTML = `${header()}
-  <main id="main" class="sbb-home ${motionPaused ? 'motion-paused' : ''}">
-    <section class="new-hero" aria-labelledby="sbb-title">
-      <div class="new-hero__photo"><img src="img/kroeller-taper.jpg" alt="Krøller og taper fade klippet hos StyleByBrothers" fetchpriority="high" width="1200" height="1200"></div>
-      <div class="new-hero__top wrap"><span>Din barbershop i Slagelse</span><span class="open-now ${open.open ? '' : 'closed'}"><i aria-hidden="true"></i>${esc(open.text)}</span></div>
-      <div class="new-hero__body wrap"><div><p class="sbb-kicker">Godt håndværk. Din personlighed.</p><h1 id="sbb-title">Dit hår.<br><span>Din stil.</span></h1><div class="new-hero__actions"><a class="sbb-book" ${bookAttrs()}>Book din næste tid <span aria-hidden="true">↗</span></a><a class="new-hero__prices" href="#/#priser">Se priser ↓</a></div></div><p class="new-hero__caption">Klip, fades og skæg.<br>Gjort ordentligt.<br>Lige her i Slagelse.</p></div>
-      <div class="new-hero__bottom wrap"><span>Sct. Mikkelsgade 26A · 4200 Slagelse</span><a href="#/#galleri">Se håndværket <span aria-hidden="true">↓</span></a><span>StyleByBrothers / 01</span></div>
-    </section>
-    <section class="new-intro wrap" aria-labelledby="intro-title"><p class="sbb-kicker">Velkommen i stolen</p><div><h2 id="intro-title">Et skarpt klip.<br>En god fornemmelse.</h2><div class="new-intro__bottom"><p>En frisk fade. Lidt mere tekstur. Eller bare dit faste klip. Vi lytter, finder formen og tager os af detaljerne — så du går herfra med et udtryk, der er dit.</p><a class="sbb-text-link" href="#/#salonen">Mød din barbershop <span aria-hidden="true">↗</span></a></div></div></section>
-
-    <section class="sbb-services sbb-section" id="priser" aria-labelledby="priser-titel">
-      <div class="wrap">
-        <div class="sbb-section-head"><div><p class="sbb-kicker">Behandlinger & priser</p><h2 id="priser-titel">Klip. Skæg.<br>Hele udtrykket.</h2></div><p>Fra et hurtigt trim til klippet<br>til den store dag.</p></div>
-        <div class="sbb-services__grid">
-          <div class="sbb-services__story" data-reveal>${photo('img/high-fade-skaeg.jpg', 'Fade og skæg med skarpe konturer fra StyleByBrothers', '')}<div><span>Til hverdag.<br>Og de store dage.</span><span aria-hidden="true">↗</span></div></div>
-          <div class="sbb-services__list"><div class="cards">
-            ${services.map((s,i)=>`<a class="card sbb-treatment" ${bookAttrs(s.id)}><span class="sbb-treatment__number" aria-hidden="true">${String(i+1).padStart(2,'0')}</span>${photo(SERVICE_PHOTOS[s.id] || '', '', s.name)}<div class="sbb-treatment__copy"><h3>${esc(s.name)}</h3><p>${esc(s.desc)}</p><span>${s.duration} min.</span></div><span class="sbb-treatment__price">${kr(s.price)}<span aria-hidden="true">↗</span></span></a>`).join('')}
-          </div><p class="cards-note">Alle priser er inkl. moms. Du betaler i salonen.<br>Allerede en tid? <a href="#/min-booking">Flyt eller aflys din booking ↗</a></p></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="sbb-gallery sbb-section" id="galleri" aria-labelledby="galleri-titel">
-      <div class="wrap sbb-section-head"><div><p class="sbb-kicker">Klip fra salonen</p><h2 id="galleri-titel">Det er detaljerne,<br>du tager med.</h2></div><div class="sbb-gallery__controls"><p>Et lille udvalg af vores arbejde.</p><div><button type="button" data-act="gallery-prev" aria-label="Se forrige klip">←</button><button type="button" data-act="gallery-next" aria-label="Se flere klip">→</button></div></div></div>
-      <div class="sbb-gallery__track" role="region" aria-label="Galleri med salonens klipninger" tabindex="0">${LOOKS.map((look,i)=>`<button type="button" class="sbb-look" data-act="look-open" data-index="${i}" aria-label="Se større billede: ${esc(look.title)}"><span class="sbb-look__image">${photo(look.src,look.title,'')}<span class="sbb-look__zoom" aria-hidden="true">↗</span></span><span class="sbb-look__caption"><span><strong>${look.title}</strong><span>${look.detail}</span></span><span aria-hidden="true">0${i+1}</span></span></button>`).join('')}</div>
-      <div class="wrap sbb-gallery__bottom"><span>Træk eller brug pilene for at se mere.</span><a href="${SALON.instagram}" target="_blank" rel="noopener">Følg med på Instagram ↗</a></div>
-      <dialog class="sbb-lightbox" aria-labelledby="look-title"><div class="sbb-lightbox__top"><p id="look-title"></p><button type="button" data-act="look-close" aria-label="Luk billedet">Luk <span aria-hidden="true">×</span></button></div><img src="${LOOKS[0].src}" alt="${LOOKS[0].title}" loading="lazy"><div class="sbb-lightbox__bottom"><button type="button" data-act="look-prev" aria-label="Forrige billede">←</button><span data-look-counter>1 / ${LOOKS.length}</span><button type="button" data-act="look-next" aria-label="Næste billede">→</button></div></dialog>
-    </section>
-
-    <section class="sbb-about sbb-section" id="salonen" aria-labelledby="salonen-titel"><div class="wrap">
-      <div class="sbb-about__grid"><div class="sbb-about__photo" data-reveal>${photo(PHOTOS.hero.src,'De sorte og gyldne barberstole i StyleByBrothers på Sct. Mikkelsgade','')}<span class="sbb-about__photo-label">Sct. Mikkelsgade 26A · Slagelse</span></div><div class="sbb-about__copy"><p class="sbb-kicker">StyleByBrothers</p><h2 id="salonen-titel">Din stol.<br>Midt i byen.</h2><p>Herrefrisør midt i Slagelse. Fades, klassiske klip og skæg — vi tager os tid til at få det rigtigt.</p><p>Kom ind med en idé, eller lad os finde udtrykket sammen. Det handler om et klip, der passer til dig.${chooseBarber()?' Du kan vælge din faste frisør, når du booker.':''}</p><a class="sbb-book" ${bookAttrs()}>Book en tid hos os <span aria-hidden="true">↗</span></a>${chooseBarber()?`<div class="team">${team.map(b=>`<div class="member"><span class="initials">${esc(initials(b.name))}</span><div><h3>${esc(b.name)}</h3><p>${workDays(b)}</p></div></div>`).join('')}</div>`:''}</div></div>
-      <div class="sbb-how"><div><span>01</span><p><strong>Vælg behandling</strong>Klip, skæg eller den store dag.</p></div><div><span>02</span><p><strong>Find en ledig tid</strong>Se tiderne og book online.</p></div><div><span>03</span><p><strong>Vi ses i salonen</strong>Sæt dig godt til rette. Vi klarer resten.</p></div></div>
-    </div></section>
-
-    <section class="new-shop" aria-labelledby="shop-teaser-title"><div class="new-shop__photo">${photo('img/salonen.jpg','Produkter og barberstole i StyleByBrothers','')}</div><div class="new-shop__copy"><p class="sbb-kicker">Fra salonen til badeværelseshylden</p><h2 id="shop-teaser-title">God stil.<br>Også i morgen.</h2><p>Find hårpleje og styling i vores webshop. Er du i tvivl om, hvad der passer til dit hår? Spørg os, næste gang du er i stolen.</p><a class="sbb-book" href="#/shop">Udforsk webshoppen <span aria-hidden="true">↗</span></a><span class="new-shop__note">Hår · Styling · Skæg</span></div></section>
-
-    <section class="sbb-find sbb-section" id="find-os" aria-labelledby="find-titel"><div class="wrap"><div class="sbb-section-head"><div><p class="sbb-kicker">Find vej</p><h2 id="find-titel">Kom forbi.</h2></div><p>Sct. Mikkelsgade 26A.<br>Lige midt i Slagelse.</p></div><div class="sbb-find__grid"><div class="sbb-find__address"><span class="sbb-address-number" aria-hidden="true">26A</span><div><p class="sbb-kicker">StyleByBrothers</p><h3>${SALON.street}</h3><p>${SALON.city}</p></div><a class="sbb-text-link" href="${SALON.maps}" target="_blank" rel="noopener">Find vej til salonen <span aria-hidden="true">↗</span></a><a class="sbb-find__phone" href="${SALON.phoneHref}">${SALON.phone.replace('+45 ','')} <span aria-hidden="true">↗</span></a></div><div class="sbb-find__hours"><div><h3>Åbningstider</h3><span class="open-now ${open.open?'':'closed'}"><i aria-hidden="true"></i>${esc(open.text)}</span></div><table class="hours"><tbody>${weekHours().map(h=>`<tr class="${h.today?'is-today':''}"><th scope="row">${esc(h.label)}</th><td>${esc(h.text)}</td></tr>`).join('')}</tbody></table><p>Vil du være sikker på en tid? <a ${bookAttrs()}>Book inden du kommer ↗</a></p></div></div></div></section>
-  </main>
-  ${footer()}`;
+  cleanupEditorial?.();
+  app.innerHTML = `${header()}${homepage({services:state.services.filter(s=>s.active),bookAttrs,SALON,hours:weekHours(),open:todayLine(),looks:LOOKS,servicePhotos:{...SERVICE_PHOTOS,herreklip:"img/kroeller-taper.jpg",skaeg:"img/high-fade-skaeg.jpg"}})}${footer()}`;
   document.title = 'StyleByBrothers · Herrefrisør i Slagelse';
   enhanceHome();
-  if (scrollTo) requestAnimationFrame(() => document.getElementById(scrollTo)?.scrollIntoView());
-  else window.scrollTo(0, 0);
+  cleanupEditorial=mountEditorial(document.querySelector('.ed-home'));
+  mountFeaturedProducts(document.getElementById('featured-products'),{api});
+  if(scrollTo)cleanupEditorial.ready.then(()=>{if(currentView==='home')requestAnimationFrame(()=>{document.getElementById(scrollTo)?.scrollIntoView();});});
+  else window.scrollTo(0,0);
 }
 
 function enhanceHome() {
@@ -311,13 +234,13 @@ function workDays(b) {
 }
 
 function toggleMenu(open) {
-  const m = document.getElementById('menu');
-  if (!m) return;
-  m.hidden = !open;
-  document.querySelector('.menu-btn')?.setAttribute('aria-expanded', String(open));
-  const btn = document.querySelector('.menu-btn');
-  if (btn) btn.textContent = open ? 'Luk' : 'Menu';
+ const menu=document.getElementById('menu'),btn=document.querySelector('.menu-btn');if(!menu)return;
+ document.querySelectorAll('#main,.ed-footer,.ed-mobile-book').forEach(el=>{el.inert=open;});
+ btn?.setAttribute('aria-expanded',String(open));btn?.setAttribute('aria-label',open?'Luk menu':'Menu');if(btn)btn.innerHTML=`${icon(open?'close':'menu')} <span>${open?'Luk':'Menu'}</span>`;
+ if(open){menu.hidden=false;document.body.classList.add('menu-open');}
+ else{menu.hidden=true;document.body.classList.remove('menu-open');}
 }
+document.addEventListener('keydown',e=>{const menu=document.getElementById('menu');if(!menu||menu.hidden)return;if(e.key==='Escape'){toggleMenu(false);document.querySelector('.menu-btn')?.focus();}if(e.key==='Tab'){const items=[...document.querySelector('.ed-header').querySelectorAll('a,button')].filter(el=>el.getClientRects().length);const first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
 
 // ---------- kalender (bruges af booking og flytning) ----------
 function monthStart(d) { return `${d.slice(0, 7)}-01`; }
@@ -340,7 +263,7 @@ function calendarHtml({ serviceId, barberId, month, selected, ignoreBookingId })
   const canNext = addMonths(month, 1) <= last;
   const title = cap(new Intl.DateTimeFormat('da-DK', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(utcDate(month)));
   return `<div class="cal">
-    <div class="cal-head"><strong>${title}</strong><div class="cal-nav"><button type="button" data-act="month" data-dir="-1" aria-label="Forrige måned" ${canPrev ? '' : 'disabled'}>‹</button><button type="button" data-act="month" data-dir="1" aria-label="Næste måned" ${canNext ? '' : 'disabled'}>›</button></div></div>
+    <div class="cal-head"><strong>${title}</strong><div class="cal-nav"><button type="button" data-act="month" data-dir="-1" aria-label="Forrige måned" ${canPrev ? '' : 'disabled'}>${icon('chevronLeft')}</button><button type="button" data-act="month" data-dir="1" aria-label="Næste måned" ${canNext ? '' : 'disabled'}>${icon('chevronRight')}</button></div></div>
     <div class="cal-grid">${['ma', 'ti', 'on', 'to', 'fr', 'lø', 'sø'].map((d) => `<span class="cal-dow">${d}</span>`).join('')}${cells.join('')}</div>
     <p class="cal-note">Dage med hvid baggrund har ledige tider. Du kan booke op til ${state.settings.maxDaysAhead} dage frem.</p>
   </div>`;
@@ -757,9 +680,9 @@ function adminCalendar() {
   };
   const week = Array.from({ length: 7 }, (_, i) => E.addDays(weekStart, i));
   return `<div class="row between" style="margin-bottom:16px">
-      <div class="row"><button class="btn btn-line btn-sm" data-act="admin-day" data-dir="-7" aria-label="Forrige uge">‹‹</button><button class="btn btn-line btn-sm" data-act="admin-day" data-dir="-1" aria-label="Forrige dag">‹</button>
+      <div class="row"><button class="btn btn-line btn-sm" data-act="admin-day" data-dir="-7" aria-label="Forrige uge">${icon('chevronLeft')}${icon('chevronLeft')}</button><button class="btn btn-line btn-sm" data-act="admin-day" data-dir="-1" aria-label="Forrige dag">${icon('chevronLeft')}</button>
       <button class="btn btn-sm" data-act="admin-today">I dag</button>
-      <button class="btn btn-line btn-sm" data-act="admin-day" data-dir="1" aria-label="Næste dag">›</button><button class="btn btn-line btn-sm" data-act="admin-day" data-dir="7" aria-label="Næste uge">››</button></div>
+      <button class="btn btn-line btn-sm" data-act="admin-day" data-dir="1" aria-label="Næste dag">${icon('chevronRight')}</button><button class="btn btn-line btn-sm" data-act="admin-day" data-dir="7" aria-label="Næste uge">${icon('chevronRight')}${icon('chevronRight')}</button></div>
       <button class="btn btn-sm" data-act="new-start">Ny booking</button>
     </div>
     <div class="week" role="group" aria-label="Uge">${week.map((d) => `<button class="wk-day ${d === adminDate ? 'sel' : ''} ${d === t ? 'is-today' : ''}" data-act="admin-pick" data-date="${d}"><span>${DAY_SHORT[E.weekday(d)]}</span><strong>${+d.slice(8)}</strong><small>${confirmed(d).length || ''}</small></button>`).join('')}</div>
@@ -1064,6 +987,8 @@ async function route() {
   const [path, query] = h.slice(1).split('?');
   const params = new URLSearchParams(query || '');
   toggleMenu(false);
+  const homeAnchor = currentView === 'home' && (h.startsWith('#/#') || !h.startsWith('#/'));
+  if (!homeAnchor) { cleanupEditorial?.(); cleanupEditorial = null; homeObserver?.disconnect(); }
   if (path.startsWith('/admin')) { const y = currentView === 'admin' ? window.scrollY : 0; currentView = 'admin'; await renderAdmin(path.split('/')[2] || 'kalender', params); window.scrollTo(0, y); return; }
   clearInterval(adminRefresh);
   if (path.startsWith('/booking/bekraeftet')) {

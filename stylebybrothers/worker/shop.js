@@ -14,11 +14,28 @@ const text = (value, limit, required = false) => {
 };
 const integer = (value, min, max) => { if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < min || value > max) fail(400, 'Pris og lager skal være gyldige, hele tal.'); return value; };
 const encode = obj => { const form = new URLSearchParams(); for (const [key, value] of Object.entries(obj)) form.set(key, String(value)); return form; };
+// Legacy records only had imageUrl. Keep that field as the cover while preserving an ordered gallery.
+const productImages = product => Array.isArray(product.images) ? product.images : (product.imageUrl ? [product.imageUrl] : []);
+const withImages = product => { const images = productImages(product); return { ...product, images, imageUrl: images[0] || '' }; };
+function cleanImages(input, old) {
+  let images;
+  if (Object.prototype.hasOwnProperty.call(input, 'images')) {
+    if (!Array.isArray(input.images) || input.images.length > 6) fail(400, 'Tilføj højst seks produktbilleder.');
+    images = input.images.map(url => text(url, 150, true));
+  } else if (Object.prototype.hasOwnProperty.call(input, 'imageUrl')) {
+    const cover = text(input.imageUrl, 150);
+    const previous = productImages(old);
+    images = !cover ? [] : cover === previous[0] ? previous.slice() : [cover, ...previous.slice(1).filter(url => url !== cover)];
+  } else images = productImages(old).slice();
+  if (images.length > 6 || new Set(images).size !== images.length) fail(400, 'Vælg højst seks forskellige produktbilleder.');
+  if (images.some(url => !/^\/api\/shop\/images\/[a-f0-9-]{36}$/.test(url))) fail(400, 'Upload produktbilleder gennem produkteditoren.');
+  return images;
+}
 const cleanProduct = (input, old = {}) => {
-  const imageUrl = text(input.imageUrl || '', 150);
-  if (imageUrl && !/^\/api\/shop\/images\/[a-f0-9-]{36}$/.test(imageUrl)) fail(400, 'Upload et produktbillede gennem produkteditoren.');
+  const images = cleanImages(input, old);
+  const imageUrl = images[0] || '';
   if (typeof input.published !== 'boolean') fail(400, 'Vælg kladde eller offentlig.');
-  const product = { id: old.id || crypto.randomUUID(), revision: (old.revision || 0) + 1, name: text(input.name, 100, true), description: text(input.description || '', 1200), category: text(input.category || '', 60), priceOre: integer(input.priceOre, 100, 10000000), stock: integer(input.stock, 0, 100000), imageUrl, published: input.published, createdAt: old.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
+  const product = { id: old.id || crypto.randomUUID(), revision: (old.revision || 0) + 1, name: text(input.name, 100, true), description: text(input.description || '', 1200), category: text(input.category || '', 60), priceOre: integer(input.priceOre, 100, 10000000), stock: integer(input.stock, 0, 100000), images, imageUrl, published: input.published, createdAt: old.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
   if (product.published && !imageUrl) fail(400, 'Tilføj et produktbillede før offentliggørelse.');
   return product;
 };
@@ -32,10 +49,10 @@ export class ShopCore {
   async settings() { return { ...DEFAULT_SETTINGS, ...(await this.storage.get('shop:settings')) }; }
   configured(settings) {
     const secret = this.env().SBB_STRIPE_SECRET_KEY || '';
-    const merchantReady = /^(sk|rk)_live_/.test(secret) || (this.env().DEV_LOGIN === '1' && /^(sk|rk)_test_/.test(secret));
+    const merchantReady = /^(sk|rk)_live_/.test(secret) || (this.env().DEV_LOGIN === '1' && /^(sk|rk|rkcs)_test_/.test(secret));
     return Boolean(merchantReady && this.env().SBB_STRIPE_WEBHOOK_SECRET && settings.shippingEnabled && settings.termsUrl);
   }
-  async products() { return [...(await this.storage.list('shop:product:')).values()]; }
+  async products() { return [...(await this.storage.list('shop:product:')).values()].map(withImages); }
   async orders() { return [...(await this.storage.list('shop:order:')).values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)); }
   async body(req, max = 16000) {
     if (!(req.headers.get('content-type') || '').startsWith('application/json')) fail(415, 'Forventede JSON.');
@@ -81,15 +98,20 @@ export class ShopCore {
     if (imageMatch && method === 'GET') {
       const id = imageMatch[1], meta = await this.storage.get(`shop:image:${id}`);
       if (!meta) fail(404, 'Billedet findes ikke.');
-      const published = (await this.products()).some(product => product.published && product.imageUrl === p);
+      const published = (await this.products()).some(product => product.published && productImages(product).includes(p));
       if (!published) await this.salon.requireAdmin(req);
       const chunks = await Promise.all(Array.from({ length: meta.chunks }, (_, i) => this.storage.get(`shop:imagechunk:${id}:${i}`)));
       if (chunks.some(c => !c)) fail(404, 'Billedet findes ikke.');
-      return new Response(new Blob(chunks, { type: meta.type }), { headers: { 'content-type': meta.type, 'cache-control': published ? 'public, max-age=3600' : 'private, no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'" } });
+      // Recheck publication on every request: an unlinked/draft image must not remain in a shared cache.
+      return new Response(new Blob(chunks, { type: meta.type }), { headers: { 'content-type': meta.type, 'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'" } });
     }
     if (p === '/api/shop/checkout' && method === 'POST') {
       this.salon.limit(req.headers.get('cf-connecting-ip') || '', 'shop');
       return this.checkout(await this.body(req));
+    }
+    if (p === '/api/shop/checkout/cancel' && method === 'POST') {
+      this.salon.limit(req.headers.get('cf-connecting-ip') || '', 'shop');
+      return this.cancelCheckout(await this.body(req));
     }
     const statusMatch = p.match(/^\/api\/shop\/orders\/([a-f0-9-]{36})$/);
     if (statusMatch && method === 'GET') {
@@ -124,7 +146,7 @@ export class ShopCore {
     if (productMatch && ['PUT', 'DELETE'].includes(method)) {
       const old = await this.storage.get(`shop:product:${productMatch[1]}`);
       if (!old) fail(404, 'Produktet findes ikke.');
-      if (method === 'DELETE') { old.published = false; old.revision = (old.revision || 0) + 1; old.updatedAt = new Date(this.now()).toISOString(); await this.storage.put(`shop:product:${old.id}`, old); return json({ product: old }); }
+      if (method === 'DELETE') { old.published = false; old.revision = (old.revision || 0) + 1; old.updatedAt = new Date(this.now()).toISOString(); await this.storage.put(`shop:product:${old.id}`, old); return json({ product: withImages(old) }); }
       const input = await this.body(req);
       if (input.revision !== old.revision) fail(409, 'Produktet eller lageret er ændret siden du åbnede det. Genindlæs produktet før du gemmer.');
       const product = cleanProduct(input, old); await this.checkImage(product);
@@ -142,7 +164,9 @@ export class ShopCore {
     }
     fail(404, 'Ikke fundet.');
   }
-  async checkImage(product) { if (product.imageUrl && !await this.storage.get(`shop:image:${product.imageUrl.split('/').pop()}`)) fail(400, 'Upload produktbilledet igen.'); }
+  async checkImage(product) {
+    for (const url of productImages(product)) if (!await this.storage.get(`shop:image:${url.split('/').pop()}`)) fail(400, 'Et produktbillede findes ikke. Upload det igen.');
+  }
   async upload(req) {
     const type = (req.headers.get('content-type') || '').split(';')[0];
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(type)) fail(415, 'Brug JPEG, PNG eller WebP.');
@@ -217,6 +241,35 @@ export class ShopCore {
     order.sessionId = session.id; order.checkoutUrl = session.url; order.status = 'pending';
     await this.storage.put(`shop:order:${order.id}`, order);
     return json({ url: order.checkoutUrl, orderId: order.id });
+  }
+  async cancelCheckout(input) {
+    // The unguessable attempt key is a capability held by the initiating cart, never the public order ID.
+    if (!UUID.test(input.idempotencyKey || '')) fail(400, 'Genindlæs kurven og prøv igen.');
+    const attempt = await this.storage.get(`shop:attempt:${input.idempotencyKey}`);
+    if (!attempt) return json({ status: 'not_found', cancelled: true });
+    const order = await this.storage.get(`shop:order:${attempt.orderId}`);
+    if (!order) fail(503, 'Betalingen kunne ikke kontrolleres. Prøv igen senere.');
+    const result = current => json({ orderId: current.id, status: current.status, cancelled: ['expired', 'cancelled'].includes(current.status) });
+    if (!['creating', 'pending'].includes(order.status)) return result(order);
+    if (!this.env().SBB_STRIPE_SECRET_KEY) fail(503, 'Betalingsforbindelsen er ikke tilgængelig. Reservationen er bevaret.');
+    let session;
+    if (order.sessionId) session = await this.stripe(`checkout/sessions/${encodeURIComponent(order.sessionId)}`);
+    else {
+      // The create response may have been lost. Absence from this list is not proof that Stripe cannot still create it.
+      const found = await this.stripe(`checkout/sessions?created[gte]=${Math.floor(new Date(order.createdAt).getTime() / 1000) - 5}&limit=100`);
+      session = found.data?.find(candidate => candidate.metadata?.sbb_order_id === order.id);
+      if (!session) return result(order);
+    }
+    if (session.status === 'open') {
+      try { session = await this.stripe(`checkout/sessions/${encodeURIComponent(session.id)}/expire`, {}, `sbb-cancel-${order.attemptKey}`); }
+      catch {
+        // Payment or expiry can win the race. Only Stripe's current state decides whether stock may be released.
+        session = await this.stripe(`checkout/sessions/${encodeURIComponent(session.id)}`);
+        if (session.status === 'open') fail(503, 'Betalingen kunne ikke lukkes. Prøv igen; reservationen er bevaret.');
+      }
+    }
+    await this.finish(session);
+    return result(await this.storage.get(`shop:order:${order.id}`));
   }
   async finish(session, failed = false) {
     const id = session.metadata?.sbb_order_id || session.client_reference_id;

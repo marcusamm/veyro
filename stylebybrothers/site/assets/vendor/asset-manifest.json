@@ -1,0 +1,55 @@
+{
+  "retrieved": "2026-11-10",
+  "fonts": [
+    {
+      "file": "fonts/barlow-condensed-600.woff2",
+      "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/BarlowCondensed-SemiBold.ttf",
+      "source_sha256": "7b619d14bc2327509a9ef32b0890f709626f7ecc9ff61191c2a4314c5499d2d9",
+      "sha256": "481ba8539c177a9707ef80c6b12852fbeaf8d4b72aa2ee8feffa99417fa2e670",
+      "bytes": 28108
+    },
+    {
+      "file": "fonts/barlow-condensed-700.woff2",
+      "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/BarlowCondensed-Bold.ttf",
+      "source_sha256": "e476562ec9c1e16cf16475895b511f08c804f438cc9a9f80a44ea50a0eeb5b65",
+      "sha256": "14cffbac619c9dfa4a58dc8230ade5805232ce1365cb8944bfe288fad367f952",
+      "bytes": 28348
+    },
+    {
+      "file": "fonts/barlow-condensed-800.woff2",
+      "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/BarlowCondensed-ExtraBold.ttf",
+      "source_sha256": "724c9c25952d5f4a2d87185d9767aa006144c5f0d944dc05bf7d5d603551c260",
+      "sha256": "7cbfd1c84a4d36956bb674fb8bb15bbc42381d404cf12754be33ba2ac57a9136",
+      "bytes": 28392
+    },
+    {
+      "file": "fonts/manrope-variable.woff2",
+      "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/manrope/Manrope%5Bwght%5D.ttf",
+      "source_sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6",
+      "sha256": "4dd7cc89e400609a1f17873e40d3378d7c1c1c021bd5aa3b1cf9bbe5171e630c",
+      "bytes": 29248
+    }
+  ],
+  "gsap": {
+    "version": "3.15.1",
+    "tarball": "https://registry.npmjs.org/gsap/-/gsap-3.15.1.tgz",
+    "integrity": "sha512-63yjWRFWj3QRP1UOuD8kcidCcy3nxb1mMRpwHr/xJRvPfm9GtWOXFAYUiL0ro1fgPq2nY53LR+98pAgy9BumBg==",
+    "files": [
+      {
+        "file": "ScrollTrigger.min.js",
+        "sha256": "b5bb360661f478f0ff6ffa11500d8ce5e2b6aaf6f7288237cdca3aac9548035a",
+        "bytes": 44683
+      },
+      {
+        "file": "SplitText.min.js",
+        "sha256": "7b299a6b26b36fd5ce1c0712f31d6d25f98f9a9860778c2d3a78ce8f880f2edf",
+        "bytes": 7955
+      },
+      {
+        "file": "gsap.min.js",
+        "sha256": "3d1bea374ab1b703cc5c4105358eec63c4465efdc573931dc116e34a0a190c1b",
+        "bytes": 73357
+      }
+    ]
+  }
+}
