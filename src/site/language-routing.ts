@@ -22,8 +22,10 @@ export function languageRedirect(request: Request, preference?: string): { locat
   // Shared localized links always retain their language. Crawlers can access every canonical URL.
   if (current.language !== 'da') return null;
   const bot = request.cf?.botManagement as { verifiedBot?: boolean } | undefined;
-  // Search Console's URL Inspection uses Google-InspectionTool, which does not contain "bot".
-  if (bot?.verifiedBot || /bot|crawl|spider|slurp|preview|facebookexternalhit|lighthouse|google-inspectiontool/i.test(request.headers.get('User-Agent') ?? '')) return null;
+  // Inspection and user-triggered AI fetchers may not include "bot" in their agent name.
+  // Preserve the requested language even when their server is abroad. This only skips
+  // geolocation; it grants no additional access and is not proof of crawler identity.
+  if (bot?.verifiedBot || /bot|crawl|spider|slurp|preview|facebookexternalhit|lighthouse|google-inspectiontool|chatgpt-user|claude-user/i.test(request.headers.get('User-Agent') ?? '')) return null;
 
   const country = typeof request.cf?.country === 'string' ? request.cf.country.toUpperCase() : '';
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
