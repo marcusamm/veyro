@@ -180,6 +180,21 @@ describe('Language routing boundaries', () => {
     expectRedirect(languageRedirect(visitor('/?lang=en', { cf })), '/en/', 'en');
   });
 
+  it.each(['OAI-SearchBot/1.4', 'Claude-SearchBot/1.0', 'ChatGPT-User/1.0', 'Claude-User/1.0'])('keeps requested language for AI search and retrieval via %s', userAgent => {
+    const headers = { 'User-Agent': userAgent };
+    for (const country of ['US', 'SE']) {
+      for (const method of ['GET', 'HEAD']) {
+        expect(languageRedirect(visitor('/pages/hosting', { country, method, headers }), 'en')).toBeNull();
+        expect(languageRedirect(visitor('/en/pages/hosting', { country, method, headers }), 'da')).toBeNull();
+      }
+    }
+    // A deliberate language choice still wins, and public-page exemptions do not
+    // expand routing into account/API paths or consume preferences on a POST.
+    expectRedirect(languageRedirect(visitor('/pages/hosting?lang=sv', { country: 'US', headers })), '/sv/pages/hosting', 'sv');
+    expect(languageRedirect(visitor('/account?lang=sv', { country: 'US', headers }))).toBeNull();
+    expect(languageRedirect(visitor('/contact?lang=sv', { country: 'US', method: 'POST', headers }))).toBeNull();
+  });
+
   it('keeps independent visitors independent when calls are interleaved', () => {
     expectRedirect(automatic('/pages/priser', 'SE'), '/sv/pages/priser');
     expect(automatic('/pages/priser', 'DK')).toBeNull();
