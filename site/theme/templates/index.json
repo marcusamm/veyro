@@ -261,6 +261,13 @@
             "question": "Hvad sker der, hvis vi opsiger?",
             "answer": "<p>I kan opsige når som helst i kundepanelet eller på mail. Opsigelsen gælder fra udgangen af den periode, I har betalt for. I ejer jeres eget indhold og jeres data og kan inden for 30 dage efter ophøret få dem udleveret. Veyro beholder rettighederne til software, skabeloner og kode, og domæner, der tilhører jer, overføres efter aftale. <a href=\"/pages/handelsbetingelser\">Læs handelsbetingelserne</a>.</p>"
           }
+        },
+        "question_hosting_ai": {
+          "type": "question",
+          "settings": {
+            "question": "Kan I hjælpe med hosting af en hjemmeside lavet med AI?",
+            "answer": "<p>Send os et link og fortæl, hvilket værktøj siden er lavet med. Vi vurderer platformen, adgangen og de funktioner, der skal virke, før vi aftaler en eventuel flytning. <a href=\"/pages/hosting#ai-hjemmeside\">Læs om webhosting til AI-byggede hjemmesider</a>. Hosting og vedligeholdelse af en eksisterende side prissættes efter tilbud.</p>"
+          }
         }
       },
       "block_order": [
@@ -268,7 +275,8 @@
         "question_2",
         "question_3",
         "question_4",
-        "question_5"
+        "question_5",
+        "question_hosting_ai"
       ]
     },
     "contact": {
