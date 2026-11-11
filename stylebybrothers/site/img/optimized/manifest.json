@@ -1,0 +1,237 @@
+{
+  "generated": "2026-11-10",
+  "encoder": "Pillow 11.3.0 / libwebp",
+  "transformation": "Resize only, original aspect ratio; EXIF orientation respected. No cropping, recolouring, retouching or generated imagery. Originals unchanged.",
+  "quality": {
+    "up_to_900": 82,
+    "above_900": 84
+  },
+  "images": [
+    {
+      "source": "high-fade-skaeg.jpg",
+      "width": 1200,
+      "height": 1200,
+      "bytes": 143181,
+      "sha256": "085a90c6bc517d0e9feadfe2eef69a74a72139304f57fab181cec757826297b8",
+      "variants": [
+        {
+          "file": "high-fade-skaeg-480.webp",
+          "width": 480,
+          "height": 480,
+          "bytes": 18214,
+          "sha256": "97af8d8038f846169b1664f8f9a7d203fe175b5a68f12a5c26e4d2407503c33c"
+        },
+        {
+          "file": "high-fade-skaeg-900.webp",
+          "width": 900,
+          "height": 900,
+          "bytes": 53016,
+          "sha256": "1aff90e7e551ba919727ce67b8adbe9647484b320b6a286c122b4daf36900848"
+        },
+        {
+          "file": "high-fade-skaeg-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 94808,
+          "sha256": "ff69983e57a01a3f4d63b82f9354c58e3568edf90baec452d727cd213fe78e11"
+        }
+      ]
+    },
+    {
+      "source": "kroeller-taper.jpg",
+      "width": 1200,
+      "height": 1200,
+      "bytes": 126231,
+      "sha256": "824151b538724e9aa9d5d948f2583a5056e00e3a83df7343e75619efb1e13a86",
+      "variants": [
+        {
+          "file": "kroeller-taper-480.webp",
+          "width": 480,
+          "height": 480,
+          "bytes": 17662,
+          "sha256": "538afab8ab3163a9a81f87073c7346993aa94c852ef09fccf94260415649aca3"
+        },
+        {
+          "file": "kroeller-taper-900.webp",
+          "width": 900,
+          "height": 900,
+          "bytes": 47526,
+          "sha256": "c1c25f333fff951a0f09cb85f9fae1b017be1bb4dd3faf55ccd2c3a6b0477c8f"
+        },
+        {
+          "file": "kroeller-taper-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 83068,
+          "sha256": "790d6a564ea4717c8eee40190a2e3ee9d8c94e074ffdae435e2649ee4cb051bd"
+        }
+      ]
+    },
+    {
+      "source": "mid-fade-skaeg.jpg",
+      "width": 414,
+      "height": 414,
+      "bytes": 20338,
+      "sha256": "39b1a44952789fe60182aba1794eb6fbec694d79ba00ca54a1f7a8cc983eb6ac",
+      "variants": [
+        {
+          "file": "mid-fade-skaeg-414.webp",
+          "width": 414,
+          "height": 414,
+          "bytes": 15898,
+          "sha256": "ac1d4bb3d034f2c1e0744d79b28ef3ed723f84e03eeb564bef93b2a85ad51c51"
+        }
+      ]
+    },
+    {
+      "source": "salonen-forside.jpg",
+      "width": 2560,
+      "height": 1920,
+      "bytes": 702394,
+      "sha256": "1d1c5ac5d85ffe44d45e1e0c27baf538086459ea008c7ac2e0b35ba9cbdb0b58",
+      "variants": [
+        {
+          "file": "salonen-forside-480.webp",
+          "width": 480,
+          "height": 360,
+          "bytes": 34084,
+          "sha256": "c96bb92c464be5e6f0343f05a4f06665c95458cdf2b9ba70679a3d2eb082bd6f"
+        },
+        {
+          "file": "salonen-forside-900.webp",
+          "width": 900,
+          "height": 675,
+          "bytes": 100506,
+          "sha256": "322b8307cead0c67736b689d872c1c75b989933c5afc74dbdb8e6376d3f3a80f"
+        },
+        {
+          "file": "salonen-forside-1200.webp",
+          "width": 1200,
+          "height": 900,
+          "bytes": 169362,
+          "sha256": "c324bc28d5196b88b3b01248d1a6577222429e6a8320f7604d84582b0ab3c493"
+        },
+        {
+          "file": "salonen-forside-1600.webp",
+          "width": 1600,
+          "height": 1200,
+          "bytes": 250528,
+          "sha256": "5e3ef7869692d8e896aaa389ac23b05ae2685ae7aabe05ebd309cea9d38c7a63"
+        }
+      ]
+    },
+    {
+      "source": "salonen-hero.jpg",
+      "width": 2560,
+      "height": 1920,
+      "bytes": 702394,
+      "sha256": "1d1c5ac5d85ffe44d45e1e0c27baf538086459ea008c7ac2e0b35ba9cbdb0b58",
+      "variants": [
+        {
+          "file": "salonen-hero-480.webp",
+          "width": 480,
+          "height": 360,
+          "bytes": 34084,
+          "sha256": "c96bb92c464be5e6f0343f05a4f06665c95458cdf2b9ba70679a3d2eb082bd6f"
+        },
+        {
+          "file": "salonen-hero-900.webp",
+          "width": 900,
+          "height": 675,
+          "bytes": 100506,
+          "sha256": "322b8307cead0c67736b689d872c1c75b989933c5afc74dbdb8e6376d3f3a80f"
+        },
+        {
+          "file": "salonen-hero-1200.webp",
+          "width": 1200,
+          "height": 900,
+          "bytes": 169362,
+          "sha256": "c324bc28d5196b88b3b01248d1a6577222429e6a8320f7604d84582b0ab3c493"
+        },
+        {
+          "file": "salonen-hero-1600.webp",
+          "width": 1600,
+          "height": 1200,
+          "bytes": 250528,
+          "sha256": "5e3ef7869692d8e896aaa389ac23b05ae2685ae7aabe05ebd309cea9d38c7a63"
+        }
+      ]
+    },
+    {
+      "source": "salonen.jpg",
+      "width": 1200,
+      "height": 900,
+      "bytes": 176991,
+      "sha256": "ed565744623981138a67e3a370b6fc140ced30c0a4b4fb330600756261416e13",
+      "variants": [
+        {
+          "file": "salonen-480.webp",
+          "width": 480,
+          "height": 360,
+          "bytes": 29276,
+          "sha256": "c43fa603c62d46c35f70cd1dd94918241e707b57d0934538743773eff7978c44"
+        },
+        {
+          "file": "salonen-900.webp",
+          "width": 900,
+          "height": 675,
+          "bytes": 81176,
+          "sha256": "d14c924d390ac34528e66d60652e2417e929e2cac345529991cecd3322f85c34"
+        },
+        {
+          "file": "salonen-1200.webp",
+          "width": 1200,
+          "height": 900,
+          "bytes": 135122,
+          "sha256": "6f500e6eec46fbdb46eeb0c76b2a0b4edfc006ea8120cdd94c029b9ac93ac40b"
+        }
+      ]
+    },
+    {
+      "source": "slick-back.jpg",
+      "width": 1200,
+      "height": 1200,
+      "bytes": 139020,
+      "sha256": "825c96f903fbc5085f5355983489341293a569901b0765fa7407acfeb1e13f44",
+      "variants": [
+        {
+          "file": "slick-back-480.webp",
+          "width": 480,
+          "height": 480,
+          "bytes": 18138,
+          "sha256": "0d030151c40c2841d708828c1055329da7b9e1cd03b436cf2e4fd50a540339b9"
+        },
+        {
+          "file": "slick-back-900.webp",
+          "width": 900,
+          "height": 900,
+          "bytes": 49404,
+          "sha256": "2acd09e1bc3e85431cec2edb5f021cd38714afe205e64a9ad494ef2424e28c21"
+        },
+        {
+          "file": "slick-back-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 89642,
+          "sha256": "2687e8dfc0f9ae0ba2c6ba7d247348e7a3f8d01a03673c95b3460502ad6a2f47"
+        }
+      ]
+    },
+    {
+      "source": "taper-tekstur.jpg",
+      "width": 414,
+      "height": 414,
+      "bytes": 19162,
+      "sha256": "b41a1556d16d8467d39ad8745413e4a876a8468bc421adb635b221b9e6ac198b",
+      "variants": [
+        {
+          "file": "taper-tekstur-414.webp",
+          "width": 414,
+          "height": 414,
+          "bytes": 13940,
+          "sha256": "598b871072f785378bdd77f529ba0f172c4c85367a99594d5b6ec77d0730656e"
+        }
+      ]
+    }
+  ]
+}
