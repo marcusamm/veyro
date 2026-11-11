@@ -1,5 +1,20 @@
 # Veyro SEO
 
+## Dansk webhosting og AI-byggede hjemmesider, 11. november 2026
+
+Forsiden beholder Veyro som det første ord i søgetitlen og beskriver nu hjemmesider og webhosting med dansk support. Den eksisterende hostingside er den fælles destination for dansk webhosting, hosting med vedligeholdelse og hosting af en hjemmeside lavet med AI. Der er ikke oprettet konkurrerende, næsten identiske landingssider.
+
+- Hosting får en tydelig dansk kontakt i Slagelse, en konkret forklaring af AI-bygget hjemmeside versus hosting og en tjekliste for platform, eksport/adgang, funktioner, domæne/mail og drift.
+- Nye FAQ-svar forklarer dansk support uden at love dansk serverplacering samt AI-assisteret hjemmesidebygning uden at annoncere AI-modelhosting eller en automatisk AI-builder. Hosting af eksisterende sider er fortsat efter tilbud.
+- Forsidens nye FAQ linker direkte til `/pages/hosting#ai-hjemmeside`. Alt nyt indhold og metadata er oversat til engelsk og svensk. Eksisterende priser og aftaler bevares.
+- Ingen nye scripts, billeder eller biblioteker. Indholdet leveres i den eksisterende serverrenderede HTML og bruger de eksisterende responsive sektioner. FAQ-data dannes fra de samme synlige svar.
+
+Kontrol før udgivelse: `build:site`, TypeScript og 129 tests i `site-seo`, `site-language-routing`, `site-swedish-render` og `site-currency` bestået. Gennemgangen af alle 60 live sitemap-adresser før ændringen fandt ingen indeksblokering: 200, egen canonical, ét H1, beskrivelse og gyldige strukturerede data.
+
+Google angiver, at almindelig SEO også gælder for AI Overviews og AI Mode; der kræves ikke særlige AI-filer eller et særligt schema. Indeksering og visning er ikke garanteret. Kilde: [AI features and your website](https://developers.google.com/search/docs/appearance/ai-features).
+
+Efter nyt crawl: mål Danmark i Search Console på `veyro`, `dansk webhosting`, `webhosting med dansk support`, `webhosting med ai` og `hosting af ai hjemmeside`, samt de relevante landingssider. Sammenlign klik, eksponeringer, CTR og gennemsnitlig placering over sammenlignelige 28-dagesperioder. Der er endnu ingen aflæst ny målebaseline eller dokumenteret placeringseffekt. Næste indholdsarbejde bør bygge på rigtige kundeprojekter og verificerbare erfaringer, ikke flere generiske søgeordssider.
+
 ## Svensk domæne, 6. november 2026
 
 Den svenske version har nu `https://veyro.se` som kanonisk origin uden `/sv`-præfiks. Gamle `veyro.dk/sv/...`-adresser får 301 til samme side på `.se`, inklusive søgeparametre. Hvert domænes sitemap indeholder kun dets egne kanoniske sider; alle sprog har gensidige `hreflang`-henvisninger. HTML-canonical, Open Graph, service- og produktadresser samt brødkrummer følger sprogets domæne. Veyros danske virksomhedsidentitet og adresse bevares; der oprettes ingen svensk virksomhed i strukturerede data.
