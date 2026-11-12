@@ -1,0 +1,39 @@
+{
+  "name": "satisfactory-venner",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "vite --port 5186",
+    "dev:worker": "wrangler dev --local --port 8788 --persist-to .wrangler/friends",
+    "build": "vite build",
+    "start": "wrangler dev --local --port 5186 --persist-to .wrangler/friends",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/auth-*.test.mjs",
+    "deploy": "node scripts/deploy-cloudflare.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "^1.31.0",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20260515.1",
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "typescript": "5.9.3",
+    "vite": "8.0.13",
+    "wrangler": "4.92.0",
+    "esbuild": "0.28.0"
+  },
+  "type": "module",
+  "overrides": {
+    "miniflare": {
+      "sharp": "0.35.4"
+    }
+  }
+}

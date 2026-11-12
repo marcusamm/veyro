@@ -1,0 +1,62 @@
+# Repository mapping: this workflow belongs at .github/workflows/ and the
+# application belongs at satisfactory/ in marcusamm/veyro.
+name: Deploy Satisfactory venner
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'satisfactory/**'
+      - '.github/workflows/deploy-satisfactory.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-satisfactory-venner
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: satisfactory
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: satisfactory/package-lock.json
+      - name: Install
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Validate isolated configuration
+        run: node scripts/deploy-cloudflare.mjs --dry-run
+      - name: Migrate and deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/deploy-cloudflare.mjs
+      - name: Verify login page and private API
+        run: |
+          for attempt in $(seq 1 18); do
+            page=$(curl --silent --show-error --max-time 15 -o /dev/null -w '%{http_code}' https://satisfactoryvenner.veyro.dk/ || true)
+            api=$(curl --silent --show-error --max-time 15 -o /dev/null -w '%{http_code}' https://satisfactoryvenner.veyro.dk/api/plan || true)
+            if [ "$page" = "200" ] && [ "$api" = "401" ]; then
+              echo 'OK: login page responds and anonymous plan access is denied.'
+              exit 0
+            fi
+            echo "Waiting for custom domain (page $page, private API $api)."
+            sleep 10
+          done
+          echo '::error::Custom domain did not pass the login-page/private-API check.'
+          exit 1

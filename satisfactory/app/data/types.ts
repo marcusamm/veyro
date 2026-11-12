@@ -1,0 +1,12 @@
+export type Assignee = string;
+export type AccountUser = { id: string; username: string; displayName: string; role: 'admin' | 'player' };
+export type Player = AccountUser & { active: boolean };
+export type TextBlock = { id: string; type: 'text'; text: string };
+export type HeadingBlock = { id: string; type: 'heading'; text: string };
+export type CheckBlock = { id: string; type: 'check'; text: string; checked: boolean; assignee: Assignee };
+export type NoteBlock = { id: string; type: 'note'; label: string; value: string };
+export type TableBlock = { id: string; type: 'table'; headers: string[]; rows: string[][] };
+export type Block = TextBlock | HeadingBlock | CheckBlock | NoteBlock | TableBlock;
+export type PlanPage = { id: string; number: number; title: string; subtitle: string; blocks: Block[] };
+export type DocumentPlan = { id: string; title: string; shortTitle: string; description: string; pdfUrl: string; pages: PlanPage[] };
+export type PlanData = { workspace: { name: string; playerA: string; playerB: string }; documents: DocumentPlan[] };
