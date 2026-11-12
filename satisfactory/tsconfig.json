@@ -35,7 +35,9 @@
     "app/data/**/*.ts",
     "app/lib/plan-validation.ts",
     "server/**/*.ts",
-    "vite.config.ts"
+    "vite.config.ts",
+    "app/factory/**/*.ts",
+    "app/factory/**/*.tsx"
   ],
   "exclude": [
     "node_modules",

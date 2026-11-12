@@ -1,5 +1,6 @@
 import { PlanValidationError, isSameOriginWrite, readPlanUpdate, validatePlanUpdate } from '../app/lib/plan-validation';
 import { hashPassword, randomToken, sha256, verifyPassword } from './password';
+import { factoryApi } from './factory';
 
 export interface Env { DB: D1Database; ASSETS: Fetcher; APP_URL?: string; BOOTSTRAP_TOKEN_HASH?: string; BOOTSTRAP_EXPIRES_AT?: string }
 export type User = { id: string; username: string; displayName: string; role: 'admin' | 'player'; active: boolean };
@@ -104,6 +105,7 @@ async function api(request:Request,env:Env):Promise<Response>{
     return json({ok:true},200,{'Set-Cookie':sessionCookie(request,'',0)});
   }
   if(!user)return json({error:'Sign in to use your factory plan.'},401);
+  if(path==='/api/factory')return factoryApi(request,env.DB,user.id);
   if(path==='/api/auth/me'&&method==='GET')return json({user:safeUser(user),players:await players(env)});
   if(path==='/api/auth/password'&&method==='POST'){
     const body=await limitedBody(request);allowedFields(body,['currentPassword','newPassword']);const next=password(body.newPassword);

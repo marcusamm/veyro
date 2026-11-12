@@ -11,7 +11,7 @@
     "build": "vite build",
     "start": "wrangler dev --local --host 127.0.0.1 --port 5186 --persist-to .wrangler/friends",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/auth-*.test.mjs",
+    "test": "node --experimental-strip-types --test tests/auth-*.test.mjs tests/factory-*.test.mjs app/factory/data/data.test.mjs",
     "deploy": "node scripts/deploy-cloudflare.mjs"
   },
   "dependencies": {

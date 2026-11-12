@@ -2,15 +2,14 @@ import test, { beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFile } from 'node:fs/promises';
-import ts from 'typescript';
+import { build } from 'esbuild';
+import { fileURLToPath } from 'node:url';
 import { hashPassword, sha256, verifyPassword } from '../server/password.ts';
 const root = new URL('../', import.meta.url);
-const source = (await readFile(new URL('server/index.ts', root),'utf8'))
-  .replace("'../app/lib/plan-validation'",JSON.stringify(new URL('app/lib/plan-validation.ts',root).href))
-  .replace("'./password'",JSON.stringify(new URL('server/password.ts',root).href));
-const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const bundled = await build({entryPoints:[fileURLToPath(new URL('server/index.ts',root))],bundle:true,write:false,format:'esm',platform:'neutral',target:'es2022'});
+const code=bundled.outputFiles[0].text;
 const worker=(await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)).default;
-const migration=await readFile(new URL('migrations/0001_factory_auth.sql',root),'utf8');
+const migration=(await Promise.all(['0001_factory_auth.sql','0002_factory_layout.sql'].map(name=>readFile(new URL('migrations/'+name,root),'utf8')))).join('\n');
 const adminId='00000000-0000-4000-8000-000000000001',adminPass='test-admin-pass-only';
 const adminHash=await hashPassword(adminPass);
 let sqlite,env;
@@ -34,8 +33,38 @@ async function login(name='marcus',password=adminPass){const r=await call('/api/
 const fixture=()=>({workspace:{name:'Test world',playerA:'A',playerB:'B'},documents:[{id:'doc',title:'Test',shortTitle:'Test',description:'Synthetic test data',pdfUrl:'/documents/Satisfactory_Mega_Factory_Checklist.pdf',pages:[{id:'page',number:1,title:'Test',subtitle:'',blocks:[{id:'task',type:'check',text:'Build a test foundation',checked:false,assignee:'unassigned'}]}]}]});
 async function makePlayer(token){const r=await call('/api/players','POST',{username:'friend',displayName:'Friend',password:'friend-test-only'},token);assert.equal(r.status,201);return (await r.json()).player;}
 
+const layoutFixture=()=>({version:1,name:'Synthetic test factory',nodes:[{id:'smelter',kind:'machine',x:0,y:0,rotation:0,recipeId:'Recipe_IngotIron_C',clock:150}],edges:[],settings:{recipeMultiplier:1,powerMultiplier:1}});
+test('factory layout is shared by players, persists clocks, and protects concurrent drafts independently of documents',async()=>{
+  const admin=await login(),player=await makePlayer(admin),friend=await login('friend','friend-test-only');
+  const initial=await call('/api/factory','GET',undefined,admin),fresh=await initial.json();
+  assert.equal(initial.headers.get('cache-control'),'private, no-store');
+  assert.equal(fresh.revision,0);assert.deepEqual(fresh.data.nodes,[]);assert.deepEqual(fresh.data.settings,{recipeMultiplier:1,powerMultiplier:1});
+  const data=layoutFixture();
+  const saved=await call('/api/factory','PUT',{data,revision:0},friend);assert.equal(saved.status,200,await saved.clone().text());
+  const result=await (await call('/api/factory','GET',undefined,admin)).json();
+  assert.equal(result.data.nodes[0].clock,150);assert.equal(result.updatedBy,player.id);assert.equal(result.revision,1);
+  assert.equal((await call('/api/factory','PUT',{data:{...data,name:'Stale draft'},revision:0},admin)).status,409);
+  const after=await (await call('/api/factory','GET',undefined,friend)).json();assert.equal(after.data.name,data.name);assert.equal(after.revision,1);
+  assert.equal((await call('/api/plan','PUT',{data:fixture(),revision:0},friend)).status,200);
+  assert.deepEqual((await (await call('/api/factory','GET',undefined,admin)).json()).data,result.data);
+  assert.equal((await (await call('/api/plan','GET',undefined,admin)).json()).data.documents[0].title,'Test');
+});
+test('factory API rejects invalid data, excess size, cross-origin writes and revoked sessions',async()=>{
+  const admin=await login(),player=await makePlayer(admin),friend=await login('friend','friend-test-only'),valid=layoutFixture();
+  for(const mutate of [d=>{d.nodes[0].clock=251;},d=>{d.nodes[0].recipeId='not-a-real-recipe';},d=>{d.nodes[0].x='NaN';},d=>{d.nodes.push({...d.nodes[0]});},d=>{d.settings.powerMultiplier=-1;}]){
+    const data=structuredClone(valid);mutate(data);const response=await call('/api/factory','PUT',{data,revision:0},admin);assert.equal(response.status,400,await response.text());
+  }
+  assert.equal((await call('/api/factory','PUT',{data:valid,revision:-1},admin)).status,400);
+  assert.equal((await call('/api/factory','PUT','x'.repeat(1_000_001),admin)).status,400);
+  assert.equal((await call('/api/factory','PUT',{data:valid,revision:0},admin,{Origin:'https://other.test'})).status,403);
+  assert.equal((await (await call('/api/factory','GET',undefined,admin)).json()).revision,0);
+  await call('/api/players/'+player.id,'PATCH',{active:false},admin);
+  assert.equal((await call('/api/factory','GET',undefined,friend)).status,401);
+  assert.equal((await call('/api/factory','PUT',{data:valid,revision:0},friend)).status,401);
+});
+
 test('anonymous users cannot read plans, players or PDFs; cross-origin writes rejected',async()=>{
-  for(const path of ['/api/plan','/api/auth/me','/api/players','/documents/Satisfactory_Mega_Factory_Checklist.pdf','/%64ocuments/Satisfactory_Mega_Factory_Checklist.pdf'])assert.equal((await call(path)).status,401,path);
+  for(const path of ['/api/plan','/api/factory','/api/auth/me','/api/players','/documents/Satisfactory_Mega_Factory_Checklist.pdf','/%64ocuments/Satisfactory_Mega_Factory_Checklist.pdf'])assert.equal((await call(path)).status,401,path);
   assert.equal((await call('/api/auth/login','POST',{username:'marcus',password:adminPass},null,{Origin:'https://evil.test'})).status,403);
   const r=await call('/');assert.equal(r.headers.get('x-robots-tag'),'noindex, nofollow, noarchive');
 });
