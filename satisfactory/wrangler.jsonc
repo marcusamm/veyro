@@ -35,9 +35,5 @@
     "crons": [
       "17 3 * * *"
     ]
-  },
-  "vars": {
-    "BOOTSTRAP_TOKEN_HASH": "9959fdaf10ccb468cf6cab34073cd2304bf14c1da4c70d7be0772327759c5aee",
-    "BOOTSTRAP_EXPIRES_AT": "2026-11-12T09:29:58.402Z"
   }
 }

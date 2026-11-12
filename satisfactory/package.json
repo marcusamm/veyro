@@ -7,9 +7,9 @@
   },
   "scripts": {
     "dev": "vite --port 5186",
-    "dev:worker": "wrangler dev --local --port 8788 --persist-to .wrangler/friends",
+    "dev:worker": "wrangler dev --local --host 127.0.0.1 --port 8788 --persist-to .wrangler/friends",
     "build": "vite build",
-    "start": "wrangler dev --local --port 5186 --persist-to .wrangler/friends",
+    "start": "wrangler dev --local --host 127.0.0.1 --port 5186 --persist-to .wrangler/friends",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/auth-*.test.mjs",
     "deploy": "node scripts/deploy-cloudflare.mjs"
