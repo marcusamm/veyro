@@ -37,7 +37,9 @@
     "server/**/*.ts",
     "vite.config.ts",
     "app/factory/**/*.ts",
-    "app/factory/**/*.tsx"
+    "app/factory/**/*.tsx",
+    "app/world/**/*.ts",
+    "app/world/**/*.tsx"
   ],
   "exclude": [
     "node_modules",

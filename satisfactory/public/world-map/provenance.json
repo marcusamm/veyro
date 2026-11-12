@@ -1,0 +1,110 @@
+{
+  "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/map.json",
+  "mapId": "817357109c4e591e",
+  "gameVersion": "1.2.4.1",
+  "world": {
+    "minX": -324698.16,
+    "minY": -375000,
+    "maxX": 425301.84,
+    "maxY": 375000
+  },
+  "level": 2,
+  "tiles": [
+    {
+      "path": "2/0/0.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/0/0.webp",
+      "sha256": "98b2bf6342905092723499a2139b7db71be1a70e717bd66eeaf60cdfd9f4faf6",
+      "bytes": 976
+    },
+    {
+      "path": "2/0/1.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/0/1.webp",
+      "sha256": "5925d76813b5cffb80634f862fed95a4b17f0efd6be77ad929704856e2bc17b0",
+      "bytes": 6384
+    },
+    {
+      "path": "2/0/2.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/0/2.webp",
+      "sha256": "2080b44aae347807b9290521a9054dfe43619e673439eb8682fbb7cac23e08b9",
+      "bytes": 6492
+    },
+    {
+      "path": "2/0/3.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/0/3.webp",
+      "sha256": "0cc1ac7ec2f06ffc2c996cc0931a98851df28fc219c355e0a6874e8f45e4dd21",
+      "bytes": 3388
+    },
+    {
+      "path": "2/1/0.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/1/0.webp",
+      "sha256": "2359c0499cb59f34d4afc1dfc04cd5702c7ea45e779a87e06370a35818061e2e",
+      "bytes": 3666
+    },
+    {
+      "path": "2/1/1.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/1/1.webp",
+      "sha256": "3e9f022b701c5de79c8d98090f7afd241aa8c64b6ac6f86e4d5d9a47f3c36b99",
+      "bytes": 10788
+    },
+    {
+      "path": "2/1/2.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/1/2.webp",
+      "sha256": "e46dcb290d56479ba560b8782da42fc2987c36272bf32387a6e62b813a0c49e9",
+      "bytes": 11332
+    },
+    {
+      "path": "2/1/3.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/1/3.webp",
+      "sha256": "d103a8d0fd8fa9c2a90e54174b6393fa97e38d559deede87e6c2ec9999d64001",
+      "bytes": 3922
+    },
+    {
+      "path": "2/2/0.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/2/0.webp",
+      "sha256": "a0c7d543b1f6122e20a2cb6332bda2c589d9aa64d24af7b597555321740e9677",
+      "bytes": 7360
+    },
+    {
+      "path": "2/2/1.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/2/1.webp",
+      "sha256": "6a537ed799ec388ae821934cf85f326ea0fe5b3e45bd087b6c30e8e4541f1451",
+      "bytes": 11032
+    },
+    {
+      "path": "2/2/2.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/2/2.webp",
+      "sha256": "0bb50d6c99719cc37a7e4122adbd74d04da95347dc066f06f29dc355197939bd",
+      "bytes": 11834
+    },
+    {
+      "path": "2/2/3.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/2/3.webp",
+      "sha256": "3491ac0ddd7a70c8bbe64a6637ff77c930a1deb6ce11cb5fd83c35b288b30db5",
+      "bytes": 3762
+    },
+    {
+      "path": "2/3/0.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/3/0.webp",
+      "sha256": "9a1e4afcc1d21d4c63726e57d27351f92d0a23e0529fd68f30ac1c6c589f768f",
+      "bytes": 4286
+    },
+    {
+      "path": "2/3/1.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/3/1.webp",
+      "sha256": "a3ed7689e9821e8a41bb88d2e81941210fd53edfb18c3d52551f3c98d8ddf19a",
+      "bytes": 4446
+    },
+    {
+      "path": "2/3/2.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/3/2.webp",
+      "sha256": "49a80b7203d8a48e4d50d462ca462187f0950e7e3d6b51befa44a1b3e65b971d",
+      "bytes": 5106
+    },
+    {
+      "path": "2/3/3.webp",
+      "source": "https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/tiles/2/3/3.webp",
+      "sha256": "d21d9bad2e498020046f1c30e3f75ec490cfc884efdd6e851a6b62ae4cb02151",
+      "bytes": 178
+    }
+  ]
+}

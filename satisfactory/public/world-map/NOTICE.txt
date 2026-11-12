@@ -1,0 +1,7 @@
+Satisfactory base-map imagery, supplied by Satisfactory Tools.
+Game artwork belongs to Coffee Stain Studios.
+Source: https://api.new.satisfactorytools.com/data/maps/817357109c4e591e/map.json
+Map selected by the verified Satisfactory 1.2.5.0 data export.
+The terrain manifest identifies artwork version 1.2.4.1.
+Tiles are preserved unmodified; these contain base terrain, never user world data.
+Satisfactory Tools API/data project: https://github.com/SatisfactoryTools/ToolsApi (MIT).

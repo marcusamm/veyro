@@ -1,6 +1,7 @@
 import { PlanValidationError, isSameOriginWrite, readPlanUpdate, validatePlanUpdate } from '../app/lib/plan-validation';
 import { hashPassword, randomToken, sha256, verifyPassword } from './password';
 import { factoryApi } from './factory';
+import { worldApi, worldIngest } from './world';
 
 export interface Env { DB: D1Database; ASSETS: Fetcher; APP_URL?: string; BOOTSTRAP_TOKEN_HASH?: string; BOOTSTRAP_EXPIRES_AT?: string }
 export type User = { id: string; username: string; displayName: string; role: 'admin' | 'player'; active: boolean };
@@ -73,6 +74,9 @@ const planReply=(row:PlanRow)=>({data:JSON.parse(row.data),revision:row.revision
 
 async function api(request:Request,env:Env):Promise<Response>{
   const path=new URL(request.url).pathname, method=request.method;
+  // The bridge authenticates using its own ingest-only token, never a player cookie.
+  // Keep this exception exact; every other write retains the browser Origin check.
+  if(path==='/api/world/ingest')return worldIngest(request,env.DB);
   if(!['GET','HEAD'].includes(method)&&!isSameOriginWrite(request))return json({error:'Use this website to make changes.'},403);
   if(path==='/api/setup'&&method==='POST'){
     const expiry=Date.parse(env.BOOTSTRAP_EXPIRES_AT||''),now=Date.now(),expected=env.BOOTSTRAP_TOKEN_HASH||'';
@@ -106,6 +110,7 @@ async function api(request:Request,env:Env):Promise<Response>{
   }
   if(!user)return json({error:'Sign in to use your factory plan.'},401);
   if(path==='/api/factory')return factoryApi(request,env.DB,user.id);
+  if(['/api/world','/api/world/plan','/api/world/connection'].includes(path))return worldApi(request,env.DB,user);
   if(path==='/api/auth/me'&&method==='GET')return json({user:safeUser(user),players:await players(env)});
   if(path==='/api/auth/password'&&method==='POST'){
     const body=await limitedBody(request);allowedFields(body,['currentPassword','newPassword']);const next=password(body.newPassword);

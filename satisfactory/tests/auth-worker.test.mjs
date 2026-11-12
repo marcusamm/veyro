@@ -9,7 +9,7 @@ const root = new URL('../', import.meta.url);
 const bundled = await build({entryPoints:[fileURLToPath(new URL('server/index.ts',root))],bundle:true,write:false,format:'esm',platform:'neutral',target:'es2022'});
 const code=bundled.outputFiles[0].text;
 const worker=(await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)).default;
-const migration=(await Promise.all(['0001_factory_auth.sql','0002_factory_layout.sql'].map(name=>readFile(new URL('migrations/'+name,root),'utf8')))).join('\n');
+const migration=(await Promise.all(['0001_factory_auth.sql','0002_factory_layout.sql','0003_world_map.sql'].map(name=>readFile(new URL('migrations/'+name,root),'utf8')))).join('\n');
 const adminId='00000000-0000-4000-8000-000000000001',adminPass='test-admin-pass-only';
 const adminHash=await hashPassword(adminPass);
 let sqlite,env;
@@ -63,8 +63,8 @@ test('factory API rejects invalid data, excess size, cross-origin writes and rev
   assert.equal((await call('/api/factory','PUT',{data:valid,revision:0},friend)).status,401);
 });
 
-test('anonymous users cannot read plans, players or PDFs; cross-origin writes rejected',async()=>{
-  for(const path of ['/api/plan','/api/factory','/api/auth/me','/api/players','/documents/Satisfactory_Mega_Factory_Checklist.pdf','/%64ocuments/Satisfactory_Mega_Factory_Checklist.pdf'])assert.equal((await call(path)).status,401,path);
+test('anonymous users cannot read plans, worlds, players or PDFs; cross-origin writes rejected',async()=>{
+  for(const path of ['/api/plan','/api/factory','/api/world','/api/world/plan','/api/world/connection','/api/auth/me','/api/players','/documents/Satisfactory_Mega_Factory_Checklist.pdf','/%64ocuments/Satisfactory_Mega_Factory_Checklist.pdf'])assert.equal((await call(path)).status,401,path);
   assert.equal((await call('/api/auth/login','POST',{username:'marcus',password:adminPass},null,{Origin:'https://evil.test'})).status,403);
   const r=await call('/');assert.equal(r.headers.get('x-robots-tag'),'noindex, nofollow, noarchive');
 });
