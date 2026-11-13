@@ -59,6 +59,7 @@ test('port capacity removes impossible automatic amplification variants',()=>{
 test('shard inventory starts automatic amplified groups at baseline clocks',()=>{
   const p=solveProductionPlan({outputs:[{itemId:'Desc_IronPlate_C',rate:60}],clock:250,powerShardBudget:0,somersloopBudget:1});verify(p,1);
   assert.equal(p.totals.powerShards,0);assert.ok(p.recipes.every(r=>r.variants.every(v=>v.clock<=100)));
+  assert.ok(p.recipes.every(r=>r.variants.every(v=>!v.clockLimited)), 'An inventory baseline is not a transport bottleneck.');
 });
 test('maximum output with whole amplification stays within supplied material and boost stock',()=>{
   const p=solveProductionPlan({outputs:[{itemId:'Desc_IronPlate_C',rate:1}],inputs:[{itemId:'Desc_OreIron_C',rate:30}],mode:'maximize',somersloopBudget:2});verify(p,2);

@@ -9,11 +9,30 @@ const sortMaterials = (values: Map<string, number>): MaterialRate[] => [...value
 function buildingMaterials(buildings: { machineId: string; count: number }[]): MaterialRate[] {
   const total = new Map<string, number>();
   for (const building of buildings) {
+    if (!Number.isSafeInteger(building.count) || building.count < 0) throw new Error('Construction building counts must be nonnegative whole numbers.');
     const recipe = costs[building.machineId];
     if (!recipe) throw new Error(`Construction costs are unavailable for ${building.machineId}.`);
-    for (const row of recipe) total.set(row.itemId, (total.get(row.itemId) || 0) + row.rate * building.count);
+    for (const row of recipe) {
+      const quantity = (total.get(row.itemId) || 0) + row.rate * building.count;
+      if (!Number.isSafeInteger(quantity)) throw new Error('The construction quantity exceeds the exact integer limit.');
+      if (quantity > 0) total.set(row.itemId, quantity);
+    }
   }
   return sortMaterials(total);
+}
+
+export const junctionBuildingNames = {
+  Desc_ConveyorAttachmentSplitter_C: 'Conveyor Splitter',
+  Desc_ConveyorAttachmentMerger_C: 'Conveyor Merger',
+  Desc_PipelineJunction_Cross_C: 'Pipeline Junction',
+  Desc_PipelineJunction_T_C: 'Pipeline T-Junction',
+} as const;
+export type ManifoldConstruction = { components: { machineId: string; count: number }[]; componentsComplete: boolean; message?: string };
+/** Only cost a fully counted schematic; a display preview is not an inventory bill. */
+export function manifoldMaterials(manifold: ManifoldConstruction): MaterialRate[] {
+  if (!manifold.componentsComplete) return [];
+  for (const component of manifold.components) if (!Object.hasOwn(junctionBuildingNames, component.machineId)) throw new Error(`Unknown manifold component ${component.machineId}.`);
+  return buildingMaterials(manifold.components);
 }
 
 /** Quantities to place the production buildings; rate means an item count here, not /minute. */

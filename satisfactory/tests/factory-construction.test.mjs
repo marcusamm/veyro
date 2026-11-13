@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 
 const bundle = await build({ stdin: { contents: `export * from './app/factory/construction.ts'; export * from './app/factory/production.ts'; export * from './app/factory/engine.ts';`, resolveDir: process.cwd() }, bundle: true, platform: 'node', format: 'esm', write: false });
-const { constructionMaterials, productionBoosts, planExtraction, solveProductionPlan, catalog, itemById } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const { constructionMaterials, productionBoosts, planExtraction, manifoldMaterials, solveProductionPlan, catalog, itemById } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const data = JSON.parse(await readFile(new URL('../app/factory/data/construction-costs.json', import.meta.url), 'utf8'));
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-6, `${actual} != ${expected}`);
 const quantity = (rows, itemId) => rows.find(row => row.itemId === itemId)?.rate || 0;
@@ -16,7 +16,7 @@ const resources = (rows, settings = request, options = {}) => planExtraction({ .
 test('construction supplement covers every production machine and preserves the reviewed source pin', () => {
   assert.equal(data.provenance.sourceSha256, catalog.provenance.sourceSha256);
   assert.equal(data.provenance.gameVersion, '1.2.5.0');
-  assert.equal(Object.keys(data.costs).length, 16);
+  assert.equal(Object.keys(data.costs).length, 20);
   for (const machine of catalog.machines) assert.ok(data.costs[machine.id]?.length, machine.id);
   for (const list of Object.values(data.costs)) for (const row of list) {
     assert.ok(itemById[row.itemId], row.itemId);
@@ -87,4 +87,26 @@ test('tiny extraction targets retain physical minimum clocks and an explicit dut
   near(row.powerMW, row.powerMaxMW * row.dutyCycle);
   for (const clock of [0, 251, NaN]) assert.throws(() => resources([], request, { clock }));
   assert.throws(() => constructionMaterials({ ...plan, recipes: [{ machineId: 'missing', machineCount: 1 }] }), /unavailable/);
+});
+
+test('verified splitter, merger and pipe-junction costs form a separate exact schematic bill', () => {
+  const bill = manifoldMaterials({ componentsComplete: true, components: [
+    { machineId: 'Desc_ConveyorAttachmentSplitter_C', count: 3 },
+    { machineId: 'Desc_ConveyorAttachmentMerger_C', count: 2 },
+    { machineId: 'Desc_PipelineJunction_Cross_C', count: 4 },
+    { machineId: 'Desc_PipelineJunction_T_C', count: 1 },
+  ] });
+  assert.equal(bill.length, 4);
+  assert.equal(quantity(bill, 'Desc_IronPlate_C'), 10);
+  assert.equal(quantity(bill, 'Desc_Cable_C'), 6);
+  assert.equal(quantity(bill, 'Desc_IronRod_C'), 4);
+  assert.equal(quantity(bill, 'Desc_CopperSheet_C'), 25);
+  assert.equal(quantity(constructionMaterials(plan), 'Desc_IronPlate_C'), 0);
+});
+
+test('large or incomplete manifold previews never become a partial inventory bill', () => {
+  assert.deepEqual(manifoldMaterials({ componentsComplete: false, components: [{ machineId: 'Desc_ConveyorAttachmentSplitter_C', count: 50 }] }), []);
+  assert.deepEqual(manifoldMaterials({ componentsComplete: true, components: [] }), []);
+  for (const count of [-1, .5, Infinity, Number.MAX_SAFE_INTEGER]) assert.throws(() => manifoldMaterials({ componentsComplete: true, components: [{ machineId: 'Desc_ConveyorAttachmentSplitter_C', count }] }));
+  assert.throws(() => manifoldMaterials({ componentsComplete: true, components: [{ machineId: 'invented-junction', count: 1 }] }));
 });

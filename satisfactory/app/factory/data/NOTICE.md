@@ -116,10 +116,12 @@ SOFTWARE.
 
 `construction-costs.json` is derived from the same SHA-256-verified Satisfactory Tools
 1.2.5.0 export and is covered by the attribution above. It retains the exact ingredient
-quantities of the `inBuildGun` recipes for the 11 production buildings and five modeled
-extractors. These recipes are not added to the automated production recipe catalog.
+quantities of the `inBuildGun` recipes for the 11 production buildings, five modeled
+extractors, Conveyor Splitter, Conveyor Merger, Pipeline Junction and Pipeline T-Junction.
+These recipes are not added to the automated production recipe catalog.
 Reproduce with `node scripts/import-construction-data.mjs`; the source hash is checked
 before writing. Quantities are building ingredients, not ingredient rates. Installed
-Power Shards and Somersloops are listed separately. Belts, pipes, supports, foundations,
-power distribution and resource-well arrangements depend on physical placement and
-are excluded from the construction bill.
+Power Shards and Somersloops are listed separately. Explicitly modeled splitter, merger
+and pipeline-junction counts have a separate material bill. Belts, pipes, supports,
+foundations, power distribution and resource-well arrangements depend on physical
+placement and are excluded from the construction bill.

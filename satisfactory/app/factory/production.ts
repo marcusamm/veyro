@@ -275,15 +275,16 @@ function solveValidated(request: ValidatedProductionRequest, precision = EPS, ex
       })) return [];
     }
     const full = recipeRates(recipe.id, requestedClock, request.settings, sloops);
-    let clock = requestedClock;
+    let clock = requestedClock, transportClock = 250;
     for (const rate of [...full.inputs, ...full.outputs]) {
       const solid = itemById[rate.itemId].form === 'solid', capacity = transportCapacity(solid ? 'belt' : 'pipe', solid ? request.beltTier : request.pipeTier);
+      transportClock = Math.min(transportClock, requestedClock * capacity / rate.rate);
       if (rate.rate > capacity) clock = Math.min(clock, requestedClock * capacity / rate.rate);
     }
     if (clock < 1 - EPS) fail(`The selected transport cannot supply ${recipe.name} even at 1% clock.`);
     // recipeRates rounds to four decimal clock places; round down at capacity.
     clock = Math.max(1, Math.floor((clock + 1e-9) * 10000) / 10000);
-    return [{ key, slots, recipe, requestedClock: configuredClock, clock, sloops, ...recipeRates(recipe.id, clock, request.settings, sloops) }];
+    return [{ key, slots, recipe, requestedClock: configuredClock, clock, transportClock, sloops, ...recipeRates(recipe.id, clock, request.settings, sloops) }];
     });
   });
   const raw = catalog.items.filter(i => i.resource && needed.has(i.id) && request.resourcePolicy === 'open' && !(request.capInputs && supplied.has(i.id)));
@@ -431,7 +432,7 @@ function solveValidated(request: ValidatedProductionRequest, precision = EPS, ex
     const dutyCycle = theoreticalClock < 1 ? theoreticalClock : 1;
     const last = recipeRates(u.recipe.id, lastClock, request.settings, u.sloops);
     const shardsFor = (clock: number) => Math.max(0, Math.ceil((clock - 100) / 50 - 1e-8));
-    const variant: ProductionVariant = { exactMachines, machineCount, fullMachines, requestedClock: u.requestedClock, clock: u.clock, lastClock, clockLimited: u.clock < u.requestedClock - 0.0001, dutyCycle, sloops: u.sloops, powerShards: fullMachines * shardsFor(u.clock) + shardsFor(lastClock),
+    const variant: ProductionVariant = { exactMachines, machineCount, fullMachines, requestedClock: u.requestedClock, clock: u.clock, lastClock, clockLimited: u.transportClock < u.requestedClock - 0.0001, dutyCycle, sloops: u.sloops, powerShards: fullMachines * shardsFor(u.clock) + shardsFor(lastClock),
       inputs: u.inputs.map(p => ({ itemId: p.itemId, rate: p.rate * exactMachines })), outputs: u.outputs.map(p => ({ itemId: p.itemId, rate: p.rate * exactMachines })),
       powerMW: fullMachines * u.powerMW + last.powerMW * dutyCycle, powerMinMW: fullMachines * u.powerMinMW + last.powerMinMW * dutyCycle, powerMaxMW: fullMachines * u.powerMaxMW + last.powerMaxMW };
     const existing = plan.recipes.find(r => r.recipeId === u.recipe.id);

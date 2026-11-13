@@ -267,6 +267,38 @@
         "itemId": "Desc_Rotor_C",
         "rate": 10
       }
+    ],
+    "Desc_ConveyorAttachmentSplitter_C": [
+      {
+        "itemId": "Desc_IronPlate_C",
+        "rate": 2
+      },
+      {
+        "itemId": "Desc_Cable_C",
+        "rate": 2
+      }
+    ],
+    "Desc_ConveyorAttachmentMerger_C": [
+      {
+        "itemId": "Desc_IronPlate_C",
+        "rate": 2
+      },
+      {
+        "itemId": "Desc_IronRod_C",
+        "rate": 2
+      }
+    ],
+    "Desc_PipelineJunction_Cross_C": [
+      {
+        "itemId": "Desc_CopperSheet_C",
+        "rate": 5
+      }
+    ],
+    "Desc_PipelineJunction_T_C": [
+      {
+        "itemId": "Desc_CopperSheet_C",
+        "rate": 5
+      }
     ]
   }
 }

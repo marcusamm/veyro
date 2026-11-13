@@ -9,7 +9,8 @@ if (createHash('sha256').update(bytes).digest('hex') !== sourceSha256) throw new
 const { data, metadata } = JSON.parse(Buffer.from(bytes).toString('utf8'));
 if (metadata.version !== '1.2.5.0' || metadata.buildId !== '26281294' || metadata.ficsmas) throw new Error('Unexpected game version.');
 const catalog = JSON.parse(await readFile(new URL('../app/factory/data/satisfactory-1.2.json', import.meta.url), 'utf8'));
-const ids = [...catalog.machines, ...catalog.extractors].map(machine => machine.id);
+const junctions = ['Desc_ConveyorAttachmentSplitter_C', 'Desc_ConveyorAttachmentMerger_C', 'Desc_PipelineJunction_Cross_C', 'Desc_PipelineJunction_T_C'];
+const ids = [...catalog.machines, ...catalog.extractors].map(machine => machine.id).concat(junctions);
 const costs = {};
 for (const id of ids) {
   const matches = Object.values(data.recipes).filter(recipe => recipe.inBuildGun && recipe.products.length === 1 && recipe.products[0].item === id && recipe.products[0].amount === 1);
@@ -21,4 +22,4 @@ for (const id of ids) {
 }
 const output = { provenance: { gameVersion: metadata.version, steamBuildId: metadata.buildId, sourceUrl, sourceSha256, recipeFilter: 'inBuildGun; one building per recipe', license: 'MIT (Satisfactory Tools); game content belongs to Coffee Stain Studios' }, costs };
 await writeFile(new URL('../app/factory/data/construction-costs.json', import.meta.url), JSON.stringify(output, null, 2) + '\n');
-console.log(`Imported exact construction costs for ${ids.length} production and extraction buildings.`);
+console.log(`Imported exact construction costs for ${ids.length} production, extraction and junction buildings.`);

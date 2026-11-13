@@ -45,14 +45,33 @@ not establish which data build the live website currently serves.
   means the returned allocation is feasible but may not be the best possible one.
   Automatic amplified variants run at at most 100% and must fit transport at 100%,
   as in the pinned reference. Without an inventory, per-recipe manual boosts remain.
+- Optional global Power Shard allocation across production and modeled extraction.
+  A physical pass removes one building at the lowest extra shard cost, with
+  extraction first on ties and 50-percentage-point unlock steps. Port capacities
+  and requested maximum clocks still apply. Amplified groups remain at or below
+  100%; unused shards are reported when further allocation cannot remove a building.
 - Recipe-cost settings round solid amounts per cycle and fluid quantities in raw
   litres before converting back to m³. Output and power multipliers are independent.
 - Explicit infeasible/unbounded/error states. Calculations run off the UI thread.
   Active recipe networks are re-solved before rendering, and material balances
   are verified; tiny LP artifacts are not silently hidden from the graph.
-- Scalable production templates, numeric build guides, flow graphs, machine lists,
-  transport requirements and surplus/startup warnings. Shared requests persist
-  separately from the manual layout and original documents.
+- A default manifold layout with individual production machines, separate material
+  rails, explicit conveyor splitters/mergers and pipeline junctions. Parallel rails
+  respect the selected belt/pipe capacity; the model checks each trunk and branch,
+  reserving capacity for connected machines running simultaneously. Connections
+  between stages, raw-input feeds, final outputs and surplus destinations have
+  explicit branching/combining junctions as needed.
+- Exact construction quantities for the generated production buildings, modeled
+  extractors and manifold junctions, with installed boosts listed separately. The
+  construction supplement contains 20 verified build-gun recipes from the same
+  pinned snapshot: 11 production machines, five extractors and four junction types.
+  The manifold model currently uses the standard splitter, merger and four-way
+  pipeline junction; the supplement also retains the verified pipeline T-junction.
+- Scalable production templates, numeric build guides, flow graphs, machine lists
+  and surplus/startup warnings. The downloadable guide includes each manifold's
+  machine settings, trunk/branch wiring, connections between modules, junction
+  material bill and startup sequence. Shared requests persist separately from
+  the manual layout and original documents.
 
 ## Numerical regression fixtures
 
@@ -75,10 +94,14 @@ recipe/power settings. Resource supplies are available and transport is sufficie
 | Iron Plate recipe cost 0.5× | 3 Ingots × 0.5 rounds to 2 per cycle: 20 Ingots/min, not 15; output remains 20 Plates/min |
 | 60 Plates/min, automatic Somersloop inventory 1 | 60 Ore/min; 2 Smelters; one normal Constructor + one Constructor with 1 Somersloop |
 | 60 Plates/min, automatic inventory 2 | 30 Ore/min; 1 boosted Smelter; one normal + one boosted Constructor |
+| 30 Plates/min from 45 supplied Ingots/min, maximum clock 250%, shard budget 1 | 1 Constructor at 150%, using 1 shard; material flows unchanged |
+| 30 Plates/min from raw resources, impure Mk.1 miners, maximum clocks 250%, shard budget 1 | The shard goes to extraction on a tie: 1 Miner at 150%; production retains 2 Smelters + 2 Constructors |
 
 `tests/factory-production.test.mjs` and `tests/factory-engine.test.mjs` contain
 these and failure-mode checks. Template and graph tests additionally validate all
-authored factories at multiple scales. A development sweep also checked every
+authored factories at multiple scales. Allocation and construction tests cover
+shared shard budgets, transport-limited clocks, verified junction costs and refusal
+to turn incomplete manifold counts into an inventory bill. A development sweep also checked every
 catalog item produced by a recipe with all alternates/converters enabled: 126
 feasible targets, 13 requiring unavailable external materials, and no numerical
 solver failures. That sweep is diagnostic evidence, not proof of universal parity.
@@ -104,26 +127,41 @@ solver failures. That sweep is diagnostic evidence, not proof of universal parit
    generators, pumps, standby draw and extraction alternatives are not jointly
    optimized with production. The power objective uses nominal recipe coefficients;
    final displayed production power uses the actual rounded machine allocation.
-4. **Transport counts are lower bounds.** Per-machine ports are capacity-limited,
-   but aggregate line counts are not a complete splitter/manifold placement plan.
-   No head-lift, pipe fill/backflow, round-robin timing, train schedule or game-tick
-   simulation is provided. Below 1% clock, the final machine requires intermittent
-   operation; mean power is averaged while maximum power includes its running peak.
-5. **The drawing is schematic.** Machine footprints, foundations, collision
-   clearances, belt geometry and connector positions are not verified in-game.
-   Templates are build instructions, not importable game blueprint/save files.
-6. **Dataset boundaries remain explicit.** FICSMAS, handcraft-only and
+4. **Aggregate transport summaries and explicit manifolds have different scope.**
+   Aggregate line counts remain lower bounds. The generated manifold instead
+   includes individual machines, capacity-checked trunks/branches, parallel rails
+   and junctions between stages. Its component bill covers all junctions in that
+   generated design, not just the recipe rows. It uses one binary junction per
+   added branch and leaves spare ports unused; it does not optimize for minimum
+   junction count or claim the same junction choices/counts as Satisfactory
+   Calculator. Ordinary splitter demand labels are steady-state requirements,
+   not programmable ratios. Fluid junctions do not enforce direction or recycled
+   fluid priority. No head-lift, pipe fill/backflow, round-robin timing, train
+   schedule or game-tick simulation is provided. Below 1% clock, the final machine
+   needs intermittent operation; the schematic reserves its running-rate capacity
+   while power distinguishes the average from its active peak.
+5. **Manifold detail has a 250-production-machine limit.** Larger plans retain
+   the production result and aggregate summaries, but exact junction counts,
+   per-machine wiring instructions and the junction construction bill are marked
+   unavailable. No truncated preview is presented as a complete material list.
+   Reduce the target or divide the factory into modules to obtain this detail.
+6. **The drawing is schematic.** Machine footprints, foundations, collision
+   clearances, belt geometry and physical connector positions are not verified
+   in-game. Belt/pipe lengths, supports, pumps, valves and power-distribution
+   construction costs are not counted. Templates and downloadable guides are
+   build instructions, not importable game blueprint/save files.
+7. **Dataset boundaries remain explicit.** FICSMAS, handcraft-only and
    workshop-only recipes are excluded. Gathered items or nuclear waste outside
    modeled production require explicit inputs. The catalog does not auto-update
    and exact live-reference recipe/data-version equality is not verified.
-7. **Finite numeric computation.** The LP uses floating point and work limits;
+8. **Finite numeric computation.** The LP uses floating point and work limits;
    infeasible, unbounded and failed numerical checks are reported rather than
    replaced with approximate success. Runtime feasibility checks do not prove
    equality for every alternative recipe combination and reference option.
 
 ## Persistence
 
-Migration `0004_production_plan.sql` adds the separate `production_plans` table.
+Migration `0004_production_plan.sql` adds the separate `factory_production_plans` table.
 Authenticated `GET /api/production` and revision-checked `PUT /api/production` use
 the existing player permissions and same-origin protections. Applying a template
 changes a draft; it does not overwrite another player's save without the normal
