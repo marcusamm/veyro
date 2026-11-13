@@ -9,7 +9,7 @@ import { hashPassword, sha256 } from '../server/password.ts';
 const root = new URL('../', import.meta.url);
 const bundle = await build({ entryPoints: [fileURLToPath(new URL('server/index.ts', root))], bundle: true, write: false, format: 'esm', platform: 'neutral', target: 'es2022' });
 const worker = (await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`)).default;
-const migration = (await Promise.all(['0001_factory_auth.sql', '0002_factory_layout.sql', '0003_world_map.sql'].map(name => readFile(new URL('migrations/' + name, root), 'utf8')))).join('\n');
+const migration = (await Promise.all(['0001_factory_auth.sql', '0002_factory_layout.sql', '0003_world_map.sql', '0004_production_plan.sql'].map(name => readFile(new URL('migrations/' + name, root), 'utf8')))).join('\n');
 const password = 'world-tests-only', adminId = 'test-marcus', friendId = 'test-friend';
 const hash = await hashPassword(password);
 let sqlite, env, beforeBatch;

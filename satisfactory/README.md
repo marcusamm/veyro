@@ -34,6 +34,10 @@ The normal recipe and power multipliers are **1×**. Each production machine has
 own **1–250% clock speed**, recipe and supported Somersloop count. Transport limits
 cover belt Mk.1–6 and pipe Mk.1–2. All ingredient, output and power calculations use
 the versioned game export; see [data provenance and formulas](app/factory/data/NOTICE.md).
+The separate construction supplement contains 20 verified building recipes: 11
+production machines, five extractors and four splitter/merger/pipeline-junction
+types. Rebuild it with `node scripts/import-construction-data.mjs`; the importer
+checks the pinned source SHA-256 before writing any data.
 
 The board is a schematic top-down planner. Positions and displayed machine sizes
 are not verified in-game footprints. Calculations describe ideal steady production,
@@ -49,6 +53,58 @@ editable reference text, independent of the calculator.
 The additional checks exercise catalog normalization, production and power rates,
 transport limits, splitting/merging, invalid layouts, authenticated shared saves,
 concurrent revision conflicts and isolation from the original plans.
+
+## Production calculator and build templates
+
+The factory workspace now contains an output-driven production calculator alongside
+the existing manual layout. Set one or more target rates, available inputs, recipe
+choices, transport tiers and machine clocks. The calculator solves upstream
+requirements and recycling loops, shows surplus, and offers target/maximize modes
+with resource, power or building objectives. Input caps default off for targets and
+on for maximum output; uncapped inputs can be supplemented by production. Raw resources not explicitly capped remain
+available unless the closed budget is selected.
+
+The template library provides 14 scalable, authored production chains with machine
+counts, clocks, material flows and build steps. Templates update the calculator
+draft and do not replace the existing shared manual layout. Somersloops can be set
+manually per machine or allocated from a global whole-item inventory. Automatic
+allocation uses recipe variants, greedy rounding and bounded branch-and-bound;
+its result always respects installed stock and warns if the search was cut short.
+An optional shared Power Shard budget allocates overclocking across production and
+the modeled extractors. Build requirements show separate production, extraction
+and junction material lists, with installed boosts listed separately.
+
+The default **Manifold layout** expands the calculated schedule into individual
+machines, input splitters, output mergers and pipeline junctions. Each material has
+its own rails; extra parallel rails keep each trunk and branch within the selected
+belt or pipe capacity. The schematic includes connections between production
+stages, raw-input feeds, final products and surplus destinations. Its junction
+bill includes both machine-row manifolds and connections between stages.
+
+Download the build guide for machine settings, rail-by-rail wiring, connections
+between modules, construction materials and startup instructions. Detailed
+manifolds support up to **250 production machines**. Larger plans retain their
+production calculation, but explicitly exclude exact manifold junction counts
+and the junction bill; reduce the target or build separate modules for that detail.
+
+The separate aggregate flow and transport summaries still show capacity lower
+bounds. Manifold capacities and junction counts describe the generated schematic;
+they are not a promise of minimum junction counts or identical Satisfactory
+Calculator placement. Building footprints, belt/pipe lengths, supports and pump
+placement are not modeled. Ordinary splitters need filled buffers to sustain the
+listed steady-state demand, and pipe junctions do not enforce fluid priority.
+These are instructions for building in the game, not downloadable game blueprints.
+
+Migration **`0004_production_plan.sql`** creates the separate `factory_production_plans`
+table. It is applied by the existing deployment workflow along with earlier
+migrations. The authenticated `/api/production` endpoint stores requests with the
+same optimistic revision protection as other shared plans. Use **Save production plan** to
+publish a draft to the other players, or export a JSON backup.
+
+The reference source, numerical benchmark cases and remaining differences are
+documented in [production parity](docs/production-parity.md). Recipe data remains
+pinned to 1.2.5.0; full one-to-one equivalence with every live Satisfactory Calculator
+feature is not claimed.
 
 ## World map
 
