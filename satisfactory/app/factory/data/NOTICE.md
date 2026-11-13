@@ -25,6 +25,15 @@ in **m³**, not litres: do not divide recipe quantities by 1,000 again. Solid am
 items. Rate at 100% is `amount × 60 / durationSeconds × manufacturingSpeed`. Clock speed
 scales input/output rates linearly.
 
+The recipe-cost setting follows the SC 1.2 calculation convention: multiply each
+ingredient's **per-cycle raw amount**, round to the nearest integer and clamp to a
+minimum of one raw unit. Solid raw units are items; fluid/gas raw units are litres.
+For normalized fluids, use `max(1, round(amountM3 × 1000 × cost)) / 1000` before
+calculating cycles per minute. For example, 3 solid items at 0.5× cost become 2,
+whereas 1 m³ at 0.5× remains 0.5 m³. Outputs are not multiplied by recipe cost.
+See the pinned SC reference and verification scope in
+[production parity](../../../docs/production-parity.md).
+
 Production power follows the source machine exponent (1.321929 for the included
 production machines): `basePower × (clockPercent / 100)^exponent`. Variable-power
 recipes provide a minimum, maximum and average; they are only variable on a machine
@@ -34,7 +43,7 @@ for Biochemical Sculptor even though the recipe carries a variable-power flag.
 The source's `maxOverclock: 1` and `clockChangePerShard: 0` do not describe the unlocked
 maximum. Satisfactory Tools' formula source explicitly supports 1–250% clock speed and
 one power shard per 50 percentage points above 100%. The normalized file uses that
-range. Somersloop capacity/boost is retained for future support: output multiplier
+range. Somersloop capacity/boost is used by both calculators: output multiplier
 `1 + sloopBoost × installedSloops`, input unchanged, power multiplied by the square
 of the output multiplier. A UI must not imply it has applied sloops unless it actually
 uses those formulas.
@@ -102,3 +111,15 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Construction-cost supplement
+
+`construction-costs.json` is derived from the same SHA-256-verified Satisfactory Tools
+1.2.5.0 export and is covered by the attribution above. It retains the exact ingredient
+quantities of the `inBuildGun` recipes for the 11 production buildings and five modeled
+extractors. These recipes are not added to the automated production recipe catalog.
+Reproduce with `node scripts/import-construction-data.mjs`; the source hash is checked
+before writing. Quantities are building ingredients, not ingredient rates. Installed
+Power Shards and Somersloops are listed separately. Belts, pipes, supports, foundations,
+power distribution and resource-well arrangements depend on physical placement and
+are excluded from the construction bill.

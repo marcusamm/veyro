@@ -1,6 +1,7 @@
 import { PlanValidationError, isSameOriginWrite, readPlanUpdate, validatePlanUpdate } from '../app/lib/plan-validation';
 import { hashPassword, randomToken, sha256, verifyPassword } from './password';
 import { factoryApi } from './factory';
+import { productionApi } from './production';
 import { worldApi, worldIngest } from './world';
 
 export interface Env { DB: D1Database; ASSETS: Fetcher; APP_URL?: string; BOOTSTRAP_TOKEN_HASH?: string; BOOTSTRAP_EXPIRES_AT?: string }
@@ -110,6 +111,7 @@ async function api(request:Request,env:Env):Promise<Response>{
   }
   if(!user)return json({error:'Sign in to use your factory plan.'},401);
   if(path==='/api/factory')return factoryApi(request,env.DB,user.id);
+  if(path==='/api/production')return productionApi(request,env.DB,user.id);
   if(['/api/world','/api/world/plan','/api/world/connection'].includes(path))return worldApi(request,env.DB,user);
   if(path==='/api/auth/me'&&method==='GET')return json({user:safeUser(user),players:await players(env)});
   if(path==='/api/auth/password'&&method==='POST'){

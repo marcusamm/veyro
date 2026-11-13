@@ -1,0 +1,272 @@
+{
+  "provenance": {
+    "gameVersion": "1.2.5.0",
+    "steamBuildId": "26281294",
+    "sourceUrl": "https://api.new.satisfactorytools.com/data/versions/stable-26281294.json",
+    "sourceSha256": "fddecaa07cdb77022f2e2d87c664617b8905882b10e4da43245638597240ee0c",
+    "recipeFilter": "inBuildGun; one building per recipe",
+    "license": "MIT (Satisfactory Tools); game content belongs to Coffee Stain Studios"
+  },
+  "costs": {
+    "Desc_AssemblerMk1_C": [
+      {
+        "itemId": "Desc_IronPlateReinforced_C",
+        "rate": 8
+      },
+      {
+        "itemId": "Desc_Rotor_C",
+        "rate": 4
+      },
+      {
+        "itemId": "Desc_Cable_C",
+        "rate": 10
+      }
+    ],
+    "Desc_Blender_C": [
+      {
+        "itemId": "Desc_Computer_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_ModularFrameHeavy_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_Motor_C",
+        "rate": 20
+      },
+      {
+        "itemId": "Desc_AluminumCasing_C",
+        "rate": 50
+      }
+    ],
+    "Desc_ConstructorMk1_C": [
+      {
+        "itemId": "Desc_IronPlateReinforced_C",
+        "rate": 2
+      },
+      {
+        "itemId": "Desc_Cable_C",
+        "rate": 8
+      }
+    ],
+    "Desc_Converter_C": [
+      {
+        "itemId": "Desc_ModularFrameFused_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_CoolingSystem_C",
+        "rate": 25
+      },
+      {
+        "itemId": "Desc_ModularFrameLightweight_C",
+        "rate": 50
+      },
+      {
+        "itemId": "Desc_SAMFluctuator_C",
+        "rate": 100
+      }
+    ],
+    "Desc_FoundryMk1_C": [
+      {
+        "itemId": "Desc_ModularFrame_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_Rotor_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_Cement_C",
+        "rate": 20
+      }
+    ],
+    "Desc_ManufacturerMk1_C": [
+      {
+        "itemId": "Desc_Motor_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_ModularFrame_C",
+        "rate": 20
+      },
+      {
+        "itemId": "Desc_Plastic_C",
+        "rate": 50
+      },
+      {
+        "itemId": "Desc_Cable_C",
+        "rate": 50
+      }
+    ],
+    "Desc_Packager_C": [
+      {
+        "itemId": "Desc_SteelPlate_C",
+        "rate": 20
+      },
+      {
+        "itemId": "Desc_Rubber_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_Plastic_C",
+        "rate": 10
+      }
+    ],
+    "Desc_HadronCollider_C": [
+      {
+        "itemId": "Desc_MotorLightweight_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_ComputerSuper_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_ModularFrameFused_C",
+        "rate": 25
+      },
+      {
+        "itemId": "Desc_CoolingSystem_C",
+        "rate": 50
+      },
+      {
+        "itemId": "Desc_HighSpeedWire_C",
+        "rate": 500
+      }
+    ],
+    "Desc_QuantumEncoder_C": [
+      {
+        "itemId": "Desc_MotorLightweight_C",
+        "rate": 20
+      },
+      {
+        "itemId": "Desc_ComputerSuper_C",
+        "rate": 20
+      },
+      {
+        "itemId": "Desc_CoolingSystem_C",
+        "rate": 50
+      },
+      {
+        "itemId": "Desc_TimeCrystal_C",
+        "rate": 50
+      },
+      {
+        "itemId": "Desc_FicsiteMesh_C",
+        "rate": 100
+      }
+    ],
+    "Desc_OilRefinery_C": [
+      {
+        "itemId": "Desc_Motor_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_SteelPlateReinforced_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_SteelPipe_C",
+        "rate": 30
+      },
+      {
+        "itemId": "Desc_CopperSheet_C",
+        "rate": 20
+      }
+    ],
+    "Desc_SmelterMk1_C": [
+      {
+        "itemId": "Desc_IronRod_C",
+        "rate": 5
+      },
+      {
+        "itemId": "Desc_Wire_C",
+        "rate": 8
+      }
+    ],
+    "Desc_MinerMk1_C": [
+      {
+        "itemId": "BP_ItemDescriptorPortableMiner_C",
+        "rate": 1
+      },
+      {
+        "itemId": "Desc_IronPlate_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_Cement_C",
+        "rate": 10
+      }
+    ],
+    "Desc_MinerMk2_C": [
+      {
+        "itemId": "BP_ItemDescriptorPortableMiner_C",
+        "rate": 2
+      },
+      {
+        "itemId": "Desc_SteelPlateReinforced_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_SteelPipe_C",
+        "rate": 20
+      },
+      {
+        "itemId": "Desc_ModularFrame_C",
+        "rate": 10
+      }
+    ],
+    "Desc_MinerMk3_C": [
+      {
+        "itemId": "BP_ItemDescriptorPortableMiner_C",
+        "rate": 3
+      },
+      {
+        "itemId": "Desc_SteelPipe_C",
+        "rate": 50
+      },
+      {
+        "itemId": "Desc_ComputerSuper_C",
+        "rate": 5
+      },
+      {
+        "itemId": "Desc_ModularFrameFused_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_MotorLightweight_C",
+        "rate": 3
+      }
+    ],
+    "Desc_OilPump_C": [
+      {
+        "itemId": "Desc_Motor_C",
+        "rate": 15
+      },
+      {
+        "itemId": "Desc_SteelPlateReinforced_C",
+        "rate": 20
+      },
+      {
+        "itemId": "Desc_Cable_C",
+        "rate": 60
+      }
+    ],
+    "Desc_WaterPump_C": [
+      {
+        "itemId": "Desc_CopperSheet_C",
+        "rate": 20
+      },
+      {
+        "itemId": "Desc_IronPlateReinforced_C",
+        "rate": 10
+      },
+      {
+        "itemId": "Desc_Rotor_C",
+        "rate": 10
+      }
+    ]
+  }
+}

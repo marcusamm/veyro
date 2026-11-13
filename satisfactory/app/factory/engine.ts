@@ -23,7 +23,14 @@ export function recipeRates(recipeId: string, clock = 100, settings: FactorySett
     const amplification = 1 + (machine.sloopBoost ?? 0) * sloops;
     const cycles = 60 / recipe.durationSeconds * (machine.manufacturingSpeed ?? 1) * clock / 100;
     const powerFactor = Math.pow(clock / 100, machine.powerExponent ?? 1.321929) * amplification ** 2 * settings.powerMultiplier;
-    return { inputs: recipe.ingredients.map(i => ({ itemId: i.itemId, rate: i.amount * cycles * settings.recipeMultiplier })), outputs: recipe.products.map(i => ({ itemId: i.itemId, rate: i.amount * cycles * amplification })), powerMW: (recipe.powerMW ?? machine.powerMW) * powerFactor, powerMinMW: (recipe.powerMinMW ?? recipe.powerMW ?? machine.powerMW) * powerFactor, powerMaxMW: (recipe.powerMaxMW ?? recipe.powerMW ?? machine.powerMW) * powerFactor };
+    // Recipe-cost settings round each game-data ingredient amount before its
+    // per-minute rate is calculated. Fluids are stored as m³ here but the game
+    // rounds their raw litre amounts, so their minimum is 0.001 m³, not 1 m³.
+    const adjustedAmount = (itemId: string, amount: number) => {
+        const rawUnits = itemById[itemId]?.form === 'solid' ? 1 : 1000;
+        return Math.max(1, Math.round(amount * rawUnits * settings.recipeMultiplier)) / rawUnits;
+    };
+    return { inputs: recipe.ingredients.map(i => ({ itemId: i.itemId, rate: adjustedAmount(i.itemId, i.amount) * cycles })), outputs: recipe.products.map(i => ({ itemId: i.itemId, rate: i.amount * cycles * amplification })), powerMW: (recipe.powerMW ?? machine.powerMW) * powerFactor, powerMinMW: (recipe.powerMinMW ?? recipe.powerMW ?? machine.powerMW) * powerFactor, powerMaxMW: (recipe.powerMaxMW ?? recipe.powerMW ?? machine.powerMW) * powerFactor };
 }
 export function targetPlan(recipeId: string, itemId: string, rate: number, clock = 100, settings: FactorySettings = defaults, sloops = 0) {
     if (!Number.isFinite(rate) || rate <= 0)

@@ -77,6 +77,17 @@ test('target planner computes integer machines and accurately underclocks last m
     near(tiny.achievedRate, 0.3);
     assert.ok(tiny.achievedRate > tiny.requestedRate);
 });
+
+test('recipe cost rounds solid items per cycle and fluid raw litres before calculating per-minute demand', () => {
+    const plates = recipeRates('Recipe_IronPlate_C', 100, { recipeMultiplier: 0.5, powerMultiplier: 1 });
+    // 3 ingots per cycle × 0.5 rounds to 2, with 10 cycles/min.
+    near(plates.inputs[0].rate, 20);
+    near(plates.outputs[0].rate, 20);
+    const rocket = recipeRates('Recipe_RocketFuel_C', 100, { recipeMultiplier: 0.333333, powerMultiplier: 1 });
+    const normal = recipeRates('Recipe_RocketFuel_C');
+    // One m³ nitric acid is 1000 raw litres: 333.333 rounds to 333 litres.
+    near(rocket.inputs.find(i=>i.itemId==='Desc_NitricAcid_C').rate, normal.inputs.find(i=>i.itemId==='Desc_NitricAcid_C').rate * 0.333);
+});
 test('iron chain runs at exact nominal and supply-limited rates', () => {
     for (const [supply, expected] of [[30, 30], [15, 15], [0, 0]]) {
         const r = smelt(supply);

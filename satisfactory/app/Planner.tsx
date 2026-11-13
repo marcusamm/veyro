@@ -3,7 +3,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'rea
 import { ArrowDownToLine, ArrowRight, BookOpen, Check, CheckCheck, ChevronLeft, ChevronRight, ClipboardList, Download, Factory, FileText, GitBranch, LayoutDashboard, Map, Menu, NotebookPen, Pencil, Plus, Printer, RefreshCw, Save, Search, Settings2, ShieldCheck, Users, X, Zap } from 'lucide-react';
 import type { AccountUser, Player, Assignee, Block, CheckBlock, PlanData, PlanPage } from './data/types';
 
-const FactoryPlanner = lazy(() => import('./factory/FactoryPlanner'));
+const FactoryPlanner = lazy(() => import('./factory/FactoryWorkspace'));
 const WorldMap = lazy(() => import('./world/WorldMap'));
 
 type SavedPlan = { data: PlanData; revision: number; updatedAt: string | null };

@@ -9,7 +9,7 @@ const root = new URL('../', import.meta.url);
 const bundled = await build({entryPoints:[fileURLToPath(new URL('server/index.ts',root))],bundle:true,write:false,format:'esm',platform:'neutral',target:'es2022'});
 const code=bundled.outputFiles[0].text;
 const worker=(await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)).default;
-const migration=(await Promise.all(['0001_factory_auth.sql','0002_factory_layout.sql','0003_world_map.sql'].map(name=>readFile(new URL('migrations/'+name,root),'utf8')))).join('\n');
+const migration=(await Promise.all(['0001_factory_auth.sql','0002_factory_layout.sql','0003_world_map.sql','0004_production_plan.sql'].map(name=>readFile(new URL('migrations/'+name,root),'utf8')))).join('\n');
 const adminId='00000000-0000-4000-8000-000000000001',adminPass='test-admin-pass-only';
 const adminHash=await hashPassword(adminPass);
 let sqlite,env;

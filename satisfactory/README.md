@@ -50,6 +50,37 @@ The additional checks exercise catalog normalization, production and power rates
 transport limits, splitting/merging, invalid layouts, authenticated shared saves,
 concurrent revision conflicts and isolation from the original plans.
 
+## Production calculator and build templates
+
+The factory workspace now contains an output-driven production calculator alongside
+the existing manual layout. Set one or more target rates, available inputs, recipe
+choices, transport tiers and machine clocks. The calculator solves upstream
+requirements and recycling loops, shows surplus, and offers target/maximize modes
+with resource, power or building objectives. Input caps default off for targets and
+on for maximum output; uncapped inputs can be supplemented by production. Raw resources not explicitly capped remain
+available unless the closed budget is selected.
+
+The template library provides 14 scalable, authored production chains with machine
+counts, clocks, material flows and build steps. Templates update the calculator
+draft and do not replace the existing shared manual layout. Somersloops can be set
+manually per machine or allocated from a global whole-item inventory. Automatic
+allocation uses recipe variants, greedy rounding and bounded branch-and-bound;
+its result always respects installed stock and warns if the search was cut short.
+The flow view
+is schematic; transport counts are aggregate lower bounds. These are instructions
+for building in the game, not downloadable game blueprints.
+
+Migration **`0004_production_plan.sql`** creates the separate `production_plans`
+table. It is applied by the existing deployment workflow along with earlier
+migrations. The authenticated `/api/production` endpoint stores requests with the
+same optimistic revision protection as other shared plans. Use **Save changes** to
+publish a draft to the other players, or export a JSON backup.
+
+The reference source, numerical benchmark cases and remaining differences are
+documented in [production parity](docs/production-parity.md). Recipe data remains
+pinned to 1.2.5.0; full one-to-one equivalence with every live Satisfactory Calculator
+feature is not claimed.
+
 ## World map
 
 Open **World map** for a separate top-down view in real game coordinates. The
