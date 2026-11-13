@@ -234,6 +234,7 @@ function createManifolds(plan: ProductionPlan, request: ProductionRequest, maxim
     routingJunctions: result.junctions.filter(value => value.scope === 'routing').length,
   };
   result.warnings = [
+    "Supply endpoints are factory inlets. Deliver the shown rate on each listed inlet belt or pipe. Miners and extractors are sized separately; their connections to these inlets, including any splitters, mergers and pipe junctions, are not shown or included in the junction bill.",
     ...plan.warnings,
     'This is a connection schematic, not measured placement. It does not determine building footprints, foundation sizes, belt lengths or pipe head lift.',
     'Ordinary splitters do not enforce the displayed demand ratios. The rates describe a filled, steady-state manifold; allow input buffers to fill before judging output.',
