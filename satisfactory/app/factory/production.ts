@@ -267,13 +267,9 @@ function solveValidated(request: ValidatedProductionRequest, precision = EPS, ex
     const key = recipe.id + '|' + sloops;
     if (automatic && sloops > 0 && !allocation.bounds && !allocation.kept?.has(key) && sloops > (allocation.freeBudget ?? request.somersloopBudget!)) return [];
     const requestedClock = automatic && sloops > 0 || request.powerShardBudget !== undefined ? Math.min(100, configuredClock) : configuredClock;
-    if (automatic && sloops > 0) {
-      const at100 = recipeRates(recipe.id, 100, request.settings, sloops);
-      if ([...at100.inputs, ...at100.outputs].some(p => {
-        const solid = itemById[p.itemId].form === 'solid';
-        return p.rate > transportCapacity(solid ? 'belt' : 'pipe', solid ? request.beltTier : request.pipeTier) + EPS;
-      })) return [];
-    }
+    // A boosted machine may still run below 100% to fit its outgoing belt or
+    // pipe. Apply the same physical port limit as unboosted/manual variants;
+    // dropping it here would waste available Somersloops or reject valid plans.
     const full = recipeRates(recipe.id, requestedClock, request.settings, sloops);
     let clock = requestedClock, transportClock = 250;
     for (const rate of [...full.inputs, ...full.outputs]) {
@@ -455,7 +451,7 @@ function solveValidated(request: ValidatedProductionRequest, precision = EPS, ex
   plan.surplus = plan.balances.filter(p => p.surplus > 1e-6).map(p => ({ itemId: p.itemId, rate: p.surplus }));
   plan.transports = plan.balances.map(p => {
     const rate = p.produced + p.external, transport = itemById[p.itemId].form === 'solid' ? 'belt' as const : 'pipe' as const, tier = transport === 'belt' ? request.beltTier : request.pipeTier, capacity = transportCapacity(transport, tier);
-    return { itemId: p.itemId, rate, transport, tier, capacity, lines: Math.ceil(rate / capacity - 1e-8) };
+    return { itemId: p.itemId, rate, transport, tier, capacity, lines: rate > 0 ? Math.max(1, Math.ceil(rate / capacity - 1e-8)) : 0 };
   }).filter(p => p.rate > 1e-7);
   if (plan.recipes.some(r => r.clockLimited)) plan.warnings.push('Some machine clocks were reduced to respect selected transport or boost-inventory settings.');
   if (plan.recipes.some(r => r.dutyCycle < 1 - EPS)) plan.warnings.push('A target is below a machine’s 1% minimum clock. Its last machine needs intermittent operation; reported rates and power are time averages.');
@@ -566,3 +562,4 @@ function hasRecipeCycle(recipes: ProductionRecipe[]): boolean {
   };
   return recipes.some((_, i) => walk(i));
 }
+

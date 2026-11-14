@@ -83,6 +83,18 @@ test('fluid loop guide retains net supplies, startup and return-priority limitat
   for (const rail of liquidRails) assert.match(guide.rails.find(row => row.railId === rail.id).summary, /Pipe Mk\.1/);
 });
 
+test('loop advice follows actual connections, not generic fluid or Somersloop warnings', () => {
+  for (const [id, overrides] of [['iron-plates', {}], ['iron-plates', { somersloopBudget: 1 }], ['plastic-rubber', {}]]) {
+    const { guide } = fixture(id, 1, overrides);
+    assert.equal(guide.startup.some(text => text.includes('Seed recycling loops')), false, id);
+    assert.equal(guide.warnings.some(text => text.includes('Recycled fluids must keep moving')), false, id);
+  }
+  const { model } = fixture('aluminum-sheets');
+  const guide = buildManifoldGuide({ ...model, warnings: [] });
+  assert.ok(guide.startup.some(text => text.includes('Seed recycling loops')));
+  assert.ok(guide.warnings.some(text => text.includes('return-flow priority')));
+});
+
 test('large factory summary has no invented exact junction counts or instructions', () => {
   const request = templateRequest('iron-plates', 100), plan = solveProductionPlan(request);
   assert.equal(plan.status, 'optimal', plan.message);
@@ -128,3 +140,4 @@ test('all template guides cover each rail and route without mutation or unresolv
     assert.doesNotMatch(text, /undefined|NaN|rail:Recipe_|machine:Recipe_|:junction:/, template.id);
   }
 });
+

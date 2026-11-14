@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { GitFork, Minus, Plus } from 'lucide-react';
 import { itemById, machineById, recipeById } from './engine';
 import { buildManifolds } from './manifolds';
@@ -18,12 +18,14 @@ function Junction({ kind, x, y }: { kind: string; x: number; y: number }) {
 
 function RecipeManifold({ layout, recipeId, open }: { layout: Layout; recipeId: string; open: boolean }) {
   const [zoom, setZoom] = useState(1);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const machines = layout.machines.filter(m => m.recipeId === recipeId);
   const inputs = layout.rails.filter(r => r.recipeId === recipeId && r.direction === 'input');
   const outputs = layout.rails.filter(r => r.recipeId === recipeId && r.direction === 'output');
   const allRails = [...inputs, ...outputs];
   const arrowId = `manifold-arrow-${recipeId}`;
   const machineY = 80 + inputs.length * 56;
+  const machineHeight = 108;
   const width = Math.max(700, 225 + machines.length * 175), height = machineY + 145 + outputs.length * 56;
   const xOf = (id: string) => 210 + machines.findIndex(m => m.id === id) * 175;
   const railKind = (rail: Rail) => rail.transport === 'pipe' ? 'pipe-junction' : rail.direction === 'input' ? 'splitter' : 'merger';
@@ -37,18 +39,18 @@ function RecipeManifold({ layout, recipeId, open }: { layout: Layout; recipeId: 
       <text x="16" y={y - 24} className="mf-rail-label">{rail.label} · {itemName(rail.itemId)}</text>
       <text x="16" y={y - 9} className="mf-rail-rate">{fmt(rail.totalRate)} {unit(rail.itemId)} · Mk.{rail.tier}</text>
       <path d={`M${input ? 155 : first} ${y}H${input ? last : width - 20}`} stroke={color} fill="none" strokeWidth="3" markerEnd={`url(#${arrowId})`}/>
-      {points.map(({ branch, x }, branchIndex) => <g key={branch.id}><title>{`${input ? `${rail.label} → ${machines.find(m => m.id === branch.machineId)?.label}` : `${machines.find(m => m.id === branch.machineId)?.label} → ${rail.label}`}: ${fmt(branch.rate)} ${unit(rail.itemId)}${branch.junctionId ? `; ${kindName(railKind(rail))}` : '; direct endpoint'}`}</title><path d={`M${x} ${input ? y : machineY + 88}V${input ? machineY : y}`} stroke={color} fill="none" strokeWidth="2" markerEnd={`url(#${arrowId})`}/>{branch.junctionId && <><Junction kind={railKind(rail)} x={x} y={y}/><text x={x - 16} y={y + (input ? -16 : 24)} className="mf-rate">{layout.junctions.find(j => j.id === branch.junctionId)?.label}</text></>}
+      {points.map(({ branch, x }, branchIndex) => <g key={branch.id}><title>{`${input ? `${rail.label} → ${machines.find(m => m.id === branch.machineId)?.label}` : `${machines.find(m => m.id === branch.machineId)?.label} → ${rail.label}`}: ${fmt(branch.rate)} ${unit(rail.itemId)}${branch.junctionId ? `; ${kindName(railKind(rail))}` : '; direct endpoint'}`}</title><path d={`M${x} ${input ? y : machineY + machineHeight}V${input ? machineY : y}`} stroke={color} fill="none" strokeWidth="2" markerEnd={`url(#${arrowId})`}/>{branch.junctionId && <><Junction kind={railKind(rail)} x={x} y={y}/><text x={x - 16} y={y + (input ? -16 : 24)} className="mf-rate">{layout.junctions.find(j => j.id === branch.junctionId)?.label}</text></>}
         <text x={x + 13} y={input ? y + 15 : y - 9} className="mf-rate">{fmt(branch.rate)}</text>
         {branchIndex < points.length - 1 && <text x={(x + points[branchIndex + 1].x) / 2} y={y - 8} className="mf-rate mf-trunk-rate">{fmt(input ? points.slice(branchIndex + 1).reduce((sum, p) => sum + p.branch.rate, 0) : points.slice(0, branchIndex + 1).reduce((sum, p) => sum + p.branch.rate, 0))} →</text>}
       </g>)}
     </g>;
   }
   return <details className="mf-module" open={open}><summary><strong>{recipeById[recipeId]?.name || recipeId}</strong><span>{machines.length} machines · {allRails.length} manifold lines</span></summary>
-    <div className="mf-module-toolbar"><span>Inputs above · collection below · flow left to right</span><div className="pp-actions"><button onClick={e => { const canvas = e.currentTarget.closest('.mf-module')?.querySelector('.mf-canvas'); if (canvas) setZoom(Math.max(.2, Math.min(1, canvas.clientWidth / width))); }}>Fit</button><button aria-label={`Zoom out ${recipeId} manifold`} onClick={() => setZoom(z => Math.max(.2, z - .2))}><Minus size={14}/></button><span>{Math.round(zoom * 100)}%</span><button aria-label={`Zoom in ${recipeId} manifold`} onClick={() => setZoom(z => Math.min(1.8, z + .2))}><Plus size={14}/></button></div></div>
-    <div className="mf-canvas"><svg width={width * zoom} height={height * zoom} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${recipeById[recipeId]?.name} manifold schematic. The branch schedule below contains every connection.`}>
+    <div className="mf-module-toolbar"><span>Inputs above · collection below · flow left to right</span><div className="pp-actions"><button type="button" onClick={() => { const canvas = canvasRef.current; if (canvas && canvas.clientWidth > 0) { setZoom(Math.min(1, canvas.clientWidth / width)); canvas.scrollTo(0, 0); } }}>Fit</button><button type="button" aria-label={`Zoom out ${recipeId} manifold`} onClick={() => setZoom(z => Math.max(.001, z / 1.25))}><Minus size={14}/></button><span>{Number((zoom * 100).toFixed(1))}%</span><button type="button" aria-label={`Zoom in ${recipeId} manifold`} onClick={() => setZoom(z => Math.min(1.8, z * 1.25))}><Plus size={14}/></button><button type="button" aria-label={`Reset ${recipeId} manifold zoom`} onClick={() => { setZoom(1); canvasRef.current?.scrollTo(0, 0); }}>100%</button></div></div>
+    <div className="mf-canvas" ref={canvasRef} tabIndex={0} role="region" aria-label={`${recipeById[recipeId]?.name || recipeId} scrollable manifold`}><svg width={width * zoom} height={height * zoom} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${recipeById[recipeId]?.name} manifold schematic. The branch schedule below contains every connection.`}>
       <defs><marker id={arrowId} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0L10 5L0 10z" fill="#bcccd2"/></marker></defs>
       {inputs.map(renderRail)}{outputs.map(renderRail)}
-      {machines.map(m => <g className="mf-machine" key={m.id} transform={`translate(${xOf(m.id)} ${machineY})`}><title>{`${m.label}: ${machineById[m.machineId]?.name}; ${fmt(m.clock)}% clock; ${m.sloops} Somersloops; ${fmt(m.dutyCycle * 100)}% duty`}</title><rect width="145" height="88" rx="6"/><text x="12" y="22" className="mf-machine-label">{m.label} · {machineById[m.machineId]?.name}</text><text x="12" y="43">{fmt(m.clock)}% clock</text><text x="12" y="62">{m.sloops} Somersloops</text>{m.dutyCycle < 1 && <text x="12" y="79">{fmt(m.dutyCycle * 100)}% duty</text>}</g>)}
+      {machines.map(m => <g className="mf-machine" key={m.id} transform={`translate(${xOf(m.id)} ${machineY})`}><title>{`${m.label}: ${machineById[m.machineId]?.name}; ${fmt(m.clock)}% clock; ${m.sloops} Somersloops; ${fmt(m.dutyCycle * 100)}% duty`}</title><rect width="145" height={machineHeight} rx="6"/><text x="12" y="20" className="mf-machine-label">{m.label}</text><text x="12" y="37">{machineById[m.machineId]?.name}</text><text x="12" y="56">{fmt(m.clock)}% clock</text><text x="12" y="74">{m.sloops} Somersloops</text>{m.dutyCycle < 1 && <text x="12" y="93">{fmt(m.dutyCycle * 100)}% duty</text>}</g>)}
     </svg></div>
     <details className="mf-branch-schedule"><summary>Branch schedule and line capacity</summary><div className="pp-table-scroll"><table><thead><tr><th>Line / material</th><th>Machine</th><th>Branch demand</th><th>Connection</th></tr></thead><tbody>{allRails.flatMap(rail => rail.branches.map(branch => <tr key={branch.id}><td>{rail.label} · {itemName(rail.itemId)}<small>{rail.direction} · {fmt(rail.totalRate)}/{rail.capacity} per minute · Mk.{rail.tier}{rail.peakRate > rail.totalRate * (1 + 1e-7) && ` · ${fmt(rail.peakRate)} peak reserved`}</small></td><td>{machines.find(m => m.id === branch.machineId)?.label}</td><td>{fmt(branch.rate)} {unit(rail.itemId)}</td><td>{branch.junctionId ? `${kindName(railKind(rail))} ${layout.junctions.find(j => j.id === branch.junctionId)?.label}` : 'Direct endpoint'}</td></tr>))}</tbody></table></div></details>
   </details>;
@@ -89,3 +91,4 @@ export default function ManifoldLayout({ layout, expanded, onExpand }: { layout:
     {layout.warnings.length > 0 && <ul className="pp-warnings">{layout.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>}
   </section>;
 }
+

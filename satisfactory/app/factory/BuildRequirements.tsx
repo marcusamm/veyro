@@ -3,6 +3,7 @@ import { constructionMaterials, planExtraction, productionBoosts, manifoldMateri
 import { itemById } from './engine';
 import type { ProductionPlan, ProductionRequest } from './production';
 import type { MaterialRate } from './types';
+import NumberInput from './NumberInput';
 import './requirements.css';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-GB', { maximumFractionDigits: 4 }).format(n);
@@ -14,7 +15,14 @@ function Materials({ title, rows }: { title: string; rows: MaterialRate[] }) {
 type Props = { plan: ProductionPlan; request: ProductionRequest; extractionOptions?: ExtractionOptions; onExtractionChange?: (value: ExtractionOptions) => void; extractionPlan?: ExtractionPlan; disabled?: boolean; manifold?: ManifoldConstruction };
 function ExtractionClocks({ row }: { row: ExtractionRow }) {
   if (row.clockGroups) return <>{row.clockGroups.map((group, index) => <small key={index}>{group.count} × {fmt(group.clock)}%{group.dutyCycle < 1 && ` · ${fmt(group.dutyCycle * 100)}% on-time`}</small>)}</>;
-  return <><small>{row.fullMachines > 0 && <>{row.fullMachines} × {fmt(row.clock)}%<br/></>}1 × {fmt(row.lastClock)}%</small>{row.dutyCycle < 1 && <small>Final machine: {fmt(row.dutyCycle * 100)}% on-time</small>}</>;
+  return <><small>{row.fullMachines > 0 && <>{row.fullMachines} × {fmt(row.clock)}%<br/></>}{row.count > row.fullMachines && <>1 × {fmt(row.lastClock)}%</>}</small>{row.dutyCycle < 1 && <small>Final machine: {fmt(row.dutyCycle * 100)}% on-time</small>}</>;
+}
+export function ExtractionSettings({ value = {}, onChange, disabled = false }: { value?: ExtractionOptions; onChange: (value: ExtractionOptions) => void; disabled?: boolean }) {
+  return <div className="br-settings">
+    <label>Miner tier<select aria-label="Miner tier" disabled={disabled} value={value.minerTier ?? 1} onChange={event => onChange({ ...value, minerTier: Number(event.target.value) as 1 | 2 | 3 })}><option value={1}>Miner Mk.1</option><option value={2}>Miner Mk.2</option><option value={3}>Miner Mk.3</option></select></label>
+    <label>Resource-node purity<select aria-label="Resource-node purity" disabled={disabled} value={value.purity ?? 'normal'} onChange={event => onChange({ ...value, purity: event.target.value as NonNullable<ExtractionOptions['purity']> })}><option value="impure">Impure · 0.5×</option><option value="normal">Normal · 1×</option><option value="pure">Pure · 2×</option></select></label>
+    <label>Extractor max clock %<NumberInput disabled={disabled} aria-label="Extractor max clock percent" min={1} max={250} step={0.01} value={value.clock ?? 100} onValue={clock => onChange({ ...value, clock })}/></label>
+  </div>;
 }
 export default function BuildRequirements({ plan, request, extractionOptions = {}, onExtractionChange, extractionPlan, disabled = false, manifold }: Props) {
   const { minerTier = 1, purity = 'normal', clock = 100 } = extractionOptions;
@@ -31,7 +39,7 @@ export default function BuildRequirements({ plan, request, extractionOptions = {
     <div className="br-production"><Materials title={`${plan.totals.machines} production buildings`} rows={production}/><div className="br-boosts"><h4>Installed production boosts</h4><dl><div><dt>Power Shards</dt><dd>{fmt(boosts.powerShards)}</dd></div><div><dt>Somersloops</dt><dd>{fmt(boosts.somersloops)}</dd></div></dl><p>These are separate from construction ingredients and remain installed in the calculated machines.</p></div></div>
     {manifold && <><header><h3>Manifold components</h3><p>Splitters, mergers and pipeline junctions in the generated schematic. Production machines are already listed above.</p></header>{manifold.componentsComplete ? <div className="br-production"><div className="br-materials"><h4>Junctions to build</h4>{manifold.components.some(row => row.count > 0) ? <dl>{manifold.components.filter(row => row.count > 0).map(row => <div key={row.machineId}><dt>{junctionBuildingNames[row.machineId as keyof typeof junctionBuildingNames]}</dt><dd>{fmt(row.count)}</dd></div>)}</dl> : <p>No junctions needed in this schematic.</p>}</div><Materials title="Junction construction materials" rows={junctionMaterials}/></div> : <p className="br-unavailable">Manifold junction counts and materials are excluded from this bill. {manifold.message || 'A complete manifold schematic is required before its components can be counted.'}</p>}<p className="br-note">These counts cover the schematic’s machine manifolds and connecting junctions. Supply endpoints are factory inlets. Deliver the shown rate on each listed inlet belt or pipe. Miners and extractors are sized separately; their connections to these inlets, including any splitters, mergers and pipe junctions, are not shown or included in the junction bill. Belt and pipe lengths, supports, pumps, valves, foundations and power connections depend on placement and are not counted.</p></>}
     <header><h3>Resource extraction</h3><p>Size miners and extractors for the raw resources above. Each counted miner or oil extractor needs its own node of the selected purity. Existing supplied inputs are already available and are excluded.</p></header>
-    {onExtractionChange && <div className="br-settings"><label>Miner tier<select disabled={disabled} value={minerTier} onChange={event => onExtractionChange({ ...extractionOptions, minerTier: Number(event.target.value) as 1 | 2 | 3 })}><option value={1}>Miner Mk.1</option><option value={2}>Miner Mk.2</option><option value={3}>Miner Mk.3</option></select></label><label>Resource-node purity<select disabled={disabled} value={purity} onChange={event => onExtractionChange({ ...extractionOptions, purity: event.target.value as NonNullable<ExtractionOptions['purity']> })}><option value="impure">Impure · 0.5×</option><option value="normal">Normal · 1×</option><option value="pure">Pure · 2×</option></select></label><label>Extractor max clock %<input disabled={disabled} aria-label="Extractor max clock percent" type="number" min="1" max="250" step="0.01" value={clock} onChange={event => onExtractionChange({ ...extractionOptions, clock: Number(event.target.value) })}/></label></div>}
+    {onExtractionChange && <ExtractionSettings value={extractionOptions} onChange={onExtractionChange} disabled={disabled}/>}
     <p className="br-note">Miner Mk.{minerTier} · {purity} nodes · max {fmt(clock)}% clock. Water has no purity. The chosen belt and pipe tiers cap each extractor’s output.</p>
     {extraction.error && <p role="alert" className="br-unavailable">{extraction.error}</p>}
     {supply && <>
@@ -40,3 +48,4 @@ export default function BuildRequirements({ plan, request, extractionOptions = {
     </>}
   </section>;
 }
+

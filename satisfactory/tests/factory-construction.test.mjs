@@ -61,6 +61,15 @@ test('a Mk.3 miner on pure nodes is limited by its own outgoing belt', () => {
   assert.equal(row.powerShards, 0);
   near(row.powerMW, 45 * (2 * Math.pow(.5625, 1.321929) + Math.pow(.125, 1.321929)));
 });
+test('omitted transport choices use the same Mk.6 belt and Mk.2 pipe defaults as the production solver', () => {
+  const req = { outputs: request.outputs };
+  const ore = resources([{ itemId: 'Desc_OreIron_C', rate: 1200 }], req, { minerTier: 3, purity: 'pure', clock: 250 });
+  assert.equal(ore.count, 1);
+  near(ore.rows[0].clock, 250);
+  const oil = resources([{ itemId: 'Desc_LiquidOil_C', rate: 600 }], req, { purity: 'pure', clock: 250 });
+  assert.equal(oil.count, 1);
+  near(oil.rows[0].clock, 250);
+});
 
 test('oil purity, water without purity, pipe capacity and shard thresholds remain distinct', () => {
   const oil = resources([{ itemId: 'Desc_LiquidOil_C', rate: 450 }], request, { purity: 'pure', clock: 250 }).rows[0];
@@ -110,3 +119,4 @@ test('large or incomplete manifold previews never become a partial inventory bil
   for (const count of [-1, .5, Infinity, Number.MAX_SAFE_INTEGER]) assert.throws(() => manifoldMaterials({ componentsComplete: true, components: [{ machineId: 'Desc_ConveyorAttachmentSplitter_C', count }] }));
   assert.throws(() => manifoldMaterials({ componentsComplete: true, components: [{ machineId: 'invented-junction', count: 1 }] }));
 });
+

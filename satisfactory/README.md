@@ -39,14 +39,15 @@ production machines, five extractors and four splitter/merger/pipeline-junction
 types. Rebuild it with `node scripts/import-construction-data.mjs`; the importer
 checks the pinned source SHA-256 before writing any data.
 
+Add a **Miner / extractor** to the manual grid, then use **Inspect → Extraction building** to switch between Miner Mk.1, Mk.2, Mk.3, Oil Extractor and Water Extractor. Resource, purity and 1–250% clock settings are saved with each building. Existing manual supply nodes remain supported and can be converted to extractors. Production machines can also change their building type and compatible recipe without losing compatible connections.
+
 The board is a schematic top-down planner. Positions and displayed machine sizes
 are not verified in-game footprints. Calculations describe ideal steady production,
 limited by supplied inputs, connected outputs and transport capacity. They are not
 a game-tick, travel-time, pipe-pressure or head-lift simulation. Recycling loops are
-marked unsupported for network flow; their individual recipe rates remain visible.
+marked unsupported within their connected component; their individual recipe rates remain visible and independent production lines keep calculating.
 In networks where several splitters and mergers compete, the displayed feasible
-allocation may differ from the game's round-robin scheduling. Power totals cover
-production machines; resource extraction, standby draw and the power grid are excluded.
+allocation may differ from the game's round-robin scheduling. Manual-layout power totals include production machines and modeled extractors. Standby draw and the wider power grid are excluded.
 FICSMAS and handcraft-only recipes are excluded. The original PDF figures remain
 editable reference text, independent of the calculator.
 
@@ -63,6 +64,8 @@ requirements and recycling loops, shows surplus, and offers target/maximize mode
 with resource, power or building objectives. Input caps default off for targets and
 on for maximum output; uncapped inputs can be supplemented by production. Raw resources not explicitly capped remain
 available unless the closed budget is selected.
+
+Use **Miners & extractors** beside the production targets to set miner tier, node purity and extractor clock. These choices update the extraction schedule, construction costs, power and shard allocation, and survive saving, imports and shared links. The belt and pipe choices also limit extractor output.
 
 The template library provides 14 scalable, authored production chains with machine
 counts, clocks, material flows and build steps. Templates update the calculator
@@ -134,3 +137,4 @@ server was available during implementation: adapter fixtures, HTTP contracts,
 authorization and local synthetic-world flows are tested; live-game connection,
 server performance and mod compatibility still require checking on your host.
 No game server is created or purchased by this application.
+

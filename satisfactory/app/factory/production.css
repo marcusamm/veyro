@@ -10,3 +10,11 @@
 .production-planner td select.pp-recipe-choice{width:220px!important;max-width:260px;margin-top:9px;font-size:10px}
 
 .pp-shared-plan{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#283c36;border:1px solid #57745e;padding:16px;border-radius:6px;margin:18px 0}.pp-shared-plan>div{flex:1;min-width:210px}.pp-shared-plan p{font-size:11px;color:#b8cdbf;margin-top:7px}.production-planner .pp-share-link{padding:14px;background:#1b2f3b;border:1px solid #3a5564;border-radius:6px;margin:18px 0}.pp-graph-toolbar>select{max-width:210px;min-height:31px!important;font-size:10px!important}.pp-clock-group+.pp-clock-group{margin-top:10px;border-top:1px solid #42535b;padding-top:8px}
+
+
+/* Keep extraction choices beside the main inputs on desktop and mobile. */
+.pp-extraction-controls .br-settings { grid-template-columns: 1fr; gap: .75rem; }
+.production-planner .fp-number-input { min-width: 0; display: flex; flex-direction: column; flex: 1; }
+.production-planner .fp-number-input input { width: 100%; min-width: 0; }
+.production-planner .fp-number-input small { white-space: normal; color: #f1b394; font-size: .75rem; line-height: 1.4; }
+.production-planner .fp-number-input input[aria-invalid="true"] { border-color: #ec9b6c; }

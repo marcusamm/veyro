@@ -52,9 +52,14 @@ test('recycling under an automatic budget conserves both directions and fuel',()
   const p=solveProductionPlan({outputs:[{itemId:'Desc_Plastic_C',rate:60}],inputs:[{itemId:'Desc_LiquidFuel_C',rate:60}],capInputs:true,allowedAlternates:[plastic,rubber],excludedRecipes:only(plastic,rubber),somersloopBudget:1});verify(p,1);
   assert.ok(p.warnings.some(w=>w.includes('recycles')));
 });
-test('port capacity removes impossible automatic amplification variants',()=>{
+test('port capacity underclocks boosted variants and preserves the whole-machine inventory',()=>{
   const p=solveProductionPlan({outputs:[{itemId:'Desc_IronScrew_C',rate:80}],inputs:[{itemId:'Desc_IronRod_C',rate:20}],capInputs:true,excludedRecipes:only('Recipe_Screw_C'),beltTier:1,somersloopBudget:1});verify(p,1);
-  assert.equal(p.totals.somersloops,0);assert.equal(p.totals.machines,2);
+  assert.equal(p.totals.somersloops,1);assert.equal(p.totals.machines,2);
+  near(p.externalInputs[0].rate,12.5);
+  for(const row of p.recipes)for(const variant of row.variants){
+    const rates=recipeRates(row.recipeId,variant.clock,undefined,variant.sloops);
+    assert.ok(rates.outputs.every(output=>output.rate<=60+1e-6));
+  }
 });
 test('shard inventory starts automatic amplified groups at baseline clocks',()=>{
   const p=solveProductionPlan({outputs:[{itemId:'Desc_IronPlate_C',rate:60}],clock:250,powerShardBudget:0,somersloopBudget:1});verify(p,1);
@@ -73,3 +78,4 @@ test('complex budget search returns a bounded verified plan and preserves intege
   const p=solveProductionPlan({outputs:[{itemId:'Desc_Motor_C',rate:10},{itemId:'Desc_ModularFrameHeavy_C',rate:2}],somersloopBudget:5});
   verify(p,5);assert.ok(performance.now()-start<5000);
 });
+

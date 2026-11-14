@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 const bundle = await build({ stdin: { contents: `export * from './app/factory/engine.ts'; export * from './app/factory/validation.ts';`, resolveDir: process.cwd() }, bundle: true, platform: 'node', format: 'esm', write: false });
 const api = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
-const { recipeRates, targetPlan, calculateFactory, validateFactoryLayout, createEmptyFactoryLayout, catalog, machineById, transportCapacity } = api;
+const { recipeRates, extractorRates, extractorById, getNodePorts, targetPlan, calculateFactory, validateFactoryLayout, createEmptyFactoryLayout, catalog, machineById, transportCapacity } = api;
 const ironOre = 'Desc_OreIron_C', iron = 'Desc_IronIngot_C', plate = 'Desc_IronPlate_C', screw = 'Desc_IronScrew_C';
 const near = (a, b, tolerance = 1e-5) => assert.ok(Math.abs(a - b) < tolerance, `${a} != ${b}`);
 const node = (id, kind, extra = {}) => ({ id, kind, x: 0, y: 0, rotation: 0, ...extra });
 const source = (id, itemId, rate) => node(id, 'source', { itemId, rate });
 const sink = (id, itemId, rate) => node(id, 'sink', { itemId, rate });
 const machine = (id, recipeId, clock = 100) => node(id, 'machine', { recipeId, clock });
+const extractor = (id, extractorId = 'Desc_MinerMk1_C', itemId = ironOre, clock = 100, purity = 'normal') => node(id, 'extractor', { extractorId, itemId, clock, purity });
 const edge = (id, from, to, itemId, fromPort = 'out:0', toPort = 'in:0', tier = 1, transport = 'belt') => ({ id, from, to, itemId, fromPort, toPort, tier, transport });
 const layout = (nodes, edges) => validateFactoryLayout({ ...createEmptyFactoryLayout(), nodes, edges });
 const run = (nodes, edges) => calculateFactory(layout(nodes, edges));
@@ -77,7 +78,6 @@ test('target planner computes integer machines and accurately underclocks last m
     near(tiny.achievedRate, 0.3);
     assert.ok(tiny.achievedRate > tiny.requestedRate);
 });
-
 test('recipe cost rounds solid items per cycle and fluid raw litres before calculating per-minute demand', () => {
     const plates = recipeRates('Recipe_IronPlate_C', 100, { recipeMultiplier: 0.5, powerMultiplier: 1 });
     // 3 ingots per cycle × 0.5 rounds to 2, with 10 cycles/min.
@@ -87,6 +87,61 @@ test('recipe cost rounds solid items per cycle and fluid raw litres before calcu
     const normal = recipeRates('Recipe_RocketFuel_C');
     // One m³ nitric acid is 1000 raw litres: 333.333 rounds to 333 litres.
     near(rocket.inputs.find(i=>i.itemId==='Desc_NitricAcid_C').rate, normal.inputs.find(i=>i.itemId==='Desc_NitricAcid_C').rate * 0.333);
+});
+test('target planner rounds fractional clocks upward instead of missing requested output', () => {
+    const target = 10.000001;
+    const plan = targetPlan('Recipe_IngotIron_C', iron, target);
+    assert.ok(plan.achievedRate >= target);
+    assert.ok(plan.achievedRate - target < 0.000031);
+    assert.throws(() => targetPlan('Recipe_IngotIron_C', iron, Number.MAX_VALUE), /too large/);
+});
+test('all miner tiers, purities and clocks retain extraction and power formulas', () => {
+    for (const [id, baseRate, power] of [['Desc_MinerMk1_C', 60, 5], ['Desc_MinerMk2_C', 120, 15], ['Desc_MinerMk3_C', 240, 45]]) {
+        for (const [purity, multiplier] of [['impure', 0.5], ['normal', 1], ['pure', 2]]) {
+            for (const clock of [1, 100, 250]) {
+                const rates = extractorRates(id, ironOre, clock, purity, { recipeMultiplier: 2, powerMultiplier: 0.5 });
+                near(rates.outputs[0].rate, baseRate * multiplier * clock / 100);
+                near(rates.powerMW, power * Math.pow(clock / 100, extractorById[id].powerExponent) * 0.5);
+                assert.deepEqual(rates.inputs, []);
+            }
+        }
+    }
+    near(extractorRates('Desc_MinerMk3_C', ironOre, 250, 'pure').outputs[0].rate, 1200);
+    assert.throws(() => extractorRates('Desc_MinerMk1_C', 'Desc_Water_C'), /resource/);
+    assert.throws(() => extractorRates('missing', ironOre), /Unknown/);
+    assert.throws(() => extractorRates('Desc_MinerMk1_C', ironOre, 251), /Clock/);
+    assert.throws(() => extractorRates('Desc_MinerMk1_C', ironOre, 100, 'rich'), /purity/);
+});
+test('oil and water extraction use cubic metres and correct pipe ports', () => {
+    near(extractorRates('Desc_OilPump_C', 'Desc_LiquidOil_C', 250, 'pure').outputs[0].rate, 600);
+    near(extractorRates('Desc_WaterPump_C', 'Desc_Water_C', 250).outputs[0].rate, 300);
+    assert.throws(() => extractorRates('Desc_WaterPump_C', 'Desc_Water_C', 100, 'pure'), /purity/);
+    assert.deepEqual(getNodePorts(extractor('water', 'Desc_WaterPump_C', 'Desc_Water_C')), [{ id: 'out:0', direction: 'output', itemId: 'Desc_Water_C', medium: 'pipe' }]);
+});
+test('changing miner tiers changes network supply while belts still limit throughput', () => {
+    for (const [id, expected, power] of [['Desc_MinerMk1_C', 60, 5], ['Desc_MinerMk2_C', 120, 15], ['Desc_MinerMk3_C', 240, 45]]) {
+        const data = layout([extractor('miner', id), sink('store', ironOre, 1200)], [edge('belt', 'miner', 'store', ironOre, 'out:0', 'in:0', 3)]);
+        const result = calculateFactory(data);
+        assertConservation(data, result);
+        near(result.edges.belt.rate, expected);
+        near(result.totals.powerMW, power);
+        near(result.totals.actualPowerMW, power);
+        near(result.totals.inputs[0].rate, expected);
+        const limited = calculateFactory({ ...data, edges: data.edges.map(e => ({ ...e, tier: 1 })) });
+        near(limited.edges.belt.rate, 60);
+        near(limited.nodes.miner.utilization, 60 / expected);
+        near(limited.nodes.miner.actualPowerMW, power * 60 / expected);
+    }
+});
+test('extractor connects through machines and round-trips without losing the selected tier', () => {
+    const data = layout([extractor('miner', 'Desc_MinerMk2_C', ironOre, 50, 'impure'), machine('smelt', 'Recipe_IngotIron_C'), sink('out', iron, 30)], [edge('ore', 'miner', 'smelt', ironOre, 'out:0', `in:${ironOre}`), edge('iron', 'smelt', 'out', iron, `out:${iron}`)]);
+    const saved = validateFactoryLayout(JSON.parse(JSON.stringify(data)));
+    assert.equal(saved.nodes[0].extractorId, 'Desc_MinerMk2_C');
+    assert.equal(saved.nodes[0].purity, 'impure');
+    const result = calculateFactory(saved);
+    near(result.edges.ore.rate, 30);
+    near(result.edges.iron.rate, 30);
+    near(result.totals.powerMW, 4 + 15 * Math.pow(0.5, extractorById.Desc_MinerMk2_C.powerExponent));
 });
 test('iron chain runs at exact nominal and supply-limited rates', () => {
     for (const [supply, expected] of [[30, 30], [15, 15], [0, 0]]) {
@@ -153,6 +208,16 @@ test('recycling cycles return explicit unsupported status, not invented rates', 
     assert.equal(r.supported, false);
     assert.ok(r.issues.some(i => i.code === 'cycle'));
     assert.equal(r.edges.a.rate, 0);
+});
+test('a recycling loop does not disable independent production paths', () => {
+    const data = layout([node('a', 'splitter', { itemId: iron }), node('b', 'merger', { itemId: iron }), source('ore', ironOre, 30), machine('smelt', 'Recipe_IngotIron_C'), sink('out', iron, 30)], [edge('a', 'a', 'b', iron), edge('b', 'b', 'a', iron), edge('supply', 'ore', 'smelt', ironOre, 'out:0', `in:${ironOre}`), edge('production', 'smelt', 'out', iron, `out:${iron}`)]);
+    const result = calculateFactory(data);
+    assert.equal(result.supported, false);
+    assert.equal(result.nodes.a.status, 'unsupported');
+    assert.equal(result.nodes.smelt.status, 'running');
+    near(result.edges.production.rate, 30);
+    near(result.totals.outputs[0].rate, 30);
+    near(result.totals.actualPowerMW, 4);
 });
 test('validation rejects invalid or unsafe imported factory values', () => {
     const valid = layout([source('in', ironOre, 30), machine('m', 'Recipe_IngotIron_C')], [edge('x', 'in', 'm', ironOre, 'out:0', `in:${ironOre}`)]);

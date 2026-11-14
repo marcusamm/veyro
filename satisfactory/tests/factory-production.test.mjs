@@ -107,6 +107,16 @@ test('per-recipe clocks, Somersloops and real partial-machine power remain indep
   near(plate.exactMachines,0.6); near(plate.lastClock,150); assert.equal(plate.machineCount,1); assert.equal(plate.sloops,1); assert.equal(plate.powerShards,1);
   near(rate(p.resources,ids.ore),45); near(plate.powerMW,recipeRates('Recipe_IronPlate_C',150,undefined,1).powerMW);
 });
+test('automatic Somersloops can underclock to fit a slower output belt', () => {
+  const p = solve(ids.screw, 50, { inputs: [{ itemId: ids.rod, rate: 12.5 }], capInputs: true, beltTier: 1, somersloopBudget: 1, excludedRecipes: only('Recipe_Screw_C') });
+  conserved(p);
+  assert.equal(p.totals.somersloops, 1);
+  assert.equal(p.totals.machines, 1);
+  near(p.recipes[0].clock, 75);
+  near(p.recipes[0].lastClock, 62.5);
+  near(rate(p.externalInputs, ids.rod), 6.25);
+  near(rate(p.products, ids.screw), 50);
+});
 
 test('tiny outputs explicitly require intermittent operation below the minimum clock', () => {
   const p = solve(ids.plate,0.001); conserved(p);
@@ -153,9 +163,11 @@ test('minimum accepted output is normalized before solving and still conserves m
   const p=solve(ids.plate,0.000001); conserved(p);
   near(rate(p.resources,ids.ore),0.0000015,1e-10);
   near(p.balances.find(b=>b.itemId===ids.plate).produced,0.000001,1e-10);
+  for (const line of p.transports) assert.ok(line.lines >= 1, `${line.itemId} needs a physical transport line even at a tiny rate`);
 });
 
 test('all-alternate converter network resolves a previously degenerate dark-matter target', () => {
   const p=solve('Desc_DarkMatter_C',1,{allowedAlternates:catalog.recipes.filter(r=>r.alternate).map(r=>r.id),allowedConverters:catalog.recipes.filter(r=>r.machineId==='Desc_Converter_C').map(r=>r.id)}); conserved(p);
   for(const b of p.balances) assert.ok(b.produced+b.external>=b.consumed+b.requested-1e-6);
 });
+

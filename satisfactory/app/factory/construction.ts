@@ -67,7 +67,7 @@ export function planExtraction(plan: ProductionPlan, request: ProductionRequest,
     const extractor = gameData.extractors.find(row => row.id === machineId && row.resourceIds.includes(resource.itemId));
     const base: ExtractionRow = { ...resource, supported: false, count: 0, fullMachines: 0, clock: 0, lastClock: 0, requestedClock, perMachineRate: 0, clockLimited: false, dutyCycle: 1, powerMW: 0, powerMaxMW: 0, powerShards: 0 };
     if (!extractor) return { ...base, reason: resource.itemId === 'Desc_NitrogenGas_C' ? 'Nitrogen requires a resource-well plan: satellite purities and the shared pressurizer must be specified. Its buildings, materials and power are not included.' : 'No verified extractor model is available for this resource.' };
-    const capacity = transportCapacity(item.form === 'solid' ? 'belt' : 'pipe', item.form === 'solid' ? request.beltTier ?? 3 : request.pipeTier ?? 1);
+    const capacity = transportCapacity(item.form === 'solid' ? 'belt' : 'pipe', item.form === 'solid' ? request.beltTier ?? 6 : request.pipeTier ?? 2);
     if (capacity <= 0) throw new Error('Unknown extraction belt or pipe tier.');
     const baseRate = extractor.baseRate * (extractor.supportsPurity ? extractor.purityMultipliers[purity] : 1);
     // Each extractor has one material output; the selected outgoing line caps its clock.
@@ -88,3 +88,4 @@ export function extractionFromRows(rows: ExtractionRow[]): ExtractionPlan {
   const supported = rows.filter(row => row.supported);
   return { rows, materials: buildingMaterials(supported.map(row => ({ machineId: row.machineId!, count: row.count }))), count: supported.reduce((sum, row) => sum + row.count, 0), powerMW: supported.reduce((sum, row) => sum + row.powerMW, 0), powerMaxMW: supported.reduce((sum, row) => sum + row.powerMaxMW, 0), powerShards: supported.reduce((sum, row) => sum + row.powerShards, 0), complete: rows.every(row => row.supported) };
 }
+

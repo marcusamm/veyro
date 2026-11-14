@@ -1,23 +1,30 @@
 import data from './data/satisfactory-1.2.json';
-import type { FactoryCatalog, FactoryLayout, FactoryNode, FactorySettings, FactoryCalculation, MaterialRate, NodePort, FactoryIssue } from './types';
+import type { FactoryCatalog, FactoryLayout, FactoryNode, FactorySettings, FactoryCalculation, MaterialRate, NodePort, FactoryIssue, ResourcePurity } from './types';
 export const catalog = data as FactoryCatalog;
 export const itemById = Object.fromEntries(catalog.items.map(item => [item.id, item]));
 export const recipeById = Object.fromEntries(catalog.recipes.map(recipe => [recipe.id, recipe]));
 export const machineById = Object.fromEntries(catalog.machines.map(machine => [machine.id, machine]));
+export const extractorById = Object.fromEntries(catalog.extractors.map(extractor => [extractor.id, extractor]));
 const EPS = 1e-8;
 const defaults = { recipeMultiplier: 1, powerMultiplier: 1 };
 const clean = (value: number) => Math.abs(value) < EPS ? 0 : value;
+function validateSettings(settings: FactorySettings) {
+    if (!Number.isFinite(settings.recipeMultiplier) || settings.recipeMultiplier < 0.25 || settings.recipeMultiplier > 2 || !Number.isFinite(settings.powerMultiplier) || settings.powerMultiplier < 0.25 || settings.powerMultiplier > 5)
+        throw Error('Recipe Cost must be 0.25–2× and Power must be 0.25–5×.');
+}
+function normalizedClock(clock: number) {
+    if (!Number.isFinite(clock) || clock < 1 || clock > 250)
+        throw Error('Clock speed must be 1–250%.');
+    return Math.round(clock * 10000) / 10000;
+}
 export function transportCapacity(transport: 'belt' | 'pipe', tier: number): number { return (transport === 'belt' ? catalog.transport.belts : catalog.transport.pipes).find(t => t.tier === tier)?.capacity ?? 0; }
 export function recipeRates(recipeId: string, clock = 100, settings: FactorySettings = defaults, sloops = 0) {
     const recipe = Object.hasOwn(recipeById, recipeId) ? recipeById[recipeId] : undefined;
     if (!recipe)
         throw Error('Unknown recipe.');
-    if (!Number.isFinite(settings.recipeMultiplier) || settings.recipeMultiplier < 0.25 || settings.recipeMultiplier > 2 || !Number.isFinite(settings.powerMultiplier) || settings.powerMultiplier < 0.25 || settings.powerMultiplier > 5)
-        throw Error('Recipe Cost must be 0.25–2× and Power must be 0.25–5×.');
+    validateSettings(settings);
     const machine = machineById[recipe.machineId];
-    if (!Number.isFinite(clock) || clock < 1 || clock > 250)
-        throw Error('Clock speed must be 1–250%.');
-    clock = Math.round(clock * 10000) / 10000;
+    clock = normalizedClock(clock);
     if (!Number.isInteger(sloops) || sloops < 0 || sloops > (machine.sloopSlots ?? 0))
         throw Error('Invalid number of Somersloops.');
     const amplification = 1 + (machine.sloopBoost ?? 0) * sloops;
@@ -32,6 +39,21 @@ export function recipeRates(recipeId: string, clock = 100, settings: FactorySett
     };
     return { inputs: recipe.ingredients.map(i => ({ itemId: i.itemId, rate: adjustedAmount(i.itemId, i.amount) * cycles })), outputs: recipe.products.map(i => ({ itemId: i.itemId, rate: i.amount * cycles * amplification })), powerMW: (recipe.powerMW ?? machine.powerMW) * powerFactor, powerMinMW: (recipe.powerMinMW ?? recipe.powerMW ?? machine.powerMW) * powerFactor, powerMaxMW: (recipe.powerMaxMW ?? recipe.powerMW ?? machine.powerMW) * powerFactor };
 }
+export function extractorRates(extractorId: string, itemId: string, clock = 100, purity: ResourcePurity = 'normal', settings: FactorySettings = defaults) {
+    const extractor = Object.hasOwn(extractorById, extractorId) ? extractorById[extractorId] : undefined;
+    if (!extractor)
+        throw Error('Unknown extractor.');
+    if (!extractor.resourceIds.includes(itemId))
+        throw Error('This extractor cannot extract the selected resource.');
+    if (!Object.hasOwn(extractor.purityMultipliers, purity) || (!extractor.supportsPurity && purity !== 'normal'))
+        throw Error('Invalid resource purity for this extractor.');
+    validateSettings(settings);
+    clock = normalizedClock(clock);
+    // Extraction is independent of Recipe Cost. Purity changes output, not power.
+    const rate = extractor.baseRate * extractor.purityMultipliers[purity] * clock / 100;
+    const powerMW = extractor.powerMW * Math.pow(clock / 100, extractor.powerExponent) * settings.powerMultiplier;
+    return { inputs: [] as MaterialRate[], outputs: [{ itemId, rate }], powerMW, powerMinMW: powerMW, powerMaxMW: powerMW };
+}
 export function targetPlan(recipeId: string, itemId: string, rate: number, clock = 100, settings: FactorySettings = defaults, sloops = 0) {
     if (!Number.isFinite(rate) || rate <= 0)
         throw Error('Target output must be positive.');
@@ -39,7 +61,12 @@ export function targetPlan(recipeId: string, itemId: string, rate: number, clock
     clock = Math.round(clock * 10000) / 10000;
     if (!product)
         throw Error('This recipe does not produce that item.');
-    const exactMachines = rate / product.rate, machineCount = Math.max(1, Math.ceil(exactMachines - 1e-10)), fraction = exactMachines - (machineCount - 1), lastClock = Math.round(Math.min(clock, Math.max(1, clock * fraction)) * 10000) / 10000;
+    const exactMachines = rate / product.rate, machineCount = Math.max(1, Math.ceil(exactMachines - 1e-10));
+    if (!Number.isSafeInteger(machineCount))
+        throw Error('Target output is too large to calculate accurately.');
+    const fraction = exactMachines - (machineCount - 1);
+    // Round the final clock upward so a requested target is not silently missed.
+    const lastClock = Math.min(clock, Math.ceil(Math.max(1, clock * fraction) * 10000 - 1e-8) / 10000);
     const whole = Math.max(0, machineCount - 1), last = recipeRates(recipeId, lastClock, settings, sloops);
     const combine = (list: MaterialRate[], lastList: MaterialRate[]) => list.map((value, index) => ({ itemId: value.itemId, rate: value.rate * whole + lastList[index].rate }));
     const achievedRate = product.rate * whole + last.outputs.find(p => p.itemId === itemId)!.rate;
@@ -50,7 +77,7 @@ export function getNodeSize(node: FactoryNode): {
     length: number;
 } {
     if (node.kind !== 'machine')
-        return { width: node.kind === 'source' || node.kind === 'sink' ? 12 : 8, length: 8 };
+        return { width: node.kind === 'source' || node.kind === 'extractor' || node.kind === 'sink' ? 12 : 8, length: 8 };
     const r = recipeById[node.recipeId ?? ''];
     const count = r ? Math.max(r.ingredients.length, r.products.length) : 1;
     // Display units are schematic. Source data does not provide real footprints.
@@ -65,7 +92,7 @@ export function getNodePorts(node: FactoryNode): NodePort[] {
         return [...recipe.ingredients.map(i => ({ id: 'in:' + i.itemId, direction: 'input' as const, itemId: i.itemId, medium: medium(i.itemId) })), ...recipe.products.map(i => ({ id: 'out:' + i.itemId, direction: 'output' as const, itemId: i.itemId, medium: medium(i.itemId) }))];
     }
     const itemId = node.itemId ?? '', port = (id: string, direction: 'input' | 'output'): NodePort => ({ id, direction, itemId, medium: medium(itemId) });
-    if (node.kind === 'source')
+    if (node.kind === 'source' || node.kind === 'extractor')
         return [port('out:0', 'output')];
     if (node.kind === 'sink')
         return [port('in:0', 'input')];
@@ -179,20 +206,12 @@ export function calculateFactory(layout: FactoryLayout): FactoryCalculation {
     const result: FactoryCalculation = { nodes: {}, edges: {}, totals: { powerMW: 0, actualPowerMW: 0, inputs: [], outputs: [] }, issues: [], supported: true };
     const issue = (code: string, message: string, extra: Partial<FactoryIssue> = {}) => result.issues.push({ code, message, ...extra });
     for (const node of layout.nodes) {
-        const rates = node.kind === 'machine' ? recipeRates(node.recipeId!, node.clock ?? 100, layout.settings, node.sloops ?? 0) : { inputs: node.kind === 'sink' ? [{ itemId: node.itemId!, rate: node.rate ?? 60 }] : [], outputs: node.kind === 'source' ? [{ itemId: node.itemId!, rate: node.rate ?? 60 }] : [], powerMW: 0, powerMinMW: 0, powerMaxMW: 0 };
+        const rates = node.kind === 'machine' ? recipeRates(node.recipeId!, node.clock ?? 100, layout.settings, node.sloops ?? 0) : node.kind === 'extractor' ? extractorRates(node.extractorId!, node.itemId!, node.clock ?? 100, node.purity ?? 'normal', layout.settings) : { inputs: node.kind === 'sink' ? [{ itemId: node.itemId!, rate: node.rate ?? 60 }] : [], outputs: node.kind === 'source' ? [{ itemId: node.itemId!, rate: node.rate ?? 60 }] : [], powerMW: 0, powerMinMW: 0, powerMaxMW: 0 };
         result.nodes[node.id] = { ...rates, utilization: 0, actualInputs: [], actualOutputs: [], actualPowerMW: 0, status: 'idle', issues: [] };
         result.totals.powerMW += rates.powerMW;
     }
     for (const edge of layout.edges)
         result.edges[edge.id] = { rate: 0, capacity: transportCapacity(edge.transport, edge.tier), saturation: 0 };
-    const order = topological(layout);
-    if (!order) {
-        result.supported = false;
-        issue('cycle', 'This layout contains a recycling loop. Recipe rates remain available, but network flow is not calculated for loops.');
-        for (const n of Object.values(result.nodes))
-            n.status = 'unsupported';
-        return result;
-    }
     if (!layout.nodes.length)
         return result;
     // Combined junctions retain a feasible mass-conserving steady-state solution.
@@ -245,6 +264,14 @@ export function calculateFactory(layout: FactoryLayout): FactoryCalculation {
         result.totals.outputs = sum(result.totals.outputs);
         return result;
     }
+    const order = topological(layout);
+    if (!order) {
+        result.supported = false;
+        issue('cycle', 'This connected production path contains a recycling loop. Nominal rates remain available; its network flow is not calculated. Independent production paths still calculate normally.', { nodeId: layout.nodes[0].id });
+        for (const n of Object.values(result.nodes))
+            n.status = 'unsupported';
+        return result;
+    }
     const machines = layout.nodes.filter(n => n.kind === 'machine'), machineIndex = new Map(machines.map((n, i) => [n.id, layout.edges.length + i])), edgeIndex = new Map(layout.edges.map((e, i) => [e.id, i])), size = layout.edges.length + machines.length;
     const A: number[][] = [], b: number[] = [], row = () => Array(size).fill(0) as number[], add = (r: number[], rhs: number) => { A.push(r); b.push(rhs); }, equality = (r: number[], rhs = 0) => { add(r, rhs); add(r.map(v => -v), -rhs); };
     const incoming = (id: string) => layout.edges.filter(e => e.to === id), outgoing = (id: string) => layout.edges.filter(e => e.from === id);
@@ -275,11 +302,11 @@ export function calculateFactory(layout: FactoryLayout): FactoryCalculation {
                 equality(r);
             }
         }
-        else if (node.kind === 'source' || node.kind === 'sink') {
+        else if (node.kind === 'source' || node.kind === 'extractor' || node.kind === 'sink') {
             const r = row();
-            for (const e of node.kind === 'source' ? outs : ins)
+            for (const e of node.kind === 'sink' ? ins : outs)
                 r[edgeIndex.get(e.id)!] = 1;
-            add(r, node.rate ?? 60);
+            add(r, node.kind === 'extractor' ? rates.outputs[0].rate : node.rate ?? 60);
         }
         else {
             const r = row();
@@ -371,16 +398,16 @@ export function calculateFactory(layout: FactoryLayout): FactoryCalculation {
             const n = result.nodes[node.id];
             n.actualInputs = sum(incoming(node.id).map(e => ({ itemId: e.itemId, rate: result.edges[e.id].rate })));
             n.actualOutputs = sum(outgoing(node.id).map(e => ({ itemId: e.itemId, rate: result.edges[e.id].rate })));
-            n.utilization = node.kind === 'machine' ? Math.min(1, Math.max(0, solved[machineIndex.get(node.id)!])) : node.kind === 'source' ? n.actualOutputs.reduce((a, x) => a + x.rate, 0) / Math.max(node.rate ?? 60, EPS) : node.kind === 'sink' ? n.actualInputs.reduce((a, x) => a + x.rate, 0) / Math.max(node.rate ?? 60, EPS) : (n.actualInputs.some(x => x.rate > EPS) ? 1 : 0);
+            n.utilization = node.kind === 'machine' ? Math.min(1, Math.max(0, solved[machineIndex.get(node.id)!])) : node.kind === 'source' || node.kind === 'extractor' ? Math.min(1, n.actualOutputs.reduce((a, x) => a + x.rate, 0) / Math.max(n.outputs[0].rate, EPS)) : node.kind === 'sink' ? Math.min(1, n.actualInputs.reduce((a, x) => a + x.rate, 0) / Math.max(node.rate ?? 60, EPS)) : (n.actualInputs.some(x => x.rate > EPS) ? 1 : 0);
             n.actualPowerMW = n.powerMW * n.utilization;
             n.status = n.utilization <= 1e-6 ? 'idle' : n.utilization < 1 - 1e-6 ? 'limited' : 'running';
             result.totals.actualPowerMW += n.actualPowerMW;
-            if (node.kind === 'source')
+            if (node.kind === 'source' || node.kind === 'extractor')
                 result.totals.inputs.push(...n.actualOutputs);
             if (node.kind === 'sink')
                 result.totals.outputs.push(...n.actualInputs);
-            if (node.kind === 'machine' && n.utilization < 1 - 1e-6) {
-                const text = 'Limited by inputs, connected output capacity, or downstream demand.';
+            if ((node.kind === 'machine' || node.kind === 'extractor') && n.utilization < 1 - 1e-6) {
+                const text = node.kind === 'extractor' ? 'Limited by connected output capacity or downstream demand.' : 'Limited by inputs, connected output capacity, or downstream demand.';
                 n.issues.push(text);
                 issue('machine-limited', text, { nodeId: node.id });
             }

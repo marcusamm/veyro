@@ -129,14 +129,38 @@ export function buildManifoldGuide(model: Model): ManifoldGuide {
   });
   const intermittent = model.machines.some(machine => machine.dutyCycle < 1 - 1e-8);
   const fluids = model.rails.some(rail => rail.transport === 'pipe');
-  const recycle = model.warnings.some(warning => /recycl|return flow|loop/i.test(warning));
+  // Warnings also mention ordinary Somersloops and generic fluid limitations.
+  // Only actual return paths in the recipe network need loop-startup advice.
+  const recipeFlows = model.connections.flatMap(connection => {
+    const from = endpointMap.get(connection.from)?.recipeId, to = endpointMap.get(connection.to)?.recipeId;
+    return from && to ? [{ from, to, itemId: connection.itemId }] : [];
+  });
+  const recipeEdges = new Map<string, Set<string>>();
+  for (const flow of recipeFlows) {
+    if (!recipeEdges.has(flow.from)) recipeEdges.set(flow.from, new Set());
+    recipeEdges.get(flow.from)!.add(flow.to);
+  }
+  const reaches = (start: string, target: string) => {
+    const pending = [start], visited = new Set<string>();
+    while (pending.length) {
+      const current = pending.pop()!;
+      if (current === target) return true;
+      if (visited.has(current)) continue;
+      visited.add(current);
+      pending.push(...recipeEdges.get(current) || []);
+    }
+    return false;
+  };
+  const returns = recipeFlows.filter(flow => reaches(flow.to, flow.from));
+  const recycle = returns.length > 0;
+  const recycledFluid = returns.some(flow => itemById[flow.itemId]?.form !== 'solid');
   const warnings = [...model.warnings,
     'This is a connection schematic. Junction counts describe this simple chain, not the minimum possible count or exact Satisfactory Calculator geometry.',
     'Ordinary conveyor splitters initially share available items between open outputs. The displayed branch rates are reached after the manifold buffers fill, provided every upstream supply and downstream output can sustain the plan.',
   ];
   if (fluids) warnings.push('Pipeline junctions are bidirectional. Head lift, fill state, sloshing, pump placement and fluid priority are not simulated; arrows show intended net production flow.');
   if (intermittent) warnings.push('Some machines run intermittently below the minimum continuous clock. Rails reserve running rates, but start/stop timing and buffers between stages still need to be arranged in-game.');
-  if (recycle) warnings.push('Recycled fluids must keep moving. A plain pipe junction does not guarantee return-flow priority; keep the return line identifiable and control fresh supply to the stated net demand.');
+  if (recycledFluid) warnings.push('Recycled fluids must keep moving. A plain pipe junction does not guarantee return-flow priority; keep the return line identifiable and control fresh supply to the stated net demand.');
   const startup = [
     'Set every machine to its listed recipe, clock and Somersloop count before enabling the row. Mixed boost groups are different physical machines.',
     'Connect and check every input ingredient and every output, including surplus and liquid byproducts. A blocked byproduct can stop the main product.',
@@ -149,3 +173,4 @@ export function buildManifoldGuide(model: Model): ManifoldGuide {
       splitters: model.junctions.filter(j => j.kind === 'splitter').length, mergers: model.junctions.filter(j => j.kind === 'merger').length, pipeJunctions: model.junctions.filter(j => j.kind === 'pipe-junction').length },
     rails, routing, connections, startup, warnings: [...new Set(warnings)] };
 }
+

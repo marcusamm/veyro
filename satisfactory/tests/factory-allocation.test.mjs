@@ -80,3 +80,12 @@ test('shards remain unused when no building can be removed, and unsupported well
   assert.equal(allocation.plan.totals.machines, 1);
   for (const budget of [-1, .5, 10001, NaN]) assert.throws(() => allocatePowerShards(original, req, budget));
 });
+test('omitted transport tiers retain the production solver defaults during shard allocation', () => {
+  const req = { outputs: [{ itemId: 'Desc_IronScrew_C', rate: 100 }], inputs: [{ itemId: 'Desc_IronRod_C', rate: 25 }], capInputs: true, clock: 250, powerShardBudget: 3 };
+  const original = solve(req), allocation = allocatePowerShards(original, req, 3);
+  assert.equal(allocation.plan.totals.machines, 1);
+  near(allocation.plan.recipes[0].clock, 250);
+  assert.equal(allocation.shardsUsed, 3);
+  conserved(original, allocation.plan);
+});
+

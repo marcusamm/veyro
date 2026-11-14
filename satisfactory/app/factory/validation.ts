@@ -1,4 +1,4 @@
-import { getNodePorts, itemById, machineById, recipeById, transportCapacity } from './engine';
+import { extractorById, getNodePorts, itemById, machineById, recipeById, transportCapacity } from './engine';
 import type { FactoryEdge, FactoryLayout, FactoryNode, NodeKind } from './types';
 export { createEmptyFactoryLayout } from './types';
 export class FactoryValidationError extends Error {
@@ -24,7 +24,7 @@ function num(value: unknown, context: string, min: number, max: number): number 
     return fail(`${context} must be a finite number between ${min} and ${max}.`); return value; }
 function knownItem(value: unknown, context: string): string { const v = id(value, context); if (!Object.hasOwn(itemById, v))
     fail(`${context} is not in the Satisfactory 1.2 catalog.`); return v; }
-const nodeKinds: NodeKind[] = ['machine', 'source', 'sink', 'splitter', 'merger', 'smart-splitter'];
+const nodeKinds: NodeKind[] = ['machine', 'extractor', 'source', 'sink', 'splitter', 'merger', 'smart-splitter'];
 /** Validates and copies an untrusted saved/imported layout. No unknown fields survive. */
 export function validateFactoryLayout(input: unknown): FactoryLayout {
     const data = record(input, 'Layout');
@@ -41,7 +41,7 @@ export function validateFactoryLayout(input: unknown): FactoryLayout {
     const nodeIds = new Set<string>();
     const nodes = (data.nodes as unknown[]).map((value, index): FactoryNode => {
         const raw = record(value, `Node ${index + 1}`);
-        keys(raw, ['id', 'kind', 'label', 'x', 'y', 'rotation', 'recipeId', 'clock', 'itemId', 'rate', 'sloops', 'filters'], `Node ${index + 1}`);
+        keys(raw, ['id', 'kind', 'label', 'x', 'y', 'rotation', 'recipeId', 'clock', 'itemId', 'rate', 'sloops', 'filters', 'extractorId', 'purity'], `Node ${index + 1}`);
         const nodeId = id(raw.id, 'Node ID');
         if (nodeIds.has(nodeId))
             fail('Node IDs must be unique.');
@@ -59,20 +59,43 @@ export function validateFactoryLayout(input: unknown): FactoryLayout {
             if (!Object.hasOwn(recipeById, recipeId))
                 fail(`Unknown recipe ${recipeId}.`);
             node.recipeId = recipeId;
-            node.clock = Math.round(num(raw.clock ?? 100, 'Clock speed', 1, 250) * 10000) / 10000;
-            const slots = machineById[recipeById[recipeId].machineId].sloopSlots ?? 0, sloops = num(raw.sloops ?? 0, 'Somersloops', 0, slots);
+            node.clock = Math.round(num(raw.clock === undefined ? 100 : raw.clock, 'Clock speed', 1, 250) * 10000) / 10000;
+            const slots = machineById[recipeById[recipeId].machineId].sloopSlots ?? 0, sloops = num(raw.sloops === undefined ? 0 : raw.sloops, 'Somersloops', 0, slots);
             if (!Number.isInteger(sloops))
                 fail('Somersloops must be a whole number.');
             node.sloops = sloops;
             if (raw.itemId !== undefined || raw.rate !== undefined || raw.filters !== undefined)
                 fail('Machine materials and rates are defined by its recipe.');
+            if (raw.extractorId !== undefined || raw.purity !== undefined)
+                fail('Only extractors have an extractor type and resource purity.');
+        }
+        else if (kind === 'extractor') {
+            const extractorId = id(raw.extractorId, 'Extractor type');
+            if (!Object.hasOwn(extractorById, extractorId))
+                fail(`Unknown extractor ${extractorId}.`);
+            const extractor = extractorById[extractorId];
+            node.extractorId = extractorId;
+            node.itemId = knownItem(raw.itemId, 'Extractor resource');
+            if (!extractor.resourceIds.includes(node.itemId))
+                fail('This extractor cannot produce the selected resource.');
+            const purity = raw.purity === undefined ? 'normal' : raw.purity;
+            if (purity !== 'impure' && purity !== 'normal' && purity !== 'pure')
+                fail('Resource purity must be impure, normal or pure.');
+            if (!extractor.supportsPurity && purity !== 'normal')
+                fail('Water extractors do not have resource purity.');
+            node.purity = purity as FactoryNode['purity'];
+            node.clock = Math.round(num(raw.clock === undefined ? 100 : raw.clock, 'Clock speed', 1, 250) * 10000) / 10000;
+            if (raw.recipeId !== undefined || raw.rate !== undefined || raw.sloops !== undefined || raw.filters !== undefined)
+                fail('Extractor rates are defined by their type, resource purity and clock speed.');
         }
         else {
             node.itemId = knownItem(raw.itemId, 'Node item');
             if (raw.recipeId !== undefined || raw.clock !== undefined || raw.sloops !== undefined)
-                fail('Only production machines have recipes, clock speed and Somersloops.');
+                fail('Recipes and Somersloops belong to production machines; clock speed belongs to production machines and extractors.');
+            if (raw.extractorId !== undefined || raw.purity !== undefined)
+                fail('Only extractors have an extractor type and resource purity.');
             if (kind === 'source' || kind === 'sink')
-                node.rate = num(raw.rate ?? 60, 'Source or destination rate', 0, 1000000);
+                node.rate = num(raw.rate === undefined ? 60 : raw.rate, 'Source or destination rate', 0, 1000000);
             else {
                 if (raw.rate !== undefined)
                     fail('Splitter and merger rates are determined by their connections.');

@@ -64,7 +64,7 @@ export function allocatePowerShards(plan: ProductionPlan, request: ProductionReq
     let portCap = 250;
     for (const port of [...unit.inputs, ...unit.outputs]) {
       const solid = itemById[port.itemId].form === 'solid';
-      const capacity = transportCapacity(solid ? 'belt' : 'pipe', solid ? request.beltTier ?? 3 : request.pipeTier ?? 1);
+      const capacity = transportCapacity(solid ? 'belt' : 'pipe', solid ? request.beltTier ?? 6 : request.pipeTier ?? 2);
       if (capacity <= 0) throw new Error('Unknown transport tier for Power Shard allocation.');
       portCap = Math.min(portCap, capacity / port.rate * 100);
     }
@@ -118,3 +118,4 @@ export function allocatePowerShards(plan: ProductionPlan, request: ProductionReq
   if (shardsUsed > budget) throw new Error('The physical allocation exceeded its Power Shard budget.');
   return { plan: { ...plan, recipes, totals, warnings: [...plan.warnings, 'Power Shards are shared across production and modeled extraction. Somersloop-amplified machines stay at or below 100%; shards are spent only when they remove a building.'] }, extraction: allocatedExtraction, shardsUsed, shardsUnused: budget - shardsUsed };
 }
+

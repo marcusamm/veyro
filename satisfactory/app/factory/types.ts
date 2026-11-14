@@ -32,6 +32,18 @@ export type Machine = {
     widthM?: number;
     lengthM?: number;
 };
+export type ResourcePurity = 'impure' | 'normal' | 'pure';
+export type Extractor = {
+    id: string;
+    name: string;
+    baseRate: number;
+    powerMW: number;
+    powerExponent: number;
+    unit: string;
+    resourceIds: string[];
+    supportsPurity: boolean;
+    purityMultipliers: Record<ResourcePurity, number>;
+};
 export type FactoryCatalog = {
     provenance: {
         gameVersion: string;
@@ -45,6 +57,7 @@ export type FactoryCatalog = {
     items: Item[];
     recipes: Recipe[];
     machines: Machine[];
+    extractors: Extractor[];
     transport: {
         belts: TransportTier[];
         pipes: TransportTier[];
@@ -61,7 +74,7 @@ export type FactorySettings = {
     recipeMultiplier: number;
     powerMultiplier: number;
 };
-export type NodeKind = 'machine' | 'source' | 'sink' | 'splitter' | 'merger' | 'smart-splitter';
+export type NodeKind = 'machine' | 'extractor' | 'source' | 'sink' | 'splitter' | 'merger' | 'smart-splitter';
 export type FactoryNode = {
     id: string;
     kind: NodeKind;
@@ -70,6 +83,8 @@ export type FactoryNode = {
     y: number;
     rotation: 0 | 90 | 180 | 270;
     recipeId?: string;
+    extractorId?: string;
+    purity?: ResourcePurity;
     clock?: number;
     itemId?: string;
     rate?: number;
