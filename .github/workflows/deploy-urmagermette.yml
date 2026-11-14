@@ -1,0 +1,62 @@
+# Publicerer UrmagerMette-demoen på https://urmagermette.veyro.dk (Cloudflare Worker + Durable Object).
+# Kører, når koden i urmagermette/ ændres, eller manuelt fra fanen Actions.
+# Data (bookinger, indstillinger) ligger i Durable Object-lageret og bevares ved nye udrulninger.
+# Tilbagerulning: `npx wrangler rollback` i urmagermette/ eller "Deployments" i Cloudflare.
+name: "UrmagerMette: deploy demo"
+
+on:
+  push:
+    branches: [main, 'claude/project-thread-h5ssqk']
+    paths:
+      - 'urmagermette/**'
+      - '!urmagermette/billeder/**'
+      - '.github/workflows/deploy-urmagermette.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-urmagermette
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: urmagermette
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Installér, typecheck og test
+        run: |
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci
+          npm run typecheck
+          npm test
+      - name: Byg
+        env:
+          VITE_DEMO: '1'
+          SITE_URL: https://urmagermette.veyro.dk
+        run: npm run build
+      - name: Deploy
+        run: npx wrangler deploy
+      - name: Tjek den publicerede side
+        run: |
+          check() {
+            for i in $(seq 1 18); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' "$1" || true)
+              if [ "$code" = "$2" ]; then echo "OK $code $1"; return 0; fi
+              echo "Venter på $1 (fik $code)"; sleep 10
+            done
+            echo "::error::$1 svarede ikke $2"; return 1
+          }
+          check https://urmagermette.veyro.dk/ 200
+          check https://urmagermette.veyro.dk/bestil 200
+          check https://urmagermette.veyro.dk/admin 200
+          check https://urmagermette.veyro.dk/api/offentlig 200
