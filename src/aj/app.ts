@@ -32,6 +32,8 @@ app.get('/aj.js', c => c.body(js, 200, { 'Content-Type': 'text/javascript; chars
 app.get('/aj-admin.css', c => c.body(adminCss, 200, { 'Content-Type': 'text/css; charset=utf-8' }));
 app.get('/aj-admin.js', c => c.body(adminJs, 200, { 'Content-Type': 'text/javascript; charset=utf-8' }));
 app.get('/aj-font.woff2', c => c.body(INTER_TIGHT_WOFF2, 200, { 'Content-Type': 'font/woff2' }));
+app.get('/aj-hero.jpg', c => c.env.ASSETS ? c.env.ASSETS.fetch(new Request(new URL('/aj/hero-car.jpg', c.req.url), c.req.raw)) : c.notFound());
+app.get('/aj-oil.jpg', c => c.env.ASSETS ? c.env.ASSETS.fetch(new Request(new URL('/aj/oil-service.jpg', c.req.url), c.req.raw)) : c.notFound());
 app.get('/aj-logo.png', c => c.env.ASSETS ? c.env.ASSETS.fetch(new Request(new URL('/aj/logo.png', c.req.url), c.req.raw)) : c.notFound());
 app.get('/favicon.svg', c => c.body(favicon, 200, { 'Content-Type': 'image/svg+xml' }));
 app.get('/favicon.ico', c => c.redirect('/favicon.svg', 301));

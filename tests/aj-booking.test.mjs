@@ -459,7 +459,7 @@ describe('AJ Auto browser journeys', () => {
           expect(await page.getByRole('button', { name: /Menu/ }).getAttribute('aria-expanded')).toBe('true');
           await page.locator('#navigation').getByRole('link', { name: /Book tid/ }).click();
         } else {
-          await page.locator('.hero-copy').getByRole('link', { name: /Book tid/ }).click();
+          await page.getByRole('main').getByRole('link', { name: /Book tid/ }).first().click();
         }
         await page.locator('[data-service]').first().click();
         await page.locator('#booking-date').fill(dayAfter(20 + index * 2));
