@@ -1,21 +1,260 @@
 import { escapeHtml as esc } from '../lib/email';
 
-const phone = '<a href="tel:+4560644143">60 64 41 43</a>';
-const nav = [['/', 'Forside'], ['/ydelser', 'Ydelser'], ['/om-os', 'Om os'], ['/kontakt', 'Kontakt']];
-export function shell(path: string, title: string, description: string, body: string, options: { admin?: boolean; noindex?: boolean } = {}) {
-  return `<!doctype html><html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#19191e"><title>${esc(title)}</title><meta name="description" content="${esc(description)}"><link rel="canonical" href="https://aj.veyro.dk${esc(path)}"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:type" content="website"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/aj.css">${options.noindex ? '<meta name="robots" content="noindex,nofollow">' : ''}${options.admin ? '<link rel="stylesheet" href="/aj-admin.css">' : ''}<script src="${options.admin ? '/aj-admin.js' : '/aj.js'}" defer></script></head><body class="${path === '/' ? 'page-home' : 'page-inner'}"><a class="skip" href="#main">Gå til indhold</a><header class="site-header"><div class="utility-bar"><div class="container"><span>AJ Auto · Slagelse</span><div><a href="tel:+4560644143">60 64 41 43</a><a href="https://www.instagram.com/ajauto4200/" target="_blank" rel="noopener noreferrer">Instagram</a></div></div></div><div class="container header-inner"><a class="brand" href="/" aria-label="AJ Auto, forside"><span class="brand-image"><img src="/aj-logo.png" alt="AJ Auto" width="1536" height="1024"></span></a><button class="menu-toggle" type="button" aria-expanded="false" aria-controls="navigation">Menu <span aria-hidden="true">☰</span></button><nav id="navigation" aria-label="Hovedmenu">${nav.map(([url, label]) => `<a href="${url}"${path === url ? ' aria-current="page"' : ''}>${label}</a>`).join('')}<a class="button button-small" href="/booking"${path === '/booking' ? ' aria-current="page"' : ''}>Book tid</a></nav></div></header><main id="main">${body}</main><footer class="site-footer"><div class="container footer-top"><a class="brand brand-light" href="/"><span class="brand-image"><img src="/aj-logo.png" alt="AJ Auto" width="1536" height="1024"></span></a><p>Køb, salg &amp; bytte.<br>Og en direkte vej til dit næste olieskift.</p><div class="footer-contact">${phone}<span>Sorøvej 5kl, Slagelse</span></div></div><div class="container footer-bottom"><span>© ${new Date().getFullYear()} AJ Auto</span><a href="https://www.instagram.com/ajauto4200/" target="_blank" rel="noopener noreferrer">Instagram</a><a href="/kontakt#personoplysninger">Personoplysninger</a><a href="/admin">Værkstedets login</a></div></footer></body></html>`;
+export const AJ_PHONE = '60 64 41 43';
+export const AJ_TELEPHONE = 'tel:+4560644143';
+export const AJ_ADDRESS = 'Sorøvej 5kl, Slagelse';
+export const AJ_DIRECTIONS = 'https://www.google.com/maps/dir/?api=1&destination=Sor%C3%B8vej%205kl%2C%20Slagelse';
+const openingHours = `<section class="opening-hours" aria-label="Åbningstider">
+  <h3>Åbningstider</h3>
+  <p>Mandag–fredag kl. 09.00–16.00</p>
+  <p>Lørdag og søndag efter aftale.</p>
+</section>`;
+const instagram = 'https://www.instagram.com/ajauto4200/';
+const navigation = [
+  ['/', 'Forside'],
+  ['/ydelser', 'Ydelser'],
+  ['/om-os', 'Om os'],
+  ['/kontakt', 'Kontakt'],
+];
+
+/** Server-rendered booking actions stay useful before JavaScript is available. */
+function bookingAction(ready: boolean, className = 'button'): string {
+  return `<a class="${className}" data-booking-cta href="${ready ? '/booking' : AJ_TELEPHONE}">${ready ? 'Book tid' : 'Ring og aftal en tid'}</a>`;
 }
 
-export const home = `<section class="automotive-hero"><img class="automotive-hero-image" src="/aj-hero.jpg" alt="Illustrationsfoto af en mørk bil med diskrete lilla reflekser" width="1672" height="941" fetchpriority="high"><div class="hero-shade"></div><div class="container automotive-hero-content"><div class="hero-heading"><p class="eyebrow">Køb, salg &amp; bytte</p><h1>AJ Auto<br>i Slagelse.</h1><p>Fra olieskift til bilskifte.<br>Tag det næste skridt med os.</p></div><div class="hero-booking-box"><div><p>En tid til din bil?<br><strong>Lad os finde den sammen.</strong></p></div><a class="button" href="/booking">Book tid </a><a class="hero-phone" href="tel:+4560644143">Eller ring til os <strong>60 64 41 43</strong></a></div></div><span class="image-caption">Illustrationsfoto</span></section><section class="facts-band" aria-label="Kort om AJ Auto"><div class="container"><div><p>Olieskift med<br><strong>motorolie &amp; oliefilter</strong></p></div><div><p>Bilhandel<br><strong>Køb, salg &amp; bytte</strong></p></div><div><p>Du finder os på<br><strong>Sorøvej 5kl, Slagelse</strong></p></div><div><p>Direkte kontakt<br><strong>60 64 41 43</strong></p></div></div></section><section class="container auto-services" id="hjaelp"><div class="inline-heading"><span class="section-pill">Ydelser</span><h2>Hvad kan vi hjælpe dig med?</h2></div><div class="auto-service-grid"><a class="auto-service-card" href="/ydelser#olieskift"><div class="service-image oil-image"><img src="/aj-oil.jpg" alt="Illustration af motorolie og oliefilter" width="1200" height="900" loading="lazy"></div><div class="service-card-copy"><h3>Olieskift</h3><p>Motorolie og oliefilter til din bil. Kontakt os, så aftaler vi pris og tidspunkt.</p><span class="service-card-link">Se mere om olieskift</span></div></a><a class="auto-service-card" href="/ydelser#bilhandel"><div class="service-image car-image"><img src="/aj-hero.jpg" alt="Illustrationsfoto af en bil; ikke et salgsopslag" width="1672" height="941" loading="lazy"></div><div class="service-card-copy"><h3>Køb, salg &amp; bytte</h3><p>Skal din bil videre, eller overvejer du en anden? Tal med os om mulighederne.</p><span class="service-card-link">Læs om bilhandel</span></div></a></div><div id="home-campaign" hidden></div></section><section class="container local-feature"><div class="local-feature-copy"><span class="section-pill">AJ Auto</span><h2>Din næste aftale<br>starter i Slagelse.</h2><p>Vi holder til på Sorøvej. Her kan du kontakte os om olieskift, køb, salg og bytte af biler.</p><p>Fortæl os, hvad du har brug for. Så tager vi den derfra.</p><a class="text-link" href="/om-os">Lær AJ Auto at kende</a></div><aside class="local-location" aria-label="Adresse og kontakt"><p class="eyebrow">Find AJ Auto</p><h3>Sorøvej 5kl<span>Slagelse</span></h3><div class="local-location-contact"><span>Telefon</span><a href="tel:+4560644143">60 64 41 43</a></div><a class="text-link" href="https://www.google.com/maps/dir/?api=1&destination=Sor%C3%B8vej%205%2C%204200%20Slagelse" target="_blank" rel="noopener noreferrer">Få rutevejledning</a></aside></section><section class="container next-visit"><div><span class="section-pill">Dit næste besøg</span><h2>En god aftale.<br>En enkel vej dertil.</h2><p>Ring til os, eller find en tid online. Har du spørgsmål til din bil, hjælper vi dig gerne videre.</p><a class="text-link" href="/kontakt">Kontakt os</a></div><div class="visit-steps"><div><span>01</span><p><strong>Fortæl om din bil</strong>Vælg en ydelse, eller ring og fortæl, hvad du har brug for.</p></div><div><span>02</span><p><strong>Find et tidspunkt</strong>Book en ledig tid, eller aftal dit besøg direkte med os.</p></div><div><span>03</span><p><strong>Vi ses på Sorøvej</strong>Du får overblik over din aftale og kan selv ændre en onlinebooking.</p></div></div></section><section class="final-cta"><div class="container"><span class="section-pill">Lad os tage en snak</span><h2>Din bil.<br>Vores næste samtale.</h2><div class="actions"><a class="button button-light" href="/booking">Book tid</a><a class="text-link" href="tel:+4560644143">Ring på 60 64 41 43</a></div></div></section>`;
+function directions(className = 'text-link'): string {
+  return `<a class="${className}" href="${AJ_DIRECTIONS}" target="_blank" rel="noopener noreferrer">Find vej</a>`;
+}
 
-export const services = `<section class="container page-intro"><p class="eyebrow">Ydelser</p><h1>Det starter<br>med din bil.</h1><p class="lead">Olieskift eller bilskifte. Her kan du se, hvad du kan kontakte AJ Auto om.</p></section><section class="container detail-section" id="olieskift"><span class="section-index">01 / Olieskift</span><div><h2>Ny olie.<br>Klar til næste tur.</h2><p>Vi tilbyder olieskift med motorolie og oliefilter. Kontakt os om din bil, så aftaler vi pris og tidspunkt.</p><div id="services-campaign" hidden></div><div class="actions"><a class="button" href="/booking">Book olieskift</a><a class="text-link" href="tel:+4560644143">Spørg om din bil</a></div></div></section><section class="container detail-section" id="bilhandel"><span class="section-index">02 / Bilhandel</span><div><h2>Køb, salg<br>&amp; bytte.</h2><p>Skal bilen videre, eller er du på udkig efter en anden? Kontakt AJ Auto for at høre om mulighederne for køb, salg og bytte.</p><a class="text-link" href="/kontakt">Tag kontakt</a></div></section>`;
+function visitActions(ready: boolean, className = 'actions'): string {
+  return `<div class="${className}">
+    ${bookingAction(ready)}
+    ${ready ? `<a class="phone-link" data-booking-phone href="${AJ_TELEPHONE}">Ring ${AJ_PHONE}</a>` : `<span class="action-phone" data-booking-phone>${AJ_PHONE}</span>`}
+  </div>`;
+}
 
-export const about = `<section class="container page-intro"><p class="eyebrow">Om AJ Auto</p><h1>Din kontakt.<br>I Slagelse.</h1><p class="lead">AJ Auto – Køb, Salg &amp; Bytte.</p></section><section class="container about-layout"><div class="address-poster"><span>DU FINDER OS HER</span><strong>Sorøvej<br>5kl<span>Slagelse</span></strong><a href="https://www.google.com/maps/dir/?api=1&destination=Sor%C3%B8vej%205%2C%204200%20Slagelse" target="_blank" rel="noopener noreferrer">Få rutevejledning</a></div><div class="about-copy"><h2>En direkte vej<br>til AJ Auto.</h2><p>Vi holder til på Sorøvej i Slagelse. Hos AJ Auto kan du kontakte os om køb, salg og bytte af biler samt olieskift.</p><p>Ring og fortæl, hvad du har brug for. Du kan også følge med på vores Instagram, hvor vi deler nyt fra AJ Auto.</p><a class="text-link" href="https://www.instagram.com/ajauto4200/" target="_blank" rel="noopener noreferrer">@ajauto4200</a></div></section>`;
+export interface ShellOptions {
+  bookingReady?: boolean;
+  admin?: boolean;
+  noindex?: boolean;
+}
 
-export const contact = `<section class="container page-intro"><p class="eyebrow">Kontakt</p><h1>Lad os tage<br>en snak.</h1><p class="lead">Om olieskift, bilhandel eller dit næste besøg.</p></section><section class="container contact-layout"><div class="contact-info"><div><span class="eyebrow">Ring til os</span><a class="phone-large" href="tel:+4560644143">60 64 41 43</a></div><div><span class="eyebrow">Kig forbi</span><p>Sorøvej 5kl<br>Slagelse</p><a class="text-link" href="https://www.google.com/maps/dir/?api=1&destination=Sor%C3%B8vej%205%2C%204200%20Slagelse" target="_blank" rel="noopener noreferrer">Få rutevejledning</a></div><div><span class="eyebrow">Følg med</span><a class="text-link" href="https://www.instagram.com/ajauto4200/" target="_blank" rel="noopener noreferrer">@ajauto4200</a></div></div><div class="form-panel"><h2>Skriv til os</h2><p>Fortæl kort, hvad du har brug for. En besked er ikke en booking.</p><form id="contact-form"><div class="form-grid"><label>Dit navn<input name="name" autocomplete="name" required maxlength="100"></label><label>Telefon<input type="tel" name="phone" autocomplete="tel" maxlength="30"></label></div><label>E-mail<input type="email" name="email" autocomplete="email" required maxlength="254"></label><label>Din besked<textarea name="message" rows="5" required minlength="10" maxlength="2000"></textarea></label><label class="honey" aria-hidden="true">Hjemmeside<input name="website" tabindex="-1" autocomplete="off"></label><p class="fineprint">Vi bruger dine oplysninger til at besvare din henvendelse. <a href="#personoplysninger">Læs mere nedenfor.</a></p><div id="contact-status" class="form-status" role="status" aria-live="polite"></div><button class="button" type="submit">Send besked</button></form></div></section><section class="container privacy-section" id="personoplysninger"><p class="eyebrow">Personoplysninger</p><h2>Dine oplysninger hos AJ Auto</h2><p>Når du kontakter eller booker hos AJ Auto, bruger vi navn, e-mail, telefon og de oplysninger, du selv giver, til at svare dig og administrere din aftale. Undlad at skrive følsomme oplysninger i beskedfeltet.</p><p>Hjemmesiden og bookingsystemet drives teknisk af Veyro med Cloudflare til hosting og lagring og Resend til e-mail. Dine oplysninger vises kun for medarbejdere med adgang. Kalenderlinks og links til din aftale er personlige og skal holdes private.</p><p>Spørgsmål om dine oplysninger eller ønske om indsigt, rettelse eller sletning: ring til AJ Auto på ${phone}. Der bruges kun nødvendige teknologier til formularer og login, ingen statistik- eller reklamecookies.</p></section>`;
+export function shell(path: string, title: string, description: string, body: string, options: ShellOptions = {}): string {
+  const ready = options.bookingReady === true;
+  const pageClass = path === '/' ? 'page-home' : options.admin ? 'page-admin' : 'page-inner';
+  // The booking page already contains the action or form in its first screen.
+  const headerAction = path === '/booking' ? '' : `<div class="header-action">${bookingAction(ready, 'button button-small')}</div>`;
+  return `<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#1b1922">
+  <title>${esc(title)}</title>
+  <meta name="description" content="${esc(description)}">
+  <link rel="canonical" href="https://aj.veyro.dk${esc(path)}">
+  <meta property="og:title" content="${esc(title)}">
+  <meta property="og:description" content="${esc(description)}">
+  <meta property="og:type" content="website">
+  ${options.noindex ? '<meta name="robots" content="noindex,nofollow">' : ''}
+  <link rel="icon" href="/aj-logo.png" type="image/png">
+  <link rel="stylesheet" href="/aj.css">
+  ${options.admin ? '<link rel="stylesheet" href="/aj-admin.css">' : ''}
+  <script src="${options.admin ? '/aj-admin.js' : '/aj.js'}" defer></script>
+</head>
+<body class="${pageClass}" data-booking-ready="${ready}">
+  <a class="skip" href="#main">Gå til indhold</a>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="/" aria-label="AJ Auto, forside">
+        <span class="brand-image"><img src="/aj-logo.png" alt="AJ Auto" width="1536" height="1024"></span>
+      </a>
+      <nav id="navigation" aria-label="Hovedmenu">
+        ${navigation.map(([url, label]) => `<a href="${url}"${path === url ? ' aria-current="page"' : ''}>${label}</a>`).join('\n        ')}
+      </nav>
+      ${headerAction}
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="navigation">Menu</button>
+    </div>
+  </header>
+  <main id="main">${body}</main>
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-name"><a href="/">AJ Auto</a></div>
+      <nav class="footer-links" aria-label="Links i bunden">
+        <a href="/kontakt">Kontakt</a>
+        <a href="${instagram}" target="_blank" rel="noopener noreferrer">Instagram</a>
+        <a href="/kontakt#personoplysninger">Personoplysninger</a>
+        <a href="/admin">Værkstedets login</a>
+      </nav>
+      <p class="footer-meta">© ${new Date().getFullYear()} AJ Auto</p>
+    </div>
+  </footer>
+</body>
+</html>`;
+}
 
-export const booking = `<section class="container page-intro booking-intro"><p class="eyebrow">Onlinebooking</p><h1>Din næste tid.<br>Helt enkelt.</h1><p class="lead">Vælg ydelse og tidspunkt. Vi bekræfter din aftale på e-mail.</p></section><section class="container booking-layout"><div class="booking-panel"><ol class="booking-steps" aria-label="Bookingtrin"><li aria-current="step"><span>1</span>Ydelse</li><li><span>2</span>Tid</li><li><span>3</span>Oplysninger</li><li><span>4</span>Bekræft</li></ol><div id="booking-root" aria-live="polite"><p class="loading">Henter ledige ydelser…</p></div><noscript><p>Slå JavaScript til for at booke online, eller ring på <a href="tel:+4560644143">60 64 41 43</a>.</p></noscript></div><aside class="booking-aside"><p class="eyebrow">AJ Auto / Slagelse</p><h2>Vi ses på<br>Sorøvej.</h2><p>Sorøvej 5kl, Slagelse</p><hr><p>Har du spørgsmål til din bil eller brug for hjælp til at booke?</p><a class="text-link" href="tel:+4560644143">60 64 41 43</a><p class="fineprint">Alle tider vises i dansk tid. Du kan flytte eller aflyse via det personlige link i din bekræftelse.</p></aside></section>`;
+export function home(bookingReady: boolean): string {
+  return `
+<section class="home-hero">
+  <div class="container hero-inner">
+    <div class="hero-copy">
+      <p class="hero-location">AJ Auto · ${AJ_ADDRESS}</p>
+      <h1>Olieskift og bilhandel <span>i Slagelse</span></h1>
+      ${visitActions(bookingReady, 'hero-actions')}
+    </div>
+  </div>
+</section>
+<section class="container home-services" aria-labelledby="home-services-title">
+  <h2 id="home-services-title" class="sr-only">Vores ydelser</h2>
+  <div class="service-list">
+    <article class="service-row">
+      <h3>Olieskift</h3>
+      <div class="service-row-copy">
+        <p>Vi skifter motorolie og oliefilter. Ring, hvis du vil kende prisen for din bil.</p>
+        <a class="text-link" href="/ydelser#olieskift">Læs om olieskift</a>
+      </div>
+    </article>
+    <article class="service-row">
+      <h3>Køb, salg og bytte</h3>
+      <div class="service-row-copy">
+        <p>Vil du sælge din bil eller lade den indgå i en byttehandel? Ring og fortæl, hvilken bil du har.</p>
+        <a class="text-link" href="/ydelser#bilhandel">Læs om bilhandel</a>
+      </div>
+    </article>
+  </div>
+  <div id="home-campaign" hidden></div>
+</section>
+<section class="location-end" aria-labelledby="home-location-title">
+  <div class="container location-end-inner">
+    <div><h2 id="home-location-title">Find værkstedet</h2><address class="location-address">${AJ_ADDRESS}</address></div>
+    ${openingHours}
+    <div class="location-links">${directions()}</div>
+  </div>
+</section>`;
+}
 
-export const manage = `<section class="container page-intro"><p class="eyebrow">Din aftale</p><h1>Et nyt tidspunkt?<br>Det klarer vi her.</h1><p class="lead">Se, flyt eller aflys din booking hos AJ Auto.</p></section><section class="container manage-container"><div class="booking-panel" id="manage-root" aria-live="polite"><p class="loading">Henter din aftale…</p></div></section>`;
+export function services(bookingReady: boolean): string {
+  return `
+<div class="container services-page">
+  <header class="page-heading services-intro">
+    <h1>Olieskift og bilhandel</h1>
+    <nav class="service-index" aria-label="Ydelser på siden">
+      <a href="#olieskift">Olieskift</a>
+      <a href="#bilhandel">Køb, salg og bytte</a>
+    </nav>
+  </header>
+  <section class="service-detail" id="olieskift" aria-labelledby="oil-title">
+    <div class="service-detail-title"><h2 id="oil-title">Olieskift</h2></div>
+    <div class="service-detail-body">
+      <p>Vi skifter motorolie og oliefilter. Fortæl os, hvilken bil du har, så aftaler vi pris og tidspunkt.</p>
+      <div id="services-campaign" hidden></div>
+      ${visitActions(bookingReady, 'service-actions')}
+    </div>
+  </section>
+  <section class="service-detail" id="bilhandel" aria-labelledby="trade-title">
+    <div class="service-detail-title"><h2 id="trade-title">Køb, salg og bytte</h2></div>
+    <div class="service-detail-body">
+      <p>Vil du sælge din bil eller lade den indgå i en byttehandel? Ring og fortæl, hvilken bil du har.</p>
+      <p>Du kan også kontakte os, hvis du søger en anden bil.</p>
+      <a class="text-link" href="/kontakt">Kontakt os om bilhandel</a>
+    </div>
+  </section>
+</div>`;
+}
 
-export const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#41248a"/><path d="m10 44 12-27 12 27M15 34h14M49 17v20q0 12-13 5" fill="none" stroke="#ffffff" stroke-width="5" stroke-linejoin="round"/></svg>`;
+export function about(bookingReady: boolean): string {
+  return `
+<section class="container about-page">
+  <header class="page-heading about-heading"><h1>Vi er AJ Auto</h1></header>
+  <div class="about-layout">
+    <div class="about-copy">
+      <p class="lead">Vi holder til på Sorøvej i Slagelse.</p>
+      <p>Hos os kan du få skiftet motorolie og oliefilter. Vi beskæftiger os også med køb, salg og bytte af biler.</p>
+      <p>Vil du aftale et olieskift eller tale om bilhandel? Ring og fortæl os om din bil.</p>
+      ${visitActions(bookingReady, 'about-contact')}
+    </div>
+    <aside class="about-address" aria-label="Adresse og Instagram">
+      <h2>AJ Auto</h2>
+      <address>${AJ_ADDRESS}</address>
+      ${directions()}
+      <p><a class="text-link" href="${instagram}" target="_blank" rel="noopener noreferrer">@ajauto4200</a></p>
+    </aside>
+  </div>
+</section>`;
+}
+
+export function contact(_bookingReady: boolean): string {
+  return `
+<section class="container contact-page">
+  <header class="page-heading contact-heading"><h1>Kontakt AJ Auto</h1></header>
+  <div class="contact-details">
+    <div class="contact-detail">
+      <a class="contact-phone" href="${AJ_TELEPHONE}"><strong>${AJ_PHONE}</strong><span>Ring</span></a>
+    </div>
+    <div class="contact-detail contact-address">
+      <address>${AJ_ADDRESS}</address>
+      ${directions()}
+    </div>
+  </div>
+  ${openingHours}
+  <div class="contact-layout">
+    <div class="contact-copy"><h2>Skriv til os</h2><p>Fortæl kort, hvad du har brug for. Beskeden bestiller ikke en tid.</p></div>
+    <div class="form-panel">
+      <noscript><p>Slå JavaScript til for at sende en besked, eller <a href="${AJ_TELEPHONE}">ring på ${AJ_PHONE}</a>.</p></noscript>
+      <form id="contact-form" method="post" action="/api/contact" aria-label="Skriv til AJ Auto">
+        <div class="form-grid">
+          <label>Navn<input name="name" autocomplete="name" required maxlength="100"></label>
+          <label><span>Telefon <span class="fineprint">(valgfrit)</span></span><input type="tel" name="phone" autocomplete="tel" maxlength="30"></label>
+        </div>
+        <label>E-mail<input type="email" name="email" autocomplete="email" required maxlength="254"></label>
+        <label>Besked<textarea name="message" rows="5" required minlength="10" maxlength="2000"></textarea></label>
+        <label class="honey" aria-hidden="true">Hjemmeside<input name="website" tabindex="-1" autocomplete="off"></label>
+        <p class="fineprint">Vi bruger oplysningerne til at svare dig. Undlad at skrive følsomme oplysninger. <a href="#personoplysninger">Om dine oplysninger</a>.</p>
+        <div id="contact-status" class="form-status" role="status" aria-live="polite"></div>
+        <button class="button" type="submit">Send besked</button>
+      </form>
+    </div>
+  </div>
+</section>
+<section class="container privacy-section" id="personoplysninger" aria-labelledby="privacy-title">
+  <h2 id="privacy-title">Dine oplysninger</h2>
+  <p>AJ Auto bruger navn, e-mail, telefon og de oplysninger, du selv giver, til at svare dig og administrere din aftale. Oplysningerne vises kun for medarbejdere med adgang. Del ikke personlige booking- og kalenderlinks med andre.</p>
+  <p>Veyro driver hjemmesiden og bookingsystemet med Cloudflare til hosting og lagring og Resend til e-mail. Hjemmesiden bruger kun nødvendige teknologier til formularer og login, ingen statistik- eller reklamecookies.</p>
+  <p>Vil du have indsigt i, rettet eller slettet dine oplysninger? Ring til AJ Auto på <a href="${AJ_TELEPHONE}">${AJ_PHONE}</a>.</p>
+</section>`;
+}
+
+export function booking(bookingReady: boolean): string {
+  return `
+<section class="container booking-page">
+  <header class="page-heading booking-heading">
+    <h1 data-booking-title>${bookingReady ? 'Book tid' : 'Aftal en tid'}</h1>
+  </header>
+  <div class="booking-layout">
+    <div class="booking-panel">
+      <ol class="booking-steps" aria-label="Bookingtrin"${bookingReady ? '' : ' hidden'}>
+        <li aria-current="step"><span>1</span>Ydelse</li>
+        <li><span>2</span>Tid</li>
+        <li><span>3</span>Oplysninger</li>
+        <li><span>4</span>Bekræft</li>
+      </ol>
+      <div id="booking-root" aria-live="polite">
+        ${bookingReady ? '<p class="loading">Henter ydelser…</p>' : `<div class="empty-state"><p>Du kan ikke booke online lige nu. Ring, så aftaler vi en tid til din bil.</p>${bookingAction(false)}<p class="booking-phone">${AJ_PHONE}</p></div>`}
+      </div>
+      <noscript><p>${bookingReady ? `Slå JavaScript til for at booke online, eller <a href="${AJ_TELEPHONE}">ring på ${AJ_PHONE}</a>.` : 'Du kan aftale en tid på telefon.'}</p></noscript>
+    </div>
+    <div class="booking-meta">
+      <address>AJ Auto · ${AJ_ADDRESS}</address>
+      <p>Mandag–fredag kl. 09.00–16.00. <a href="${AJ_TELEPHONE}">Ring for en tid i weekenden</a>.</p>
+    </div>
+  </div>
+</section>`;
+}
+
+export function manage(_bookingReady: boolean): string {
+  return `
+<section class="container manage-container">
+  <header class="page-heading manage-heading"><h1 data-booking-title>Din aftale</h1></header>
+  <div class="booking-panel" id="manage-root" aria-live="polite"><p class="loading">Henter din aftale…</p></div>
+</section>`;
+}

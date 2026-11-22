@@ -17,7 +17,7 @@ api.use('*',async(c,next)=>{
   if(c.req.method==='POST'){
     // Same-origin JSON is the CSRF boundary; no permissive CORS and no form POST fallback.
     if(c.req.header('Origin')!==new URL(c.req.url).origin||c.req.header('Sec-Fetch-Site')==='cross-site')return c.json({error:'Anmodningen kunne ikke godkendes. Genindlæs siden og prøv igen.'},403);
-    if(!/^application\/json(?:\s*;|$)/i.test(c.req.header('Content-Type')||''))return c.json({error:'Ugyldigt format. Brug JSON.'},415);
+    if(!/^application\/json(?:\s*;|$)/i.test(c.req.header('Content-Type')||''))return c.json({error:'Vi kunne ikke læse formularen. Genindlæs siden, og prøv igen.'},415);
   }
   await next();
 });
@@ -25,7 +25,7 @@ api.onError((error,c)=>{
   if(error instanceof AjError)return c.json({error:error.message},error.status);
   try{databaseError(error);}catch(mapped){if(mapped instanceof AjError)return c.json({error:mapped.message},mapped.status);}
   console.error('AJ Auto request failed');
-  return c.json({error:'Oplysningerne kunne ikke gemmes. Prøv igen, eller ring på 60 64 41 43.'},500);
+  return c.json({error:'Der opstod en fejl. Prøv igen, eller ring på 60 64 41 43.'},500);
 });
 async function body(c:C):Promise<Record<string,unknown>>{
   try{const value=await c.req.json();if(!value||typeof value!=='object'||Array.isArray(value))throw new Error();return value;}catch{throw new AjError('Anmodningen indeholder ugyldige oplysninger.');}

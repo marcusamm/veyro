@@ -51,7 +51,7 @@ export function databaseError(error: unknown): never {
   if (/AJ_BLOCK_HAS_BOOKING/.test(text)) throw new AjError('Der ligger allerede en aftale i tidsrummet. Flyt eller aflys den først.',409);
   if (/AJ_HOURS_HAS_BOOKING/.test(text)) throw new AjError('Åbningstiden bruges af en kommende aftale. Flyt eller aflys aftalen først.',409);
   if (/AJ_OVERLAP|AJ_BLOCKED|AJ_HOURS|AJ_STAFF_UNAVAILABLE|AJ_SERVICE_UNAVAILABLE|AJ_PAST/.test(text)) throw new AjError('Tiden er ikke længere ledig. Vælg en anden tid.',409);
-  if (/AJ_NOT_READY/.test(text)) throw new AjError('Onlinebooking er ikke åben endnu. Ring på 60 64 41 43.',503);
+  if (/AJ_NOT_READY/.test(text)) throw new AjError('Onlinebooking er lukket. Ring på 60 64 41 43 for at aftale en tid.',503);
   if (/UNIQUE constraint failed/.test(text)) throw new AjError('Oplysningen findes allerede. Kontrollér de indtastede værdier.',409);
   throw error;
 }
@@ -82,13 +82,13 @@ export async function readiness(env:Env,settings?:Settings) {
   const s=settings??await getSettings(env.DB);
   const [services,staff,hours]=await Promise.all([getServices(env.DB),getStaff(env.DB),getHours(env.DB)]);
   const missing:string[]=[];
-  if(!s.workshopEmail)missing.push('Værkstedets e-mailadresse');
   if(!env.RESEND_API_KEY)missing.push('Resend-mailintegration');
   if(!staff.some(x=>x.active))missing.push('Mindst én medarbejder med bekræftet navn og e-mail');
   if(!services.some(x=>x.active&&x.durationMinutes))missing.push('Aktiv ydelse med bekræftet varighed');
   if(!hours.some(x=>staff.some(y=>y.active&&y.id===x.staffId)))missing.push('Bekræftede åbningstider på en aktiv kalender');
   if(!s.bookingEnabled)missing.push('Aktivering af onlinebooking');
-  return {ready:missing.length===0,missing,mailConfigured:mailConfigured(env,s)};
+  const warnings = s.workshopEmail ? [] : ['Værkstedets mails afventer en modtager. Aftalerne vises i kalenderen med det samme.'];
+  return {ready:missing.length===0,missing,warnings,mailConfigured:mailConfigured(env,s),customerMailConfigured:!!env.RESEND_API_KEY,workshopMailConfigured:mailConfigured(env,s)};
 }
 export async function getSlots(env:Env,serviceId:number,date:string,staffId?:number,excludeBookingId?:string):Promise<Slot[]> {
   if(!validDate(date))throw new AjError('Vælg en gyldig dato.');
@@ -96,7 +96,7 @@ export async function getSlots(env:Env,serviceId:number,date:string,staffId?:num
   const future=Date.parse(date)-Date.parse(today);
   if(future<0||future>180*86400000)throw new AjError('Vælg en dato inden for de næste 180 dage.');
   const settings=await getSettings(env.DB);
-  if(!settings.bookingEnabled||!mailConfigured(env,settings))return [];
+  if(!settings.bookingEnabled||!env.RESEND_API_KEY)return [];
   const [services,allStaff,hours]=await Promise.all([getServices(env.DB),getStaff(env.DB),getHours(env.DB)]);
   const service=services.find(s=>s.id===serviceId&&s.active&&s.durationMinutes);
   if(!service)return [];
@@ -138,14 +138,34 @@ export async function listBookings(db:D1Database,staffId?:number):Promise<Bookin
   return results.map(bookingView);
 }
 
-function mailForBooking(b:Booking,kind:'created'|'rescheduled'|'cancelled',token:string,origin:string,workshop:boolean):Omit<EmailMessage,'to'> {
-  const actions={created:'bekræftet',rescheduled:'flyttet',cancelled:'aflyst'};
-  const title=`Din tid hos AJ Auto er ${actions[kind]}`;
-  const details=[`Ydelse: ${b.serviceName}`,`Tid: ${danishDate.format(new Date(b.startAt))}`,`Kalender: ${b.staffName}`,'Adresse: Sorøvej 5kl, Slagelse'];
-  const customerDetails=workshop?[`Kunde: ${b.name}`,`E-mail: ${b.email}`,`Telefon: ${b.phone}`,...(b.registration?[`Nummerplade: ${b.registration}`]:[]),...(b.note?[`Bemærkning: ${b.note}`]:[])]:[];
-  const link=kind!=='cancelled'&&!workshop?manageLink(origin,token):null;
-  const lines=[workshop?`En aftale hos AJ Auto er ${actions[kind]}.`:`Hej ${b.name}`, '',...details,...customerDetails,...(link?['','Flyt eller aflys din tid via dit personlige link:',link,'Del ikke linket med andre.']:[]),'','Spørgsmål? Ring på 60 64 41 43.','AJ Auto – Køb, Salg & Bytte'];
-  return {subject:workshop?`AJ Auto: aftale ${actions[kind]}`:title,text:lines.join('\n'),html:`<!doctype html><html lang="da"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#202522"><h1 style="font-size:24px">${escapeHtml(workshop?`Aftale ${actions[kind]}`:title)}</h1>${lines.filter(x=>x&&x!==link).map(x=>`<p>${escapeHtml(x)}</p>`).join('')}${link?`<p><a href="${escapeHtml(link)}">Flyt eller aflys din tid</a></p>`:''}</body></html>`};
+function mailForBooking(
+  booking: Booking, kind: 'created' | 'rescheduled' | 'cancelled',
+  token: string, origin: string, workshop: boolean,
+): Omit<EmailMessage, 'to'> {
+  const status = { created: 'bekræftet', rescheduled: 'flyttet', cancelled: 'aflyst' }[kind];
+  const subject = workshop ? `Aftale ${status} hos AJ Auto` : `Din tid hos AJ Auto er ${status}`;
+  const details = [
+    booking.serviceName,
+    danishDate.format(new Date(booking.startAt)),
+    'Sorøvej 5kl, Slagelse',
+  ];
+  if (workshop) {
+    details.push(`Kalender: ${booking.staffName}`, booking.name, booking.phone, booking.email);
+    if (booking.registration) details.push(`Nummerplade: ${booking.registration}`);
+    if (booking.note) details.push(`Bemærkning: ${booking.note}`);
+  }
+  const link = !workshop && kind !== 'cancelled' ? manageLink(origin, token) : null;
+  const text = [subject, '', ...details];
+  if (link) text.push('', 'Se, flyt eller aflys din aftale med dit personlige link.', link);
+  text.push('', 'AJ Auto', '60 64 41 43');
+
+  const html = `<!doctype html><html lang="da"><body style="font:16px/1.55 Arial,sans-serif;color:#19191c">
+    <h1 style="font-size:26px;line-height:1.15">${escapeHtml(subject)}</h1>
+    <p>${details.map(detail => escapeHtml(detail)).join('<br>')}</p>
+    ${link ? `<p><a style="color:#40258e" href="${escapeHtml(link)}">Se, flyt eller aflys din aftale</a><br>Linket er personligt.</p>` : ''}
+    <p>AJ Auto<br><a style="color:#40258e" href="tel:+4560644143">60 64 41 43</a></p>
+  </body></html>`;
+  return { subject, text: text.join('\n'), html };
 }
 const enc=new TextEncoder();
 function toBase64(bytes:Uint8Array):string {let out='';for(const byte of bytes)out+=String.fromCharCode(byte);return btoa(out);}
@@ -170,8 +190,11 @@ async function bookingMails(env:AjEnv,b:Booking,event:'created'|'rescheduled'|'c
   const statements:D1PreparedStatement[]=[];const ids:string[]=[];
   for(const [to,kind] of [[b.email,'customer'],[settings.workshopEmail,'workshop']] as const) {
     const id=crypto.randomUUID();ids.push(id);
-    const payload=await sealMail(env,{to,...mailForBooking(b,event,token,origin,kind==='workshop'),...(kind==='workshop'?{replyTo:b.email}:{replyTo:settings.workshopEmail})});
-    statements.push(env.DB.prepare("INSERT INTO aj_outbox(id,booking_id,event,recipient_kind,payload) SELECT ?,?,?,?,? WHERE EXISTS (SELECT 1 FROM aj_bookings WHERE id=? AND mutation_id=?)").bind(id,b.id,event,kind,payload,b.id,mutationId));
+    const replyTo=kind==='workshop'?b.email:settings.workshopEmail;
+    const payload=await sealMail(env,{to,...mailForBooking(b,event,token,origin,kind==='workshop'),...(replyTo?{replyTo}:{})});
+    // Freeze the exact event, even when the workshop's destination is supplied later.
+    const initialStatus=kind==='workshop'&&!to?'not_configured':'pending';
+    statements.push(env.DB.prepare("INSERT INTO aj_outbox(id,booking_id,event,recipient_kind,payload,status) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM aj_bookings WHERE id=? AND mutation_id=?)").bind(id,b.id,event,kind,payload,initialStatus,b.id,mutationId));
   }
   return {statements,ids};
 }
@@ -185,11 +208,29 @@ async function contactMail(env:AjEnv,messageId:string):Promise<EmailMessage> {
 async function deliveryAfterSave(env:AjEnv,ids:string[]):Promise<'sent'|'pending'|'not_configured'> {
   try{return await deliverAjMail(env,ids);}catch{console.error('AJ Auto mail processing deferred');return env.RESEND_API_KEY?'pending':'not_configured';}
 }
+type MailStatus = 'sent' | 'pending' | 'not_configured';
+interface NotificationStatus { customer: MailStatus; workshop: MailStatus }
+async function recipientStatuses(env:AjEnv,ids:string[]):Promise<NotificationStatus> {
+  const statuses:NotificationStatus={customer:'not_configured',workshop:'not_configured'};
+  if(!ids.length)return statuses;
+  const {results}=await env.DB.prepare(`SELECT recipient_kind,status FROM aj_outbox WHERE id IN (${ids.map(()=>'?').join(',')})`).bind(...ids).all<{recipient_kind:'customer'|'workshop';status:string}>();
+  for(const kind of ['customer','workshop'] as const) {
+    const rows=results.filter(row=>row.recipient_kind===kind);
+    if(!rows.length)continue;
+    statuses[kind]=rows.some(row=>row.status==='not_configured')?'not_configured':rows.some(row=>row.status!=='sent')?'pending':'sent';
+  }
+  return statuses;
+}
+async function bookingDelivery(env:AjEnv,ids:string[]) {
+  const notificationStatus=await deliveryAfterSave(env,ids);
+  try{return {notificationStatus,notifications:await recipientStatuses(env,ids)};}
+  catch{return {notificationStatus,notifications:{customer:'pending',workshop:'pending'} as NotificationStatus};}
+}
 export async function deliverAjMail(env:AjEnv,ids?:string[]):Promise<'sent'|'pending'|'not_configured'> {
   if(!env.RESEND_API_KEY)return 'not_configured';
   const now=nowSec();
   const filter=ids?.length?`AND id IN (${ids.map(()=>'?').join(',')})`:'';
-  const {results}=await env.DB.prepare(`SELECT id FROM aj_outbox WHERE (status IN ('pending','failed','not_configured') OR (status='sending' AND lease_until<?)) AND next_attempt_at<=? ${filter} ORDER BY created_at LIMIT 30`).bind(now,now,...(ids??[])).all<{id:string}>();
+  const {results}=await env.DB.prepare(`SELECT id FROM aj_outbox WHERE (status IN ('pending','failed','not_configured') OR (status='sending' AND lease_until<?)) AND next_attempt_at<=? ${filter} ORDER BY created_at,rowid LIMIT 30`).bind(now,now,...(ids??[])).all<{id:string}>();
   for(const {id} of results) {
     const row=await env.DB.prepare("UPDATE aj_outbox SET status='sending',lease_until=?,attempts=attempts+1 WHERE id=? AND (status IN ('pending','failed','not_configured') OR (status='sending' AND lease_until<?)) RETURNING payload,attempts,booking_id,message_id,event,recipient_kind").bind(now+120,id,now).first<{payload:string;attempts:number;booking_id:string|null;message_id:string|null;event:string;recipient_kind:string}>();
     if(!row)continue;
@@ -197,14 +238,21 @@ export async function deliverAjMail(env:AjEnv,ids?:string[]):Promise<'sent'|'pen
       let message:EmailMessage;
       if(row.payload.startsWith('deferred:')) {
         const settings=await getSettings(env.DB);
-        if(!settings.workshopEmail){await env.DB.prepare("UPDATE aj_outbox SET status='not_configured',lease_until=NULL,next_attempt_at=? WHERE id=?").bind(nowSec()+600,id).run();continue;}
         if(row.payload==='deferred:contact'&&row.message_id)message=await contactMail(env,row.message_id);
         else if(row.payload==='deferred:cancelled'&&row.booking_id){
           const booking=await getBooking(env.DB,row.booking_id);if(!booking)throw new Error('Booking missing');
           const workshop=row.recipient_kind==='workshop';
-          message={to:workshop?settings.workshopEmail:booking.email,...mailForBooking(bookingView(booking),'cancelled','',ajOrigin(env),workshop),replyTo:workshop?booking.email:settings.workshopEmail};
+          const replyTo=workshop?booking.email:settings.workshopEmail;
+          message={to:workshop?settings.workshopEmail:booking.email,...mailForBooking(bookingView(booking),'cancelled','',ajOrigin(env),workshop),...(replyTo?{replyTo}:{})};
         }else throw new Error('Unknown deferred message');
       }else message=await openMail(env,row.payload);
+      if(row.recipient_kind==='workshop'&&!message.to) {
+        message.to=(await getSettings(env.DB)).workshopEmail;
+      }
+      if(!message.to) {
+        await env.DB.prepare("UPDATE aj_outbox SET status='not_configured',lease_until=NULL,next_attempt_at=? WHERE id=?").bind(nowSec()+600,id).run();
+        continue;
+      }
       const sent=await sendEmail(env,message);
       if(!sent)throw new Error('Mail not configured');
       await env.DB.prepare("UPDATE aj_outbox SET status='sent',payload='',sent_at=?,lease_until=NULL,last_error=NULL WHERE id=?").bind(nowSec(),id).run();
@@ -233,7 +281,7 @@ export async function retryAjMail(env:Env):Promise<void> {
 
 export async function createBooking(env:AjEnv,input:BookingInput,origin:string) {
   const settings=await getSettings(env.DB);
-  if(!(await readiness(env,settings)).ready)throw new AjError('Onlinebooking er ikke åben endnu. Ring på 60 64 41 43.',503);
+  if(!(await readiness(env,settings)).ready)throw new AjError('Onlinebooking er lukket. Ring på 60 64 41 43 for at aftale en tid.',503);
   const start=parseInstant(input.startAt),local=zonedParts(start);
   const slot=(await getSlots(env,input.serviceId,local.date,input.staffId)).find(s=>parseInstant(s.startAt)===start&&s.staffId===input.staffId);
   if(!slot)throw new AjError('Tiden er ikke længere ledig. Vælg en anden tid.',409);
@@ -248,8 +296,7 @@ export async function createBooking(env:AjEnv,input:BookingInput,origin:string) 
       ...queued.statements
     ]);
   }catch(e){databaseError(e);}
-  const notificationStatus=await deliveryAfterSave(env,queued.ids);
-  return {ok:true,booking,manageUrl:manageLink(origin,token),notificationStatus};
+  return {ok:true,booking,manageUrl:manageLink(origin,token),...await bookingDelivery(env,queued.ids)};
 }
 export async function rescheduleBooking(env:AjEnv,row:BookingRow,startAt:string,staffId:number,origin:string,existingToken?:string) {
   if(row.status!=='confirmed')throw new AjError('En aflyst aftale kan ikke flyttes.',409);
@@ -268,18 +315,17 @@ export async function rescheduleBooking(env:AjEnv,row:BookingRow,startAt:string,
     ]);
     if(!result[0]?.meta.changes)throw new AjError('Aftalen er blevet ændret. Genindlæs siden og prøv igen.',409);
   }catch(e){databaseError(e);}
-  return {ok:true,booking,manageUrl:manageLink(origin,token),notificationStatus:await deliveryAfterSave(env,queued.ids)};
+  return {ok:true,booking,manageUrl:manageLink(origin,token),...await bookingDelivery(env,queued.ids)};
 }
 export async function cancelBooking(env:AjEnv,row:BookingRow,origin:string) {
   if(row.status==='cancelled'){
-    const mails=await env.DB.prepare("SELECT status FROM aj_outbox WHERE booking_id=? AND event='cancelled'").bind(row.id).all<{status:string}>();
+    const mails=await env.DB.prepare("SELECT id,status FROM aj_outbox WHERE booking_id=? AND event='cancelled'").bind(row.id).all<{id:string;status:string}>();
     const notificationStatus=mails.results.some(m=>m.status==='not_configured')?'not_configured':mails.results.some(m=>m.status!=='sent')?'pending':mails.results.length?'sent':'not_configured';
-    return {ok:true,booking:bookingView(row),notificationStatus};
+    return {ok:true,booking:bookingView(row),notificationStatus,notifications:await recipientStatuses(env,mails.results.map(mail=>mail.id))};
   }
   if(row.start_at<=nowSec())throw new AjError('Aftalen er allerede startet. Ring til værkstedet.',409);
-  const settings=await getSettings(env.DB);
   const mutationId=crypto.randomUUID(),booking:Booking={...bookingView(row),status:'cancelled',version:row.version+1};
-  const queued=mailConfigured(env,settings)?await bookingMails(env,booking,'cancelled','',origin,mutationId):{statements:[] as D1PreparedStatement[],ids:[] as string[]};
+  const queued=env.RESEND_API_KEY?await bookingMails(env,booking,'cancelled','',origin,mutationId):{statements:[] as D1PreparedStatement[],ids:[] as string[]};
   if(!queued.ids.length)for(const kind of ['customer','workshop']){
     const mailId=crypto.randomUUID();queued.ids.push(mailId);
     queued.statements.push(env.DB.prepare("INSERT INTO aj_outbox(id,booking_id,event,recipient_kind,payload,status) SELECT ?,?,'cancelled',?,'deferred:cancelled','not_configured' WHERE EXISTS(SELECT 1 FROM aj_bookings WHERE id=? AND mutation_id=?)").bind(mailId,row.id,kind,row.id,mutationId));
@@ -290,7 +336,7 @@ export async function cancelBooking(env:AjEnv,row:BookingRow,origin:string) {
     ]);
     if(!result[0]?.meta.changes)throw new AjError('Aftalen er blevet ændret. Genindlæs siden og prøv igen.',409);
   }catch(e){databaseError(e);}
-  return {ok:true,booking,notificationStatus:queued.ids.length?await deliveryAfterSave(env,queued.ids):'not_configured'};
+  return {ok:true,booking,...await bookingDelivery(env,queued.ids)};
 }
 export async function saveContact(env:AjEnv,input:{name:string;email:string;phone:string;message:string}) {
   const settings=await getSettings(env.DB),id=crypto.randomUUID(),mailId=crypto.randomUUID();

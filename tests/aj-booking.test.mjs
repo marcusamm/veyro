@@ -40,11 +40,11 @@ class AjClient extends Client {
   send(pathname, body, headers) { return this.json('POST', pathname, body, headers); }
 }
 
-function sql(query) {
+function sql(query, targetStack = stack) {
   for (let attempt = 0; ; attempt++) {
     try {
       const output = execFileSync(path.join(ROOT, 'node_modules', '.bin', 'wrangler'), [
-        'd1', 'execute', 'veyro-kundepanel', '--local', '--persist-to', stack.persist,
+        'd1', 'execute', 'veyro-kundepanel', '--local', '--persist-to', targetStack.persist,
         '--json', '--command', query,
       ], { cwd: ROOT, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', CI: '1' }, stdio: 'pipe' }).toString();
       return JSON.parse(output)[0].results;
@@ -68,6 +68,11 @@ const dayAfter = (days) => {
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 };
+const publicRoutes = ['/', '/ydelser', '/om-os', '/kontakt', '/booking', '/booking/aftale'];
+const linksFromHtml = html => [...html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)].map(match => ({
+  href: (match[1].match(/\bhref=["']([^"']+)["']/i)?.[1] ?? '').replace(/&amp;/g, '&'),
+  text: match[2].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
+}));
 
 function expectSuccess(response) {
   expect(response.status, response.text).toBeGreaterThanOrEqual(200);
@@ -135,6 +140,42 @@ describe('AJ Auto configuration and access', () => {
     });
     expectSuccess(contact);
     expect(contact.data.notificationStatus).toBe('not_configured');
+  });
+
+  it('server-renders telephone booking across the public site while booking is closed', async () => {
+    const client = new AjClient(stack.base);
+    for (const pathname of [...publicRoutes, '/admin', '/side-der-ikke-findes']) {
+      const response = await client.get(pathname);
+      expect(response.status, pathname).toBe(pathname === '/side-der-ikke-findes' ? 404 : 200);
+      expect(response.html, pathname).toContain('data-booking-ready="false"');
+      const links = linksFromHtml(response.html);
+      expect(links.some(link => link.href === 'tel:+4560644143' && link.text === 'Ring og aftal en tid'), pathname).toBe(true);
+      expect(links.some(link => /^Book (?:tid|en ny tid|ny tid)$/i.test(link.text)), pathname).toBe(false);
+      expect(response.html, pathname).not.toMatch(/aj-hero\.jpg|aj-oil\.jpg|wheel-art|299\s*kr|Onlinebooking åbner snart/);
+    }
+  });
+
+  it('lets a mobile visitor identify the workshop and call from the first screen without JavaScript', async () => {
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 390, height: 844 }, javaScriptEnabled: false });
+      await page.goto(stack.base + '/');
+      const heading = page.getByRole('heading', { level: 1 });
+      expect((await heading.innerText()).replace(/\s+/g, ' ')).toBe('Olieskift og bilhandel i Slagelse');
+      const call = page.getByRole('main').getByRole('link', { name: 'Ring og aftal en tid', exact: true }).first();
+      const box = await call.boundingBox();
+      expect(box, 'Primary call action is visible without opening the menu').toBeTruthy();
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(844);
+      expect(await call.getAttribute('href')).toBe('tel:+4560644143');
+      const address = page.getByRole('main').getByText(/AJ Auto.*Sorøvej 5kl, Slagelse/).first();
+      const addressBox = await address.boundingBox();
+      expect(addressBox, 'Workshop name and address are visible on the first screen').toBeTruthy();
+      expect(addressBox.y + addressBox.height).toBeLessThanOrEqual(844);
+      expect(await page.locator('main img').count()).toBe(0);
+    } finally {
+      await browser.close();
+    }
   });
 
   it('protects administration and rejects cross-site JSON writes', async () => {
@@ -209,6 +250,21 @@ describe('AJ Auto workshop setup', () => {
     expect(data.staff.filter(item => item.active)).toHaveLength(3);
   });
 
+  it('server-renders the working booking action when ready and uses the stated address for directions', async () => {
+    const client = new AjClient(stack.base);
+    for (const pathname of publicRoutes) {
+      const response = await client.get(pathname);
+      expect(response.html, pathname).toContain('data-booking-ready="true"');
+      const links = linksFromHtml(response.html);
+      if (pathname !== '/booking') expect(links.some(link => link.href === '/booking' && link.text === 'Book tid'), pathname).toBe(true);
+      expect(links.some(link => link.text === 'Ring og aftal en tid'), pathname).toBe(false);
+      for (const link of links.filter(link => link.href.includes('google.com/maps/dir/'))) {
+        expect(new URL(link.href).searchParams.get('destination'), pathname).toContain('Sorøvej 5kl');
+      }
+      expect(response.html, pathname).not.toMatch(/aj-hero\.jpg|aj-oil\.jpg|wheel-art|299\s*kr/);
+    }
+  });
+
   it('never publishes an unconfirmed or expired campaign', async () => {
     const settings = { workshopEmail, bookingEnabled: true };
     const unconfirmed = await operator.send('/api/admin/settings', {
@@ -225,6 +281,32 @@ describe('AJ Auto workshop setup', () => {
       ...settings, campaign: { enabled: true, confirmed: true, title: 'Olieskift', priceOre: 90000, expiresOn: dayAfter(7) },
     }));
     expect((await new AjClient(stack.base).read('/api/config')).data.campaign.priceOre).toBe(90000);
+  });
+
+  it('hides a previously approved campaign as soon as its stored expiry has passed', async () => {
+    const previous = (await adminData()).settings.campaign;
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage();
+      await page.goto(stack.base + '/');
+      await page.locator('#home-campaign').waitFor({ state: 'visible' });
+      expect(await page.locator('#home-campaign').innerText()).toContain('900');
+      // Simulate the passage of the campaign's end date rather than an invalid admin write.
+      const expired = { ...previous, expiresOn: '2020-01-01' };
+      sql(`UPDATE aj_settings SET campaign_json='${JSON.stringify(expired).replaceAll("'", "''")}' WHERE id=1`);
+      expect((await new AjClient(stack.base).read('/api/config')).data.campaign).toBeNull();
+      for (const [pathname, selector] of [['/', '#home-campaign'], ['/ydelser', '#services-campaign']]) {
+        await Promise.all([
+          page.waitForResponse(response => response.url().endsWith('/api/config')),
+          page.goto(stack.base + pathname),
+        ]);
+        expect(await page.locator(selector).isVisible(), pathname).toBe(false);
+        expect(await page.locator('body').innerText(), pathname).not.toMatch(/900\s*(?:kr|DKK)/);
+      }
+    } finally {
+      await browser.close();
+      expectSuccess(await operator.send('/api/admin/settings', { campaign: previous }));
+    }
   });
 });
 
@@ -389,27 +471,75 @@ describe('AJ Auto delivery and contact', () => {
     expect((await mails()).some(item => item.to.includes(workshopEmail) && item.text.includes('Denne test må ikke påstå, at mail er sendt.'))).toBe(true);
   });
 
-  it('keeps cancellation notifications pending while the workshop mailbox is disconnected', async () => {
-    const booked = await reserve((await available(dayAfter(16)))[0], 'deferred-cancellation@example.test');
+  it('delivers customer lifecycle receipts and defers each workshop event until its mailbox is connected', async () => {
+    const date = dayAfter(16);
     const before = (await mails()).length;
+    const email = 'deferred-workshop@example.test';
+    let originalStart;
+    let movedStart;
     expectSuccess(await operator.send('/api/admin/settings', { workshopEmail: '' }));
     try {
       const customer = new AjClient(stack.base);
-      const cancelled = await customer.send('/api/manage/cancel', { token: booked.token });
+      expect((await customer.read('/api/config')).data.bookingReady).toBe(true);
+      const slots = await available(date);
+      originalStart = slots[0].startAt;
+      movedStart = slots.at(-1).startAt;
+      const created = await customer.send('/api/bookings', bookingInput(slots[0], email));
+      expectSuccess(created);
+      expect(created.data.notifications).toEqual({ customer: 'sent', workshop: 'not_configured' });
+      const token = new URLSearchParams(new URL(created.data.manageUrl).hash.slice(1)).get('token');
+      const moved = await customer.send('/api/manage/reschedule', { token, staffId: ownerId, startAt: movedStart });
+      expectSuccess(moved);
+      expect(moved.data.notifications).toEqual({ customer: 'sent', workshop: 'not_configured' });
+      const cancelled = await customer.send('/api/manage/cancel', { token });
       expectSuccess(cancelled);
-      expect(cancelled.data.notificationStatus).toBe('not_configured');
-      const repeated = await customer.send('/api/manage/cancel', { token: booked.token });
+      expect(cancelled.data.notifications).toEqual({ customer: 'sent', workshop: 'not_configured' });
+      const repeated = await customer.send('/api/manage/cancel', { token });
       expectSuccess(repeated);
       expect(repeated.data.notificationStatus).not.toBe('sent');
-      expect((await mails()).length).toBe(before);
-      expect((await adminData()).bookings.find(item => item.id === booked.booking.id).status).toBe('cancelled');
+      const immediate = (await mails()).slice(before);
+      expect(immediate).toHaveLength(3);
+      expect(immediate.every(item => item.to.includes(email))).toBe(true);
+      expect((await adminData()).bookings.find(item => item.id === created.data.booking.id).status).toBe('cancelled');
+      const pending = sql(`SELECT payload,status FROM aj_outbox WHERE booking_id='${created.data.booking.id}' AND recipient_kind='workshop'`);
+      expect(pending).toHaveLength(3);
+      expect(pending.every(item => item.status === 'not_configured' && item.payload.startsWith('v1.'))).toBe(true);
+      expect(JSON.stringify(pending)).not.toContain(email);
     } finally {
       expectSuccess(await operator.send('/api/admin/settings', { workshopEmail }));
     }
     expectSuccess(await operator.send('/api/admin/retry-mail', {}));
     const delivered = (await mails()).slice(before);
-    expect(delivered.filter(item => item.to.includes('deferred-cancellation@example.test'))).toHaveLength(1);
-    expect(delivered.filter(item => item.to.includes(workshopEmail))).toHaveLength(1);
+    expect(delivered.filter(item => item.to.includes(email))).toHaveLength(3);
+    const workshopMessages = delivered.filter(item => item.to.includes(workshopEmail));
+    expect(workshopMessages).toHaveLength(3);
+    const time = instant => new Intl.DateTimeFormat('da-DK', { timeZone: 'Europe/Copenhagen', hour: '2-digit', minute: '2-digit' }).format(new Date(instant));
+    expect(workshopMessages.find(item => /bekræftet/.test(item.subject)).text).toContain(time(originalStart));
+    expect(workshopMessages.find(item => /flyttet/.test(item.subject)).text).toContain(time(movedStart));
+    expect(workshopMessages.find(item => /aflyst/.test(item.subject)).text).toContain(time(movedStart));
+    const afterDelivery = (await mails()).length;
+    expectSuccess(await operator.send('/api/admin/retry-mail', {}));
+    expect((await mails()).length).toBe(afterDelivery);
+  });
+
+  it('does not open bookings without customer mail integration even with a configured service and calendar', async () => {
+    const noMail = await startStack({ resend: false, extraVars: { AJ_HOSTS: '127.0.0.1', AJ_URL: '' } });
+    try {
+      sql(`INSERT INTO aj_staff(name,email,role,active) VALUES('Local mail-gate fixture','mail-gate@example.test','owner',1);
+        UPDATE aj_services SET duration_minutes=45,active=1 WHERE id=1;
+        UPDATE aj_settings SET booking_enabled=1,workshop_email='' WHERE id=1;
+        ${Array.from({ length: 7 }, (_, index) => `INSERT INTO aj_hours(staff_id,weekday,start_minute,end_minute) VALUES(1,${index + 1},540,1020);`).join('\n')}`, noMail);
+      const client = new AjClient(noMail.base);
+      expect((await client.read('/api/config')).data.bookingReady).toBe(false);
+      expect((await client.read(`/api/slots?serviceId=1&staffId=1&date=${dayAfter(17)}`)).data.slots).toEqual([]);
+      const response = await client.send('/api/bookings', {
+        serviceId: 1, staffId: 1, startAt: `${dayAfter(17)}T08:00:00.000Z`, name: 'Local fixture', email: 'mail-gate-customer@example.test', phone: '12345678',
+      });
+      expect(response.status, response.text).toBe(503);
+      expect(sql('SELECT count(*) AS n FROM aj_bookings', noMail)[0].n).toBe(0);
+    } finally {
+      await noMail.stop();
+    }
   });
 
   it('does not report success or reserve a slot if the atomic notification write fails', async () => {
@@ -429,6 +559,42 @@ describe('AJ Auto delivery and contact', () => {
 });
 
 describe('AJ Auto browser journeys', () => {
+  it('distinguishes an open day with no free slots from booking being closed during a visit', async () => {
+    const date = dayAfter(35);
+    for (const staffId of [ownerId, colleagueId]) {
+      expectSuccess(await operator.send('/api/admin/blocks', {
+        staffId, startAt: `${date}T00:00:00.000Z`, endAt: `${dayAfter(36)}T00:00:00.000Z`, reason: 'Lokal test af en fyldt dag',
+      }));
+    }
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 390, height: 844 }, locale: 'da-DK' });
+      await page.goto(stack.base + '/booking');
+      await page.locator('[data-service]').first().click();
+      await Promise.all([
+        page.waitForResponse(response => response.url().includes('/api/slots?') && response.url().includes(`date=${date}`)),
+        page.locator('#booking-date').fill(date),
+      ]);
+      await page.locator('#slot-results .form-status').waitFor();
+      expect(await page.locator('#slot-results').innerText()).toMatch(/ingen ledige|ingen tider/i);
+      expect(await page.locator('#booking-date').isVisible()).toBe(true);
+      expect(await page.locator('[data-slot]').count()).toBe(0);
+      expect(await page.locator('body').getAttribute('data-booking-ready')).toBe('true');
+      expectSuccess(await operator.send('/api/admin/settings', { bookingEnabled: false }));
+      await Promise.all([
+        page.waitForResponse(response => response.url().includes('/api/slots?') && response.url().includes(`date=${dayAfter(37)}`)),
+        page.locator('#booking-date').fill(dayAfter(37)),
+      ]);
+      await page.locator('#booking-root a[href="tel:+4560644143"]').waitFor();
+      expect(await page.locator('#booking-date').count()).toBe(0);
+      expect(await page.locator('body').getAttribute('data-booking-ready')).toBe('false');
+      expect(await page.locator('#booking-root').innerText()).not.toMatch(/åbner snart/i);
+    } finally {
+      await browser.close();
+      expectSuccess(await operator.send('/api/admin/settings', { bookingEnabled: true }));
+    }
+  });
+
   for (const [index, viewport] of [{ name: 'desktop', width: 1440, height: 1000 }, { name: 'mobile', width: 390, height: 844 }].entries()) {
     it(`completes booking, moving, cancellation and contact on ${viewport.name} without layout or console errors`, async () => {
       const browser = await chromium.launch({ headless: true });
@@ -440,7 +606,7 @@ describe('AJ Auto browser journeys', () => {
       const directory = path.join(ROOT, 'test-results', 'aj-auto');
       mkdirSync(directory, { recursive: true });
       const screenshot = async suffix => {
-        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
         const overflow = await page.evaluate(() => ({ screen: document.documentElement.clientWidth, page: document.documentElement.scrollWidth }));
         expect(overflow.page, `${viewport.name} ${suffix} horizontal overflow`).toBeLessThanOrEqual(overflow.screen + 1);
         expect(await page.getByRole('heading', { level: 1 }).count()).toBe(1);
@@ -454,13 +620,23 @@ describe('AJ Auto browser journeys', () => {
         await page.goto(stack.base + '/');
         await page.getByRole('heading', { level: 1 }).waitFor();
         await screenshot('home');
+        const primary = page.getByRole('main').getByRole('link', { name: 'Book tid', exact: true }).first();
+        const primaryBox = await primary.boundingBox();
+        expect(primaryBox, `${viewport.name} booking action is visible on first screen`).toBeTruthy();
+        expect(primaryBox.y + primaryBox.height).toBeLessThanOrEqual(viewport.height);
         if (viewport.name === 'mobile') {
-          await page.getByRole('button', { name: /Menu/ }).click();
-          expect(await page.getByRole('button', { name: /Menu/ }).getAttribute('aria-expanded')).toBe('true');
-          await page.locator('#navigation').getByRole('link', { name: /Book tid/ }).click();
+          await page.getByRole('button', { name: /menu/i }).click();
+          expect(await page.getByRole('button', { name: /menu/i }).getAttribute('aria-expanded')).toBe('true');
+          await page.keyboard.press('Escape');
+          expect(await page.getByRole('button', { name: /menu/i }).getAttribute('aria-expanded')).toBe('false');
+          await page.getByRole('button', { name: /menu/i }).click();
+          await page.locator('#navigation').getByRole('link', { name: 'Ydelser', exact: true }).click();
+          await page.getByRole('heading', { level: 1 }).waitFor();
+          await page.locator('.site-header [data-booking-cta]').click();
         } else {
-          await page.getByRole('main').getByRole('link', { name: /Book tid/ }).first().click();
+          await primary.click();
         }
+        expect(await page.getByRole('heading', { level: 1 }).innerText()).toBe('Book tid');
         await page.locator('[data-service]').first().click();
         await page.locator('#booking-date').fill(dayAfter(20 + index * 2));
         await Promise.all([
@@ -477,7 +653,7 @@ describe('AJ Auto browser journeys', () => {
         await page.locator('#details-form [name=registration]').fill('UI12345');
         await page.locator('#details-form [name=note]').fill('Kun lokale browser-testdata.');
         await page.getByRole('button', { name: /Gennemse/ }).click();
-        await page.getByRole('heading', { name: 'Ser det rigtigt ud?' }).waitFor();
+        await page.locator('#confirm-booking').waitFor();
         expect(await page.locator('.booking-summary').innerText()).toContain(email);
         const [createdResponse] = await Promise.all([
           page.waitForResponse(response => response.url().endsWith('/api/bookings') && response.request().method() === 'POST'),
@@ -486,11 +662,12 @@ describe('AJ Auto browser journeys', () => {
         expect(createdResponse.status(), await createdResponse.text()).toBe(201);
         const created = await createdResponse.json();
         expect(created.notificationStatus).toBe('sent');
-        await page.getByRole('heading', { name: 'Din tid er booket.' }).waitFor();
+        await page.locator('.saved-link').waitFor();
         expect(await page.locator('.saved-link').getAttribute('href')).toBe(created.manageUrl);
         await screenshot('booking-confirmed');
         await page.locator('.saved-link').click();
-        await page.getByRole('heading', { name: 'Din aftale hos AJ Auto', exact: true }).waitFor();
+        await page.locator('#move-booking').waitFor();
+        expect(await page.getByRole('heading', { level: 1 }).innerText()).toBe('Din aftale');
         expect(new URL(page.url()).hash).toMatch(/^#token=/);
         expect(new URL(page.url()).search).toBe('');
         await page.locator('#move-booking').click();
@@ -507,16 +684,16 @@ describe('AJ Auto browser journeys', () => {
         const moved = await movedResponse.json();
         expect(moved.booking.startAt).not.toBe(created.booking.startAt);
         await page.locator('#move-booking').waitFor();
-        expect(await page.locator('#manage-root .form-status').innerText()).toContain('Din aftale er flyttet.');
+        expect(await page.locator('#manage-root .form-status').innerText()).toMatch(/flyttet/i);
         await screenshot('booking-moved');
         await page.locator('#cancel-booking').click();
-        await page.getByRole('heading', { name: 'Vil du aflyse din aftale?' }).waitFor();
+        await page.locator('#confirm-cancel').waitFor();
         const [cancelledResponse] = await Promise.all([
           page.waitForResponse(response => response.url().endsWith('/api/manage/cancel')),
           page.locator('#confirm-cancel').click(),
         ]);
         expect(cancelledResponse.status(), await cancelledResponse.text()).toBe(200);
-        await page.getByRole('heading', { name: 'Din aftale er aflyst.' }).waitFor();
+        await page.locator('#manage-root h2').filter({ hasText: /aflyst/i }).waitFor();
         expect((await adminData()).bookings.find(item => item.id === created.booking.id).status).toBe('cancelled');
         const notifications = (await mails()).slice(beforeBooking);
         expect(notifications.filter(item => item.to.includes(email))).toHaveLength(3);
@@ -532,13 +709,36 @@ describe('AJ Auto browser journeys', () => {
           page.getByRole('button', { name: /Send besked/ }).click(),
         ]);
         expect(contactResponse.status(), await contactResponse.text()).toBe(201);
-        await page.locator('#contact-status').getByText('Tak. Din besked er gemt og sendt til AJ Auto.', { exact: true }).waitFor();
+        await page.locator('#contact-status').filter({ hasText: /tak|sendt|modtaget/i }).waitFor();
         await screenshot('contact-sent');
         for (const [pathname, suffix] of [['/ydelser', 'services'], ['/om-os', 'about']]) {
           const response = await page.goto(stack.base + pathname);
           expect(response.status()).toBe(200);
           await screenshot(suffix);
         }
+        await page.goto(stack.base + '/admin');
+        await page.locator('#adm-login-form').waitFor();
+        await screenshot('admin-login');
+        const beforeLogin = (await mails()).length;
+        await page.locator('#adm-login-form [name=email]').fill(ADMIN_EMAIL);
+        await page.locator('#adm-login-form button[type=submit]').click();
+        const loginMail = await waitFor(async () => (await mails()).slice(beforeLogin).find(item => item.to.includes(ADMIN_EMAIL)));
+        // Open the personal link as a fresh page load, as an email client would.
+        await page.goto('about:blank');
+        await page.goto(`${stack.base}/admin#token=${mailToken(loginMail)}`);
+        await page.locator('#adm-verify').click();
+        await page.locator('#adm-workspace').waitFor({ state: 'visible' });
+        await page.locator('#adm-date').fill(dayAfter(11));
+        await page.locator('.adm-booking').first().waitFor();
+        await screenshot('admin-appointments');
+        for (const panel of ['services', 'hours', 'staff', 'messages', 'settings', 'calendar']) {
+          if (viewport.name === 'mobile') await page.getByRole('button', { name: /Vælg side/i }).click();
+          await page.locator(`[data-panel="${panel}"]`).click();
+          await page.locator('#adm-content h2').first().waitFor();
+          await screenshot(`admin-${panel}`);
+        }
+        await page.locator('#adm-logout').click();
+        await page.locator('#adm-login-form').waitFor({ state: 'visible' });
         expect(errors).toEqual([]);
       } finally {
         await browser.close();
