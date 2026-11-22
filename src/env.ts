@@ -20,6 +20,12 @@ export interface Env {
   /** Hjemmesidens kanoniske adresse (til søgemaskiner og delingslinks) */
   SITE_URL?: string;
 
+  /** AJ Autos website and booking share the existing Worker and isolated aj_* tables. */
+  AJ_HOSTS?: string;
+  AJ_URL?: string;
+  /** Optional dedicated encryption key for the transactional booking mail outbox. */
+  AJ_OUTBOX_KEY?: string;
+
   /** Veyros bankkonto til bankoverførsel (vises på fakturaer fra admin) */
   BANK_IBAN?: string;
   BANK_BIC?: string;
