@@ -44,6 +44,8 @@ import { ICON_PNG, INTER_TIGHT_WOFF2, LOGO_PNG } from './views/brand';
 import { errorPage } from './views/pages';
 import { isSavedLogisticsView, logisticsRobots, publicLogisticsRequest } from './lib/logistics-seo';
 import { fetchLogisticsSite, isLogisticsSiteRequest } from './logistics-site';
+import aj, { isAjRequest } from './aj/app';
+import { retryAjMail } from './aj/store';
 
 const app = new Hono<AppEnv>();
 
@@ -166,9 +168,11 @@ export default {
   // Salgshjemmesiden (veyro.dk) og kundepanelet (kunde.veyro.dk) kører i samme Worker; domænet afgør hvilken.
   fetch(req: Request, env: Env, ctx: ExecutionContext) {
     if (isLogisticsSiteRequest(req)) return fetchLogisticsSite(req, env, (request, bindings) => app.fetch(request, bindings, ctx));
+    if (isAjRequest(req, env)) return aj.fetch(req, env, ctx);
     return isSiteRequest(req, env) ? site.fetch(req, env, ctx) : app.fetch(req, env, ctx);
   },
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(retryAjMail(env).catch((err) => logError(env.DB, 'AJ Auto mail', err)));
     // Kundeemner (hvert 10. minut): Gmail-synkronisering og genforsøg på hentninger. Gør intet, før Google er sat op.
     ctx.waitUntil(runMailSync(env).catch((err) => logError(env.DB, 'Gmail cron', err)));
     ctx.waitUntil(runJobs(env).catch((err) => logError(env.DB, 'Kundeemner cron', err)));
