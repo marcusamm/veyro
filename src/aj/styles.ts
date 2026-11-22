@@ -130,11 +130,17 @@ button:disabled { cursor: default; opacity: .55; }
 .opening-hours p { color: var(--muted); }
 .contact-page .opening-hours { margin-bottom: 30px; }
 .location-address { font-size: clamp(1.45rem, 2.7vw, 2.7rem); font-weight: 650; letter-spacing: -.035em; }
-.site-footer { border-top: 1px solid var(--line); padding-block: 28px; font-size: .91rem; }
-.footer-inner, .footer-links { display: flex; gap: 12px 25px; align-items: center; flex-wrap: wrap; }
-.footer-meta small { display: block; color: var(--muted); font-size: .8125rem; }
+.site-footer { border-top: 1px solid var(--line); padding-block: clamp(28px, 3vw, 40px) 24px; font-size: .91rem; }
+.footer-inner { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 28px 32px; }
 .footer-name { font-weight: 700; }
-.footer-links { margin-left: auto; }
+.footer-links { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 14px 28px; }
+.footer-meta {
+  grid-column: 1 / -1;
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 12px 24px;
+  padding-top: 20px; border-top: 1px solid var(--line);
+  color: var(--muted); font-size: .8125rem;
+}
+.footer-meta small { font-size: inherit; }
 .site-footer a { color: var(--muted); }
 .page-heading, .services-intro, .about-heading, .contact-heading { padding-top: clamp(40px, 6vw, 90px); }
 .lead { margin-top: 18px; color: var(--muted); }
@@ -220,12 +226,11 @@ textarea { resize: vertical; }
   .hero-location { margin-bottom: 21px; }
   .service-row, .service-detail, .about-layout, .contact-layout, .contact-details { grid-template-columns: 1fr; }
   .service-row { gap: 12px; }
-  .footer-meta { margin: 0; }
   .service-detail, .about-layout, .contact-layout { gap: 22px; }
   .about-address { border-left: 0; border-top: 1px solid var(--line); padding: 24px 0 0; }
   .location-end-inner { align-items: start; flex-direction: column; gap: 12px; }
-  .footer-inner { align-items: start; }
-  .footer-links { margin-left: 0; }
+  .footer-inner { grid-template-columns: 1fr; gap: 24px; }
+  .footer-links { justify-content: flex-start; }
 }
 @media (scripting: none) {
   #contact-form, #adm-login-form { display: none; }
