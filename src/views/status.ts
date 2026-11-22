@@ -1,5 +1,6 @@
 import type { SubscriptionRow } from '../env';
 import { formatDate } from '../lib/format';
+import { isComplimentary } from '../lib/customer-agreement';
 
 export type Tone = 'ok' | 'warn' | 'err' | 'neutral';
 
@@ -22,7 +23,7 @@ export function subscriptionState(sub: SubscriptionRow | null): SubState | null 
   }
   const cancelDate = sub.cancel_at ?? (sub.cancel_at_period_end ? sub.current_period_end : null);
   const cancelPending = !!sub.cancel_at_period_end || !!sub.cancel_at;
-  const manageable = ['active', 'trialing', 'past_due'].includes(sub.status);
+  const manageable = !isComplimentary(sub) && ['active', 'trialing', 'past_due'].includes(sub.status);
   if (sub.payment_failed || sub.status === 'past_due' || sub.status === 'unpaid') {
     return { label: 'Betaling fejlet', tone: 'err', manageable, cancelPending, cancelDate, ended };
   }

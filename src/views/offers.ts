@@ -18,6 +18,8 @@ import { alert, csrfField, type H } from './layout';
 import { badgeClass, subscriptionState } from './status';
 import { legalLinks } from './legal';
 import { LEGAL_DOCS, acceptedVersionApplies, legalDocumentUrl, type Acceptance, type LegalDocKey } from '../lib/legal';
+import { COMPLIMENTARY_NOTICE, customerWebsiteUrl, isComplimentary } from '../lib/customer-agreement';
+import { getPlan } from '../lib/plans';
 
 const kr = (n: number) => formatKr(n, { decimals: n % 100 !== 0 });
 const iv = (i: string | null | undefined) => INTERVAL_LABEL[(i === 'year' ? 'year' : 'month') as Interval];
@@ -363,6 +365,10 @@ export function adminCustomerPage(args: {
     ${args.subs.length === 0 ? html`<p class="empty">Intet abonnement.</p>` : ''}
     ${args.subs.map(({ sub, service, renewals }) => {
       const st = subscriptionState(sub)!;
+      const complimentary = isComplimentary(sub);
+      const plan = getPlan(sub.plan);
+      const website = customerWebsiteUrl(sub.website_url);
+      const websiteAdmin = customerWebsiteUrl(sub.website_admin_url);
       const i = iv(sub.interval);
       const pending = args.priceChanges.filter((p) => p.subscription_id === sub.id && p.status === 'scheduled' && p.effective_at > Math.floor(Date.now() / 1000));
       const post = (a: string) => `/admin/kunder/${c.id}/abonnement/${sub.id}/${a}`;
@@ -370,10 +376,13 @@ export function adminCustomerPage(args: {
         <div class="row between"><h3 style="margin:0">${service}</h3><span class="badge ${badgeClass(st.tone)}">${st.label}</span></div>
         <dl class="facts">
           <div><dt>Pris</dt><dd>${kr(pending[pending.length - 1]?.old_amount ?? sub.amount ?? 0)} ekskl. moms ${i.per}</dd></div>
+          ${complimentary && plan ? html`<div><dt>Normalpris for ${plan.name}</dt><dd>${kr(plan.amount)} /md. · aftalt pris: 0 kr.</dd></div>` : ''}
           <div><dt>Startet</dt><dd>${formatDate(sub.started_at)}</dd></div>
-          <div><dt>Næste betaling</dt><dd>${st.ended || st.cancelPending ? 'Ingen' : formatDate(sub.current_period_end)}</dd></div>
+          <div><dt>Næste betaling</dt><dd>${complimentary || st.ended || st.cancelPending ? 'Ingen' : formatDate(sub.current_period_end)}</dd></div>
           <div><dt>Opsigelsesdato</dt><dd>${st.cancelPending ? formatDate(st.cancelDate) : st.ended ? formatDate(sub.canceled_at) : '–'}</dd></div>
         </dl>
+        ${complimentary ? html`<p class="alert alert-info small">${COMPLIMENTARY_NOTICE}</p>${sub.agreement_note ? html`<p class="small" style="white-space:pre-line">${sub.agreement_note}</p>` : ''}<p class="small">Opsigelse pr. e-mail med 30 kalenderdages varsel.</p>` : ''}
+        ${website || websiteAdmin ? html`<div class="row">${website ? html`<a href="${website}" target="_blank" rel="noopener noreferrer">Åbn hjemmeside</a>` : ''}${websiteAdmin ? html`<a href="${websiteAdmin}" target="_blank" rel="noopener noreferrer">Hjemmesidens administration</a>` : ''}</div>` : ''}
         ${pending.map((p) => html`<p class="alert alert-info small">Ny pris ${kr(p.new_amount)} ekskl. moms ${iv(p.interval).per} fra ${formatDate(p.effective_at)} (før ${kr(p.old_amount ?? 0)}).${p.notified_at ? ' Kunden har fået besked.' : ' Kunden har ikke fået mail.'}</p>`)}
         ${st.manageable && !st.cancelPending
           ? html`<details><summary>Ændr pris for denne kunde</summary>
@@ -395,7 +404,7 @@ export function adminCustomerPage(args: {
               ? html`<form method="post" action="${post('genoptag')}" class="inline">${csrfField(args.csrf)}<button class="btn btn-small btn-secondary" type="submit">Fortsæt abonnementet</button></form>`
               : html`<form method="post" action="${post('opsig')}" class="inline" data-confirm="Stoppe abonnementet ved udgangen af den betalte periode?">${csrfField(args.csrf)}<button class="btn btn-small btn-danger" type="submit">Opsig ved periodens udløb</button></form>`
             : ''}
-          <a class="small" href="https://dashboard.stripe.com/subscriptions/${sub.id}" target="_blank" rel="noopener">Åbn i Stripe</a>
+          ${complimentary ? '' : html`<a class="small" href="https://dashboard.stripe.com/subscriptions/${sub.id}" target="_blank" rel="noopener">Åbn i Stripe</a>`}
         </div>
       </article>`;
     })}

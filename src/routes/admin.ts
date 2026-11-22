@@ -33,7 +33,8 @@ import {
 import { parseKr } from '../lib/invoices';
 import { createLoginToken, isAdmin } from '../lib/session';
 import { staffAccess } from '../lib/pos/staff';
-import { getCustomerByEmail, getCustomerById, upsertSubscription } from '../lib/db';
+import { getCurrentSubscription, getCustomerByEmail, getCustomerById, upsertSubscription } from '../lib/db';
+import { COMPLIMENTARY_NOTICE, isComplimentary } from '../lib/customer-agreement';
 import { offerEmail, priceChangeEmail } from '../lib/email';
 import { formatDate, formatKr } from '../lib/format';
 import { getPlan } from '../lib/plans';
@@ -195,6 +196,10 @@ admin.post('/abonnementer', async (c) => {
   const key = typeof body['key'] === 'string' && /^[0-9a-f-]{36}$/.test(body['key']) ? body['key'] : crypto.randomUUID();
   const v = validateSubDraft(form, body);
   if ('error' in v) return subscriptionsView(c, { form, body, error: v.error, errorField: v.field, status: 400 });
+  const existingCustomer = await getCustomerByEmail(c.env.DB, v.draft.email);
+  if (existingCustomer && isComplimentary(await getCurrentSubscription(c.env.DB, existingCustomer.id))) {
+    return c.text('Kunden har en gratis særaftale. Et betalt abonnement kræver en ny skriftlig aftale.', 409);
+  }
   try {
     const sub = await createSubscription(c.env, v.draft, { key: `admin-sub-${key}`, createdBy: c.get('session')!.email });
     c.executionCtx.waitUntil(sendWelcomeMail(c.env, sub.id).catch((err) => logError(c.env.DB, 'admin.subscriptions.welcome', err)));
@@ -209,6 +214,8 @@ admin.post('/abonnementer', async (c) => {
 admin.post('/abonnementer/:id/:action', async (c) => {
   const id = c.req.param('id');
   const action = c.req.param('action');
+  const localSub = await c.env.DB.prepare('SELECT billing_mode, customer_id FROM subscriptions WHERE id = ?').bind(id).first<{ billing_mode: 'stripe' | 'complimentary'; customer_id: number }>();
+  if (isComplimentary(localSub) || (localSub && isComplimentary(await getCurrentSubscription(c.env.DB, localSub.customer_id)))) return c.text(COMPLIMENTARY_NOTICE, 403);
   if (!isSubscriptionId(id)) return c.text('Ugyldig anmodning.', 400);
   const body = await c.req.parseBody();
   const fail = (error: string, status: 400 | 502 = 400) => subscriptionsView(c, { error, status });
@@ -572,10 +579,12 @@ admin.post('/kunder/:id/abonnement/:sub/:action', async (c) => {
   const id = idParam(c.req.param('id'));
   const subId = c.req.param('sub');
   const action = c.req.param('action');
-  if (!id || !isSubscriptionId(subId)) return c.text('Ugyldig anmodning.', 400);
+  if (!id) return c.text('Ugyldig anmodning.', 400);
   const customer = await getCustomerById(c.env.DB, id);
-  const owned = customer && (await c.env.DB.prepare('SELECT 1 FROM subscriptions WHERE id = ? AND customer_id = ?').bind(subId, customer.id).first());
+  const owned = customer && (await c.env.DB.prepare('SELECT billing_mode FROM subscriptions WHERE id = ? AND customer_id = ?').bind(subId, customer.id).first<{ billing_mode: 'stripe' | 'complimentary' }>());
   if (!customer || !owned) return c.text('Ugyldig anmodning.', 400);
+  if (isComplimentary(owned) || isComplimentary(await getCurrentSubscription(c.env.DB, customer.id))) return c.text(COMPLIMENTARY_NOTICE, 403);
+  if (!isSubscriptionId(subId)) return c.text('Ugyldig anmodning.', 400);
   const body = await c.req.parseBody();
   let flash: string;
   try {

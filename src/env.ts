@@ -107,6 +107,10 @@ export interface SubscriptionRow {
   payment_failed: number;
   interval?: string | null;
   offer_id?: number | null;
+  billing_mode?: 'stripe' | 'complimentary';
+  agreement_note?: string | null;
+  website_url?: string | null;
+  website_admin_url?: string | null;
   updated_at: number;
 }
 

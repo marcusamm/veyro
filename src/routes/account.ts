@@ -33,6 +33,7 @@ import ndaRoutes from './nda';
 
 import { acceptancesFor, recordAcceptance } from '../lib/legal';
 import { agreementsCard } from '../views/legal';
+import { COMPLIMENTARY_NOTICE, isComplimentary } from '../lib/customer-agreement';
 
 type Vars = AppEnv & { Variables: AppEnv['Variables'] & { customer: CustomerRow } };
 const account = new Hono<Vars>();
@@ -107,7 +108,8 @@ account.get('/plan', async (c) => {
   const { sub, st } = await manageableSub(c);
   if (!sub || !st || st.ended) return c.redirect('/bestil', 303);
   let blockedReason: string | undefined;
-  if (!sub.plan) blockedReason = 'Dit abonnement er en særaftale med Veyro. Skriv til os, hvis du vil ændre det.';
+  if (isComplimentary(sub)) blockedReason = COMPLIMENTARY_NOTICE;
+  else if (!sub.plan) blockedReason = 'Dit abonnement er en særaftale med Veyro. Skriv til os, hvis du vil ændre det.';
   else if (st.cancelPending) blockedReason = 'Dit abonnement er opsagt. Fortsæt abonnementet fra overblikket, før du skifter plan.';
   else if (!st.manageable) blockedReason = 'Planen kan ikke skiftes lige nu. Kontakt os, hvis du har brug for hjælp.';
   const body = choosePlanPage({ sub, blockedReason, flashKey: c.req.query('besked') });
@@ -235,7 +237,7 @@ account.post('/opsig', async (c) => {
 
 account.post('/genoptag', async (c) => {
   const { sub, st } = await manageableSub(c);
-  if (!sub || !st || !st.cancelPending || st.ended) return c.redirect('/konto', 303);
+  if (!sub || !st || isComplimentary(sub) || !st.cancelPending || st.ended) return c.redirect('/konto', 303);
   try {
     const params: Record<string, string> = { cancel_at_period_end: 'false' };
     if (sub.cancel_at && !sub.cancel_at_period_end) params.cancel_at = ''; // fjerner en fast slutdato
@@ -257,6 +259,7 @@ account.post('/genoptag', async (c) => {
 // ---------- Fakturaer og betalingskort ----------
 account.get('/fakturaer', async (c) => {
   const customer = c.get('customer');
+  const complimentary = isComplimentary(await getCurrentSubscription(c.env.DB, customer.id));
   let invoices: StripeInvoice[] | null = [];
   if (customer.stripe_customer_id) {
     try {
@@ -277,6 +280,7 @@ account.get('/fakturaer', async (c) => {
       csrf: c.get('csrf'),
       invoices,
       hasStripeCustomer: !!customer.stripe_customer_id,
+      complimentary,
       flashKey: c.req.query('besked'),
     }),
     { nav: 'fakturaer', isCustomer: true },
@@ -286,6 +290,7 @@ account.get('/fakturaer', async (c) => {
 // Stripe Billing Portal, begrænset til opdatering af betalingsmetode (flow_data).
 account.post('/betalingskort', async (c) => {
   const customer = c.get('customer');
+  if (isComplimentary(await getCurrentSubscription(c.env.DB, customer.id))) return c.redirect('/konto/fakturaer?besked=saeraftale', 303);
   if (!customer.stripe_customer_id) return c.redirect('/konto/fakturaer', 303);
   const base = c.env.APP_URL.replace(/\/+$/, '');
   try {
@@ -307,6 +312,7 @@ account.post('/betalingskort', async (c) => {
 // Stripes kundeportal: betalingskort, fakturaer og (hvis slået til i portalens opsætning) opsigelse ved periodens udløb.
 account.post('/portal', async (c) => {
   const customer = c.get('customer');
+  if (isComplimentary(await getCurrentSubscription(c.env.DB, customer.id))) return c.redirect('/konto/fakturaer?besked=saeraftale', 303);
   if (!customer.stripe_customer_id) return c.redirect('/konto/fakturaer', 303);
   const base = c.env.APP_URL.replace(/\/+$/, '');
   try {

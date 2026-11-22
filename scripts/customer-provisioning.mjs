@@ -54,8 +54,9 @@ export function writeBatch(p, payloadHash) {
     { sql: 'UPDATE customers SET name=COALESCE(name,?),company=COALESCE(company,?),cvr=COALESCE(cvr,?),city=COALESCE(city,?),updated_at=unixepoch() WHERE email=? AND stripe_customer_id IS NULL', params: [p.name, p.company, p.cvr, p.city, p.email] },
     { sql: `INSERT INTO subscriptions (id,customer_id,status,plan,amount,currency,started_at,updated_at,interval,billing_mode,agreement_note,website_url,website_admin_url)
       SELECT ?,id,'active','starter',0,'dkk',unixepoch(),unixepoch(),'month','complimentary',?,?,? FROM customers WHERE email=? AND stripe_customer_id IS NULL`, params: [p.subscriptionId, p.agreementNote, p.websiteUrl, p.websiteAdminUrl, p.email] },
-    { sql: `INSERT INTO aj_staff (name,email,role,active) VALUES (?,?,'owner',1)
-      ON CONFLICT(email) DO UPDATE SET name=excluded.name,role='owner',active=1`, params: [p.name, p.email] },
+    { sql: "UPDATE aj_staff SET name=?,role='owner',active=1 WHERE email=?", params: [p.name, p.email] },
+    { sql: `INSERT INTO aj_staff (name,email,role,active) SELECT ?,?,'owner',1
+      WHERE NOT EXISTS(SELECT 1 FROM aj_staff WHERE email=?)`, params: [p.name, p.email, p.email] },
     // The final CHECK makes the entire D1 batch fail if a precondition changed concurrently.
     { sql: `INSERT INTO customer_provisioning_operations (id,payload_sha256,document_sha256,customer_id,verified)
       SELECT ?,?,?,c.id,CASE WHEN c.stripe_customer_id IS NULL AND c.name=? AND c.company=? AND c.cvr=?
@@ -75,7 +76,7 @@ async function main() {
   const raw = readFileSync(payloadFile, 'utf8');
   const p = openPayload(token, JSON.parse(raw));
   // Defensive log masking; no customer values are otherwise written to stdout.
-  if (process.env.GITHUB_ACTIONS) for (const key of ['email', 'name', 'company', 'cvr', 'agreementNote']) console.log(`::add-mask::${String(p[key]).replace(/\r/g, '%0D').replace(/\n/g, '%0A')}`);
+  if (process.env.GITHUB_ACTIONS) for (const key of ['email', 'name', 'company', 'cvr', 'agreementNote']) console.log(`::add-mask::${String(p[key]).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')}`);
   const config = readFileSync('wrangler.toml', 'utf8');
   const dbId = config.match(/^database_id = "([a-f0-9-]+)"/m)?.[1];
   const account = process.env.CLOUDFLARE_ACCOUNT_ID;
@@ -95,13 +96,13 @@ async function main() {
   }
   validatePayload(p);
   const before = await query({ batch: [
-    { sql: 'SELECT name,company,cvr,stripe_customer_id FROM customers WHERE lower(email)=?', params: [p.email] },
+    { sql: 'SELECT email,name,company,cvr,stripe_customer_id FROM customers WHERE lower(email)=?', params: [p.email] },
     { sql: "SELECT s.id FROM subscriptions s JOIN customers c ON c.id=s.customer_id WHERE lower(c.email)=? AND s.status NOT IN ('canceled','incomplete_expired')", params: [p.email] },
     { sql: 'SELECT id FROM subscriptions WHERE id=?', params: [p.subscriptionId] },
     { sql: 'SELECT booking_enabled,workshop_email FROM aj_settings WHERE id=1', params: [] },
   ] });
   const existing = before[0].results[0];
-  if (before[0].results.length > 1 || existing?.stripe_customer_id || before[1].results.length || before[2].results.length) throw new Error('Existing billing or ambiguous account requires review; no account changes made.');
+  if (before[0].results.length > 1 || (existing?.email && existing.email !== p.email) || existing?.stripe_customer_id || before[1].results.length || before[2].results.length) throw new Error('Existing billing or ambiguous account requires review; no account changes made.');
   for (const field of ['name', 'company', 'cvr']) if (existing?.[field] && existing[field] !== p[field]) throw new Error('Existing customer identity differs; no changes made.');
   await query({ batch: writeBatch(p, hash(raw)) });
   const after = await query({ batch: [

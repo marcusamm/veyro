@@ -5,6 +5,7 @@ import { formatDate, formatDateShort, formatKr } from '../lib/format';
 import { PLANS, getPlan, type Plan } from '../lib/plans';
 import { settledLabel } from '../lib/invoices';
 import type { StripeInvoice } from '../lib/stripe';
+import { COMPLIMENTARY_NOTICE, customerWebsiteUrl, isComplimentary } from '../lib/customer-agreement';
 import { alert, csrfField, type H } from './layout';
 import { REQUEST_STATUSES, REQUEST_TYPES, badgeClass, subscriptionState } from './status';
 
@@ -24,6 +25,7 @@ export const FLASH: Record<string, { kind: 'ok' | 'info' | 'warn' | 'err'; text:
   'konto-oprettet': { kind: 'ok', text: 'Din konto er oprettet. Kontakt os, så sender vi et skræddersyet tilbud.' },
   'vilkaar-accepteret': { kind: 'ok', text: 'Tak. Din accept af handelsbetingelserne og databehandleraftalen er gemt.' },
   'vilkaar-mangler': { kind: 'err', text: 'Sæt kryds for at acceptere handelsbetingelserne og databehandleraftalen.' },
+  'saeraftale': { kind: 'info', text: COMPLIMENTARY_NOTICE },
 };
 
 export function flash(key: string | undefined): H | '' {
@@ -212,6 +214,7 @@ export function dashboardPage(args: {
   const plan = getPlan(args.sub?.plan);
   const greeting = args.name ? `Hej ${args.name.split(' ')[0]}` : 'Overblik';
   const sub = args.sub;
+  const complimentary = isComplimentary(sub);
 
   if (!sub || !state || state.ended) {
     return html`<div class="stack-lg">
@@ -231,9 +234,12 @@ export function dashboardPage(args: {
   }
 
   const nextPayment = state.cancelPending ? null : sub.current_period_end;
+  const website = customerWebsiteUrl(sub.website_url);
+  const websiteAdmin = customerWebsiteUrl(sub.website_admin_url);
   return html`<div class="stack-lg">
   <div><h1>${greeting}</h1><p class="lead">Her er et overblik over dit abonnement hos Veyro.</p></div>
   ${flash(args.flashKey)}
+  ${complimentary ? alert('info', COMPLIMENTARY_NOTICE) : ''}
   ${state.tone === 'err'
     ? alert(
         'err',
@@ -249,13 +255,17 @@ export function dashboardPage(args: {
       </div>
       <dl class="facts">
         <div><dt>Pris</dt><dd>${formatKr(sub.amount)} ${sub.interval === 'year' ? '/år' : '/md.'}${plan ? '' : ' ekskl. moms'}</dd></div>
+        ${complimentary && plan ? html`<div><dt>Normalpris for ${plan.name}</dt><dd>${formatKr(plan.amount)} /md. · din aftale: 0 kr.</dd></div>` : ''}
         <div><dt>Startdato</dt><dd>${formatDate(sub.started_at)}</dd></div>
-        ${state.cancelPending
+        ${complimentary
+          ? html`<div><dt>Opkrævning</dt><dd>Ingen automatisk opkrævning</dd></div>`
+          : state.cancelPending
           ? html`<div><dt>Abonnementet slutter</dt><dd>${formatDate(state.cancelDate)}</dd></div>
               <div><dt>Næste betaling</dt><dd>Ingen flere betalinger</dd></div>`
           : html`<div><dt>Næste betaling</dt><dd>${formatDate(nextPayment)}</dd></div>
               <div><dt>Beløb</dt><dd>${formatKr(sub.amount)}</dd></div>`}
       </dl>
+      ${complimentary && sub.agreement_note ? html`<p class="small" style="white-space:pre-line">${sub.agreement_note}</p>` : ''}
       ${plan ? html`<ul class="small muted" style="margin:16px 0 0;padding-left:18px">${plan.features.map((f) => html`<li>${f}</li>`)}</ul>` : ''}
     </section>
     <section class="card stack" aria-labelledby="actions-h">
@@ -265,10 +275,14 @@ export function dashboardPage(args: {
           ? html`<a class="btn btn-primary btn-block" href="/konto/plan">Skift plan</a>`
           : ''}
         <a class="btn btn-secondary btn-block" href="/konto/henvendelser">Send ændringsønske${args.openRequests ? ` (${args.openRequests} åbne)` : ''}</a>
-        <a class="btn btn-secondary btn-block" href="/konto/fakturaer">Fakturaer og betalingskort</a>
+        <a class="btn btn-secondary btn-block" href="/konto/fakturaer">${complimentary ? 'Se fakturaer' : 'Fakturaer og betalingskort'}</a>
+        ${website ? html`<a class="btn btn-secondary btn-block" href="${website}" target="_blank" rel="noopener noreferrer">Åbn din hjemmeside</a>` : ''}
+        ${websiteAdmin ? html`<a class="btn btn-secondary btn-block" href="${websiteAdmin}" target="_blank" rel="noopener noreferrer">Administrer din hjemmeside</a>` : ''}
       </div>
       <hr style="border:0;border-top:1px solid var(--line);margin:20px 0 4px">
-      ${state.cancelPending
+      ${complimentary
+        ? html`<p class="small muted">Aftalen kan opsiges pr. e-mail til <a href="mailto:kontakt@veyro.dk">kontakt@veyro.dk</a> med 30 kalenderdages varsel.</p>`
+        : state.cancelPending
         ? html`<p class="small">Dit abonnement stopper ${formatDate(state.cancelDate)}. Fortryder du, kan du fortsætte uden afbrydelse.</p>
             <form method="post" action="/konto/genoptag">${csrfField(args.csrf)}
               <button class="btn btn-primary btn-block" type="submit" data-loading="Genoptager …">Fortsæt abonnementet</button>
@@ -377,9 +391,9 @@ const INVOICE_STATUS: Record<string, { label: string; cls: string }> = {
   uncollectible: { label: 'Ikke betalt', cls: 'b-err' },
 };
 
-export function invoicesPage(args: { csrf: string; invoices: StripeInvoice[] | null; hasStripeCustomer: boolean; flashKey?: string }): H {
+export function invoicesPage(args: { csrf: string; invoices: StripeInvoice[] | null; hasStripeCustomer: boolean; complimentary?: boolean; flashKey?: string }): H {
   return html`<div class="stack-lg">
-  <div><h1>Fakturaer og betaling</h1><p class="lead">Se og download dine fakturaer, og opdater det betalingskort, der trækkes fra.</p></div>
+  <div><h1>Fakturaer og betaling</h1><p class="lead">${args.complimentary ? 'Din nuværende aftale koster 0 kr. Her kan du se eventuelle tidligere fakturaer.' : 'Se og download dine fakturaer, og opdater det betalingskort, der trækkes fra.'}</p></div>
   ${flash(args.flashKey)}
   <section class="card" aria-labelledby="inv-h">
     <h2 id="inv-h">Fakturaer</h2>
@@ -405,7 +419,7 @@ export function invoicesPage(args: { csrf: string; invoices: StripeInvoice[] | n
             </tr>`;
           })}</tbody></table></div>`}
   </section>
-  <section class="card stack" id="kort" aria-labelledby="card-h">
+  ${args.complimentary ? html`<section class="card"><h2>Din aftale</h2><p>${COMPLIMENTARY_NOTICE}</p><p>Du skal ikke tilføje et betalingskort.</p></section>` : html`<section class="card stack" id="kort" aria-labelledby="card-h">
     <h2 id="card-h">Betalingskort</h2>
     <p class="muted">Kortoplysninger håndteres sikkert af Stripe og gemmes aldrig hos Veyro. Du sendes til Stripe for at opdatere kortet og kommer tilbage hertil bagefter.</p>
     ${args.hasStripeCustomer
@@ -419,7 +433,7 @@ export function invoicesPage(args: { csrf: string; invoices: StripeInvoice[] | n
           <p class="small muted">I Stripes kundeportal kan du også hente alle fakturaer og kvitteringer.</p>
         </form>`
       : html`<p class="small muted">Der er endnu ikke tilknyttet et betalingskort til din konto.</p>`}
-  </section>
+  </section>`}
 </div>`;
 }
 

@@ -13,6 +13,8 @@ export interface LayoutOpts {
   isAdmin?: boolean;
   /** Vis kunde-navigation (kun når brugeren er kunde) */
   customerNav?: boolean;
+  /** Gratis særaftaler har ikke selvbetjent planskift eller kortopsætning. */
+  complimentaryNav?: boolean;
   /** Kun konti med planer fra den tidligere værktøjsløsning. */
   legacyToolsNav?: boolean;
   adminNav?: boolean;
@@ -56,8 +58,8 @@ export function layout(opts: LayoutOpts, body: H): H {
     navItems = [
       navLink('/konto', 'Overblik', opts.nav === 'overblik'),
       navLink('/logistik/', 'Logistikberegner', false),
-      navLink('/konto/plan', 'Skift plan', opts.nav === 'plan'),
-      navLink('/konto/fakturaer', 'Fakturaer og betaling', opts.nav === 'fakturaer', 'Fakturaer'),
+      ...(opts.complimentaryNav ? [] : [navLink('/konto/plan', 'Skift plan', opts.nav === 'plan')]),
+      navLink('/konto/fakturaer', opts.complimentaryNav ? 'Fakturaer' : 'Fakturaer og betaling', opts.nav === 'fakturaer', 'Fakturaer'),
       navLink('/konto/henvendelser', 'Ændringsønsker og support', opts.nav === 'henvendelser', 'Support'),
     ];
     if (opts.legacyToolsNav) navItems.push(navLink('/tools/legacy?lang=da', 'Tidligere gemte planer', false));
