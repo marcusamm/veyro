@@ -1,6 +1,6 @@
 # AJ Auto · billedmateriale
 
-Det officielle logo er kundens uændrede PNG i `public/aj/logo.png`. Luft omkring logoet beskæres kun i CSS. Der er ikke genereret et nyt kundelogo.
+Det officielle logo er kundens uændrede PNG i `public/aj/logo.png`. Header og footer bruger en lys variant via CSS (invert/hue-rotate og screen-blending), så den hvide billedbaggrund ikke fremstår som en boks. Originalfilen er bevaret, og hele mærket vises med luft omkring. Der er ikke genereret et nyt kundelogo.
 
 Nye fotoillustrationer er genereret med den indbyggede imagegen-funktion og JPEG-komprimeret til web. Ingen personer, kundelokaler, bilmodeller til salg eller konkrete olieprodukter dokumenteres af dem.
 
