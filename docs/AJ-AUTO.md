@@ -4,7 +4,7 @@ AJ Auto bruger den eksisterende Veyro Worker, Hono, D1 og Resend. Domænet `aj.v
 
 ## Leverance
 
-Fem offentlige sider: forside, ydelser, om os, booking og kontakt. Originalt kundelogo ligger i `public/aj/logo.png` og anvendes uændret; billedets luft beskæres kun i CSS. Designets sort/hvid/lilla er afledt af logoet. Hjulillustration og kurver er illustrationer, ikke kundebilleder eller dokumentation for billager. Ingen abonnementspris eller Veyro-leverancevilkår vises offentligt.
+Fem offentlige sider: forside, ydelser, om os, booking og kontakt. Originalt kundelogo ligger i `public/aj/logo.png` og anvendes uændret; billedets luft beskæres kun i CSS. Designets sort/hvid/lilla er afledt af logoet. Layoutet er inspireret af https://automod.qc.ca/: mørk billedforside, let stor typografi, tydelig bookingboks, lyse ydelsessektioner og en mørk præsentation. Bil- og oliebilleder er AI-genererede illustrationer, ikke kundebilleder eller dokumentation for billager. Bilen markeres som illustrationsfoto. Hjulillustrationen er oprindelig SVG. Se `AJ-AUTO-ASSETS.md` for billeder og prompts. Ingen abonnementspris eller Veyro-leverancevilkår vises offentligt.
 
 Booking har vedvarende lagring, valg af ydelse/tid/kalender, oplysninger, gennemgang og bekræftelse. Kunden får et 256-bit personligt link til at flytte eller aflyse. Administration på `/admin` har login via engangslink, aftaleoversigt, månedskalender, ydelser, varigheder, ugentlige bookingintervaller, blokeringer, op til tre aktive personer inklusive ejer, kontaktindbakke, mailstatus/genforsøg og redigerbar kampagne.
 
