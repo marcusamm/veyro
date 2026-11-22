@@ -115,9 +115,16 @@ export function home(bookingReady: boolean): string {
       </div>
     </article>
     <article class="service-row">
+      <h3>Service og reparation</h3>
+      <div class="service-row-copy">
+        <p>Vi laver serviceeftersyn, reparationer, motorarbejde og fejlfinding. Skal bilen til syn, kan vi også gøre den klar.</p>
+        <a class="text-link" href="/ydelser#vaerksted">Se værkstedsydelser</a>
+      </div>
+    </article>
+    <article class="service-row">
       <h3>Køb, salg og bytte</h3>
       <div class="service-row-copy">
-        <p>Vil du sælge din bil eller lade den indgå i en byttehandel? Ring og fortæl, hvilken bil du har.</p>
+        <p>Leder du efter en bil? Vi sælger biler og hjælper dig med at finde en, der passer til din hverdag. Du kan også sælge eller bytte din bil hos os.</p>
         <a class="text-link" href="/ydelser#bilhandel">Læs om bilhandel</a>
       </div>
     </article>
@@ -137,9 +144,10 @@ export function services(bookingReady: boolean): string {
   return `
 <div class="container services-page">
   <header class="page-heading services-intro">
-    <h1>Olieskift og bilhandel</h1>
+    <h1>Værksted og bilhandel</h1>
     <nav class="service-index" aria-label="Ydelser på siden">
       <a href="#olieskift">Olieskift</a>
+      <a href="#vaerksted">Service og reparation</a>
       <a href="#bilhandel">Køb, salg og bytte</a>
     </nav>
   </header>
@@ -151,11 +159,24 @@ export function services(bookingReady: boolean): string {
       ${visitActions(bookingReady, 'service-actions')}
     </div>
   </section>
+  <section class="service-detail" id="vaerksted" aria-labelledby="workshop-title">
+    <div class="service-detail-title"><h2 id="workshop-title">Service og reparation</h2></div>
+    <div class="service-detail-body">
+      <dl class="workshop-services">
+        <dt>Serviceeftersyn</dt><dd>Er det tid til service? Ring med bilens model og kilometerstand, så aftaler vi, hvad den skal have lavet.</dd>
+        <dt>Reparationer</dt><dd>Fortæl os, hvad der er gået i stykker, eller hvad du mærker, når du kører.</dd>
+        <dt>Motorarbejde</dt><dd>Vi hjælper med reparation af motoren. Ring og fortæl, hvilken bil og motor det drejer sig om.</dd>
+        <dt>Fejlfinding</dt><dd>Lyser en advarselslampe, eller lyder bilen anderledes? Vi undersøger, hvor fejlen ligger.</dd>
+        <dt>Klargøring til syn</dt><dd>Vi gennemgår bilen inden syn og taler med dig om det, der skal udbedres.</dd>
+      </dl>
+      <a class="text-link" href="${AJ_TELEPHONE}">Ring og aftal tid på ${AJ_PHONE}</a>
+    </div>
+  </section>
   <section class="service-detail" id="bilhandel" aria-labelledby="trade-title">
     <div class="service-detail-title"><h2 id="trade-title">Køb, salg og bytte</h2></div>
     <div class="service-detail-body">
       <p>Vil du sælge din bil eller lade den indgå i en byttehandel? Ring og fortæl, hvilken bil du har.</p>
-      <p>Du kan også kontakte os, hvis du søger en anden bil.</p>
+      <p>Hvis du vil købe en bil, hjælper vi dig med at finde en, der passer til dit behov og budget.</p>
       <a class="text-link" href="/kontakt">Kontakt os om bilhandel</a>
     </div>
   </section>
@@ -168,9 +189,9 @@ export function about(bookingReady: boolean): string {
   <header class="page-heading about-heading"><h1>Vi er AJ Auto</h1></header>
   <div class="about-layout">
     <div class="about-copy">
-      <p class="lead">Vi holder til på Sorøvej i Slagelse.</p>
-      <p>Hos os kan du få skiftet motorolie og oliefilter. Vi beskæftiger os også med køb, salg og bytte af biler.</p>
-      <p>Vil du aftale et olieskift eller tale om bilhandel? Ring og fortæl os om din bil.</p>
+      <p class="lead">Du finder vores autoværksted i kælderen på Sorøvej 5 i Slagelse.</p>
+      <p>Her laver vi olieskift, serviceeftersyn og reparationer. Kører bilen ujævnt, eller skal den snart til syn, så ring og fortæl os om den.</p>
+      <p>Vi køber, sælger og bytter også biler. Leder du efter en anden bil, hjælper vi dig med at finde en, der passer til din hverdag.</p>
       ${visitActions(bookingReady, 'about-contact')}
     </div>
     <aside class="about-address" aria-label="Adresse og Instagram">
@@ -245,6 +266,7 @@ export function booking(bookingReady: boolean): string {
     </div>
     <div class="booking-meta">
       <address>AJ Auto · ${AJ_ADDRESS}</address>
+      <p>Skal bilen til service eller reparation? <a href="${AJ_TELEPHONE}">Ring på ${AJ_PHONE} og aftal en tid</a>.</p>
       <p>Mandag–fredag kl. 09.00–16.00. <a href="${AJ_TELEPHONE}">Ring for en tid i weekenden</a>.</p>
     </div>
   </div>
