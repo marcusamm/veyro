@@ -153,6 +153,9 @@ button:disabled { cursor: default; opacity: .55; }
 }
 .service-detail { padding-block: clamp(36px, 4.6vw, 72px); border-top: 1px solid var(--line); scroll-margin-top: 20px; }
 .service-detail-body > * + *, .about-copy > * + *, .form-panel > * + * { margin-top: 18px; }
+.workshop-services dt { font-weight: 700; font-size: 1.12rem; }
+.workshop-services dt:not(:first-child) { margin-top: 22px; }
+.workshop-services dd { margin-top: 4px; max-width: 52ch; color: var(--muted); }
 .about-layout { margin-top: clamp(30px, 4vw, 68px); }
 .about-address { border-left: 3px solid var(--ink); padding-left: clamp(20px, 3vw, 52px); }
 .about-address address, .contact-address address { font-size: clamp(1.45rem, 2.6vw, 2.8rem); line-height: 1.2; font-weight: 600; letter-spacing: -.035em; }
