@@ -86,7 +86,7 @@ export function shell(path: string, title: string, description: string, body: st
         <a href="/kontakt#personoplysninger">Personoplysninger</a>
         <a href="/admin">Værkstedets login</a>
       </nav>
-      <p class="footer-meta">© ${new Date().getFullYear()} AJ Auto</p>
+      <p class="footer-meta">© ${new Date().getFullYear()} AJ Auto <small>Udviklet af <a href="https://veyro.dk/">Veyro</a></small></p>
     </div>
   </footer>
 </body>
