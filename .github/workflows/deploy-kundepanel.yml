@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['migrations/**', 'public/logistik/**', 'public/logistics-site/**', 'src/logistics-site.ts', 'wrangler.toml']
+    paths: ['src/aj/**', 'public/aj/**', 'migrations/**', 'public/logistik/**', 'public/logistics-site/**', 'src/logistics-site.ts', 'wrangler.toml']
 
 concurrency:
   group: deploy-kundepanel
@@ -66,6 +66,10 @@ jobs:
             done
             echo "::error::$1 svarede ikke $2"; return 1
           }
+          check https://aj.veyro.dk/ 200
+          check https://aj.veyro.dk/booking 200
+          check https://aj.veyro.dk/api/config 200
+          check https://aj.veyro.dk/api/admin/data 401
           check https://kunde.veyro.dk/login 200
           check https://kunde.veyro.dk/logistik/ 200
           check https://kunde.veyro.dk/logistik/login 200
