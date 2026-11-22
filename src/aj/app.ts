@@ -63,12 +63,12 @@ async function render(c: Context<AppEnv>, page: Page, status: 200 | 404 = 200) {
 const pages: Record<string, Page> = {
   '/': {
     title: 'Olieskift og bilhandel i Slagelse | AJ Auto',
-    description: 'AJ Auto på Sorøvej 5kl i Slagelse. Vi skifter motorolie og oliefilter og køber, sælger og bytter biler. Ring på 60 64 41 43.',
+    description: 'Autoværksted og bilhandel på Sorøvej i Slagelse. Vi tilbyder olieskift, serviceeftersyn, reparationer, fejlfinding og klargøring til syn.',
     content: home,
   },
   '/ydelser': {
-    title: 'Olieskift, køb, salg og bytte af bil | AJ Auto',
-    description: 'Se, hvad et olieskift omfatter, og tal med os om køb, salg eller bytte af din bil.',
+    title: 'Værkstedsydelser og bilhandel i Slagelse | AJ Auto',
+    description: 'Få olieskift, serviceeftersyn, reparationer, motorarbejde, fejlfinding og klargøring til syn hos AJ Auto. Vi køber, sælger og bytter også biler.',
     content: services,
   },
   '/om-os': {
