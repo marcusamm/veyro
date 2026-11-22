@@ -1,12 +1,12 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import type { AppEnv, Env } from '../env';
-import { INTER_TIGHT_WOFF2 } from '../views/brand';
+import { getSettings, readiness } from './store';
 import api from './api';
 import { adminPage, adminCss, adminJs } from './admin-view';
 import { js } from './client';
 import { css } from './styles';
-import { shell, home, services, about, booking, contact, manage, favicon } from './views';
+import { shell, home, services, about, booking, contact, manage } from './views';
 
 export function isAjRequest(req: Request, env: Env): boolean {
   const host = new URL(req.url).hostname.toLowerCase();
@@ -31,22 +31,94 @@ app.get('/aj.css', c => c.body(css, 200, { 'Content-Type': 'text/css; charset=ut
 app.get('/aj.js', c => c.body(js, 200, { 'Content-Type': 'text/javascript; charset=utf-8' }));
 app.get('/aj-admin.css', c => c.body(adminCss, 200, { 'Content-Type': 'text/css; charset=utf-8' }));
 app.get('/aj-admin.js', c => c.body(adminJs, 200, { 'Content-Type': 'text/javascript; charset=utf-8' }));
-app.get('/aj-font.woff2', c => c.body(INTER_TIGHT_WOFF2, 200, { 'Content-Type': 'font/woff2' }));
-app.get('/aj-hero.jpg', c => c.env.ASSETS ? c.env.ASSETS.fetch(new Request(new URL('/aj/hero-car.jpg', c.req.url), c.req.raw)) : c.notFound());
-app.get('/aj-oil.jpg', c => c.env.ASSETS ? c.env.ASSETS.fetch(new Request(new URL('/aj/oil-service.jpg', c.req.url), c.req.raw)) : c.notFound());
 app.get('/aj-logo.png', c => c.env.ASSETS ? c.env.ASSETS.fetch(new Request(new URL('/aj/logo.png', c.req.url), c.req.raw)) : c.notFound());
-app.get('/favicon.svg', c => c.body(favicon, 200, { 'Content-Type': 'image/svg+xml' }));
-app.get('/favicon.ico', c => c.redirect('/favicon.svg', 301));
+app.get('/favicon.svg', c => c.redirect('/aj-logo.png', 301));
+app.get('/favicon.ico', c => c.redirect('/aj-logo.png', 301));
 app.route('/api', api);
-app.get('/', c => c.html(shell('/', 'AJ Auto i Slagelse | Olieskift, køb, salg & bytte', 'Kontakt AJ Auto på Sorøvej i Slagelse om olieskift, køb, salg og bytte. Ring 60 64 41 43, eller book en ledig tid online.', home)));
-app.get('/ydelser', c => c.html(shell('/ydelser', 'Olieskift og bilhandel i Slagelse | AJ Auto', 'Læs om olieskift med motorolie og oliefilter samt køb, salg og bytte hos AJ Auto i Slagelse. Kontakt os om din bil.', services)));
-app.get('/om-os', c => c.html(shell('/om-os', 'Om AJ Auto | Køb, salg & bytte i Slagelse', 'AJ Auto holder til på Sorøvej 5kl i Slagelse. Kontakt os om olieskift eller mulighederne for køb, salg og bytte af bil.', about)));
-app.get('/booking', c => c.html(shell('/booking', 'Book tid hos AJ Auto | Slagelse', 'Vælg ydelse og en ledig tid hos AJ Auto i Slagelse. Se og administrer din aftale via dit personlige bookinglink.', booking)));
-app.get('/booking/aftale', c => c.html(shell('/booking/aftale', 'Din aftale | AJ Auto', 'Se, flyt eller aflys din aftale hos AJ Auto.', manage, { noindex: true })));
-app.get('/kontakt', c => c.html(shell('/kontakt', 'Kontakt AJ Auto | 60 64 41 43 · Slagelse', 'Ring til AJ Auto på 60 64 41 43. Find os på Sorøvej 5kl i Slagelse, få rutevejledning, eller send en besked.', contact)));
-app.get('/admin', c => c.html(shell('/admin', 'Værkstedets administration | AJ Auto', 'Beskyttet administration af aftaler og booking hos AJ Auto.', adminPage(), { admin: true, noindex: true })));
+// Render the action with the page so it works before JavaScript loads.
+async function canBook(env: Env): Promise<boolean> {
+  try {
+    const settings = await getSettings(env.DB);
+    return settings.bookingEnabled && (await readiness(env, settings)).ready;
+  } catch {
+    // Customers can still reach the workshop while the calendar is unavailable.
+    return false;
+  }
+}
+
+type Page = {
+  title: string;
+  description: string;
+  content: (bookingReady: boolean) => string;
+  noindex?: boolean;
+  admin?: boolean;
+};
+
+async function render(c: Context<AppEnv>, page: Page, status: 200 | 404 = 200) {
+  const bookingReady = await canBook(c.env);
+  const options = { bookingReady, noindex: page.noindex, admin: page.admin };
+  return c.html(shell(c.req.path, page.title, page.description, page.content(bookingReady), options), status);
+}
+
+const pages: Record<string, Page> = {
+  '/': {
+    title: 'Olieskift og bilhandel i Slagelse | AJ Auto',
+    description: 'AJ Auto på Sorøvej 5kl i Slagelse. Vi skifter motorolie og oliefilter og køber, sælger og bytter biler. Ring på 60 64 41 43.',
+    content: home,
+  },
+  '/ydelser': {
+    title: 'Olieskift, køb, salg og bytte af bil | AJ Auto',
+    description: 'Se, hvad et olieskift omfatter, og tal med os om køb, salg eller bytte af din bil.',
+    content: services,
+  },
+  '/om-os': {
+    title: 'Om værkstedet på Sorøvej | AJ Auto',
+    description: 'AJ Auto er et lokalt værksted på Sorøvej 5kl i Slagelse. Du kan ringe til os på 60 64 41 43.',
+    content: about,
+  },
+  '/kontakt': {
+    title: 'Kontakt og rutevejledning | AJ Auto',
+    description: 'Ring på 60 64 41 43, find vej til Sorøvej 5kl i Slagelse, eller skriv til AJ Auto.',
+    content: contact,
+  },
+  '/booking': {
+    title: 'Aftal tid til din bil | AJ Auto',
+    description: 'Aftal et besøg hos AJ Auto på Sorøvej 5kl i Slagelse.',
+    content: booking,
+  },
+  '/booking/aftale': {
+    title: 'Din aftale | AJ Auto',
+    description: 'Se tidspunktet, flyt din tid eller aflys din aftale.',
+    content: manage, noindex: true,
+  },
+  '/admin': {
+    title: 'Værkstedets login | AJ Auto',
+    description: 'Log ind for at se værkstedets aftaler, beskeder og kalendere.',
+    content: adminPage, admin: true, noindex: true,
+  },
+};
+
+for (const [path, page] of Object.entries(pages)) {
+  app.get(path, c => render(c, page));
+}
 app.get('/robots.txt', c => c.text(new URL(c.req.url).hostname === 'aj.veyro.dk' ? 'User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /booking/aftale\nSitemap: https://aj.veyro.dk/sitemap.xml\n' : 'User-agent: *\nDisallow: /\n'));
 app.get('/sitemap.xml', c => c.body(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/ydelser', '/om-os', '/booking', '/kontakt'].map(path => `<url><loc>https://aj.veyro.dk${path}</loc></url>`).join('')}</urlset>`, 200, { 'Content-Type': 'application/xml' }));
-app.notFound(c => c.html(shell(c.req.path, 'Siden findes ikke | AJ Auto', 'Find tilbage til AJ Autos hjemmeside.', '<section class="container page-intro"><p class="eyebrow">404</p><h1>Den side kunne<br>vi ikke finde.</h1><a class="button" href="/">Til forsiden ↗</a></section>', { noindex: true }), 404));
-app.onError((_error, c) => c.req.path.startsWith('/api') ? c.json({ error: 'Handlingen kunne ikke gennemføres. Prøv igen, eller ring til AJ Auto på 60 64 41 43.' }, 500) : c.html(shell('/', 'Midlertidig fejl | AJ Auto', 'Kontakt AJ Auto på 60 64 41 43.', '<section class="container page-intro"><h1>Prøv igen<br>om lidt.</h1><p>Vi kunne ikke indlæse siden. Ring til os på <a href="tel:+4560644143">60 64 41 43</a>, hvis du har brug for hjælp.</p></section>', { noindex: true }), 500));
+app.notFound(c => render(c, {
+  title: 'Siden findes ikke | AJ Auto',
+  description: 'Gå til forsiden eller kontakt AJ Auto.',
+  content: () => `<section class="container message-page"><h1>Siden findes ikke</h1>
+    <p>Linket kan være gammelt. Du kan finde vores ydelser og kontaktoplysninger på forsiden.</p>
+    <a class="button" href="/">Gå til forsiden</a></section>`,
+  noindex: true,
+}, 404));
+
+app.onError((_error, c) => {
+  const message = 'Prøv igen om lidt, eller ring på 60 64 41 43.';
+  if (c.req.path.startsWith('/api')) return c.json({ error: message }, 500);
+  return c.html(shell(c.req.path, 'Siden kunne ikke indlæses | AJ Auto', message,
+    `<section class="container message-page"><h1>Siden kunne ikke indlæses</h1>
+     <p>Prøv igen om lidt, eller ring til værkstedet.</p>
+     <a class="button" href="tel:+4560644143">Ring på 60 64 41 43</a></section>`,
+    { noindex: true, bookingReady: false }), 500);
+});
 export default app;

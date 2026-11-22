@@ -6,6 +6,7 @@ import { logError } from './lib/errlog';
 import { csrfMiddleware, sessionMiddleware } from './lib/session';
 import { render } from './render';
 import account from './routes/account';
+import bookingCalendar from './routes/booking-calendar';
 import admin from './routes/admin';
 import auth from './routes/auth';
 import tools from './routes/tools';
@@ -130,6 +131,7 @@ app.route('/', pub);
 app.route('/', auth);
 app.route('/', card);
 app.route('/', offer);
+app.route('/konto/kalender', bookingCalendar);
 app.route('/konto', account);
 app.get('/fuldmagter/opbevaring', policyPage);
 // Kassen før resten af admin: medarbejdere med en rolle i kassen skal kunne bruge den uden ADMIN_EMAILS

@@ -3,7 +3,7 @@ import { brandMark } from './brand-mark';
 
 export type H = ReturnType<typeof html>;
 
-export type NavKey = 'overblik' | 'aftaler' | 'fuldmagter' | 'admin-fuldmagter' | 'admin-nda' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer' | 'admin-abonnementer' | 'admin-tilbud' | 'admin-hjemmeside' | 'admin-forespoergsler' | 'admin-statistik' | 'admin-besoegende' | 'admin-kasse' | 'admin-kundeemner';
+export type NavKey = 'overblik' | 'kalender' | 'aftaler' | 'fuldmagter' | 'admin-fuldmagter' | 'admin-nda' | 'plan' | 'fakturaer' | 'henvendelser' | 'admin' | 'admin-kunder' | 'admin-henvendelser' | 'admin-fakturaer' | 'admin-abonnementer' | 'admin-tilbud' | 'admin-hjemmeside' | 'admin-forespoergsler' | 'admin-statistik' | 'admin-besoegende' | 'admin-kasse' | 'admin-kundeemner';
 
 export interface LayoutOpts {
   title: string;
@@ -13,6 +13,8 @@ export interface LayoutOpts {
   isAdmin?: boolean;
   /** Vis kunde-navigation (kun når brugeren er kunde) */
   customerNav?: boolean;
+  /** Verified booking workspace membership and a current valid customer contract. */
+  bookingCalendarNav?: boolean;
   /** Gratis særaftaler har ikke selvbetjent planskift eller kortopsætning. */
   complimentaryNav?: boolean;
   /** Kun konti med planer fra den tidligere værktøjsløsning. */
@@ -57,6 +59,7 @@ export function layout(opts: LayoutOpts, body: H): H {
   } else if (opts.customerNav) {
     navItems = [
       navLink('/konto', 'Overblik', opts.nav === 'overblik'),
+      ...(opts.bookingCalendarNav ? [navLink('/konto/kalender', 'Kalender', opts.nav === 'kalender')] : []),
       navLink('/logistik/', 'Logistikberegner', false),
       ...(opts.complimentaryNav ? [] : [navLink('/konto/plan', 'Skift plan', opts.nav === 'plan')]),
       navLink('/konto/fakturaer', opts.complimentaryNav ? 'Fakturaer' : 'Fakturaer og betaling', opts.nav === 'fakturaer', 'Fakturaer'),

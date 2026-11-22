@@ -4,6 +4,7 @@ import type { AppEnv } from './env';
 import { getCurrentSubscription, getCustomerByEmail } from './lib/db';
 import { isComplimentary } from './lib/customer-agreement';
 import { isAdmin } from './lib/session';
+import { getBookingCalendarAccessForCustomer } from './lib/booking-calendar';
 import { agreementsAccess } from './routes/aftaler';
 import { layout, type H, type NavKey } from './views/layout';
 
@@ -20,7 +21,9 @@ export async function render(
     isCustomer = !!(await getCustomerByEmail(c.env.DB, session.email));
   }
   const customer = session && isCustomer && !opts.admin ? await getCustomerByEmail(c.env.DB, session.email) : null;
-  const complimentaryNav = !!customer && isComplimentary(await getCurrentSubscription(c.env.DB, customer.id));
+  const currentSubscription = customer ? await getCurrentSubscription(c.env.DB, customer.id) : null;
+  const complimentaryNav = isComplimentary(currentSubscription);
+  const bookingCalendarNav = !!customer && !!(await getBookingCalendarAccessForCustomer(c.env.DB, customer, currentSubscription).catch(() => null));
   const agreementsNav = !!session && !!isCustomer && !opts.admin && (await agreementsAccess(c.env, session.email));
   const legacyToolsNav = !!session && !!isCustomer && !opts.admin && !!(await c.env.DB.prepare(
     'SELECT 1 AS found FROM tool_projects p JOIN customers c ON c.id = p.customer_id WHERE c.email = ? LIMIT 1',
@@ -36,6 +39,7 @@ export async function render(
         customerNav: !!session && !!isCustomer && !opts.admin,
         complimentaryNav,
         legacyToolsNav,
+        bookingCalendarNav,
         adminNav: !!opts.admin && admin,
         agreementsNav,
         // Kassens medarbejdere uden for ADMIN_EMAILS ser kun kassen

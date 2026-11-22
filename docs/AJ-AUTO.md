@@ -4,23 +4,25 @@ AJ Auto bruger den eksisterende Veyro Worker, Hono, D1 og Resend. Domænet `aj.v
 
 ## Leverance
 
-Fem offentlige sider: forside, ydelser, om os, booking og kontakt. Originalt kundelogo ligger i `public/aj/logo.png` og anvendes uændret; logoet vises som en lys CSS-tonet variant direkte på mørke flader med luft omkring mærket. Designets sort/hvid/lilla er afledt af logoet. Layoutet er inspireret af https://automod.qc.ca/: mørk billedforside, let stor typografi, tydelig bookingboks, lyse ydelsessektioner og en mørk præsentation. Bil- og oliebilleder er AI-genererede illustrationer, ikke kundebilleder eller dokumentation for billager. Bilen markeres som illustrationsfoto. Se `AJ-AUTO-ASSETS.md` for billeder og prompts. Ingen abonnementspris eller Veyro-leverancevilkår vises offentligt.
+Forside, ydelser, om os, booking og kontakt bruger AJ Autos originale logo på hvid baggrund. Siderne er udformet uden fotos. Den primære handling følger kalenderens bookingstatus, også når JavaScript er slået fra.
 
 Booking har vedvarende lagring, valg af ydelse/tid/kalender, oplysninger, gennemgang og bekræftelse. Kunden får et 256-bit personligt link til at flytte eller aflyse. Administration på `/admin` har login via engangslink, aftaleoversigt, månedskalender, ydelser, varigheder, ugentlige bookingintervaller, blokeringer, op til tre aktive personer inklusive ejer, kontaktindbakke, mailstatus/genforsøg og redigerbar kampagne.
 
-Kalenderkoblingen er et revokerbart ICS-abonnement. Den viser aftaler og aflysninger i en kalenderapp; ændringer foretages altid i bookingsystemet. Kalenderappens eget opdateringsinterval gælder. Der er ingen tovejssynkronisering, SMS, påmindelser, betaling, webshop eller chatbot.
+I Veyros kundepanel viser `/konto/kalender` måned og dagsaftaler for den indloggede bookingkunde. Adgang kræver en aktiv eller prøveaftale og en aktiv bruger i det tilknyttede bookingsystem. Ejeren ser værkstedets kalendere. En medarbejder ser sin egen.
+
+Kalenderkoblingen til eksterne kalenderapps er et revokerbart ICS-abonnement. Den viser aftaler og aflysninger i en kalenderapp; ændringer foretages altid i bookingsystemet. Kalenderappens eget opdateringsinterval gælder. Der er ingen tovejssynkronisering, SMS, påmindelser, betaling, webshop eller chatbot.
 
 ## Kundeoplysninger før aktivering
 
-Brugeren har udtrykkeligt udskudt e-mails. Startdata indeholder derfor ingen medarbejdere, e-mailmodtagere, bookingtider eller behandlingsvarighed. Olieskift er oprettet inaktivt. Onlinebooking er lukket, og besøgende henvises til 60 64 41 43.
+AJ Auto har bekræftet 45 minutter til olieskift og én kalender mandag–fredag kl. 09.00–16.00 i dansk tid. Sidste start er 15.15. Lørdag og søndag er efter aftale på telefon. Migration 0022 åbner den eksisterende ejerkalender på disse betingelser. På en ny installation uden ejer er booking lukket. Værkstedets modtagermail kan tilføjes senere.
 
 I `/admin` skal ejer/Veyro indtaste:
 
-1. Bekræftet modtagermail til værkstedet.
-2. Navn og loginmail for højst tre personer inklusive ejeren; roller ejer/medarbejder.
-3. Bekræftet varighed for olieskift og eventuelle yderligere bekræftede ydelser.
-4. Bekræftede bookingintervaller for hver kalender og eventuelle fridage/pauser.
-5. Aktivering af onlinebooking, når ovenstående er på plads.
+1. Aktiv medarbejder med bekræftet login, højst tre inklusive ejer.
+2. Bekræftet varighed på den aktive ydelse.
+3. De ugedage og tidsrum, hvor kunder må booke, og eventuelle pauser.
+4. Aktivering af onlinebooking.
+5. Værkstedets modtagermail kan tilføjes senere. Kundens bekræftelse sendes via Resend, mens værkstedets kopi venter i køen, indtil adressen er sat op.
 6. Kun hvis kunden bekræfter det: kampagnens pris, indhold og udløbsdato, plus de separate bekræftelses- og visningsfelter. Den kendte pris på 900 kr. er gemt som kladde og aldrig en dokumenteret fast pris. Kampagnen skjules automatisk efter dansk udløbsdato.
 
 Kontaktformularen gemmer beskeder allerede før mailbox-konfiguration. Den siger udtrykkeligt, når e-mail endnu ikke er tilkoblet, og henviser til telefon. De gemte beskeder findes i admin. Udskudte notifikationer kan sendes efter opsætning; de fremstilles aldrig som afsendte, før mailudbyderen har accepteret dem.
