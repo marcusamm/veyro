@@ -131,7 +131,8 @@ button:disabled { cursor: default; opacity: .55; }
 .contact-page .opening-hours { margin-bottom: 30px; }
 .location-address { font-size: clamp(1.45rem, 2.7vw, 2.7rem); font-weight: 650; letter-spacing: -.035em; }
 .site-footer { border-top: 1px solid var(--line); padding-block: 28px; font-size: .91rem; }
-.footer-inner, .footer-links, .footer-meta { display: flex; gap: 12px 25px; align-items: center; flex-wrap: wrap; }
+.footer-inner, .footer-links { display: flex; gap: 12px 25px; align-items: center; flex-wrap: wrap; }
+.footer-meta small { display: block; color: var(--muted); font-size: .8125rem; }
 .footer-name { font-weight: 700; }
 .footer-links { margin-left: auto; }
 .site-footer a { color: var(--muted); }
