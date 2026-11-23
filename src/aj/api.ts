@@ -48,6 +48,7 @@ function origin(c:C){return ajOrigin(c.env,new URL(c.req.url).origin);}
 function cookieName(c:C){return new URL(c.req.url).protocol==='https:'?'__Host-aj_session':'aj_session';}
 const sessionSeconds=12*3600;
 async function identity(c:C,value:string):Promise<AjUser|null>{
+  if(!normalizeEmail(value))return null;
   const staff=await c.env.DB.prepare('SELECT id,email,role FROM aj_staff WHERE email=? COLLATE NOCASE AND active=1').bind(value).first<{id:number;email:string;role:'owner'|'staff'}>();
   if(staff)return{email:staff.email,role:staff.role,staffId:staff.id};
   return parseAdminEmails(c.env).has(value)?{email:value,role:'operator',staffId:null}:null;
@@ -184,8 +185,10 @@ api.post('/admin/services',async c=>{
 api.post('/admin/staff',async c=>{
   const u=await requireUser(c,true),b=await body(c),staffId=b.id?id(b.id):null;
   const current=staffId?(await getStaff(c.env.DB)).find(s=>s.id===staffId):null;if(staffId&&!current)throw new AjError('Medarbejderen findes ikke.',404);
-  const name=b.name===undefined&&current?current.name:str(b.name,100,true),address=b.email===undefined&&current?current.email:email(b.email);
+  const name=b.name===undefined&&current?current.name:str(b.name,100,true);
   const role=b.role===undefined&&current?current.role:b.role;if(role!=='owner'&&role!=='staff')throw new AjError('Vælg ejer eller medarbejder.');
+  const suppliedEmail=b.email===undefined?current?.email:b.email;
+  const address=current?.email===''&&role==='staff'&&suppliedEmail===''?'':email(suppliedEmail);
   const active=bool(b.active,current?.active??true);
   if(u.staffId===staffId&&!active)throw new AjError('Du kan ikke deaktivere din egen adgang.');
   const row=staffId?await c.env.DB.prepare('UPDATE aj_staff SET name=?,email=?,role=?,active=?,calendar_token_hash=CASE WHEN active<>? OR email<>? THEN NULL ELSE calendar_token_hash END WHERE id=? RETURNING id').bind(name,address,role,active?1:0,active?1:0,address,staffId).first<{id:number}>():await c.env.DB.prepare('INSERT INTO aj_staff(name,email,role,active) VALUES(?,?,?,?) RETURNING id').bind(name,address,role,active?1:0).first<{id:number}>();
