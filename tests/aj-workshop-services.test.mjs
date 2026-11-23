@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { ROOT, startStack } from './harness.mjs';
@@ -70,4 +70,51 @@ it('reserves each expected duration and shares busy time across different servic
     expect((await slotsFor(otherService.id))[0].startAt).toBe(result.booking.endAt);
     monday.setUTCDate(monday.getUTCDate() + 7);
   }
+});
+
+it('provisions Milad with independent working hours and allows adding his login email later', async () => {
+  expect((await configuration()).staff).toEqual([{ id: 1, name: 'Testværksted' }]);
+  const ownerToken = randomBytes(32).toString('base64url');
+  const tokenHash = createHash('sha256').update(ownerToken).digest('hex');
+  localSql('--command', `
+    UPDATE aj_staff SET name='Anas Milad Jarada' WHERE id=1;
+    INSERT INTO aj_sessions(token_hash,email,expires_at) VALUES('${tokenHash}','owner@example.test',unixepoch()+3600);
+  `);
+  const migration = 'migrations/0025_aj_milad_calendar.sql';
+  localSql('--file', migration);
+  localSql('--file', migration);
+  const { staff, services } = await configuration();
+  const milad = staff.find(member => member.name === 'Milad Jarda');
+  expect(staff).toHaveLength(2);
+  expect(milad).toBeDefined();
+  const post = (route, data, asOwner = false) => fetch(stack.base + route, {
+    method: 'POST', headers: { Origin: stack.base, 'Content-Type': 'application/json', ...(asOwner ? { Cookie: 'aj_session=' + ownerToken } : {}) },
+    body: JSON.stringify(data),
+  });
+  const adminData = async () => (await fetch(stack.base + '/api/admin/data', { headers: { Cookie: 'aj_session=' + ownerToken } })).json();
+  const admin = await adminData();
+  expect(admin.staff.find(s => s.id === milad.id)).toMatchObject({ email: '', role: 'staff' });
+  const hours = admin.hours.filter(h => h.staffId === milad.id);
+  expect(hours.map(h => h.weekday)).toEqual([1, 2, 3, 4, 5]);
+  expect(hours.every(h => h.startTime === '09:00' && h.endTime === '16:00')).toBe(true);
+  expect((await post('/api/admin/login', { email: '' })).status).toBe(400);
+  expect((await post('/api/admin/staff', { id: milad.id, email: '', active: true }, true)).status).toBe(200);
+
+  const monday = new Date();
+  monday.setUTCDate(monday.getUTCDate() + 70 + (8 - monday.getUTCDay()) % 7);
+  const service = services.find(s => s.name === 'Fuld service');
+  const url = `${stack.base}/api/slots?serviceId=${service.id}&date=${monday.toISOString().slice(0, 10)}`;
+  const slots = async () => (await (await fetch(url)).json()).slots;
+  const initial = await slots();
+  const startAt = initial[0].startAt;
+  expect(initial.filter(s => s.startAt === startAt).map(s => s.staffId)).toEqual([1, milad.id]);
+  const booking = { serviceId: service.id, startAt, name: 'Test', email: 'customer@example.test', phone: '12345678' };
+  expect((await post('/api/bookings', { ...booking, staffId: 1 })).status).toBe(201);
+  expect((await slots()).filter(s => s.startAt === startAt).map(s => s.staffId)).toEqual([milad.id]);
+  expect((await post('/api/bookings', { ...booking, staffId: milad.id })).status).toBe(201);
+  expect((await slots()).some(s => s.startAt === startAt)).toBe(false);
+  const update = await post('/api/admin/staff', { id: milad.id, email: 'mechanic@example.test' }, true);
+  expect(update.status).toBe(200);
+  expect((await update.json()).staff).toMatchObject({ id: milad.id, name: milad.name, email: 'mechanic@example.test' });
+  expect((await adminData()).bookings.find(b => b.staffId === milad.id).staffName).toBe(milad.name);
 });

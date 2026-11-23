@@ -186,13 +186,15 @@ export function services(bookingReady: boolean): string {
 </div>`;
 }
 
-export function about(bookingReady: boolean): string {
+export function about(bookingReady: boolean, mechanics: string[] = []): string {
+  const names = new Intl.ListFormat('da-DK', { type: 'conjunction' }).format(mechanics);
   return `
 <section class="container about-page">
   <header class="page-heading about-heading"><h1>Vi er AJ Auto</h1></header>
   <div class="about-layout">
     <div class="about-copy">
       <p class="lead">Du finder vores autoværksted i kælderen på Sorøvej 5 i Slagelse.</p>
+      ${names ? `<p>På værkstedet møder du ${esc(names)}.</p>` : ''}
       <p>Her laver vi olieskift, serviceeftersyn og reparationer. Kører bilen ujævnt, eller skal den snart til syn, så ring og fortæl os om den.</p>
       <p>Vi køber, sælger og bytter også biler. Leder du efter en anden bil, hjælper vi dig med at finde en, der passer til din hverdag.</p>
       ${visitActions(bookingReady, 'about-contact')}

@@ -1,6 +1,6 @@
 import { Hono, type Context } from 'hono';
 import type { AppEnv, Env } from '../env';
-import { getSettings, readiness } from './store';
+import { getSettings, getStaff, readiness } from './store';
 import api from './api';
 import { adminPage, adminCss, adminJs } from './admin-view';
 import { js } from './client';
@@ -70,11 +70,6 @@ const pages: Record<string, Page> = {
     description: 'Få olieskift, serviceeftersyn, reparationer, motorarbejde, fejlfinding og klargøring til syn hos AJ Auto. Vi køber, sælger og bytter også biler.',
     content: services,
   },
-  '/om-os': {
-    title: 'Om værkstedet på Sorøvej | AJ Auto',
-    description: 'AJ Auto er et lokalt værksted på Sorøvej 5kl i Slagelse. Du kan ringe til os på 60 64 41 43.',
-    content: about,
-  },
   '/kontakt': {
     title: 'Kontakt og rutevejledning | AJ Auto',
     description: 'Ring på 60 64 41 43, find vej til Sorøvej 5kl i Slagelse, eller skriv til AJ Auto.',
@@ -100,6 +95,14 @@ const pages: Record<string, Page> = {
 for (const [path, page] of Object.entries(pages)) {
   app.get(path, c => render(c, page));
 }
+app.get('/om-os', async c => {
+  const staff = await getStaff(c.env.DB).catch(() => []);
+  return render(c, {
+    title: 'Om værkstedet på Sorøvej | AJ Auto',
+    description: 'Mød mekanikerne hos AJ Auto på Sorøvej 5kl i Slagelse.',
+    content: ready => about(ready, staff.filter(member => member.active).map(member => member.name)),
+  });
+});
 app.get(carListPath, async c => {
   const pageNumber = Number(c.req.query('side') ?? '1');
   if (!Number.isSafeInteger(pageNumber) || pageNumber < 1 || pageNumber > 1_000_000) return c.notFound();

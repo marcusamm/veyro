@@ -197,7 +197,7 @@ export const js = String.raw`
             ['Ydelse', b.serviceName || b.service?.name],
             ['Starttid', dateText(b.startAt) + ' kl. ' + timeText(b.startAt) + ' (dansk tid)'],
             ['Forventet varighed', Number.isFinite(minutes) && minutes > 0 ? minutes + ' minutter' : ''],
-            ['Kalender', b.staffName],
+            ['Mekaniker', b.staffName],
             ['Navn', b.name],
             ['E-mail', b.email],
             ['Telefon', b.phone],
@@ -260,7 +260,7 @@ export const js = String.raw`
                 chooseService();
                 return;
             }
-            const view = render('<h2>Vælg en ledig tid</h2><p class="booking-context">' + esc(state.service.name) + ' · ca. ' + state.service.durationMinutes + ' minutter</p>' + timingNote + (notice ? '<p class="form-status" role="status">' + esc(notice) + '</p>' : '') + '<div class="form-grid"><label>Dato<input id="booking-date" type="date" min="' + today + '" max="' + maxDate + '" value="' + state.date + '" required></label><label>Kalender<select id="booking-staff"><option value="">Alle ledige tider</option>' + cfg.staff.map(s => '<option value="' + s.id + '"' + (String(s.id) === state.staffId ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('') + '</select></label></div><div id="slot-results" aria-live="polite" aria-atomic="true"></div><div class="booking-controls"><button class="back-button" id="back-service" type="button">Tilbage</button><button class="button" id="next-details" type="button" disabled>Fortsæt</button></div>', 1, focus);
+            const view = render('<h2>Vælg en ledig tid</h2><p class="booking-context">' + esc(state.service.name) + ' · ca. ' + state.service.durationMinutes + ' minutter</p>' + timingNote + (notice ? '<p class="form-status" role="status">' + esc(notice) + '</p>' : '') + '<div class="form-grid"><label>Dato<input id="booking-date" type="date" min="' + today + '" max="' + maxDate + '" value="' + state.date + '" required></label><label>Mekaniker<select id="booking-staff"><option value="">Alle mekanikere</option>' + cfg.staff.map(s => '<option value="' + s.id + '"' + (String(s.id) === state.staffId ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('') + '</select></label></div><div id="slot-results" aria-live="polite" aria-atomic="true"></div><div class="booking-controls"><button class="back-button" id="back-service" type="button">Tilbage</button><button class="button" id="next-details" type="button" disabled>Fortsæt</button></div>', 1, focus);
             $('#back-service').onclick = () => chooseService();
             $('#next-details').onclick = details;
             let requestNumber = 0;
