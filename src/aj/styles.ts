@@ -221,6 +221,8 @@ form input:not([type="checkbox"]), form textarea, .booking-panel input, .booking
 }
 textarea { resize: vertical; }
 .fineprint { font-size: .91rem; font-weight: 400; }
+form .field-error { display: block; color: #792f46; font-size: .875rem; font-weight: 500; line-height: 1.4; }
+form :is(input, select, textarea)[aria-invalid="true"] { border-color: #92445c; }
 .honey { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .form-status:not(:empty), .campaign:not([hidden]) { padding: 12px 16px; border-left: 3px solid var(--violet); background: #f4f1fb; }
 .form-status:empty { display: none; }

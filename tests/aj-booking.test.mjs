@@ -80,6 +80,17 @@ function expectSuccess(response) {
   return response.data;
 }
 
+async function expectFieldError(field, message) {
+  expect(await field.getAttribute('aria-invalid')).toBe('true');
+  await expect.poll(() => field.evaluate(input => document.activeElement === input)).toBe(true);
+  const descriptions = await field.evaluate(input =>
+    (input.getAttribute('aria-describedby') || '').split(/\s+/)
+      .map(id => document.getElementById(id)).filter(node => node?.getClientRects().length)
+      .map(node => node.textContent.trim()),
+  );
+  expect(descriptions).toContain(message);
+}
+
 async function adminData() { return expectSuccess(await operator.read('/api/admin/data')); }
 
 async function available(date, staffId = ownerId) {
@@ -335,6 +346,10 @@ describe('AJ Auto car sales', () => {
       await form.getByRole('button', { name: 'Gem kladde' }).click();
       const images = page.locator('#adm-car-images');
       await images.waitFor();
+      const emptyDraft = expectSuccess(await owner.read('/api/admin/cars')).cars.find(c => c.title === title);
+      const withoutPhoto = await owner.send('/api/admin/cars', { ...emptyDraft, status: 'published' });
+      expect(withoutPhoto.status).toBe(409);
+      expect(withoutPhoto.data.error).toContain('Tilføj mindst ét billede');
       const png = await page.evaluate(() => document.createElement('canvas').toDataURL('image/png').split(',')[1]);
       await images.locator('[name=photos]').setInputFiles({ name: 'lokal-test.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
       const [upload] = await Promise.all([
@@ -358,6 +373,8 @@ describe('AJ Auto car sales', () => {
         expect(saved.ok(), await saved.text()).toBe(true);
       };
       await saveStatus('published');
+      const lastPhoto = await owner.send('/api/admin/cars/' + draft.id + '/photos/' + draft.photos[0] + '/remove', {});
+      expect(lastPhoto.status).toBe(409);
       expect((await anonymous.get('/biler-til-salg')).html).toContain(title);
       const advert = await anonymous.get(detail);
       expect(advert.status).toBe(200);
@@ -371,6 +388,20 @@ describe('AJ Auto car sales', () => {
       expect((await anonymous.get('/biler-til-salg')).html).not.toContain(title);
       expect((await anonymous.get(detail)).status).toBe(404);
       expect((await anonymous.get(photo)).status).toBe(404);
+
+      await page.locator('#adm-cars-back').click();
+      await page.getByRole('button', { name: 'Opret bil', exact: true }).click();
+      const secondTitle = 'Testbil med foto fra oprettelsen';
+      await form.locator('[name=title]').fill(secondTitle);
+      await form.locator('[name=priceDkk]').fill('49000');
+      await form.locator('[name=photos]').setInputFiles({ name: 'forside.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+      await form.locator('#adm-car-preview img').waitFor();
+      await form.getByRole('button', { name: 'Gem kladde' }).click();
+      await page.locator('#adm-car-thumbs img').waitFor();
+      const drafts = expectSuccess(await owner.read('/api/admin/cars')).cars.filter(c => c.title === secondTitle);
+      expect(drafts).toHaveLength(1);
+      expect(drafts[0].photos).toHaveLength(1);
+      expect(drafts[0].status).toBe('draft');
     } finally {
       await browser.close();
     }
@@ -667,7 +698,7 @@ describe('AJ Auto browser journeys', () => {
   for (const [index, viewport] of [{ name: 'desktop', width: 1440, height: 1000 }, { name: 'mobile', width: 390, height: 844 }].entries()) {
     it(`completes booking, moving, cancellation and contact on ${viewport.name} without layout or console errors`, async () => {
       const browser = await chromium.launch({ headless: true });
-      const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, locale: 'da-DK', timezoneId: 'Europe/Copenhagen' });
+      const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, locale: viewport.name === 'desktop' ? 'en-US' : 'da-DK', timezoneId: 'Europe/Copenhagen' });
       const page = await context.newPage();
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
@@ -716,9 +747,23 @@ describe('AJ Auto browser journeys', () => {
         await screenshot('available-times');
         await page.locator('[data-slot]').first().click();
         await page.locator('#next-details').click();
-        await page.locator('#details-form [name=name]').fill('Browser Test ÆØÅ');
-        await page.locator('#details-form [name=email]').fill(email);
-        await page.locator('#details-form [name=phone]').fill('12345678');
+        const nameField = page.locator('#details-form [name=name]');
+        const emailField = page.locator('#details-form [name=email]');
+        const phoneField = page.locator('#details-form [name=phone]');
+        await nameField.press('Enter');
+        await expectFieldError(nameField, 'Skriv dit navn.');
+        await nameField.fill('Browser Test ÆØÅ');
+        expect(await nameField.getAttribute('aria-invalid')).not.toBe('true');
+        await nameField.press('Enter');
+        await expectFieldError(emailField, 'Skriv din e-mailadresse.');
+        await emailField.fill('ufuldstaendig');
+        await emailField.press('Enter');
+        await expectFieldError(emailField, 'Skriv en gyldig e-mailadresse.');
+        await emailField.fill(email);
+        await emailField.press('Enter');
+        await expectFieldError(phoneField, 'Skriv dit telefonnummer.');
+        expect(await page.locator('#confirm-booking').count()).toBe(0);
+        await phoneField.fill('12345678');
         await page.locator('#details-form [name=registration]').fill('UI12345');
         await page.locator('#details-form [name=note]').fill('Kun lokale browser-testdata.');
         await page.getByRole('button', { name: /Gennemse/ }).click();
@@ -771,6 +816,13 @@ describe('AJ Auto browser journeys', () => {
         expect(notifications.filter(item => item.to.includes(workshopEmail))).toHaveLength(3);
         await screenshot('booking-cancelled');
         await page.goto(stack.base + '/kontakt');
+        const postedForms = [];
+        page.on('request', request => {
+          if (request.method() === 'POST') postedForms.push(new URL(request.url()).pathname);
+        });
+        await page.getByRole('button', { name: /Send besked/ }).click();
+        await expectFieldError(page.locator('#contact-form [name=name]'), 'Skriv dit navn.');
+        expect(postedForms).not.toContain('/api/contact');
         await page.locator('#contact-form [name=name]').fill('Kontakt Test');
         await page.locator('#contact-form [name=email]').fill(email);
         await page.locator('#contact-form [name=phone]').fill('12345678');
@@ -790,6 +842,9 @@ describe('AJ Auto browser journeys', () => {
         await page.goto(stack.base + '/admin');
         await page.locator('#adm-login-form').waitFor();
         await screenshot('admin-login');
+        await page.locator('#adm-login-form button[type=submit]').click();
+        await expectFieldError(page.locator('#adm-login-form [name=email]'), 'Skriv din e-mailadresse.');
+        expect(postedForms).not.toContain('/api/admin/login');
         const beforeLogin = (await mails()).length;
         await page.locator('#adm-login-form [name=email]').fill(ADMIN_EMAIL);
         await page.locator('#adm-login-form button[type=submit]').click();
