@@ -68,7 +68,7 @@ const dayAfter = (days) => {
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 };
-const publicRoutes = ['/', '/ydelser', '/om-os', '/kontakt', '/booking', '/booking/aftale'];
+const publicRoutes = ['/', '/biler-til-salg', '/ydelser', '/om-os', '/kontakt', '/booking', '/booking/aftale'];
 const linksFromHtml = html => [...html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)].map(match => ({
   href: (match[1].match(/\bhref=["']([^"']+)["']/i)?.[1] ?? '').replace(/&amp;/g, '&'),
   text: match[2].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
@@ -310,6 +310,73 @@ describe('AJ Auto workshop setup', () => {
   });
 });
 
+describe('AJ Auto car sales', () => {
+  it('lets the workshop publish a photographed car and withdraw it when sold', async () => {
+    const anonymous = new AjClient(stack.base);
+    expect((await anonymous.read('/api/admin/cars')).status).toBe(401);
+    const { client: owner } = await signIn(ownerEmail);
+    const { client: mechanic } = await signIn(colleagueEmail);
+    const browser = await chromium.launch();
+    const title = 'Testbil med vinterhjul';
+    try {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      await context.addCookies([...owner.cookies].map(([name, value]) => ({ name, value, url: stack.base })));
+      const page = await context.newPage();
+      await page.goto(stack.base + '/admin');
+      await page.locator('#adm-workspace').waitFor();
+      await page.locator('#adm-nav-toggle').click();
+      await page.locator('[data-panel="cars"]').click();
+      await page.getByRole('button', { name: 'Opret bil', exact: true }).click();
+      const form = page.locator('#adm-car-form');
+      await form.locator('[name=title]').fill(title);
+      await form.locator('[name=priceDkk]').fill('89900');
+      await form.locator('[name=modelYear]').fill('2019');
+      await form.locator('[name=mileageKm]').fill('67000');
+      await form.getByRole('button', { name: 'Gem kladde' }).click();
+      const images = page.locator('#adm-car-images');
+      await images.waitFor();
+      const png = await page.evaluate(() => document.createElement('canvas').toDataURL('image/png').split(',')[1]);
+      await images.locator('[name=photos]').setInputFiles({ name: 'lokal-test.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+      const [upload] = await Promise.all([
+        page.waitForResponse(r => r.request().method() === 'POST' && r.url().endsWith('/photos')),
+        images.getByRole('button', { name: 'Tilføj billeder' }).click(),
+      ]);
+      expect(upload.ok(), await upload.text()).toBe(true);
+      const draft = expectSuccess(await mechanic.read('/api/admin/cars')).cars.find(c => c.title === title);
+      expect(draft.status).toBe('draft');
+      expect(draft.photos).toHaveLength(1);
+      const detail = '/biler-til-salg/' + draft.id;
+      const photo = detail + '/billeder/' + draft.photos[0];
+      expect((await anonymous.get(detail)).status).toBe(404);
+      expect((await anonymous.get(photo)).status).toBe(404);
+      const saveStatus = async status => {
+        await form.locator('[name=status]').selectOption(status);
+        const [saved] = await Promise.all([
+          page.waitForResponse(r => r.request().method() === 'POST' && r.url().endsWith('/admin/cars')),
+          form.getByRole('button', { name: 'Gem ændringer' }).click(),
+        ]);
+        expect(saved.ok(), await saved.text()).toBe(true);
+      };
+      await saveStatus('published');
+      expect((await anonymous.get('/biler-til-salg')).html).toContain(title);
+      const advert = await anonymous.get(detail);
+      expect(advert.status).toBe(200);
+      expect(advert.html).toContain('89.900 kr.');
+      const image = await fetch(stack.base + photo);
+      expect(image.status).toBe(200);
+      expect(image.headers.get('content-type')).toContain('image/jpeg');
+      expect((await image.arrayBuffer()).byteLength).toBeGreaterThan(100);
+      expect((await mechanic.send('/api/admin/cars', { ...draft, status: 'draft' })).status).toBe(409);
+      await saveStatus('sold');
+      expect((await anonymous.get('/biler-til-salg')).html).not.toContain(title);
+      expect((await anonymous.get(detail)).status).toBe(404);
+      expect((await anonymous.get(photo)).status).toBe(404);
+    } finally {
+      await browser.close();
+    }
+  });
+});
+
 describe('AJ Auto appointment lifecycle', () => {
   it('persists a booking, mails both parties, then moves and cancels through the secure customer link', async () => {
     const date = dayAfter(9);
@@ -331,6 +398,8 @@ describe('AJ Auto appointment lifecycle', () => {
     const beforeCancel = (await mails()).length;
     const moveMail = (await mails()).slice(beforeMove).find(item => item.to.includes('lifecycle@example.test'));
     expectSuccess(await customer.send('/api/manage/cancel', { token: mailToken(moveMail) }));
+    expect(moveMail.text).toContain('Forventet varighed: 45 minutter');
+    expect(moveMail.text).toContain('Varigheden er vejledende.');
     await waitFor(async () => (await mails()).length >= beforeCancel + 2);
     const cancelled = (await adminData()).bookings.find(item => item.id === booked.booking.id);
     expect(cancelled.status).toBe('cancelled');
@@ -654,6 +723,8 @@ describe('AJ Auto browser journeys', () => {
         await page.locator('#details-form [name=note]').fill('Kun lokale browser-testdata.');
         await page.getByRole('button', { name: /Gennemse/ }).click();
         await page.locator('#confirm-booking').waitFor();
+        expect(await page.locator('.booking-summary').innerText()).toContain('Forventet varighed');
+        expect(await page.locator('#booking-root').innerText()).toContain('Bilen kan blive færdig senere');
         expect(await page.locator('.booking-summary').innerText()).toContain(email);
         const [createdResponse] = await Promise.all([
           page.waitForResponse(response => response.url().endsWith('/api/bookings') && response.request().method() === 'POST'),

@@ -1,3 +1,5 @@
+import { bookingTimingNote } from './types';
+
 export const js = String.raw`
 (() => {
     'use strict';
@@ -188,7 +190,24 @@ export const js = String.raw`
         steps(false);
         pageTitle('Din aftale');
     }
-    const summary = b => '<dl class="booking-summary"><div><dt>Ydelse</dt><dd>' + esc(b.serviceName || b.service?.name) + '</dd></div><div><dt>Tid</dt><dd>' + esc(dateText(b.startAt)) + '<br>kl. ' + esc(timeText(b.startAt)) + ' (dansk tid)</dd></div>' + (b.staffName ? '<div><dt>Kalender</dt><dd>' + esc(b.staffName) + '</dd></div>' : '') + '<div><dt>Navn</dt><dd>' + esc(b.name) + '</dd></div><div><dt>E-mail</dt><dd>' + esc(b.email) + '</dd></div><div><dt>Telefon</dt><dd>' + esc(b.phone) + '</dd></div>' + (b.registration ? '<div><dt>Nummerplade</dt><dd>' + esc(b.registration) + '</dd></div>' : '') + (b.note ? '<div><dt>Bemærkning</dt><dd>' + esc(b.note) + '</dd></div>' : '') + '</dl>';
+    const timingNote = '<p class="fineprint">${bookingTimingNote}</p>';
+    function summary(b) {
+        const minutes = b.durationMinutes ?? (Date.parse(b.endAt) - Date.parse(b.startAt)) / 60000;
+        const rows = [
+            ['Ydelse', b.serviceName || b.service?.name],
+            ['Starttid', dateText(b.startAt) + ' kl. ' + timeText(b.startAt) + ' (dansk tid)'],
+            ['Forventet varighed', Number.isFinite(minutes) && minutes > 0 ? minutes + ' minutter' : ''],
+            ['Kalender', b.staffName],
+            ['Navn', b.name],
+            ['E-mail', b.email],
+            ['Telefon', b.phone],
+            ['Nummerplade', b.registration],
+            ['Bemærkning', b.note],
+        ];
+        return '<dl class="booking-summary">' + rows.filter(([, value]) => value).map(([label, value]) =>
+            '<div><dt>' + esc(label) + '</dt><dd>' + esc(value) + '</dd></div>'
+        ).join('') + '</dl>' + (b.status === 'cancelled' ? '' : timingNote);
+    }
     function mailStatus(value, action, notifications) {
         if (notifications) {
             if (notifications.customer === 'sent') return action + ' Bekræftelsen er sendt til din e-mail.';
@@ -228,7 +247,12 @@ export const js = String.raw`
                 closed(bookingRoot, null, focus);
                 return;
             }
-            render('<h2>Vælg ydelse</h2>' + available.map(s => '<button type="button" class="choice" data-service="' + s.id + '"><span><strong>' + esc(s.name) + '</strong><small>' + esc(s.description) + '</small><small>' + s.durationMinutes + ' minutter</small></span></button>').join(''), 0, focus);
+            const choices = available.map(service =>
+                '<button type="button" class="choice" data-service="' + service.id + '"><span class="choice-heading"><strong>' + esc(service.name) + '</strong><span>Ca. ' + service.durationMinutes + ' minutter</span></span>' +
+                (service.description ? '<small>' + esc(service.description) + '</small>' : '') + '</button>'
+            ).join('');
+            const byAgreement = '<section class="booking-by-agreement"><h3>Diverse efter aftale</h3><p><a href="tel:+4560644143">Ring på 60 64 41 43</a> eller <a href="/kontakt#skriv">skriv til os</a>, så aftaler vi opgaven og tidspunktet.</p></section>';
+            render('<h2>Vælg ydelse</h2>' + timingNote + '<div class="service-choices">' + choices + '</div>' + byAgreement, 0, focus);
             bookingRoot.querySelectorAll('[data-service]').forEach(button => button.addEventListener('click', () => { state.service = available.find(s => String(s.id) === button.dataset.service); state.slot = null; chooseTime(); }));
         }
         async function chooseTime(notice, focus = true) {
@@ -236,7 +260,7 @@ export const js = String.raw`
                 chooseService();
                 return;
             }
-            const view = render('<h2>Vælg en ledig tid</h2><p class="booking-context">' + esc(state.service.name) + ' · ' + state.service.durationMinutes + ' minutter</p>' + (notice ? '<p class="form-status" role="status">' + esc(notice) + '</p>' : '') + '<div class="form-grid"><label>Dato<input id="booking-date" type="date" min="' + today + '" max="' + maxDate + '" value="' + state.date + '" required></label><label>Kalender<select id="booking-staff"><option value="">Alle ledige tider</option>' + cfg.staff.map(s => '<option value="' + s.id + '"' + (String(s.id) === state.staffId ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('') + '</select></label></div><div id="slot-results" aria-live="polite" aria-atomic="true"></div><div class="booking-controls"><button class="back-button" id="back-service" type="button">Tilbage</button><button class="button" id="next-details" type="button" disabled>Fortsæt</button></div>', 1, focus);
+            const view = render('<h2>Vælg en ledig tid</h2><p class="booking-context">' + esc(state.service.name) + ' · ca. ' + state.service.durationMinutes + ' minutter</p>' + timingNote + (notice ? '<p class="form-status" role="status">' + esc(notice) + '</p>' : '') + '<div class="form-grid"><label>Dato<input id="booking-date" type="date" min="' + today + '" max="' + maxDate + '" value="' + state.date + '" required></label><label>Kalender<select id="booking-staff"><option value="">Alle ledige tider</option>' + cfg.staff.map(s => '<option value="' + s.id + '"' + (String(s.id) === state.staffId ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('') + '</select></label></div><div id="slot-results" aria-live="polite" aria-atomic="true"></div><div class="booking-controls"><button class="back-button" id="back-service" type="button">Tilbage</button><button class="button" id="next-details" type="button" disabled>Fortsæt</button></div>', 1, focus);
             $('#back-service').onclick = () => chooseService();
             $('#next-details').onclick = details;
             let requestNumber = 0;
@@ -293,7 +317,7 @@ export const js = String.raw`
                 return; state.details = Object.fromEntries(new FormData(event.currentTarget)); review(); };
         }
         function review() {
-            const b = { ...state.details, ...state.slot, serviceName: state.service.name };
+            const b = { ...state.details, ...state.slot, serviceName: state.service.name, durationMinutes: state.service.durationMinutes };
             render('<h2>Din aftale</h2><p class="booking-context">Se oplysningerne igennem, før du bekræfter tiden.</p>' + summary(b) + '<p class="fineprint">Prisen aftales med AJ Auto. Du får et personligt link til at flytte eller aflyse.</p><p class="form-status" role="status"></p><div class="booking-controls"><button class="back-button" type="button" id="back-details">Ret oplysninger</button><button class="button" type="button" id="confirm-booking">Bekræft tid</button></div>', 3);
             $('#back-details').onclick = details;
             $('#confirm-booking').onclick = async () => {
@@ -394,7 +418,7 @@ export const js = String.raw`
         }
         function move() {
             let chosen = null, requestNumber = 0;
-            const view = render('<h2>Vælg en ledig tid</h2><p class="booking-context">Du beholder den nuværende tid, indtil den nye er gemt.</p><label>Ny dato<input type="date" id="move-date" min="' + today + '" max="' + maxDate + '" value="' + today + '" required></label><div id="move-slots" aria-live="polite" aria-atomic="true"></div><p class="form-status" role="status"></p><div class="booking-controls"><button class="back-button" id="back-manage" type="button">Tilbage til aftalen</button><button class="button" id="confirm-move" type="button" disabled>Bekræft ny tid</button></div>', true);
+            const view = render('<h2>Vælg en ledig tid</h2><p class="booking-context">Du beholder den nuværende tid, indtil den nye er gemt.</p>' + timingNote + '<label>Ny dato<input type="date" id="move-date" min="' + today + '" max="' + maxDate + '" value="' + today + '" required></label><div id="move-slots" aria-live="polite" aria-atomic="true"></div><p class="form-status" role="status"></p><div class="booking-controls"><button class="back-button" id="back-manage" type="button">Tilbage til aftalen</button><button class="button" id="confirm-move" type="button" disabled>Bekræft ny tid</button></div>', true);
             $('#back-manage').onclick = () => show(null, true);
             async function getSlots(notice) {
                 const date = $('#move-date').value, seq = ++requestNumber, result = $('#move-slots');

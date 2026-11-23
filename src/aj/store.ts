@@ -1,7 +1,7 @@
 import type { Env } from '../env';
 import { nowSec, randomToken, sha256Hex } from '../lib/crypto';
 import { escapeHtml, sendEmail, type EmailMessage } from '../lib/email';
-import { AjError, type AjEnv, type Settings, type Service, type Staff, type Hours, type Block, type Booking, type BookingInput, type Slot } from './types';
+import { AjError, bookingTimingNote, type AjEnv, type Settings, type Service, type Staff, type Hours, type Block, type Booking, type BookingInput, type Slot } from './types';
 
 export const TIMEZONE = 'Europe/Copenhagen';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -149,6 +149,10 @@ function mailForBooking(
     danishDate.format(new Date(booking.startAt)),
     'Sorøvej 5kl, Slagelse',
   ];
+  if (kind !== 'cancelled') {
+    const minutes = (Date.parse(booking.endAt) - Date.parse(booking.startAt)) / 60000;
+    details.push(`Forventet varighed: ${minutes} minutter.`);
+  }
   if (workshop) {
     details.push(`Kalender: ${booking.staffName}`, booking.name, booking.phone, booking.email);
     if (booking.registration) details.push(`Nummerplade: ${booking.registration}`);
@@ -156,12 +160,14 @@ function mailForBooking(
   }
   const link = !workshop && kind !== 'cancelled' ? manageLink(origin, token) : null;
   const text = [subject, '', ...details];
+  if (kind !== 'cancelled') text.push(bookingTimingNote);
   if (link) text.push('', 'Se, flyt eller aflys din aftale med dit personlige link.', link);
   text.push('', 'AJ Auto', '60 64 41 43');
 
   const html = `<!doctype html><html lang="da"><body style="font:16px/1.55 Arial,sans-serif;color:#19191c">
     <h1 style="font-size:26px;line-height:1.15">${escapeHtml(subject)}</h1>
     <p>${details.map(detail => escapeHtml(detail)).join('<br>')}</p>
+    ${kind !== 'cancelled' ? `<p><small>${escapeHtml(bookingTimingNote)}</small></p>` : ''}
     ${link ? `<p><a style="color:#40258e" href="${escapeHtml(link)}">Se, flyt eller aflys din aftale</a><br>Linket er personligt.</p>` : ''}
     <p>AJ Auto<br><a style="color:#40258e" href="tel:+4560644143">60 64 41 43</a></p>
   </body></html>`;
@@ -355,6 +361,6 @@ function icsTime(instant:string):string {return instant.replace(/[-:]/g,'').repl
 function foldIcs(line:string):string {let out='',part='',n=0;for(const char of line){const size=enc.encode(char).length;if(n+size>74){out+=part+'\r\n ';part='';n=1;}part+=char;n+=size;}return out+part;}
 export function calendarIcs(bookings:Booking[],staffName:string):string {
   const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Veyro//AJ Auto Booking//DA','CALSCALE:GREGORIAN','METHOD:PUBLISH',`X-WR-CALNAME:${icsEscape(`AJ Auto – ${staffName}`)}`,'X-WR-TIMEZONE:Europe/Copenhagen','REFRESH-INTERVAL;VALUE=DURATION:PT30M','X-PUBLISHED-TTL:PT30M'];
-  for(const b of bookings)lines.push('BEGIN:VEVENT',`UID:${b.id}@aj.veyro.dk`,`DTSTAMP:${icsTime(iso(nowSec()))}`,`DTSTART:${icsTime(b.startAt)}`,`DTEND:${icsTime(b.endAt)}`,`SEQUENCE:${b.version}`,`STATUS:${b.status==='cancelled'?'CANCELLED':'CONFIRMED'}`,`SUMMARY:${icsEscape(`${b.serviceName} – ${b.name}`)}`,`DESCRIPTION:${icsEscape(`Telefon: ${b.phone}${b.registration?`\nNummerplade: ${b.registration}`:''}\nAdministrer aftalen i AJ Autos bookingsystem.`)}`,'LOCATION:Sorøvej 5kl\, Slagelse','END:VEVENT');
+  for(const b of bookings)lines.push('BEGIN:VEVENT',`UID:${b.id}@aj.veyro.dk`,`DTSTAMP:${icsTime(iso(nowSec()))}`,`DTSTART:${icsTime(b.startAt)}`,`DTEND:${icsTime(b.endAt)}`,`SEQUENCE:${b.version}`,`STATUS:${b.status==='cancelled'?'CANCELLED':'CONFIRMED'}`,`SUMMARY:${icsEscape(`${b.serviceName} – ${b.name}`)}`,`DESCRIPTION:${icsEscape(`Telefon: ${b.phone}${b.registration?`\nNummerplade: ${b.registration}`:''}\n${bookingTimingNote}\nAdministrer aftalen i AJ Autos bookingsystem.`)}`,'LOCATION:Sorøvej 5kl\, Slagelse','END:VEVENT');
   lines.push('END:VCALENDAR');return lines.map(foldIcs).join('\r\n')+'\r\n';
 }
