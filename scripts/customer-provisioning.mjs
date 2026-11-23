@@ -92,8 +92,17 @@ async function main() {
   const operation = await query({ sql: 'SELECT payload_sha256 FROM customer_provisioning_operations WHERE id=?', params: [p.operationId] });
   if (operation[0]?.results?.length) {
     if (operation[0].results[0].payload_sha256 !== hash(raw)) throw new Error('Operation already used with another payload.');
+    if (process.argv[3]) {
+      const update = readFileSync(process.argv[3], 'utf8');
+      const change = openPayload(token, JSON.parse(update));
+      if (change.provisionSha256 !== hash(raw)) throw new Error('Email update belongs to a different provisioning record.');
+      const { updateOwnerEmail } = await import('./customer-email-update.mjs');
+      await updateOwnerEmail(query, p, change, hash(update));
+      return;
+    }
     console.log('Operation already completed; no changes or reactivation performed.'); return;
   }
+  if (process.argv[3]) throw new Error('An owner email change requires a previously provisioned customer.');
   validatePayload(p);
   const before = await query({ batch: [
     { sql: 'SELECT email,name,company,cvr,stripe_customer_id FROM customers WHERE lower(email)=?', params: [p.email] },

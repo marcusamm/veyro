@@ -117,4 +117,16 @@ it('provisions Milad with independent working hours and allows adding his login 
   expect(update.status).toBe(200);
   expect((await update.json()).staff).toMatchObject({ id: milad.id, name: milad.name, email: 'mechanic@example.test' });
   expect((await adminData()).bookings.find(b => b.staffId === milad.id).staffName).toBe(milad.name);
+
+  const beforeCorrection = await adminData();
+  const spelling = 'migrations/0027_aj_mechanic_surname.sql';
+  localSql('--file', spelling);
+  localSql('--file', spelling);
+  const corrected = await adminData();
+  expect(corrected.staff).toEqual(beforeCorrection.staff.map(person =>
+    person.id === milad.id ? { ...person, name: 'Milad Jarada' } : person));
+  expect(corrected.bookings).toEqual(beforeCorrection.bookings.map(appointment =>
+    appointment.staffId === milad.id ? { ...appointment, staffName: 'Milad Jarada' } : appointment));
+  expect(corrected.hours).toEqual(beforeCorrection.hours);
+  expect((await configuration()).staff).toContainEqual({ id: milad.id, name: 'Milad Jarada' });
 });

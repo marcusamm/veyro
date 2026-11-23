@@ -1,0 +1,23 @@
+name: Update customer email
+on:
+  push:
+    branches: [main]
+    paths: ['ops/customer-email-update.sealed.json']
+permissions:
+  contents: read
+concurrency:
+  group: customer-email-update
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Update and verify both logins
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/customer-provisioning.mjs ops/customer-provisioning.sealed.json ops/customer-email-update.sealed.json
