@@ -47,6 +47,8 @@ export function ajOrigin(env: AjEnv, requestOrigin?: string): string {
 export const manageLink = (origin: string,token: string) => `${origin}/booking/aftale#token=${token}`;
 export function databaseError(error: unknown): never {
   const text = String(error);
+  if (/AJ_CAR_NEEDS_PHOTO/.test(text)) throw new AjError('Tilføj mindst ét billede, før du sætter bilen til salg.',409);
+  if (/AJ_CAR_LAST_PHOTO/.test(text)) throw new AjError('Tilføj et andet billede, eller gem bilen som kladde, før du fjerner det sidste billede.',409);
   if (/AJ_STAFF_LIMIT/.test(text)) throw new AjError('Der kan højst være 3 aktive medarbejdere, inklusive ejeren.',409);
   if (/AJ_BLOCK_HAS_BOOKING/.test(text)) throw new AjError('Der ligger allerede en aftale i tidsrummet. Flyt eller aflys den først.',409);
   if (/AJ_HOURS_HAS_BOOKING/.test(text)) throw new AjError('Åbningstiden bruges af en kommende aftale. Flyt eller aflys aftalen først.',409);
