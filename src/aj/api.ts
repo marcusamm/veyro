@@ -7,11 +7,14 @@ import { normalizeEmail, rateLimit } from '../lib/db';
 import { escapeHtml, sendEmail } from '../lib/email';
 import { parseAdminEmails } from '../lib/session';
 import { AjError, type AjUser, type Campaign, type Settings } from './types';
+import { addCarPhoto, adminCars, carId, carPhotoUploadPath, saveCar } from './car-admin';
 import { ajOrigin, bookingView, calendarIcs, cancelBooking, createBooking, databaseError, deliverAjMail, getBlocks, getBooking, getHours, getServices, getSettings, getSlots, getStaff, iso, listBookings, mailConfigured, parseInstant, readiness, rescheduleBooking, saveContact, timeMinute, tokenBooking, validDate, zonedParts } from './store';
 
 type C=Context<AppEnv>;
 const api=new Hono<AppEnv>();
-api.use('*',bodyLimit({maxSize:24*1024,onError:c=>c.json({error:'Beskeden er for stor.'},413)}));
+const jsonLimit = bodyLimit({maxSize:20*1024,onError:c=>c.json({error:'Beskeden er for stor.'},413)});
+const photoLimit = bodyLimit({maxSize:680*1024,onError:c=>c.json({error:'Billedet er for stort.'},413)});
+api.use('*',(c,next)=>(c.req.method === 'POST' && carPhotoUploadPath.test(c.req.path) ? photoLimit : jsonLimit)(c,next));
 api.use('*',async(c,next)=>{
   c.header('Cache-Control','no-store');c.header('Referrer-Policy','no-referrer');c.header('X-Robots-Tag','noindex, nofollow');
   if(c.req.method==='POST'){
@@ -121,6 +124,24 @@ api.post('/admin/verify',async c=>{
   return c.json({ok:true,user:u});
 });
 api.get('/admin/session',async c=>{const u=await user(c);return c.json({authenticated:!!u,user:u,mailConfigured:!!c.env.RESEND_API_KEY});});
+api.use('/admin/cars/*',async(c,next)=>{await requireUser(c);await next();});
+api.get('/admin/cars',async c=>c.json({cars:await adminCars(c.env.DB)}));
+api.post('/admin/cars',async c=>c.json(await saveCar(c.env.DB,await body(c))));
+api.post('/admin/cars/:id/photos',async c=>{
+  const data=await body(c);
+  return c.json(await addCarPhoto(c.env.DB,carId(c.req.param('id')),data.data),201);
+});
+api.get('/admin/cars/:id/photos/:photoId',async c=>{
+  const photo=await c.env.DB.prepare('SELECT data FROM aj_car_photos WHERE car_id=? AND id=?')
+    .bind(carId(c.req.param('id')),carId(c.req.param('photoId'))).first<{data:ArrayBuffer}>();
+  if(!photo)throw new AjError('Billedet findes ikke.',404);
+  return c.body(new Uint8Array(photo.data),200,{'Content-Type':'image/jpeg','Cache-Control':'private, no-store'});
+});
+api.post('/admin/cars/:id/photos/:photoId/remove',async c=>{
+  await c.env.DB.prepare('DELETE FROM aj_car_photos WHERE car_id=? AND id=?')
+    .bind(carId(c.req.param('id')),carId(c.req.param('photoId'))).run();
+  return c.json({ok:true});
+});
 api.post('/admin/logout',async c=>{
   const raw=getCookie(c,cookieName(c));if(raw)await c.env.DB.prepare('DELETE FROM aj_sessions WHERE token_hash=?').bind(await sha256Hex(raw)).run();
   deleteCookie(c,cookieName(c),{path:'/',secure:new URL(c.req.url).protocol==='https:'});return c.json({ok:true});

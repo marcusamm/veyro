@@ -13,6 +13,7 @@ const instagram = 'https://www.instagram.com/ajauto4200/';
 const navigation = [
   ['/', 'Forside'],
   ['/ydelser', 'Ydelser'],
+  ['/biler-til-salg', 'Biler til salg'],
   ['/om-os', 'Om os'],
   ['/kontakt', 'Kontakt'],
 ];
@@ -117,7 +118,7 @@ export function home(bookingReady: boolean): string {
     <article class="service-row">
       <h3>Service og reparation</h3>
       <div class="service-row-copy">
-        <p>Vi laver serviceeftersyn, reparationer, motorarbejde og fejlfinding. Skal bilen til syn, kan vi også gøre den klar.</p>
+        <p>Du kan bestille fuld service, dækskifte, bremser og syntjek. Vi hjælper også med andre reparationer, motorarbejde og fejlfinding.</p>
         <a class="text-link" href="/ydelser#vaerksted">Se værkstedsydelser</a>
       </div>
     </article>
@@ -125,7 +126,7 @@ export function home(bookingReady: boolean): string {
       <h3>Køb, salg og bytte</h3>
       <div class="service-row-copy">
         <p>Leder du efter en bil? Vi sælger biler og hjælper dig med at finde en, der passer til din hverdag. Du kan også sælge eller bytte din bil hos os.</p>
-        <a class="text-link" href="/ydelser#bilhandel">Læs om bilhandel</a>
+        <a class="text-link" href="/biler-til-salg">Se biler til salg</a>
       </div>
     </article>
   </div>
@@ -163,13 +164,14 @@ export function services(bookingReady: boolean): string {
     <div class="service-detail-title"><h2 id="workshop-title">Service og reparation</h2></div>
     <div class="service-detail-body">
       <dl class="workshop-services">
-        <dt>Serviceeftersyn</dt><dd>Er det tid til service? Ring med bilens model og kilometerstand, så aftaler vi, hvad den skal have lavet.</dd>
-        <dt>Reparationer</dt><dd>Fortæl os, hvad der er gået i stykker, eller hvad du mærker, når du kører.</dd>
-        <dt>Motorarbejde</dt><dd>Vi hjælper med reparation af motoren. Ring og fortæl, hvilken bil og motor det drejer sig om.</dd>
-        <dt>Fejlfinding</dt><dd>Lyser en advarselslampe, eller lyder bilen anderledes? Vi undersøger, hvor fejlen ligger.</dd>
-        <dt>Klargøring til syn</dt><dd>Vi gennemgår bilen inden syn og taler med dig om det, der skal udbedres.</dd>
+        <dt>Fuld service</dt><dd>Bestil et serviceeftersyn til din bil. Skriv gerne bilens model og kilometerstand, når du booker.</dd>
+        <dt>Dækskifte</dt><dd>Vælg en tid til at få skiftet bilens dæk.</dd>
+        <dt>Bremser</dt><dd>Bestil en tid til bremserne. Fortæl gerne, hvad du har bemærket, når du bremser.</dd>
+        <dt>Syntjek</dt><dd>Vi gennemgår bilen inden syn og fortæller dig, hvad der eventuelt skal udbedres.</dd>
       </dl>
-      <a class="text-link" href="${AJ_TELEPHONE}">Ring og aftal tid på ${AJ_PHONE}</a>
+      ${visitActions(bookingReady, 'service-actions')}
+      <h3>Diverse efter aftale</h3>
+      <p>Har bilen brug for fejlfinding, motorarbejde eller andre reparationer? <a href="${AJ_TELEPHONE}">Ring på ${AJ_PHONE}</a>, så aftaler vi opgaven og finder en tid.</p>
     </div>
   </section>
   <section class="service-detail" id="bilhandel" aria-labelledby="trade-title">
@@ -177,7 +179,8 @@ export function services(bookingReady: boolean): string {
     <div class="service-detail-body">
       <p>Vil du sælge din bil eller lade den indgå i en byttehandel? Ring og fortæl, hvilken bil du har.</p>
       <p>Hvis du vil købe en bil, hjælper vi dig med at finde en, der passer til dit behov og budget.</p>
-      <a class="text-link" href="/kontakt">Kontakt os om bilhandel</a>
+      <div class="actions"><a class="text-link" href="/biler-til-salg">Se biler til salg</a>
+        <a href="/kontakt">Kontakt os om bilhandel</a></div>
     </div>
   </section>
 </div>`;
@@ -218,7 +221,7 @@ export function contact(_bookingReady: boolean): string {
     </div>
   </div>
   ${openingHours}
-  <div class="contact-layout">
+  <div class="contact-layout" id="skriv">
     <div class="contact-copy"><h2>Skriv til os</h2><p>Fortæl kort, hvad du har brug for. Beskeden bestiller ikke en tid.</p></div>
     <div class="form-panel">
       <noscript><p>Slå JavaScript til for at sende en besked, eller <a href="${AJ_TELEPHONE}">ring på ${AJ_PHONE}</a>.</p></noscript>
@@ -266,7 +269,6 @@ export function booking(bookingReady: boolean): string {
     </div>
     <div class="booking-meta">
       <address>AJ Auto · ${AJ_ADDRESS}</address>
-      <p>Skal bilen til service eller reparation? <a href="${AJ_TELEPHONE}">Ring på ${AJ_PHONE} og aftal en tid</a>.</p>
       <p>Mandag–fredag kl. 09.00–16.00. <a href="${AJ_TELEPHONE}">Ring for en tid i weekenden</a>.</p>
     </div>
   </div>

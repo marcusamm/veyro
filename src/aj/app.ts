@@ -1,5 +1,4 @@
 import { Hono, type Context } from 'hono';
-import { bodyLimit } from 'hono/body-limit';
 import type { AppEnv, Env } from '../env';
 import { getSettings, readiness } from './store';
 import api from './api';
@@ -7,6 +6,7 @@ import { adminPage, adminCss, adminJs } from './admin-view';
 import { js } from './client';
 import { css } from './styles';
 import { shell, home, services, about, booking, contact, manage } from './views';
+import { carListPath, carIndex, carDetail, publishedCars, publishedCar, publishedPhoto } from './cars';
 
 export function isAjRequest(req: Request, env: Env): boolean {
   const host = new URL(req.url).hostname.toLowerCase();
@@ -25,7 +25,6 @@ app.use('*', async (c, next) => {
   if (new URL(c.req.url).protocol === 'https:') c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   if (c.req.path.startsWith('/api') || c.req.path.startsWith('/admin') || c.req.path.startsWith('/booking/aftale') || new URL(c.req.url).hostname !== 'aj.veyro.dk') c.header('X-Robots-Tag', 'noindex, nofollow');
 });
-app.use('/api/*', bodyLimit({ maxSize: 20 * 1024, onError: c => c.json({ error: 'Formularen indeholder for meget tekst.' }, 413) }));
 app.get('/healthz', c => c.text('ok'));
 app.get('/aj.css', c => c.body(css, 200, { 'Content-Type': 'text/css; charset=utf-8' }));
 app.get('/aj.js', c => c.body(js, 200, { 'Content-Type': 'text/javascript; charset=utf-8' }));
@@ -101,8 +100,37 @@ const pages: Record<string, Page> = {
 for (const [path, page] of Object.entries(pages)) {
   app.get(path, c => render(c, page));
 }
+app.get(carListPath, async c => {
+  const pageNumber = Number(c.req.query('side') ?? '1');
+  if (!Number.isSafeInteger(pageNumber) || pageNumber < 1 || pageNumber > 1_000_000) return c.notFound();
+  const cars = await publishedCars(c.env.DB, pageNumber);
+  if (!cars.length && pageNumber > 1) return c.notFound();
+  return render(c, {
+    title: 'Biler til salg i Slagelse | AJ Auto',
+    description: 'Se bilerne til salg hos AJ Auto i Slagelse. Find pris, billeder og oplysninger om hver bil.',
+    content: () => carIndex(cars, pageNumber),
+  });
+});
+app.get('/biler-til-salg/:id{[1-9][0-9]*}', async c => {
+  const id = Number(c.req.param('id'));
+  if (!Number.isSafeInteger(id) || id < 1) return c.notFound();
+  const advert = await publishedCar(c.env.DB, id);
+  if (!advert) return c.notFound();
+  return render(c, {
+    title: advert.car.title + ' til salg | AJ Auto',
+    description: advert.car.description.slice(0, 155) || 'Se pris og oplysninger om ' + advert.car.title + ' hos AJ Auto i Slagelse.',
+    content: () => carDetail(advert.car, advert.photoIds),
+  });
+});
+app.get('/biler-til-salg/:id{[1-9][0-9]*}/billeder/:photoId{[1-9][0-9]*}', async c => {
+  const id = Number(c.req.param('id'));
+  const photoId = Number(c.req.param('photoId'));
+  if (!Number.isSafeInteger(id) || id < 1 || !Number.isSafeInteger(photoId) || photoId < 1) return c.body(null, 404);
+  const bytes = await publishedPhoto(c.env.DB, id, photoId);
+  return bytes ? c.body(bytes, 200, { 'Content-Type': 'image/jpeg' }) : c.body(null, 404);
+});
 app.get('/robots.txt', c => c.text(new URL(c.req.url).hostname === 'aj.veyro.dk' ? 'User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /booking/aftale\nSitemap: https://aj.veyro.dk/sitemap.xml\n' : 'User-agent: *\nDisallow: /\n'));
-app.get('/sitemap.xml', c => c.body(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/ydelser', '/om-os', '/booking', '/kontakt'].map(path => `<url><loc>https://aj.veyro.dk${path}</loc></url>`).join('')}</urlset>`, 200, { 'Content-Type': 'application/xml' }));
+app.get('/sitemap.xml', c => c.body(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/ydelser', carListPath, '/om-os', '/booking', '/kontakt'].map(path => `<url><loc>https://aj.veyro.dk${path}</loc></url>`).join('')}</urlset>`, 200, { 'Content-Type': 'application/xml' }));
 app.notFound(c => render(c, {
   title: 'Siden findes ikke | AJ Auto',
   description: 'Gå til forsiden eller kontakt AJ Auto.',

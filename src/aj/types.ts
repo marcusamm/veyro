@@ -1,5 +1,7 @@
 import type { Env } from '../env';
 
+export const bookingTimingNote = 'Varigheden er vejledende. Bilen kan blive færdig senere, afhængigt af arbejdet.';
+
 export interface AjEnv extends Env { AJ_URL?: string; AJ_HOSTS?: string; AJ_OUTBOX_KEY?: string }
 export interface Campaign { enabled: boolean; confirmed: boolean; title: string; priceOre: number; expiresOn: string | null }
 export interface Settings { workshopEmail: string; bookingEnabled: boolean; campaign: Campaign }

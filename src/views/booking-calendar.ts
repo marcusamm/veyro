@@ -1,4 +1,5 @@
 import { html, raw } from 'hono/html';
+import { bookingTimingNote } from '../aj/types';
 import type { CalendarAppointment, CalendarData } from '../lib/booking-calendar';
 import type { H } from './layout';
 
@@ -21,7 +22,7 @@ const calendarCss = `
 function appointment(item: CalendarAppointment): H {
   const safePhone = item.phone.replace(/[^+\d]/g, '');
   return html`<li class="calendar-appointment" data-booking-id="${item.id}">
-    <time class="calendar-time" datetime="${item.startAt}">${timeFormat.format(new Date(item.startAt))}<small>til ${timeFormat.format(new Date(item.endAt))}</small></time>
+    <time class="calendar-time" datetime="${item.startAt}">${timeFormat.format(new Date(item.startAt))}<small><span class="calendar-screenreader">Forventet slut </span>ca. ${timeFormat.format(new Date(item.endAt))}</small></time>
     <div>
       <h3>${item.serviceName}</h3>
       <p><strong>${item.name}</strong><span class="muted"> · ${item.staffName}</span></p>
@@ -45,7 +46,7 @@ export function bookingCalendarPage(data: CalendarData, options: { bookingReady:
     <div><h1 id="calendar-title">Kalender</h1><p>${access.workspace.name} · ${access.role === 'owner' ? 'Alle dine medarbejderkalendere' : `Din kalender: ${access.staffName}`}</p></div>
     <span class="calendar-timezone">Dansk tid · Europe/Copenhagen</span>
   </header>
-  ${access.role === 'owner' && !options.bookingReady ? html`<aside class="calendar-setup" aria-label="Åbn for onlinebooking"><p>Vælg varighed på olieskift og de tider, kunder må booke.</p><a class="btn btn-primary" href="${options.adminUrl}" target="_blank" rel="noopener noreferrer">Indstil bookingtider</a></aside>` : ''}
+  ${access.role === 'owner' && !options.bookingReady ? html`<aside class="calendar-setup" aria-label="Åbn for onlinebooking"><p>Angiv den forventede varighed for dine ydelser og de tider, kunderne må booke.</p><a class="btn btn-primary" href="${options.adminUrl}" target="_blank" rel="noopener noreferrer">Indstil bookingtider</a></aside>` : ''}
   <form method="get" action="/konto/kalender" class="calendar-controls">
     <div class="field"><label for="calendar-month">Måned</label><input type="month" id="calendar-month" name="month" min="1900-01" max="2199-12" value="${selection.month}" required></div>
     ${access.role === 'owner' ? html`<div class="field"><label for="calendar-staff">Kalender</label><select id="calendar-staff" name="staff"><option value="">Alle medarbejdere</option>${data.members.map(member => html`<option value="${member.id}"${member.id === selectedStaff ? html` selected` : ''}>${member.name}${member.active ? '' : ' (inaktiv)'}</option>`)}</select></div>` : ''}
@@ -72,7 +73,7 @@ export function bookingCalendarPage(data: CalendarData, options: { bookingReady:
   <p class="calendar-summary">${total} ${total === 1 ? 'bekræftet aftale' : 'bekræftede aftaler'} i måneden. Vælg en dato for at se dagens aftaler.</p>
   <section class="calendar-selected-day" id="kalender-dag" aria-labelledby="calendar-day-title">
     <h2 id="calendar-day-title">${dayLabel(selection.day)}</h2>
-    ${data.appointments.length ? html`<ol class="calendar-appointments">${data.appointments.map(appointment)}</ol>` : html`<p class="calendar-empty" role="status">Ingen aftaler denne dag.</p>`}
+    ${data.appointments.length ? html`<p class="calendar-summary">${bookingTimingNote}</p><ol class="calendar-appointments">${data.appointments.map(appointment)}</ol>` : html`<p class="calendar-empty" role="status">Ingen aftaler denne dag.</p>`}
     ${data.truncated ? html`<p class="alert alert-info">Dagen indeholder flere end 500 aftaler. De første 500 vises her. Vælg én medarbejderkalender for at begrænse oversigten.</p>` : ''}
   </section>
   <p class="calendar-source">Oversigten viser aftalerne fra ${access.workspace.name}s bookingsystem.${access.role === 'owner' ? html` <a href="${options.adminUrl}" target="_blank" rel="noopener noreferrer">Åbn bookingadministrationen</a> for at flytte eller aflyse aftaler.` : ' Du ser kun din egen kalender.'}</p>

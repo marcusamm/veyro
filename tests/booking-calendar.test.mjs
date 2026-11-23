@@ -185,7 +185,7 @@ describe('Calendar source, month and day isolation', () => {
     expect((await request('owner@example.test')).text).not.toContain('Indstil bookingtider');
     sqlite.exec('UPDATE aj_settings SET booking_enabled=0');
     const closed = await request('owner@example.test');
-    expect(closed.text).toContain('Vælg varighed på olieskift og de tider, kunder må booke.');
+    expect(closed.text).toContain('Angiv den forventede varighed for dine ydelser');
     expect(closed.text).toContain('Indstil bookingtider'); expect(closed.text).toContain('https://aj.veyro.dk/admin');
     expect((await request('staff@example.test')).text).not.toContain('Indstil bookingtider');
   });
