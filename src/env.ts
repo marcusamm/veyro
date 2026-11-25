@@ -25,6 +25,10 @@ export interface Env {
   AJ_URL?: string;
   /** Optional dedicated encryption key for the transactional booking mail outbox. */
   AJ_OUTBOX_KEY?: string;
+  /** Opt-in native iCloud availability pilot. Set to "1" only after D1 migration and staging verification. */
+  AJ_ICLOUD_ENABLED?: string;
+  /** Worker secret: base64-encoded random 32-byte AES key; separate from mail/session keys. */
+  AJ_CALENDAR_TOKEN_KEY?: string;
 
   /** Veyros bankkonto til bankoverførsel (vises på fakturaer fra admin) */
   BANK_IBAN?: string;

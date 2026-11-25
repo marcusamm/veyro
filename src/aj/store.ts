@@ -1,6 +1,7 @@
 import type { Env } from '../env';
 import { nowSec, randomToken, sha256Hex } from '../lib/crypto';
 import { escapeHtml, sendEmail, type EmailMessage } from '../lib/email';
+import { getStaffBusyWindows } from './external-busy';
 import { AjError, bookingTimingNote, type AjEnv, type Settings, type Service, type Staff, type Hours, type Block, type Booking, type BookingInput, type Slot } from './types';
 
 export const TIMEZONE = 'Europe/Copenhagen';
@@ -68,8 +69,8 @@ export async function getServices(db:D1Database):Promise<Service[]> {
   return results.map(r=>({id:r.id,name:r.name,description:r.description,durationMinutes:r.duration_minutes,active:!!r.active}));
 }
 export async function getStaff(db:D1Database):Promise<Staff[]> {
-  const {results}=await db.prepare('SELECT id,name,email,role,active FROM aj_staff ORDER BY id').all<{id:number;name:string;email:string;role:'owner'|'staff';active:number}>();
-  return results.map(r=>({...r,active:!!r.active}));
+  const {results}=await db.prepare('SELECT id,name,email,role,active,calendar_token_hash IS NOT NULL AS hasCalendarLink FROM aj_staff ORDER BY id').all<{id:number;name:string;email:string;role:'owner'|'staff';active:number;hasCalendarLink:number}>();
+  return results.map(r=>({...r,active:!!r.active,hasCalendarLink:!!r.hasCalendarLink}));
 }
 export async function getHours(db:D1Database):Promise<Hours[]> {
   const {results}=await db.prepare('SELECT * FROM aj_hours ORDER BY staff_id,weekday,start_minute').all<{id:number;staff_id:number;weekday:number;start_minute:number;end_minute:number}>();
@@ -123,7 +124,20 @@ export async function getSlots(env:Env,serviceId:number,date:string,staffId?:num
       slots.push({startAt:iso(start),staffId:member.id,staffName:member.name});
     }
   }
-  return slots.sort((a,b)=>a.startAt.localeCompare(b.startAt)||a.staffId-b.staffId);
+  // The write paths call getSlots again; never trust availability previously shown to a customer.
+  // Only query staff with bookable time left after applying working hours and AJ appointments.
+  const durationSeconds=service.durationMinutes!*60;
+  const available=await Promise.all(staff.map(async member=>{
+    const candidates=slots.filter(slot=>slot.staffId===member.id)
+      .map(slot=>({slot,start:parseInstant(slot.startAt)}));
+    if(!candidates.length)return [];
+    const starts=candidates.map(candidate=>candidate.start);
+    const external=await getStaffBusyWindows(env,member.id,Math.min(...starts),Math.max(...starts)+durationSeconds);
+    if(external===null)return []; // Connected calendar unavailable: suppress this member only.
+    return candidates.filter(({start})=>!external.some(window=>window.start<start+durationSeconds&&window.end>start))
+      .map(({slot})=>slot);
+  }));
+  return available.flat().sort((a,b)=>a.startAt.localeCompare(b.startAt)||a.staffId-b.staffId);
 }
 
 interface BookingRow {id:string;service_id:number;service_name:string;staff_id:number;staff_name:string;start_at:number;end_at:number;name:string;email:string;phone:string;registration:string;note:string;status:'confirmed'|'cancelled';version:number;manage_token_hash:string;mutation_id:string}

@@ -1,0 +1,24 @@
+# Dedicated calendar pilot. The database ID below is only used with --local.
+# deploy.mjs resolves the isolated pilot database by its exact name for remote deployments.
+name = "veyro-kalenderguide-test"
+main = "worker.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+preview_urls = false
+
+[observability]
+enabled = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "veyro-kalenderguide-test"
+database_id = "00000000-0000-4000-8000-000000000001"
+migrations_dir = "../../migrations"
+
+[vars]
+AJ_ICLOUD_ENABLED = "1"
+# Booking requires a configured mail transport. This reserved URI cannot address
+# any mail service. Use only synthetic bookings in this isolated database.
+RESEND_API_KEY = "calendar-test-only"
+RESEND_API_BASE = "disabled-calendar-test:"
+DEV_MODE = "0"

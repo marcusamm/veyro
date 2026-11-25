@@ -1,0 +1,35 @@
+name: Udgiv kalenderpilotens testside
+on:
+  push:
+    branches: [codex/calendar-connection-guide]
+    paths:
+      - '.github/workflows/calendar-guide-preview.yml'
+      - 'scripts/calendar-guide-preview/**'
+      - 'src/views/calendar-connection-guide.ts'
+      - 'src/aj/**'
+      - 'migrations/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: calendar-guide-preview
+  cancel-in-progress: false
+
+jobs:
+  publish-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: npx tsc --project scripts/calendar-guide-preview/tsconfig.json
+      - name: Udgiv på separat test-Worker med egen D1
+        run: node scripts/calendar-guide-preview/deploy.mjs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

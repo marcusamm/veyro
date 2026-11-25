@@ -6,6 +6,7 @@ import { nowSec, randomToken, sha256Hex } from '../lib/crypto';
 import { normalizeEmail, rateLimit } from '../lib/db';
 import { escapeHtml, sendEmail } from '../lib/email';
 import { parseAdminEmails } from '../lib/session';
+import { registerICloudRoutes } from './icloud-routes';
 import { AjError, type AjUser, type Campaign, type Settings } from './types';
 import { addCarPhoto, adminCars, carId, carPhotoUploadPath, saveCar } from './car-admin';
 import { ajOrigin, bookingView, calendarIcs, cancelBooking, createBooking, databaseError, deliverAjMail, getBlocks, getBooking, getHours, getServices, getSettings, getSlots, getStaff, iso, listBookings, mailConfigured, parseInstant, readiness, rescheduleBooking, saveContact, timeMinute, tokenBooking, validDate, zonedParts } from './store';
@@ -60,6 +61,7 @@ async function user(c:C):Promise<AjUser|null>{
 }
 async function requireUser(c:C,owner=false):Promise<AjUser>{const u=await user(c);if(!u)throw new AjError('Log ind for at fortsætte.',401);if(owner&&u.role==='staff')throw new AjError('Kun ejeren kan ændre denne indstilling.',403);return u;}
 function requireCalendar(u:AjUser,staffId:number){if(u.role==='staff'&&u.staffId!==staffId)throw new AjError('Du har kun adgang til din egen kalender.',403);}
+registerICloudRoutes(api,requireUser);
 async function authorizedBooking(c:C,bookingId:string){const u=await requireUser(c);const b=await getBooking(c.env.DB,bookingId);if(!b)throw new AjError('Aftalen findes ikke.',404);requireCalendar(u,b.staff_id);return{u,b};}
 
 api.get('/config',async c=>{
@@ -70,6 +72,7 @@ api.get('/config',async c=>{
 });
 api.get('/slots',async c=>{
   const serviceId=id(c.req.query('serviceId')),staffId=c.req.query('staffId')?id(c.req.query('staffId')):undefined,date=str(c.req.query('date'),10,true);
+  if(c.env.AJ_ICLOUD_ENABLED==='1')await limited(c,'calendar-slots',90,300);
   let exclude:string|undefined;
   const manageToken=c.req.header('X-AJ-Token')||c.req.query('token');
   if(manageToken)exclude=(await tokenBooking(c.env.DB,manageToken)).id;
