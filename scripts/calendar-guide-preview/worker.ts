@@ -8,7 +8,7 @@ const publicReads = new Set(['/api/admin/session', '/api/calendar.ics']);
 const testBanner = '<aside class="adm-notice pilot-banner"><strong>Veyro · Kalendertest</strong> Brug en Apple-testkonto og fiktive bookingoplysninger. Testen sender ingen mails. <a href="/admin#kalender">Kalender på mobilen</a> · <a href="/booking">Prøv booking</a></aside>';
 
 function landing() {
-  return new Response(`<!doctype html><html lang="da"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kalenderguide · Veyros testside</title><link rel="stylesheet" href="/aj.css"><link rel="stylesheet" href="/aj-admin.css"><main class="aj-admin"><h1>Veyros kalendertest</h1><p>Brug dit personlige testlogin for at forbinde en Apple-testkonto eller prøve at booke. Her kan du læse guiden uden login.</p><p><a class="adm-button" href="/admin#kalender">Åbn bookingadministrationen</a></p>${calendarConnectionGuide()}</main></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  return new Response(`<!doctype html><html lang="da"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kalenderguide · Veyros testside</title><link rel="stylesheet" href="/aj.css"><link rel="stylesheet" href="/aj-admin.css"><main class="aj-admin"><h1>Veyros kalendertest</h1><p>Brug dit personlige testlogin for at forbinde en Apple-testkonto eller prøve at booke. Her kan du læse guiden uden login. Er du allerede logget ind, kan du åbne bookingadministrationen nedenfor.</p><p><a class="adm-button" href="/admin#kalender">Åbn bookingadministrationen</a></p>${calendarConnectionGuide()}</main></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
 
 async function respond(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -31,6 +31,8 @@ async function respond(request: Request, env: Env, ctx: ExecutionContext): Promi
   if (!result.headers.get('Content-Type')?.includes('text/html')) return result;
   return new HTMLRewriter()
     .on('body', { element(element) { element.prepend(testBanner, { html: true }); } })
+    .on('#adm-login-form', { element(element) { element.setAttribute('hidden', ''); } })
+    .on('#adm-login > p', { element(element) { element.setInnerContent('Åbn det personlige testlink, du har fået af Veyro.'); } })
     .on('header.site-header', { element(element) { element.remove(); } })
     .on('footer.site-footer', { element(element) { element.remove(); } })
     .transform(result);
@@ -38,8 +40,9 @@ async function respond(request: Request, env: Env, ctx: ExecutionContext): Promi
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
-    const result = await respond(request, env, ctx);
-    const response = new Response(result.body, result);
+    const head = request.method === 'HEAD';
+    const result = await respond(head ? new Request(request.url, { method: 'GET', headers: request.headers }) : request, env, ctx);
+    const response = new Response(head ? null : result.body, result);
     response.headers.set('X-Robots-Tag', 'noindex, nofollow');
     response.headers.set('Cache-Control', 'private, no-store');
     response.headers.set('Referrer-Policy', 'no-referrer');

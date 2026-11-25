@@ -1,5 +1,6 @@
 // Provision only this pilot's Worker and D1. The invite file contains a hash, never a login link.
 import { execFileSync } from 'node:child_process';
+import { smokeTest } from './smoke.mjs';
 import { randomBytes } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -40,6 +41,19 @@ const temporary = mkdtempSync(path.join(tmpdir(), 'veyro-calendar-'));
 try {
   wrangler('d1', 'migrations', 'apply', name, '--remote');
   wrangler('d1', 'execute', name, '--remote', '--file', path.join(directory, 'seed.sql'));
+  // One recognizable booking for the iPhone subscription, also on a fresh test database.
+  const sample = new Date();
+  sample.setUTCDate(sample.getUTCDate() + 1);
+  sample.setUTCHours(8, 0, 0, 0);
+  const start = sample.getTime() / 1000;
+  const minutes = Number(new Intl.DateTimeFormat('da-DK', { timeZone: 'Europe/Copenhagen', hour: '2-digit' }).format(sample)) * 60;
+  await api(`/d1/database/${database.uuid}/query`, 'POST', {
+    sql: `INSERT INTO aj_bookings(id,service_id,service_name,staff_id,staff_name,start_at,end_at,local_date,local_weekday,local_start,local_end,name,email,phone,manage_token_hash,mutation_id)
+      SELECT 'calendar-guide-example', v.id, v.name, s.id, s.name, ?, ?, ?, ?, ?, ?, 'Testkunde', 'testkunde@example.invalid', '', lower(hex(randomblob(32))), 'pilot-example'
+      FROM aj_services v, aj_staff s WHERE v.name='Olieskift' AND s.email='testperson@example.invalid'
+      AND NOT EXISTS (SELECT 1 FROM aj_bookings WHERE id='calendar-guide-example')`,
+    params: [start, start + 45 * 60, sample.toISOString().slice(0, 10), sample.getUTCDay() || 7, minutes, minutes + 45],
+  });
   const invite = JSON.parse(readFileSync(path.join(directory, 'invite.json'), 'utf8'));
   const expiry = Math.floor(Date.parse(invite.expiresAt) / 1000);
   if (!/^[a-f\d]{64}$/.test(invite.sha256) || !Number.isSafeInteger(expiry)) throw new Error('Invalid pilot invitation.');
@@ -58,6 +72,9 @@ try {
     throw new Error('Pilot Worker exists with missing encryption secrets. Restore its original keys before deploying.');
   }
   wrangler('deploy', ...args);
+  const service = await api('/workers/subdomain');
+  const origin = `https://${name}.${service.subdomain}.workers.dev`;
+  await smokeTest(origin, (sql, params) => api(`/d1/database/${database.uuid}/query`, 'POST', { sql, params }));
 } finally {
   rmSync(remoteConfig, { force: true });
   rmSync(temporary, { recursive: true, force: true });

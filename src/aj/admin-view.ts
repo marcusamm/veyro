@@ -442,7 +442,9 @@ export const adminJs = String.raw`
         el.innerHTML = head('Beskeder fra hjemmesiden', 'Beskeder fra kontaktformularen er gemt her. Svar kunden via telefon eller e-mail.') + (messages.length ? messages.map(m => '<article class="adm-card"><h3>' + esc(m.name) + '</h3><p><a href="mailto:' + esc(m.email) + '">' + esc(m.email) + '</a>' + (m.phone ? ' · <a href="tel:' + esc(String(m.phone).replace(/[^+\d]/g, '')) + '">' + esc(m.phone) + '</a>' : '') + '</p><p class="adm-note">' + esc(m.message || m.body) + '</p>' + (m.createdAt ? '<p class="adm-hint">' + esc(tzDate(m.createdAt)) + ' ' + esc(tzTime(m.createdAt)) + '</p>' : '') + '</article>').join('') : empty('Ingen beskeder endnu.'));
     }
     function prepareLogin() {
-        const loginToken = new URLSearchParams(location.hash.slice(1)).get('token') || new URLSearchParams(location.search).get('token');
+        const fragment = new URLSearchParams(location.hash.slice(1));
+        const loginToken = fragment.get('token') || new URLSearchParams(location.search).get('token');
+        if (location.hash === '#kalender' || fragment.get('panel') === 'kalender') panel = 'calendar';
         if (loginToken) {
             history.replaceState(null, '', location.pathname);
             loginView();
