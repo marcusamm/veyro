@@ -71,7 +71,7 @@
     const accountTools = button('vm-account-trigger', 'Mappeindstillinger', () => {
       main.classList.toggle('vm-show-account-tools');
       close();
-      if (matchMedia('(max-width:1279px)').matches && main.querySelector(':scope > md-sidenav.md-closed')) folderToggle.click();
+      if (folderToggle.getClientRects().length && main.querySelector(':scope > md-sidenav.md-closed')) folderToggle.click();
       else appMenu.focus();
     });
     group.append(accountTools);
@@ -140,6 +140,7 @@
       if (!tile) continue;
       const ctrl = window.angular?.element(row).controller('sgMessageListItem');
       const msg = ctrl?.message;
+      row.classList.toggle('vm-checked',!!msg?.selected);
       let line = tile.querySelector('.vm-row-note');
       if (!line) {
         line = element('div','vm-row-note');

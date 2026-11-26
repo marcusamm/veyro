@@ -227,10 +227,15 @@ main.vm-workspace #messagesList .sg-message-list-item.md-accent.md-bg {
   width:1.3rem;height:2rem;margin:0;z-index:1;opacity:0;
 }
 .vm-workspace #messagesList .sg-message-list-item > .md-button > .md-secondary-container > button.md-secondary {
-  margin:0;padding:0;min-width:0;width:100%;height:100%;
+  margin:0;padding:0;min-width:0;width:100%;height:100%;display:grid;place-items:center;
 }
-.vm-workspace #messagesList .sg-message-list-item > .md-button > .md-secondary-container sg-avatar-image,
-.vm-workspace #messagesList .sg-message-list-item > .md-button > .md-secondary-container .md-avatar {width:1.15rem;height:1.15rem;font-size:1rem;}
+.vm-workspace #messagesList .sg-message-list-item .md-secondary-container :is(sg-avatar-image,.md-avatar,.sg-avatar-selectable,md-icon) {display:none!important;}
+.vm-workspace #messagesList .sg-message-list-item .md-secondary-container button::after {
+  content:"";position:static;box-sizing:border-box;width:12px;height:12px;line-height:10px;
+  border:1.5px solid #6e6558;border-radius:3px;background:white;color:white;opacity:1;
+}
+.vm-workspace #messagesList .sg-message-list-item.vm-checked .md-secondary-container button::after {content:"✓";font-size:10px;background:#a03a12;border-color:#a03a12;}
+.vm-workspace #messagesList .sg-message-list-item.vm-checked > .md-button > .md-secondary-container {opacity:1;}
 .vm-workspace #messagesList .sg-message-list-item:focus-within > .md-button > .md-secondary-container,
 .vm-workspace #messagesList .sg-list-selectable .sg-message-list-item > .md-button > .md-secondary-container {opacity:1;}
 @media(hover:hover) {
@@ -301,6 +306,13 @@ main.vm-workspace :is(md-sidenav,[data-vm-appbar],.view-list,.vm-letter-head,md-
   main.vm-workspace > md-sidenav.md-sidenav-left {position:fixed;top:var(--mast);bottom:0;height:calc(100% - var(--mast));width:min(18rem,85vw);}
   .vm-mobile-folders {display:inline-block;}
   .vm-workspace .vm-head-actions > .vm-compose {display:inline-flex;width:auto;padding:.48rem .7rem;}
+}
+/* SOGo's configured drawer can already be locked open on tablets. Follow
+   that state so the folder control and the real navigation stay in sync. */
+@media(min-width:737px) and (max-width:1279px) {
+  main.vm-workspace:has(> md-sidenav.md-locked-open) {grid-template-columns:var(--rail) minmax(0,1fr);}
+  main.vm-workspace > md-sidenav.md-locked-open {position:relative!important;inset:auto;width:var(--rail);height:100%;transform:none;}
+  main.vm-workspace:has(> md-sidenav.md-locked-open) .vm-head-actions > :is(.vm-compose,.vm-mobile-folders) {display:none;}
 }
 @media(max-width:960px) {
   main.vm-workspace {--messages:clamp(16rem,38vw,22rem);}
