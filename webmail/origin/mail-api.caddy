@@ -1,0 +1,11 @@
+handle /webmail-api/api/* {
+	uri strip_prefix /webmail-api
+	request_body {
+		max_size 256KiB
+	}
+	reverse_proxy 127.0.0.1:18082 {
+		header_up -Authorization
+		header_up -X-Original-URL
+		header_up -X-Rewrite-URL
+	}
+}

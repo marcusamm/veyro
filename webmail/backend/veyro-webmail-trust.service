@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh the Veyro webmail mail-server trust certificate
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /etc/veyro-webmail-api/refresh-trust.sh
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/etc/veyro-webmail-api/secrets
+PrivateTmp=yes

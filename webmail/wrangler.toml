@@ -13,11 +13,12 @@ host = "localhost"
 [assets]
 directory = "./assets"
 binding = "ASSETS"
+html_handling = "none"
 run_worker_first = true
 
 [observability]
 enabled = false
 
 [vars]
-# Enable after verifying public TLS and the mailbox login on post.veyro.dk.
+# Set to 0 to display the maintenance page.
 WEBMAIL_ENABLED = "1"

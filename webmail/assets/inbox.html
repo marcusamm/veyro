@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf9f6">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Veyro Mail</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/inbox.css">
+  <script src="/inbox.js" defer></script>
+</head>
+<body class="entry">
+  <header class="appbar">
+    <a class="brand" href="/" aria-label="Veyro Mail, startside"><img src="/favicon.svg" width="34" height="34" alt=""><span>Veyro <b>Mail</b></span></a>
+    <a class="entry-home" href="https://veyro.dk/">Veyros hjemmeside</a>
+    <div id="account" class="account" hidden>
+      <span class="account-address" id="address"></span>
+      <button type="button" id="sign-out" class="secondary">Log ud</button>
+    </div>
+  </header>
+  <noscript><p>Slå JavaScript til i din browser for at åbne Veyro Mail.</p></noscript>
+  <main id="gate" class="gate">
+    <div class="entry-desk">
+      <section class="entry-fields" aria-labelledby="entry-title">
+        <h1 id="entry-title">Veyro Mail<span aria-hidden="true">.</span></h1>
+        <p class="entry-lead">Log ind med din Veyro-mailadresse for at læse og sende mail.</p>
+        <div id="connecting"><p id="connection-status" role="status">Henter din postkasse …</p><button type="button" id="connect-again" class="secondary" hidden>Prøv igen</button></div>
+        <form id="login" method="post" hidden>
+          <label for="email">E-mailadresse</label>
+          <input id="email" type="email" placeholder="E-mailadresse" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required>
+          <label for="password">Adgangskode</label>
+          <div class="password-field"><input id="password" type="password" placeholder="Adgangskode" autocomplete="current-password" required><button type="button" id="show-password" class="icon-button" aria-label="Vis adgangskode" title="Vis adgangskode" aria-pressed="false"><span class="glyph" data-icon="eye" aria-hidden="true"></span></button></div>
+          <p id="login-error" class="error" role="alert" hidden></p>
+          <button id="login-submit" type="submit" class="primary">Log ind</button>
+        </form>
+      </section>
+      <div class="mail-art" aria-hidden="true"><div class="envelope"><div class="envelope-flap"></div><img src="/favicon.svg" alt="" width="48" height="48"><span class="postmark">mail.veyro.dk</span></div></div>
+    </div>
+  </main>
+  <main id="workspace" class="workspace" data-reader="false" hidden>
+    <nav class="folders" aria-label="Mailmapper">
+      <button type="button" id="compose" class="primary compose"><span class="glyph" data-icon="write" aria-hidden="true"></span><span>Skriv mail</span></button>
+      <h2>Postkasse</h2>
+      <div id="folders"></div>
+    </nav>
+    <section class="mailbox" aria-labelledby="folder-title">
+      <div class="list-head">
+        <div class="folder-summary"><h1 id="folder-title" tabindex="-1">Indbakke</h1><span id="mail-count"></span><button id="refresh" type="button" class="icon-button" title="Opdater mappen" aria-label="Opdater mappen"><span class="glyph" data-icon="refresh" aria-hidden="true"></span></button></div>
+        <label class="search"><span class="glyph" data-icon="search" aria-hidden="true"></span><input id="search" type="search" placeholder="Søg i mappen" aria-label="Søg i mappen" autocomplete="off" maxlength="180"></label>
+      </div>
+      <div class="list-scroll" id="list-scroll">
+        <ul class="message-list" id="messages" aria-label="Mails"></ul>
+        <p id="list-state" class="list-state" role="status"></p>
+        <button id="retry-list" type="button" class="secondary tail" hidden>Prøv igen</button>
+        <button id="older" type="button" class="secondary tail" hidden>Vis ældre mails</button>
+      </div>
+    </section>
+    <section class="reader" id="reader" aria-label="Læsevisning">
+      <button type="button" id="back" class="back"><span class="glyph" data-icon="back" aria-hidden="true"></span><span id="back-folder">Tilbage til mappen</span></button>
+      <div id="paper"></div>
+    </section>
+  </main>
+  <dialog id="composer" aria-labelledby="compose-title">
+    <form id="draft" method="post">
+      <div class="compose-head"><h2 id="compose-title">Ny mail</h2><button id="close-compose" class="icon-button" type="button" aria-label="Luk kladde" title="Luk kladde"><span class="glyph" data-icon="close" aria-hidden="true"></span></button></div>
+      <label for="recipient">Til</label><input id="recipient" type="text" autocomplete="off" inputmode="email" maxlength="4000" required>
+      <label for="subject">Emne</label><input id="subject" type="text" maxlength="500">
+      <label for="body">Besked</label><textarea id="body" rows="8" maxlength="500000" required></textarea>
+      <p class="error" id="send-error" role="alert" hidden></p>
+      <div class="compose-foot"><button type="button" id="discard" class="text-button">Kassér kladde</button><button id="send" type="submit" class="primary"><span class="glyph" data-icon="sent" aria-hidden="true"></span>Send mail</button></div>
+    </form>
+  </dialog>
+  <div id="notice" class="notice" role="status" hidden></div>
+</body>
+</html>
