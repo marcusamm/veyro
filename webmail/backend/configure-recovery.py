@@ -5,6 +5,7 @@ import os
 import re
 import secrets
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -31,6 +32,8 @@ NOTIFICATION = {
     ),
 }
 
+BACKUP = Path("/root/veyro-webmail-recovery-prior.json")
+
 
 def run(args, data=None):
     result = subprocess.run(args, cwd=MAILCOW, input=data, capture_output=True, text=True)
@@ -48,6 +51,15 @@ def sql(statement):
 def redis(*args):
     return run(["docker", "compose", "exec", "-T", "redis-mailcow", "sh", "-c",
                 'REDISCLI_AUTH="$REDISPASS" exec redis-cli --raw "$@"', "--", *args])
+
+
+def db_gateway():
+    db_container = run(["docker", "compose", "ps", "-q", "mysql-mailcow"])
+    gateway = run(["docker", "inspect", "--format",
+                   "{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}", db_container])
+    if not re.fullmatch(r"(?:\d{1,3}\.){3}\d{1,3}", gateway):
+        raise RuntimeError("Unexpected private database gateway")
+    return gateway
 
 
 def save_new(path, data, mode, gid):
@@ -89,17 +101,12 @@ def configure():
     if not match:
         raise RuntimeError("The Mailcow database must be bound to loopback")
     port = int(match[1])
-    db_container = run(["docker", "compose", "ps", "-q", "mysql-mailcow"])
-    gateway = run(["docker", "inspect", "--format",
-                   "{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}", db_container])
-    if not re.fullmatch(r"(?:\d{1,3}\.){3}\d{1,3}", gateway):
-        raise RuntimeError("Unexpected private database gateway")
+    gateway = db_gateway()
     principal = f"'{VERSION_USER}'@'{gateway}'"
     cfg_path = SECRETS / "credential-version.json"
-    backup = Path("/root/veyro-webmail-recovery-prior.json")
-    if not backup.exists():
+    if not BACKUP.exists():
         previous = {key: redis("GET", key) if redis("EXISTS", key) == "1" else None for key in NOTIFICATION}
-        save_new(backup, {"user_acl": previous_acl, "notification": previous}, 0o600, 0)
+        save_new(BACKUP, {"user_acl": previous_acl, "notification": previous}, 0o600, 0)
     if not cfg_path.exists():
         existing = sql(f"SELECT COUNT(*) FROM mysql.user WHERE User='{VERSION_USER}';")
         view_exists = sql(f"SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='{db}' AND TABLE_NAME='{VIEW}';")
@@ -133,5 +140,33 @@ def configure():
     print("Configured Mailcow recovery notification, mailbox permissions and read-only credential versions.")
 
 
+def rollback():
+    # Run only after rolling back the API to a release that does not read this view.
+    if os.geteuid() != 0 or not BACKUP.is_file():
+        raise SystemExit("Run as root with the saved pre-install settings.")
+    snapshot = json.loads(BACKUP.read_text())
+    for email in STAFF:
+        previous = snapshot["user_acl"][email]
+        if previous not in ("0", "1"):
+            raise ValueError("Invalid saved mailbox permission")
+        sql(f"UPDATE user_acl SET pw_reset={previous} WHERE username='{email}' AND pw_reset=1;")
+    for key, template in NOTIFICATION.items():
+        if redis("GET", key) == template:
+            prior = snapshot["notification"][key]
+            if prior is None:
+                redis("DEL", key)
+            else:
+                redis("SET", key, prior)
+    sql(f"DROP TRIGGER IF EXISTS `{TRIGGER}`; DROP VIEW IF EXISTS `{VIEW}`;")
+    sql(f"DROP USER IF EXISTS '{VERSION_USER}'@'{db_gateway()}';")
+    (SECRETS / "credential-version.json").unlink(missing_ok=True)
+    print("Restored pre-install settings and removed the recovery view, trigger and reader.")
+
+
 if __name__ == "__main__":
-    configure()
+    if sys.argv[1:] == ["--rollback"]:
+        rollback()
+    elif not sys.argv[1:]:
+        configure()
+    else:
+        raise SystemExit("Usage: python3 configure-recovery.py [--rollback]")
