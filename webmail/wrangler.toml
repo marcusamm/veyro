@@ -20,4 +20,4 @@ enabled = false
 
 [vars]
 # Enable after verifying public TLS and the mailbox login on post.veyro.dk.
-WEBMAIL_ENABLED = "0"
+WEBMAIL_ENABLED = "1"

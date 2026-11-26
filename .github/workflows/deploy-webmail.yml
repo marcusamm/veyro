@@ -42,15 +42,18 @@ jobs:
           fetch=(curl --silent --show-error --connect-timeout 5 --max-time 20)
 
           check_entry() {
-            local result
-            result=$("${fetch[@]}" -o "$page" -w '%{http_code} %{redirect_url}' "$base/") || return 1
+            local result path
+            for path in / /forhaandsvisning /forhaandsvisning/ /SOGo/ /SOGo/so/; do
+              result=$("${fetch[@]}" -o "$page" -w '%{http_code} %{redirect_url}' "$base$path") || return 1
+              if [[ "$mode" == 1 ]]; then
+                [[ "$result" == "302 $mailbox" && ! -s "$page" ]] || return 1
+              else
+                [[ "$result" == "503 " ]] || return 1
+              fi
+            done
             if [[ "$mode" == 1 ]]; then
-              [[ "$result" == "302 $mailbox" ]] || return 1
               result=$("${fetch[@]}" -o "$page" -w '%{http_code}' "$mailbox") || return 1
               [[ "$result" == 200 ]] && grep -Fq 'login-card login-user' "$page"
-            else
-              [[ "$result" == "200 " ]] && grep -Fq '/forhaandsvisning.js' "$page" || return 1
-              [[ "$("${fetch[@]}" -o /dev/null -w '%{http_code}' "$base/SOGo/")" == 503 ]]
             fi
           }
 
@@ -60,8 +63,9 @@ jobs:
             if [[ "$attempt" == 12 ]]; then echo "Forsiden svarede forkert for WEBMAIL_ENABLED=$mode"; exit 1; fi
             sleep 5
           done
-          "${fetch[@]}" --fail "$base/forhaandsvisning" -o "$page"
-          grep -Fq '/forhaandsvisning.js' "$page"
-          for asset in forhaandsvisning.js forhaandsvisning.css webmail.css favicon.svg manrope.woff2; do
+          for asset in forhaandsvisning.js forhaandsvisning.css; do
+            [[ "$("${fetch[@]}" -o /dev/null -w '%{http_code}' "$base/$asset")" == 404 ]] || { echo "$asset er stadig offentligt"; exit 1; }
+          done
+          for asset in webmail.css favicon.svg manrope.woff2; do
             [[ "$("${fetch[@]}" -o "$page" -w '%{http_code}' "$base/$asset")" == 200 && -s "$page" ]] || { echo "Mangler $asset"; exit 1; }
           done

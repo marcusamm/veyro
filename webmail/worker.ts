@@ -1,10 +1,9 @@
-import { installationPage } from './view';
-import { previewHtml, previewCss, previewJs } from './preview';
+import { unavailablePage } from './view';
 import { webmailCss } from './styles';
 
 const PUBLIC = 'https://mail.veyro.dk';
 const mailboxLogin = 'https://post.veyro.dk/';
-const entryPaths = new Set(['/', '/SOGo', '/SOGo/', '/SOGo/so', '/SOGo/so/']);
+const entryPaths = new Set(['/', '/forhaandsvisning', '/forhaandsvisning/', '/SOGo', '/SOGo/', '/SOGo/so', '/SOGo/so/']);
 const assetPaths = new Set(['/favicon.svg', '/manrope.woff2', '/Manrope-OFL.txt']);
 const readMethods = new Set(['GET', 'HEAD']);
 const localPolicy = "default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
@@ -31,21 +30,14 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
     const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
-    if (url.origin !== PUBLIC && !(local && env.WEBMAIL_ENABLED !== '1')) {
+    if (url.origin !== PUBLIC && !local) {
       return localResponse(req, 'Ukendt adresse.', 404);
     }
     const enabled = env.WEBMAIL_ENABLED === '1';
     const read = readMethods.has(req.method);
-    const preview = url.pathname === '/forhaandsvisning' || url.pathname === '/forhaandsvisning/'
-      || (url.pathname === '/' && !enabled);
-    if (read && preview) {
-      const example = localResponse(req, previewHtml(), 200, html);
-      example.headers.set('Content-Security-Policy', localPolicy + "; script-src 'self'");
-      return example;
-    }
     if (!enabled && (entryPaths.has(url.pathname) || url.pathname === '/SOGo/connect')) {
       const page = read && (req.headers.get('Accept') || '').includes('text/html');
-      return localResponse(req, page ? installationPage : 'Postkasserne er under opsætning.', 503, page ? html : undefined);
+      return localResponse(req, page ? unavailablePage : 'Webmail er midlertidigt lukket.', 503, page ? html : undefined);
     }
     if (!read) {
       const response = localResponse(req, 'Metoden er ikke tilladt.', 405);
@@ -58,8 +50,6 @@ export default {
       response.headers.set('Location', mailboxLogin);
       return response;
     }
-    if (url.pathname === '/forhaandsvisning.css') return localResponse(req, previewCss, 200, 'text/css; charset=utf-8');
-    if (url.pathname === '/forhaandsvisning.js') return localResponse(req, previewJs, 200, 'text/javascript; charset=utf-8');
     if (url.pathname === '/webmail.css') return localResponse(req, webmailCss, 200, 'text/css; charset=utf-8');
     if (url.pathname === '/robots.txt') return localResponse(req, 'User-agent: *\nDisallow: /\n', 200);
     if (assetPaths.has(url.pathname)) {
