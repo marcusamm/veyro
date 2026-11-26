@@ -76,6 +76,6 @@ export function bookingCalendarPage(data: CalendarData, options: { bookingReady:
     ${data.appointments.length ? html`<p class="calendar-summary">${bookingTimingNote}</p><ol class="calendar-appointments">${data.appointments.map(appointment)}</ol>` : html`<p class="calendar-empty" role="status">Ingen aftaler denne dag.</p>`}
     ${data.truncated ? html`<p class="alert alert-info">Dagen indeholder flere end 500 aftaler. De første 500 vises her. Vælg én medarbejderkalender for at begrænse oversigten.</p>` : ''}
   </section>
-  <p class="calendar-source">Oversigten viser aftalerne fra ${access.workspace.name}s bookingsystem.${access.role === 'owner' ? html` <a href="${options.adminUrl}" target="_blank" rel="noopener noreferrer">Åbn bookingadministrationen</a> for at flytte eller aflyse aftaler.` : ' Du ser kun din egen kalender.'}</p>
+  <p class="calendar-source">Oversigten viser aftalerne fra ${access.workspace.name}s bookingsystem.${access.role === 'owner' ? html` <a href="${options.adminUrl}" target="_blank" rel="noopener noreferrer">Åbn bookingadministrationen</a> for at flytte eller aflyse aftaler.` : ' Du ser kun din egen kalender.'} <a href="${options.adminUrl}#kalender" target="_blank" rel="noopener noreferrer">Forbind din kalender</a></p>
 </section>`;
 }

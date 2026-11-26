@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "hono": "^4.13.13",
+    "ical.js": "2.2.1",
     "liquidjs": "^10.30.0",
     "pdf-lib": "^1.17.1"
   },

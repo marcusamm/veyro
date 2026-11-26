@@ -10,7 +10,7 @@ Booking har vedvarende lagring, valg af ydelse/tid/kalender, oplysninger, gennem
 
 I Veyros kundepanel viser `/konto/kalender` måned og dagsaftaler for den indloggede bookingkunde. Adgang kræver en aktiv eller prøveaftale og en aktiv bruger i det tilknyttede bookingsystem. Ejeren ser værkstedets kalendere. En medarbejder ser sin egen.
 
-Kalenderkoblingen til eksterne kalenderapps er et revokerbart ICS-abonnement. Den viser aftaler og aflysninger i en kalenderapp; ændringer foretages altid i bookingsystemet. Kalenderappens eget opdateringsinterval gælder. Der er ingen tovejssynkronisering, SMS, påmindelser, betaling, webshop eller chatbot.
+Kalenderlinket er et revokerbart ICS-abonnement. Det viser bookinger og aflysninger i kalenderappen; bookingen redigeres i Veyro. Kalenderappens opdateringsinterval bestemmer, hvornår en ændring vises. Der findes desuden en separat, valgfri [iCloud-pilot til blokering af optagede tider](ICLOUD-BOOKING.md). Den er slået fra som standard. Uden den har et kalenderabonnement ingen virkning på ledige tider i Veyro.
 
 ## Kundeoplysninger før aktivering
 
