@@ -61,14 +61,15 @@ describe('Veyro Mail gateway', () => {
       expect((await fetch(path)).status).toBe(401);
       expect((await fetch(path, {method:'DELETE'})).status).toBe(405);
     }
-    for (const path of ['/api/admin/organizations', '/api/admin/mailboxes', '/api/admin/mailboxes/status']) {
+    const writes = ['/api/admin/mailboxes/status', '/api/admin/mailboxes/password', '/api/admin/mailboxes/role'];
+    for (const path of ['/api/admin/organizations', '/api/admin/mailboxes', ...writes]) {
       for (const [invalid, code] of [[{Cookie:''},401], [{'X-CSRF-Token':''},403], [{Origin:'https://elsewhere.invalid'},403]]) {
         expect((await fetch(path, {...post, headers:{...headers,...invalid}})).status).toBe(code);
       }
       expect((await fetch(path + '/anything', post)).status).toBe(405);
     }
     expect((await fetch('/api/admin/mailboxes?domain=a.dk&domain=b.dk', get)).status).toBe(400);
-    expect((await fetch('/api/admin/mailboxes/status', get)).status).toBe(405);
+    for (const path of writes) expect((await fetch(path, get)).status).toBe(405);
     expect((await fetch('/api/admin/dns?domain=example.dk', post)).status).toBe(405);
     expect((await fetch('/api/admin/dns', get)).status).toBe(400);
     expect(upstream).not.toHaveBeenCalled();
@@ -80,6 +81,12 @@ describe('Veyro Mail gateway', () => {
     expect(upstream.mock.calls[2][1].headers.get('X-CSRF-Token')).toBe(csrfToken);
     expect((await fetch('/api/admin/dns?domain=customer.dk&extra=x', get)).status).toBe(200);
     expect(upstream.mock.calls[3][0]).toBe(backendOrigin + '/webmail-api/api/admin/dns?domain=customer.dk');
+    for (const path of writes.slice(1)) {
+      expect((await fetch(path, {...post, headers:{...headers,'X-Veyro-Actor':'marcus@veyro.dk'}})).status).toBe(200);
+      const [url, init] = upstream.mock.lastCall;
+      expect(url).toBe(backendOrigin + '/webmail-api' + path);
+      expect(init.headers.has('X-Veyro-Actor')).toBe(false);
+    }
   });
 
   it.each(['action', 'snooze'])('binds %s to a message, a folder and a signed-in browser', async action => {

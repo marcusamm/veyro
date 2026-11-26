@@ -12,7 +12,7 @@ import smtplib
 import threading
 import time
 from collections import deque
-from contextlib import contextmanager, nullcontext
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from queue import Full, Queue
 
@@ -247,9 +247,23 @@ def payload():
     return data
 
 
+def administration_scope(address):
+    if address == ORGANIZATION_ADMIN:
+        return "platform", None
+    result = org_admin_client.call("/access", {}, actor=address)
+    if result.get("role") == "organization" and result.get("domain") == address.rpartition("@")[2]:
+        return "organization", result["domain"]
+    return "none", None
+
+
 def public_session(s):
+    try:
+        role, domain = administration_scope(s.email)
+    except MailError:
+        # A provisioning outage must not prevent employees from using their mail.
+        role, domain = "none", None
     return dict(email=s.email, csrfToken=s.csrf, canManageRecovery=s.email in STAFF,
-                canManageOrganizations=s.email == ORGANIZATION_ADMIN)
+                canManageOrganizations=role != "none", administrationRole=role, administrationDomain=domain)
 
 
 def recovery_address(value):
@@ -493,9 +507,10 @@ def session():
 
 
 @contextmanager
-def organization_access(*fields, changing_status=False):
+def organization_access(*fields, platform_only=False):
     current = g.session
-    if current.email != ORGANIZATION_ADMIN:
+    role, domain = administration_scope(current.email)
+    if role == "none" or (platform_only and role != "platform"):
         raise MailError("Du har ikke adgang til mailadministrationen.", 403)
     write = request.method == "POST"
     if write:
@@ -508,15 +523,27 @@ def organization_access(*fields, changing_status=False):
         data = request.args.to_dict()
         if set(data) != set(fields) or any(len(request.args.getlist(k)) != 1 for k in data):
             raise MailError("Ugyldige felter til mailadministration.", 422)
-    guard = nullcontext()
-    if changing_status:
+    if role == "organization" and "domain" in data and data["domain"] != domain:
+        raise MailError("Du kan kun administrere din egen virksomhed.", 403)
+    if "active" in data:
+        if type(data["active"]) is not bool:
+            raise MailError("Vælg en gyldig postkassestatus.", 422)
+        if data["active"] and role == "organization":
+            raise MailError("Kun Veyro kan genaktivere en postkasse.", 403)
+    if "admin" in data and type(data["admin"]) is not bool:
+        raise MailError("Vælg en gyldig administratorrolle.", 422)
+    addresses = [current.email]
+    if "email" in data:
         address = recovery_address(data["email"]).lower()
-        if (address == ORGANIZATION_ADMIN or type(data["active"]) is not bool
-                or address.rpartition("@")[2] != data["domain"]):
-            raise MailError("Denne statusændring er ikke tilladt.", 422)
+        if address in (current.email, ORGANIZATION_ADMIN) or address.rpartition("@")[2] != data["domain"]:
+            raise MailError("Denne postkasse kan ikke ændres her.", 422)
         data["email"] = address
-        guard = account_lock(address)
-    with guard, current.lock:
+        addresses.append(address)
+    with ExitStack() as locks:
+        # All targeted operations use the same ordering, including colliding lock stripes.
+        for index in sorted({hash(address) % len(ACCOUNT_LOCKS) for address in addresses}):
+            locks.enter_context(ACCOUNT_LOCKS[index])
+        locks.enter_context(current.lock)
         with TABLE:
             if SESSIONS.get(g.sid) is not current or not current.secret:
                 raise MailError("Log ind igen.", 401)
@@ -541,20 +568,32 @@ def organization_access(*fields, changing_status=False):
 
 def public_mailbox(record):
     return dict(email=record["address"], name=record["name"], active=record["active"],
-                quotaMiB=record["quotaMiB"], protected=record["protected"])
+                quotaMiB=record["quotaMiB"], protected=record["protected"],
+                organizationAdmin=record["organizationAdmin"])
+
+
+def broker(path, data):
+    return org_admin_client.call(path, data, actor=g.session.email)
+
+
+def update_mailbox(path, data):
+    record = broker(path, data).get("mailbox")
+    if not isinstance(record, dict) or record.get("address") != data["email"]:
+        raise MailError("Kontrollér postkassen, før du prøver igen.", 503)
+    return record
 
 
 @app.get("/api/admin/organizations")
 def admin_organizations():
     with organization_access():
-        return jsonify(organizations=org_admin_client.call("/organizations/list", {})["organizations"])
+        return jsonify(organizations=broker("/organizations/list", {})["organizations"])
 
 
 @app.post("/api/admin/organizations")
 def admin_organization_create():
-    with organization_access("domain", "name") as data:
+    with organization_access("domain", "name", platform_only=True) as data:
         try:
-            record = org_admin_client.call("/organizations/create", data)["organization"]
+            record = broker("/organizations/create", data)["organization"]
         except org_admin_client.DomainProofRequired as exc:
             return jsonify(error=exc.message, dnsChallenge=exc.challenge), 409
         log.info("Mail administration: organization provisioned by %s: %s", g.session.email, record["domain"])
@@ -564,34 +603,35 @@ def admin_organization_create():
 @app.get("/api/admin/mailboxes")
 def admin_mailboxes():
     with organization_access("domain") as data:
-        records = org_admin_client.call("/mailboxes/list", data)["mailboxes"]
+        records = broker("/mailboxes/list", data)["mailboxes"]
         return jsonify(mailboxes=[public_mailbox(row) for row in records])
 
 
 @app.get("/api/admin/dns")
 def admin_domain_dns():
-    with organization_access("domain") as data:
-        return jsonify(dns=org_admin_client.call("/organizations/dns", data)["dns"])
+    with organization_access("domain", platform_only=True) as data:
+        return jsonify(dns=broker("/organizations/dns", data)["dns"])
 
 
 @app.post("/api/admin/mailboxes")
 def admin_mailbox_create():
     with organization_access("domain", "localPart", "name", "password") as data:
-        record = org_admin_client.call("/mailboxes/create", data)["mailbox"]
+        record = broker("/mailboxes/create", data)["mailbox"]
         log.info("Mail administration: mailbox provisioned by %s: %s", g.session.email, record["address"])
         return jsonify(mailbox=public_mailbox(record))
 
 
 @app.post("/api/admin/mailboxes/status")
 def admin_mailbox_status():
-    with organization_access("domain", "email", "active", changing_status=True) as data:
+    with organization_access("domain", "email", "active") as data:
         address = data["email"]
+        previous = credential_version(address) if not data["active"] else None
         try:
-            record = org_admin_client.call("/mailboxes/status", data)["mailbox"]
-            if record["address"] != address or record["active"] is not data["active"]:
+            record = update_mailbox("/mailboxes/status", data)
+            if record.get("active") is not data["active"]:
                 raise MailError("Kontrollér postkassens status før du prøver igen.", 503)
         except MailError as exc:
-            if exc.status == 503 and not data["active"]:
+            if exc.status == 503 and previous is not None and credential_version(address) != previous:
                 retire_mailbox_access(address)
             raise
         else:
@@ -601,13 +641,56 @@ def admin_mailbox_status():
         return jsonify(mailbox=public_mailbox(record))
 
 
-def retire_mailbox_access(address):
+@app.post("/api/admin/mailboxes/password")
+def admin_mailbox_password():
+    with organization_access("domain", "email", "newPassword") as data:
+        address = data["email"]
+        previous = credential_version(address)
+        try:
+            record = update_mailbox("/mailboxes/password", {"domain": data["domain"], "email": address,
+                                                            "password": data["newPassword"]})
+        except MailError as exc:
+            # If Mailcow committed the password before a response was lost, retire
+            # access just as on success. Never log out an unauthorized target.
+            if exc.status == 503 and previous is not None and credential_version(address) != previous:
+                retire_mailbox_access(address)
+            raise
+        retire_mailbox_access(address)
+        log.info("Mail administration: password reset by %s: %s", g.session.email, address)
+        return jsonify(mailbox=public_mailbox(record))
+
+
+@app.post("/api/admin/mailboxes/role")
+def admin_mailbox_role():
+    with organization_access("domain", "email", "admin", platform_only=True) as data:
+        try:
+            record = update_mailbox("/mailboxes/role", data)
+            if record.get("organizationAdmin") is not data["admin"]:
+                raise MailError("Kontrollér administratorrollen, før du prøver igen.", 503)
+        except MailError as exc:
+            # A grant may already have committed before a timeout. Require a fresh
+            # sign-in even then, so an older session cannot inherit the new role.
+            if exc.status == 503:
+                close_mailbox_sessions(data["email"])
+            raise
+        close_mailbox_sessions(data["email"])
+        log.info("Mail administration: organization admin set by %s: %s admin=%s",
+                 g.session.email, data["email"], data["admin"])
+        return jsonify(mailbox=public_mailbox(record))
+
+
+def close_mailbox_sessions(address):
     with TABLE:
         retired = [SESSIONS.pop(k) for k, s in list(SESSIONS.items()) if s.email == address]
     for other in retired:
         with other.lock:
             other.close()
             other.secret = b""
+            other.recovery = None
+
+
+def retire_mailbox_access(address):
+    close_mailbox_sessions(address)
     revoke_ai_for_mailbox(address)
 
 

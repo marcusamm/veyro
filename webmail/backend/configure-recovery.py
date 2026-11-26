@@ -15,6 +15,10 @@ STAFF = ("marcus@veyro.dk", "efe@veyro.dk")
 VERSION_USER = "veyro_webmail_version"
 VIEW = "veyro_webmail_credential_version"
 TRIGGER = "veyro_webmail_expire_reset_links"
+TENANT_RECOVERY_TRIGGER = "veyro_tenant_expire_reset_links"
+ROLE_TABLE = "veyro_organization_admins"
+ROLE_USER = "veyro_org_roles"
+ROLE_CONFIG = Path("/etc/veyro-mail-admin/private/org-roles.json")
 NOTIFICATION = {
     "PW_RESET_FROM": "kontakt@veyro.dk",
     "PW_RESET_SUBJ": "Nulstil din adgangskode til Veyro Mail",
@@ -87,6 +91,89 @@ DELIMITER ;
 
 def staff_addresses():
     return ",".join("'" + email + "'" for email in STAFF)
+
+
+def install_org_registry():
+    sql(f"""CREATE TABLE IF NOT EXISTS `{ROLE_TABLE}` (
+  mailbox VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL PRIMARY KEY,
+  CONSTRAINT veyro_org_role_mailbox_fk FOREIGN KEY (mailbox) REFERENCES mailbox(username)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;""")
+    # Keep native links bound to the password and recovery address that issued
+    # them. Native Mailcow itself checks the link's age and account state only.
+    sql(f"""DELIMITER //
+CREATE OR REPLACE TRIGGER `{TENANT_RECOVERY_TRIGGER}` AFTER UPDATE ON mailbox FOR EACH ROW
+BEGIN
+  IF NEW.authsource='mailcow' AND NEW.kind=''
+     AND (NOT (OLD.password <=> NEW.password)
+          OR NOT (JSON_EXTRACT(OLD.attributes,'$.recovery_email') <=> JSON_EXTRACT(NEW.attributes,'$.recovery_email')))
+     AND EXISTS (SELECT 1 FROM domain d WHERE d.domain=NEW.domain AND d.backupmx=0
+       AND d.relay_all_recipients=0 AND d.relay_unknown_only=0 AND (d.domain='veyro.dk' OR EXISTS
+         (SELECT 1 FROM tags_domain t WHERE t.domain=d.domain AND t.tag_name='veyro-mail-organization'))) THEN
+    DELETE FROM reset_password WHERE username=NEW.username;
+  END IF;
+END//
+CREATE OR REPLACE TRIGGER veyro_org_role_eligible BEFORE INSERT ON `{ROLE_TABLE}` FOR EACH ROW
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM mailbox m JOIN domain d ON d.domain=m.domain
+    WHERE m.username=NEW.mailbox AND m.username<>'marcus@veyro.dk'
+      AND (d.domain='veyro.dk' OR EXISTS (SELECT 1 FROM tags_domain t
+        WHERE t.domain=d.domain AND t.tag_name='veyro-mail-organization'))
+      AND d.active=1 AND d.backupmx=0 AND d.relay_all_recipients=0 AND d.relay_unknown_only=0
+      AND m.active=1 AND m.kind='' AND m.authsource='mailcow'
+      AND COALESCE(JSON_VALUE(m.attributes,'$.shared'),'0')='0'
+      AND COALESCE(JSON_VALUE(m.attributes,'$.imap_access'),'1')='1'
+      AND COALESCE(JSON_VALUE(m.attributes,'$.sogo_access'),'1')='1'
+      AND COALESCE(JSON_VALUE(m.attributes,'$.force_pw_update'),'0')='0'
+      AND COALESCE(JSON_VALUE(m.attributes,'$.force_tfa'),'0')='0'
+      AND SUBSTRING_INDEX(m.username,'@',1) NOT IN ('admin','postmaster','abuse','hostmaster','mailer-daemon','root')
+      AND NOT EXISTS (SELECT 1 FROM admin a WHERE a.username=m.username)
+      AND NOT EXISTS (SELECT 1 FROM tfa f WHERE f.username=m.username) FOR UPDATE) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Ineligible organization administrator';
+  END IF;
+END//
+CREATE OR REPLACE TRIGGER veyro_org_role_mailbox_changed AFTER UPDATE ON mailbox FOR EACH ROW
+BEGIN
+  IF NEW.active=0 OR NEW.username<>OLD.username OR NEW.domain<>OLD.domain
+     OR NEW.kind<>'' OR NEW.authsource<>'mailcow' OR COALESCE(JSON_VALUE(NEW.attributes,'$.shared'),'0')<>'0' THEN
+    DELETE FROM `{ROLE_TABLE}` WHERE mailbox IN (NEW.username, OLD.username);
+  END IF;
+END//
+CREATE OR REPLACE TRIGGER veyro_org_role_domain_changed AFTER UPDATE ON domain FOR EACH ROW
+BEGIN
+  IF NEW.active=0 OR NEW.backupmx<>0 OR NEW.relay_all_recipients<>0 OR NEW.relay_unknown_only<>0 OR NEW.domain<>OLD.domain THEN
+    DELETE FROM `{ROLE_TABLE}` WHERE SUBSTRING_INDEX(mailbox,'@',-1)=OLD.domain;
+  END IF;
+END//
+CREATE OR REPLACE TRIGGER veyro_org_role_domain_removed AFTER DELETE ON domain FOR EACH ROW
+  DELETE FROM `{ROLE_TABLE}` WHERE SUBSTRING_INDEX(mailbox,'@',-1)=OLD.domain//
+DELIMITER ;
+""")
+
+
+def configure_org_roles():
+    if os.geteuid() != 0:
+        raise SystemExit("Run on the mail guest as root.")
+    database = sql("SELECT DATABASE()")
+    binding = run(["docker", "compose", "port", "mysql-mailcow", "3306"])
+    match = re.fullmatch(r"127\.0\.0\.1:(\d+)", binding)
+    if not re.fullmatch(r"[A-Za-z0-9_]+", database) or not match:
+        raise RuntimeError("Expected a local Mailcow database")
+    port = int(match[1])
+    principal = f"'{ROLE_USER}'@'{db_gateway()}'"
+    config = dict(host="127.0.0.1", port=port, database=database, user=ROLE_USER)
+    if not ROLE_CONFIG.exists():
+        if sql(f"SELECT COUNT(*) FROM mysql.user WHERE User='{ROLE_USER}'") != "0":
+            raise RuntimeError("Restore the existing broker role credential before provisioning")
+        save_new(ROLE_CONFIG, {**config, "password": secrets.token_urlsafe(48)}, 0o440, 65531)
+    saved = json.loads(ROLE_CONFIG.read_text())
+    password = saved.pop("password", "")
+    if saved != config or not re.fullmatch(r"[A-Za-z0-9_-]{64}", password):
+        raise RuntimeError("Unexpected local role credential configuration")
+    install_org_registry()
+    sql(f"CREATE USER IF NOT EXISTS {principal} IDENTIFIED BY '{password}';"
+        f"GRANT SELECT, INSERT, DELETE ON `{database}`.`{ROLE_TABLE}` TO {principal};")
+    print("Provisioned organization roles and tenant recovery link expiration.")
 
 
 def mailbox_view_query(staff_only=False):
@@ -214,7 +301,9 @@ def rollback():
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] == ["--rollback"]:
+    if sys.argv[1:] == ["--configure-org-roles"]:
+        configure_org_roles()
+    elif sys.argv[1:] == ["--rollback"]:
         rollback()
     elif sys.argv[1:] == ["--upgrade-mailbox-view"]:
         migrate_mailbox_view()
@@ -223,4 +312,4 @@ if __name__ == "__main__":
     elif not sys.argv[1:]:
         configure()
     else:
-        raise SystemExit("Usage: python3 configure-recovery.py [--upgrade-mailbox-view | --rollback-mailbox-view | --rollback]")
+        raise SystemExit("Usage: python3 configure-recovery.py [--configure-org-roles | --upgrade-mailbox-view | --rollback-mailbox-view | --rollback]")

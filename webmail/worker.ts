@@ -14,7 +14,8 @@ const readApi = /^\/api\/(?:session|folders|messages(?:\/[0-9]{1,10}\.[0-9]{1,10
 const recoveryRequest = '/api/recovery/request';
 const adminReads = new Set(['/api/admin/organizations', '/api/admin/mailboxes', '/api/admin/dns']);
 const accountWrites = new Set(['/api/password', '/api/recovery/enroll/start', '/api/recovery/enroll/confirm',
-  '/api/admin/organizations', '/api/admin/mailboxes', '/api/admin/mailboxes/status']);
+  '/api/admin/organizations', '/api/admin/mailboxes', '/api/admin/mailboxes/status',
+  '/api/admin/mailboxes/password', '/api/admin/mailboxes/role']);
 const writeApi = new Set(['/api/login', '/api/logout', '/api/send', recoveryRequest, ...accountWrites]);
 const messageWrite = /^\/api\/messages\/[0-9]{1,10}\.[0-9]{1,10}\/(?:action|snooze)$/;
 const sessionName = '__Host-veyro_session';

@@ -13,6 +13,7 @@ import unicodedata
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
+import pymysql
 from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_der_public_key
@@ -22,6 +23,7 @@ from mailstore import HOST, MailError, verified_tls
 
 API_KEY = Path("/run/veyro-broker/mailcow-key")
 DNS_KEY = Path("/run/veyro-broker/dns-key")
+ROLE_CONFIG = Path("/run/veyro-broker/org-roles.json")
 HOME_DOMAIN = "veyro.dk"
 TENANT_TAG = "veyro-mail-organization"
 RESERVED_SUFFIXES = ("test", "invalid", "example", "localhost", "local", "internal",
@@ -29,10 +31,12 @@ RESERVED_SUFFIXES = ("test", "invalid", "example", "localhost", "local", "intern
 PROTECTED_LOCALS = {"admin", "postmaster", "abuse", "hostmaster", "mailer-daemon", "root"}
 LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?")
 LOCAL = re.compile(r"[a-z0-9_+-]+(?:\.[a-z0-9_+-]+)*")
+MAIL_ATOM = r"[a-z0-9!#$%&'*+/=?^_\x60{|}~-]+"
+EXISTING_LOCAL = re.compile(MAIL_ATOM + r"(?:\." + MAIL_ATOM + r")*")
 MIB = 1024 ** 2
 # Mailcow checks remaining domain quota before inserting a mailbox. Serialize the
 # management panel's writers so concurrent operators cannot race that check.
-WRITE_LOCK = threading.Lock()
+WRITE_LOCK = threading.RLock()
 
 
 class DomainProofRequired(MailError):
@@ -119,6 +123,101 @@ def _local(value):
 
 def _protected(address):
     return address == "marcus@" + HOME_DOMAIN or address.split("@", 1)[0] in PROTECTED_LOCALS
+
+
+def forbidden():
+    return MailError("Du har ikke adgang til denne handling.", 403)
+
+
+def _role_query(statement, value):
+    """Only the broker can read the credentials for the mailbox-role table."""
+    try:
+        cfg = json.loads(ROLE_CONFIG.read_text("utf-8"))
+        if (not isinstance(cfg, dict) or cfg.get("host") != "127.0.0.1"
+                or cfg.get("user") != "veyro_org_roles" or type(cfg.get("port")) is not int
+                or not 1 <= cfg["port"] <= 65535 or not isinstance(cfg.get("password"), str)
+                or not cfg["password"] or not re.fullmatch(r"[a-zA-Z0-9_]+", cfg.get("database", ""))):
+            raise ValueError()
+        with pymysql.connect(host=cfg["host"], port=cfg["port"], database=cfg["database"],
+                             user=cfg["user"], password=cfg["password"], charset="utf8mb4",
+                             connect_timeout=3, read_timeout=4, write_timeout=4, autocommit=True) as db:
+            with db.cursor() as cursor:
+                cursor.execute(statement, (value,))
+                return cursor.fetchall() if cursor.description else []
+    except pymysql.MySQLError as exc:
+        if statement.startswith("INSERT") and exc.args and exc.args[0] == 1062:
+            return []
+        if statement.startswith("INSERT") and exc.args and exc.args[0] in (1452, 1644):
+            raise MailError("Postkassen kan ikke tildeles administratoradgang.", 409) from None
+        raise _unavailable() from None
+    except (ValueError, OSError, TypeError):
+        raise _unavailable() from None
+
+
+def has_role(address):
+    rows = _role_query("SELECT mailbox FROM veyro_organization_admins WHERE mailbox=%s", address)
+    return any(row[0] == address for row in rows)
+
+
+def domain_roles(domain):
+    rows = _role_query("SELECT mailbox FROM veyro_organization_admins WHERE SUBSTRING_INDEX(mailbox,'@',-1)=%s", domain)
+    return {row[0] for row in rows}
+
+
+def _change_role(address, grant):
+    if grant:
+        _role_query("INSERT INTO veyro_organization_admins (mailbox) VALUES (%s)", address)
+    else:
+        _role_query("DELETE FROM veyro_organization_admins WHERE mailbox=%s", address)
+    if has_role(address) is not grant:
+        raise _unavailable()
+
+
+def _eligible_manager(box, row):
+    attrs = row["attributes"]
+    return (box["active"] and not box["protected"] and row.get("kind", "") == ""
+            and attrs.get("imap_access", "1") in (1, "1") and attrs.get("sogo_access", "1") in (1, "1")
+            and attrs.get("force_pw_update", "0") in (0, "0") and attrs.get("force_tfa", "0") in (0, "0"))
+
+
+def access(actor):
+    if not isinstance(actor, str) or not actor.isascii() or actor != actor.lower() or actor.count("@") != 1:
+        raise forbidden()
+    local, domain = actor.split("@")
+    if len(actor) > 254 or not EXISTING_LOCAL.fullmatch(local) or len(local) > 64 or not domain:
+        raise forbidden()
+    if actor == "marcus@" + HOME_DOMAIN:
+        return {"role": "platform", "domain": None}
+    none = {"role": "none", "domain": None}
+    if _protected(actor) or not has_role(actor):
+        return none
+    try:
+        if _domain(domain) != domain or not _get_org(domain)["active"]:
+            return none
+        box, row = _get_mailbox(domain, actor)
+    except MailError as exc:
+        if exc.status in (400, 404):
+            return none
+        raise
+    if not _eligible_manager(box, row) or actor in _admin_addresses():
+        return none
+    return {"role": "organization", "domain": domain}
+
+
+def authorized_domain(scope, domain):
+    domain = _domain(domain)
+    if scope["role"] != "platform" and domain != scope["domain"]:
+        raise forbidden()
+    return domain
+
+
+def scoped_organizations(scope):
+    return organizations() if scope["role"] == "platform" else [_get_org(scope["domain"])]
+
+
+def mailbox_role(box, assigned, scope):
+    return {**box, "organizationAdmin": assigned,
+            "protected": box["protected"] or (assigned and scope["role"] == "organization")}
 
 
 def _admin_addresses():
@@ -283,7 +382,7 @@ def _mailbox(row, domain):
     attrs = row.get("attributes")
     if not isinstance(attrs, dict):
         raise _unavailable()
-    if row.get("authsource") != "mailcow" or attrs.get("shared", "0") not in (0, "0"):
+    if row.get("authsource") != "mailcow" or row.get("kind", "") != "" or attrs.get("shared", "0") not in (0, "0"):
         return None
     try:
         quota = int(row["quota"]) // MIB
@@ -316,20 +415,24 @@ def _get_mailbox(domain, address):
     return box, row
 
 
-def create_mailbox(domain, local_part, name, password, quota_mib=1024):
-    domain, local, name = _domain(domain), _local(local_part), _name(name)
-    address = local + "@" + domain
-    if len(address) > 254 or _protected(address):
-        raise MailError("Mailadressen er reserveret eller for lang.", 400)
+def _validate_password(password):
     if not isinstance(password, str):
-        raise MailError("Angiv en startadgangskode på højst 72 bytes.", 400)
+        raise MailError("Angiv en adgangskode på højst 72 bytes.", 400)
     try:
         length = len(password.encode("utf-8"))
     except UnicodeEncodeError:
         raise MailError("Adgangskoden indeholder et ugyldigt tegn.", 422) from None
     if (not 1 <= length <= 72 or password == "0" or re.match(r"^\{[A-Za-z0-9-]+\}", password)
             or any(c in password for c in "\x00\r\n")):
-        raise MailError("Angiv en understøttet startadgangskode på højst 72 bytes.", 422)
+        raise MailError("Angiv en understøttet adgangskode på højst 72 bytes.", 422)
+
+
+def create_mailbox(domain, local_part, name, password, quota_mib=1024):
+    domain, local, name = _domain(domain), _local(local_part), _name(name)
+    address = local + "@" + domain
+    if len(address) > 254 or _protected(address):
+        raise MailError("Mailadressen er reserveret eller for lang.", 400)
+    _validate_password(password)
     if type(quota_mib) is not int or not 1 <= quota_mib <= 1048576:
         raise MailError("Angiv en gyldig kvote i MiB.", 400)
     with WRITE_LOCK:
@@ -344,20 +447,26 @@ def create_mailbox(domain, local_part, name, password, quota_mib=1024):
         return _get_mailbox(domain, address)[0]
 
 
+def check_address(domain, address):
+    if (not isinstance(address, str) or not address.isascii() or address.count("@") != 1 or len(address) > 254
+            or address.rsplit("@", 1)[1] != domain or len(address.split("@", 1)[0]) > 64
+            or not EXISTING_LOCAL.fullmatch(address.split("@", 1)[0])):
+        raise MailError("Postkassens adresse skal høre til den valgte organisation.", 400)
+
+
+def _check_target(domain, address):
+    check_address(domain, address)
+    if _protected(address) or address in _admin_addresses():
+        raise MailError("Denne postkasse er beskyttet.", 403)
+
+
 def set_mailbox_active(domain, address, active):
     domain = _domain(domain)
-    if (not isinstance(address, str) or address.count("@") != 1 or len(address) > 254
-            or address.split("@", 1)[1] != domain or not address.isascii()
-            or any(ord(c) < 33 or ord(c) > 126 for c in address)):
-        raise MailError("Postkassens adresse skal høre til den valgte organisation.", 400)
     if type(active) is not bool:
         raise MailError("Vælg en gyldig postkassestatus.", 400)
-    if _protected(address.lower()):
-        raise MailError("Denne postkasse er beskyttet.", 403)
     with WRITE_LOCK:
+        _check_target(domain, address)
         _get_org(domain, writable=True)
-        if address.lower() in _admin_addresses():
-            raise MailError("Denne postkasse er beskyttet.", 403)
         before, row = _get_mailbox(domain, address)
         if before["active"] == active:
             return before
@@ -370,3 +479,28 @@ def set_mailbox_active(domain, address, active):
         if after["active"] != active:
             raise _unavailable()
         return after
+
+
+def set_role(domain, address, enabled):
+    if type(enabled) is not bool:
+        raise MailError("Vælg en gyldig administratorrolle.", 400)
+    _check_target(domain, address)
+    _get_org(domain, writable=enabled)
+    box, row = _get_mailbox(domain, address)
+    if enabled and not _eligible_manager(box, row):
+        raise MailError("Kun en aktiv, almindelig brugerpostkasse kan blive administrator.", 409)
+    _change_role(address, enabled)
+    return box
+
+
+def reset_password(domain, address, password):
+    _check_target(domain, address)
+    _validate_password(password)
+    _get_org(domain, writable=True)
+    box, row = _get_mailbox(domain, address)
+    if not box["active"]:
+        raise MailError("Postkassen er deaktiveret.", 409)
+    _write("edit/mailbox", {"items": [address], "attr": {
+        "password": password, "password2": password, "attribute_hash": row["attributes"].get("attribute_hash", ""),
+    }}, "mailbox_modified", address)
+    return _get_mailbox(domain, address)[0]
