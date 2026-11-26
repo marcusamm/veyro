@@ -1,4 +1,5 @@
 import { unavailablePage } from './view';
+import { aiRoute } from './ai_gateway';
 
 const webOrigin = 'https://mail.veyro.dk';
 const apiOrigin = 'https://post.veyro.dk/webmail-api';
@@ -12,6 +13,7 @@ const readApi = /^\/api\/(?:session|folders|messages(?:\/[0-9]{1,10}\.[0-9]{1,10
 const recoveryRequest = '/api/recovery/request';
 const accountWrites = new Set(['/api/password', '/api/recovery/enroll/start', '/api/recovery/enroll/confirm']);
 const writeApi = new Set(['/api/login', '/api/logout', '/api/send', recoveryRequest, ...accountWrites]);
+const messageWrite = /^\/api\/messages\/[0-9]{1,10}\.[0-9]{1,10}\/(?:action|snooze)$/;
 const sessionName = '__Host-veyro_session';
 const maxBody = 256 * 1024;
 
@@ -71,7 +73,7 @@ async function proxy(req: Request, env: Env, url: URL, write: boolean) {
     if (req.headers.get('Origin') !== webOrigin) return apiError(req, 'Ugyldig oprindelse.', 403);
     if (req.headers.get('Content-Type')?.split(';')[0]?.trim().toLowerCase() !== 'application/json') return apiError(req, 'Send data som JSON.', 415);
     if (Number(req.headers.get('Content-Length')) > maxBody) return apiError(req, 'Beskeden er for stor.', 413);
-    if (accountWrites.has(url.pathname) && !headers.has('Cookie')) return apiError(req, 'Log ind igen.', 401);
+    if ((accountWrites.has(url.pathname) || messageWrite.test(url.pathname)) && !headers.has('Cookie')) return apiError(req, 'Log ind igen.', 401);
     if (url.pathname !== '/api/login' && url.pathname !== recoveryRequest) {
       const csrf = req.headers.get('X-CSRF-Token');
       if (!csrf || csrf.length > 256) return apiError(req, 'Log ind igen.', 403);
@@ -89,7 +91,13 @@ async function proxy(req: Request, env: Env, url: URL, write: boolean) {
   }
 
   try {
-    const upstream = await fetch(apiOrigin + url.pathname + (write ? '' : url.search), {
+    let search = write ? '' : url.search;
+    if (messageWrite.test(url.pathname)) {
+      const folders = url.searchParams.getAll('folder');
+      if (folders.length !== 1 || !folders[0] || !/^[A-Za-z0-9_-]{1,1600}$/.test(folders[0])) return apiError(req, 'Ugyldig mappe.', 400);
+      search = '?folder=' + folders[0];
+    }
+    const upstream = await fetch(apiOrigin + url.pathname + search, {
       method: req.method, headers, body: write ? req.body : null, redirect: 'manual', cache: 'no-store',
     });
     if (upstream.status >= 300 && upstream.status < 400) return apiError(req, 'Mailserveren svarede uventet.', 502);
@@ -123,8 +131,10 @@ export default {
       if (['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) && read && (path === '/' || bookmarks.has(path))) return redirect(webOrigin + '/');
       return localResponse(req, 'Ukendt adresse.', 404);
     }
+    const assistant = await aiRoute(req, env, url);
+    if (assistant) return assistant;
     const isReadApi = readApi.test(path);
-    const isWriteApi = writeApi.has(path);
+    const isWriteApi = writeApi.has(path) || messageWrite.test(path);
     if (env.WEBMAIL_ENABLED !== '1' && (path === '/' || bookmarks.has(path) || path === '/SOGo/connect' || isReadApi || isWriteApi)) {
       if (isReadApi || isWriteApi) return apiError(req, 'Webmail er midlertidigt lukket.', 503);
       const page = read && req.headers.get('Accept')?.includes('text/html');

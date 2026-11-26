@@ -29,6 +29,27 @@ function mockBackend(response) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Veyro Mail gateway', () => {
+  it.each(['action', 'snooze'])('binds %s to a message, a folder and a signed-in browser', async action => {
+    const { fetch } = setup();
+    const upstream = mockBackend(Response.json({ ok: true }));
+    const path = '/api/messages/12.34/' + action;
+    const headers = {
+      Origin: publicOrigin, 'Content-Type': 'application/json', Cookie: '__Host-veyro_session=' + sessionValue,
+      'X-CSRF-Token': csrfToken,
+    };
+    const post = { method: 'POST', body: '{}', headers };
+    expect((await fetch(path)).status).toBe(405);
+    expect((await fetch(path + '?folder=SU5CT1g', { ...post, headers: { ...headers, Cookie: '' } })).status).toBe(401);
+    expect((await fetch(path + '?folder=SU5CT1g', { ...post, headers: { ...headers, 'X-CSRF-Token': '' } })).status).toBe(403);
+    expect((await fetch(path + '?folder=SU5CT1g', { ...post, headers: { ...headers, Origin: 'https://elsewhere.invalid' } })).status).toBe(403);
+    for (const query of ['', '?folder=one&folder=two', '?folder=%2F']) {
+      expect((await fetch(path + query, post)).status).toBe(400);
+    }
+    expect(upstream).not.toHaveBeenCalled();
+    expect((await fetch(path + '?folder=SU5CT1g&unused=secret', post)).status).toBe(200);
+    expect(upstream.mock.calls[0][0]).toBe(backendOrigin + '/webmail-api' + path + '?folder=SU5CT1g');
+  });
+
   it('serves the mailbox on its own origin and keeps visitor data out of static asset requests', async () => {
     const { fetch, assets } = setup();
     const upstream = mockBackend();

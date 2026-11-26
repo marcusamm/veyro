@@ -22,6 +22,16 @@
     refresh: '<path d="M19 8a8 8 0 1 0 1 7M19 3v6h-6"/>',
     back: '<path d="m10 5-7 7 7 7M3 12h18"/>',
     reply: '<path d="m10 5-7 7 7 7M3 12h10q7 0 8 7"/>',
+    replyAll: '<path d="m8 6-6 6 6 6m6-12-6 6 6 6m-6-6h6q6 0 8 6"/>',
+    forward: '<path d="m14 5 7 7-7 7m7-7h-9q-7 0-9 7"/>',
+    more: '<circle cx="4" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="20" cy="12" r="1.5"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+    tag: '<path d="M3 4h10l8 8-9 9-9-9z"/><circle cx="8" cy="9" r="1"/>',
+    external: '<path d="M13 3h8v8m0-8L10 14m0-9H4v15h15v-6"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',
+    check: '<path d="m4 12 5 5L20 6"/>',
+    next: '<path d="m9 5 7 7-7 7"/>',
+    plus: '<path d="M12 4v16M4 12h16"/>',
     clip: '<path d="m9 13 6-6a2 2 0 0 1 3 3l-8 8a4 4 0 1 1-6-6l9-9"/>',
     eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
     down: '<path d="m6 9 6 6 6-6"/>',
@@ -46,6 +56,8 @@
   let listRequest, detailRequest, folderRequest, retryList, searchTimer, noticeTimer;
   let sending = false;
   let sendAttempt = null;
+  let readerItem = null, senderFilter = '', availableLabels = [];
+  let pendingLink = new URLSearchParams(location.hash.slice(1));
 
   class ApiError extends Error {
     constructor(message, status, loginRequired = false) {
@@ -88,6 +100,8 @@
   function resetDraft() {
     byId('draft').reset();
     reply = null; sendAttempt = null;
+    byId('forward-files').hidden = true;
+    byId('body').required = true;
     setError('send-error');
   }
   function revealPassword(visible) {
@@ -98,6 +112,11 @@
   byId('show-password').onclick = () => revealPassword(byId('password').type === 'password');
   function loggedOut(reason = '') {
     session = null;
+    closeMenu(false);
+    if (byId('label-dialog').open) byId('label-dialog').close();
+    if (byId('snooze-dialog').open) byId('snooze-dialog').close();
+    labelTarget = snoozeTarget = null;
+    readerItem = null; senderFilter = ''; availableLabels = [];
     byId('account').open = false;
     if (recoveryDialog.open) recoveryDialog.close();
     recoveryForm.reset();
@@ -342,29 +361,45 @@
     retryList = retry;
   }
   byId('retry-list').onclick = () => retryList?.();
-  async function loadFolders() {
+  async function loadFolders(countsOnly = false) {
     folderRequest?.abort();
     const request = folderRequest = new AbortController();
-    listState('Henter mapper …');
+    if (!countsOnly) listState('Henter mapper …');
     try {
       const result = await api('folders', {signal: request.signal});
       if (request.signal.aborted) return;
       const rank = f => Object.hasOwn(folderNames, f.role) ? Object.keys(folderNames).indexOf(f.role) : 99;
       folders = (result.folders || []).sort((a, b) => rank(a) - rank(b));
+      const linkedFolder = pendingLink.get('folder'), linkedMessage = pendingLink.get('mail');
+      if (linkedFolder && linkedMessage) {
+        const linkedOwner = pendingLink.get('account');
+        pendingLink = new URLSearchParams();
+        const target = linkedOwner === session.email && folders.find(f => f.id === linkedFolder);
+        if (target) {
+          chooseFolder(target);
+          openMail(linkedMessage);
+          return;
+        }
+        notify('Mailen i linket tilhører en anden eller utilgængelig postkasse.');
+      }
       const current = folders.find(f => f.id === folder?.id);
       if (current) {
-        folder = current; drawFolders(); return loadList();
+        folder = current; drawFolders();
+        if (!countsOnly) return loadList();
+        return;
       }
       const first = folders.find(f => f.role === 'inbox') || folders[0];
       if (!first) { drawFolders(); return listState('Postkassen har ingen mapper.', loadFolders); }
       chooseFolder(first);
     } catch (error) {
-      if (!request.signal.aborted) listState(message(error), loadFolders);
+      if (!request.signal.aborted && !countsOnly) listState(message(error), loadFolders);
     }
   }
   function chooseFolder(f) {
     clearTimeout(searchTimer);
-    folder = f; byId('search').value = '';
+    senderFilter = ''; availableLabels = [];
+    folder = f; byId('search').value = ''; byId('folder-view').value = '';
+    byId('label-filter').replaceChildren(); drawFilters();
     byId('folder-title').textContent = nameOf(f);
     byId('back-folder').textContent = 'Tilbage til ' + nameOf(f);
     document.title = nameOf(f) + ' · Veyro Mail';
@@ -383,8 +418,34 @@
     const match = /^\s*(.*?)\s*<([^<>]+)>\s*$/.exec(text);
     return match ? {name: match[1].replace(/^"|"$/g, '') || match[2], address: match[2]} : {name: text, address: text};
   }
+  const categories = {primary: 'Primær', updates: 'Opdateringer', social: 'Sociale medier', promotions: 'Promoveringer'};
+  function drawFilters(label = '') {
+    const select = byId('label-filter');
+    const values = [...new Set([...availableLabels, ...(label ? [label] : [])])];
+    select.replaceChildren(new Option('Alle etiketter', ''), ...values.map(value => new Option(value, value)));
+    select.value = label;
+    byId('label-filter-wrap').hidden = !values.length;
+    const inbox = folder?.role === 'inbox';
+    byId('category-filters').disabled = byId('category-filters').hidden = !inbox;
+    byId('snoozed-option').disabled = byId('snoozed-option').hidden = !inbox;
+    const chip = byId('sender-filter');
+    chip.hidden = !senderFilter;
+    chip.textContent = 'Fra ' + senderFilter + ' ×';
+    chip.setAttribute('aria-label', 'Fjern afsenderfilter for ' + senderFilter);
+  }
+  byId('label-filter').onchange = byId('folder-view').onchange = () => loadList();
+  byId('sender-filter').onclick = () => {
+    senderFilter = ''; drawFilters(byId('label-filter').value); loadList();
+    byId('search').focus();
+  };
+  function labelChips(labels) {
+    const group = node('span', 'mail-labels');
+    for (const value of labels) group.append(node('span', 'mail-label', value));
+    return group;
+  }
   function messageRow(item) {
     const li = node('li');
+    li.dataset.mail = item.id;
     const b = node('button', 'message-row' + (item.unread ? ' unread' : ''));
     b.type = 'button'; b.dataset.id = item.id;
     b.setAttribute('aria-pressed', String(item.id === selected));
@@ -397,12 +458,14 @@
     stamp.append(node('time', '', dateValue(item.date)));
     b.append(stamp, node('strong', 'row-title', item.subject || '(Intet emne)'));
     if (item.snippet) b.append(node('span', 'row-snippet', item.snippet));
+    if (item.labels?.length) b.append(labelChips(item.labels));
     if (item.unread) b.append(node('span', 'visually-hidden', 'Ulæst'));
-    li.append(b);
+    li.append(b, menuTrigger(item));
     return li;
   }
   function clearReader() {
     detailRequest?.abort();
+    closeMenu(false); readerItem = null;
     selected = null; byId('workspace').dataset.reader = 'false';
     const empty = node('div', 'reader-empty');
     const mark = node('img'); mark.src = '/favicon.svg'; mark.alt = '';
@@ -410,23 +473,35 @@
     byId('paper').replaceChildren(empty);
     byId('reader').scrollTop = 0;
   }
-  async function loadList(more = false) {
+  async function loadList(more = false, quietly = false) {
     if (!folder || (more && !cursor)) return;
     listRequest?.abort();
     const request = listRequest = new AbortController();
     const params = new URLSearchParams({folder: folder.id});
     const query = byId('search').value.trim();
     if (query) params.set('q', query);
+    if (senderFilter) params.set('sender', senderFilter);
+    const label = byId('label-filter').value;
+    if (label) params.set('label', label);
+    const view = byId('folder-view').value;
+    if (view) params.set(Object.hasOwn(categories, view) ? 'category' : 'view', view);
     if (more) params.set('cursor', cursor);
-    else {
+    else if (!quietly) {
+      listExtended = false;
       clearReader(); cursor = null; messages = [];
       byId('messages').replaceChildren(); byId('mail-count').textContent = ''; byId('list-scroll').scrollTop = 0;
     }
-    byId('older').hidden = true;
-    listState(more ? 'Henter ældre mails …' : 'Henter mails …');
+    if (!quietly) {
+      byId('older').hidden = true;
+      listState(more ? 'Henter ældre mails …' : 'Henter mails …');
+    }
     try {
       const result = await api('messages?' + params, {signal: request.signal});
       if (request.signal.aborted) return;
+      if (more) listExtended = true;
+      availableLabels = result.availableLabels || [];
+      drawFilters(label);
+      if (quietly) { messages = []; byId('messages').replaceChildren(); }
       const seen = new Set(messages.map(item => item.id));
       const rows = [];
       for (const item of result.messages || []) {
@@ -436,14 +511,14 @@
       byId('messages').append(...rows);
       cursor = result.nextCursor || null;
       byId('mail-count').textContent = count.format(messages.length) + (cursor ? '+' : '') + (messages.length === 1 && !cursor ? ' mail' : ' mails');
-      listState(messages.length ? '' : query ? 'Ingen mails matcher din søgning.' : 'Mappen er tom.');
+      listState(messages.length ? '' : query || senderFilter || label || view ? 'Ingen mails matcher dit filter.' : 'Mappen er tom.');
       byId('older').hidden = !cursor;
     } catch (error) {
-      if (!request.signal.aborted) listState(message(error), () => loadList(more));
-    }
+      if (!request.signal.aborted && !quietly) listState(message(error), () => loadList(more));
+    } finally { if (listRequest === request) listRequest = null; }
   }
   byId('older').onclick = () => loadList(true);
-  byId('refresh').onclick = loadFolders;
+  byId('refresh').onclick = () => loadFolders();
   byId('search').oninput = () => {
     clearTimeout(searchTimer);
     listRequest?.abort();
@@ -455,8 +530,264 @@
     if (row) openMail(row.dataset.id);
   };
   function rowFor(id) {
-    return Array.from(byId('messages').querySelectorAll('button')).find(row => row.dataset.id === String(id));
+    return Array.from(byId('messages').querySelectorAll('.message-row')).find(row => row.dataset.id === String(id));
   }
+  const menu = byId('mail-menu');
+  let menuTarget = null, menuAnchor = null, menuPoint = null, submenu = false;
+  let labelTarget, snoozeTarget, listExtended = false;
+  function menuTrigger(item) {
+    const button = node('button', 'icon-button more-actions');
+    button.type = 'button';
+    button.title = 'Flere handlinger';
+    button.setAttribute('aria-label', 'Flere handlinger for ' + (item.subject || 'mail uden emne'));
+    button.setAttribute('aria-haspopup', 'menu');
+    button.setAttribute('aria-controls', 'mail-menu');
+    button.setAttribute('aria-expanded', 'false');
+    button.append(icon('more'));
+    button.onclick = () => openMenu(item, button);
+    return button;
+  }
+  function closeMenu(restore = true) {
+    if (menu.hidden) return;
+    const original = menuAnchor;
+    menu.hidden = true; menu.replaceChildren();
+    original?.setAttribute('aria-expanded', 'false');
+    menuTarget = menuAnchor = menuPoint = null;
+    if (restore && original?.isConnected) original.focus({preventScroll: true});
+  }
+  function positionMenu() {
+    if (menu.hidden || matchMedia('(max-width: 46rem)').matches) return;
+    const rect = menuAnchor.getBoundingClientRect();
+    const x = menuPoint?.x ?? rect.right - menu.offsetWidth;
+    const y = menuPoint?.y ?? rect.bottom + 4;
+    menu.style.left = Math.max(6, Math.min(x, document.documentElement.clientWidth - menu.offsetWidth - 6)) + 'px';
+    menu.style.top = Math.max(6, Math.min(y, window.innerHeight - menu.offsetHeight - 6)) + 'px';
+  }
+  function openMenu(item, button, point = null) {
+    closeMenu(false);
+    if (!folder || !session) return;
+    menuTarget = {item, source: folder, owner: session};
+    menuAnchor = button; menuPoint = point;
+    button.setAttribute('aria-expanded', 'true');
+    menu.hidden = false; mainMenu();
+  }
+  function option(title, glyph, action, more = false) {
+    const button = node('button', 'menu-option');
+    button.type = 'button'; button.tabIndex = -1; button.setAttribute('role', 'menuitem');
+    button.append(icon(glyph), node('span', '', title));
+    if (more) {
+      button.dataset.submenu = 'true';
+      button.setAttribute('aria-haspopup', 'menu');
+      button.append(icon('next'));
+    }
+    button.onclick = () => {
+      const target = menuTarget;
+      if (!more) closeMenu();
+      try {
+        Promise.resolve(action(target)).catch(error => { if (session === target.owner) notify(message(error)); });
+      } catch (error) { if (session === target.owner) notify(message(error)); }
+    };
+    menu.append(button);
+  }
+  function section() {
+    const line = node('hr'); line.setAttribute('role', 'separator'); menu.append(line);
+  }
+  function choices(title, fill) {
+    submenu = true; menu.replaceChildren();
+    option('Tilbage', 'back', mainMenu, true);
+    menu.append(node('span', 'menu-heading', title));
+    fill(); finishMenu();
+  }
+  function finishMenu() {
+    menu.scrollTop = 0; positionMenu();
+    menu.querySelector('button')?.focus({preventScroll: true});
+  }
+  function mainMenu() {
+    submenu = false; menu.replaceChildren();
+    const {item, source} = menuTarget;
+    if (source.role === 'drafts') option('Rediger som ny mail', 'write', target => composeAction(target, 'copy'));
+    option('Svar', 'reply', target => composeAction(target, 'reply'));
+    option('Svar alle', 'replyAll', target => composeAction(target, 'replyAll'));
+    option('Videresend', 'forward', target => composeAction(target, 'forward'));
+    option('Videresend som vedhæftet fil', 'clip', target => composeAction(target, 'attachment'));
+    section();
+    if (source.role !== 'archive' && folders.some(f => f.role === 'archive'))
+      option('Arkivér', 'archive', target => changeMail(target, {action: 'archive'}, 'Mailen er arkiveret.'));
+    if (source.role !== 'trash' && folders.some(f => f.role === 'trash'))
+      option('Slet', 'trash', target => changeMail(target, {action: 'trash'}, 'Mailen er flyttet til papirkurven.'));
+    option(item.unread ? 'Markér som læst' : 'Markér som ulæst', 'mail', target => changeMail(target,
+      {action: item.unread ? 'read' : 'unread'}, item.unread ? 'Markeret som læst.' : 'Markeret som ulæst.'));
+    if (source.role === 'inbox') {
+      if (byId('folder-view').value === 'snoozed' || item.snoozedUntil) option('Flyt tilbage til indbakken nu', 'inbox',
+        target => updateMessage(target, 'snooze', {until: null}, 'Mailen er tilbage i indbakken.'));
+      else option('Udsæt', 'clock', openSnooze);
+    }
+    option(item.task ? 'Fjern fra huskeliste' : 'Føj til huskeliste', 'check', target => changeMail(target,
+      {action: item.task ? 'untask' : 'task'}, item.task ? 'Fjernet fra huskelisten.' : 'Føjet til huskelisten.'));
+    section();
+    if (folders.some(f => f.id !== source.id)) option('Flyt til mappe', 'other', () => choices('Flyt til mappe', () => {
+      for (const dest of folders.filter(f => f.id !== source.id))
+        option(nameOf(dest), dest.role, target => changeMail(target, {action: 'move', target: dest.id}, 'Flyttet til ' + nameOf(dest) + '.'));
+    }), true);
+    if (source.role === 'inbox') option('Flyt til fane', 'inbox', () => choices('Flyt til fane', () => {
+      for (const [category, name] of Object.entries(categories))
+        option(name, (item.category || 'primary') === category ? 'check' : 'inbox', target => changeMail(target, {action: 'category', category}, 'Flyttet til ' + name + '.'));
+    }), true);
+    option('Etiketter', 'tag', () => choices('Etiketter', () => {
+      option('Ny etiket', 'plus', openLabel);
+      for (const label of new Set([...availableLabels, ...(item.labels || [])])) {
+        const present = item.labels?.includes(label);
+        option((present ? 'Fjern ' : 'Tilføj ') + label, present ? 'check' : 'tag', target => changeMail(target,
+          {action: present ? 'unlabel' : 'label', label}, present ? 'Etiketten er fjernet.' : 'Etiketten er tilføjet.'));
+      }
+    }), true);
+    if (source.role === 'inbox' || item.muted)
+      option(item.muted ? 'Vis mail i indbakken igen' : 'Skjul mail i indbakken', 'mail', target => changeMail(target,
+        {action: item.muted ? 'unmute' : 'mute'}, item.muted ? 'Mailen vises igen.' : 'Mailen er skjult i indbakken.'));
+    section();
+    const sender = item.senderAddress || person(item.from).address;
+    if (sender) option('Find mails fra ' + sender, 'search', () => {
+      senderFilter = sender; byId('search').value = ''; byId('folder-view').value = '';
+      drawFilters(); loadList(); byId('search').focus();
+    });
+    option('Åbn i et nyt vindue', 'external', () => {
+      const url = new URL('/', location.origin);
+      url.hash = new URLSearchParams({account: session.email, folder: source.id, mail: item.id}).toString();
+      window.open(url.href, '_blank', 'noopener,noreferrer');
+    });
+    finishMenu();
+  }
+  menu.onkeydown = event => {
+    const items = [...menu.querySelectorAll('button')], pos = items.indexOf(document.activeElement);
+    if (event.key === 'Escape' || event.key === 'ArrowLeft') {
+      event.preventDefault(); if (submenu) mainMenu(); else closeMenu();
+    } else if (event.key === 'Tab') closeMenu();
+    else if (event.key === 'ArrowRight' && document.activeElement?.dataset.submenu) {
+      event.preventDefault(); document.activeElement.click();
+    } else {
+      const next = {ArrowDown: (pos + 1) % items.length, ArrowUp: (pos + items.length - 1) % items.length, Home: 0, End: items.length - 1};
+      if (Object.hasOwn(next, event.key)) { event.preventDefault(); items[next[event.key]].focus(); }
+    }
+  };
+  function contextMenu(event) {
+    const row = event.target.closest('li[data-mail]');
+    const article = event.target.closest('#reader')?.querySelector('.letter');
+    if (!row && !article || event.target.closest('a,input,textarea') || window.getSelection()?.toString()) return;
+    const item = row ? messages.find(m => String(m.id) === row.dataset.mail) : readerItem;
+    if (!item) return;
+    event.preventDefault();
+    const point = event.type === 'contextmenu' && (event.clientX || event.clientY) ? {x: event.clientX, y: event.clientY} : null;
+    openMenu(item, (row || article).querySelector('.more-actions'), point);
+  }
+  byId('workspace').oncontextmenu = contextMenu;
+  byId('workspace').addEventListener('keydown', event => {
+    if (event.key === 'ContextMenu' || event.shiftKey && event.key === 'F10') contextMenu(event);
+  });
+  document.addEventListener('pointerdown', event => {
+    if (!menu.hidden && !menu.contains(event.target) && !menuAnchor?.contains(event.target)) closeMenu(false);
+  });
+  document.addEventListener('focusin', event => {
+    if (!menu.hidden && !menu.contains(event.target) && event.target !== menuAnchor) closeMenu(false);
+  });
+  window.addEventListener('resize', positionMenu);
+  function changeMail(target, body, notice) { return updateMessage(target, 'action', body, notice); }
+  function reflectChange(item, body, endpoint) {
+    const {action, label} = body;
+    const view = byId('folder-view').value;
+    const stored = messages.find(m => m.id === item.id) || item;
+    const changes = {};
+    if (action === 'read' || action === 'unread') changes.unread = action === 'unread';
+    if (action === 'task' || action === 'untask') changes.task = action === 'task';
+    if (action === 'mute' || action === 'unmute') changes.muted = action === 'mute';
+    if (action === 'category') changes.category = body.category;
+    if (action === 'label' || action === 'unlabel') {
+      const labels = new Set(stored.labels);
+      if (action === 'label') { labels.add(label); availableLabels = [...new Set([...availableLabels, label])]; }
+      else labels.delete(label);
+      changes.labels = [...labels]; drawFilters(byId('label-filter').value);
+    }
+    Object.assign(stored, changes);
+    const remove = endpoint === 'snooze' || ['archive', 'trash', 'move'].includes(action) ||
+      action === 'category' && Object.hasOwn(categories, view) && body.category !== view ||
+      action === 'untask' && view === 'tasks' || action === 'unmute' && view === 'muted' ||
+      action === 'mute' && (!view || Object.hasOwn(categories, view)) && folder.role === 'inbox' ||
+      action === 'unlabel' && byId('label-filter').value === label;
+    const row = rowFor(item.id)?.closest('li');
+    const focusInRow = row?.contains(document.activeElement);
+    if (selected === item.id) {
+      if (remove || action === 'unread') clearReader();
+      else if (readerItem) { Object.assign(readerItem, changes); renderMail(readerItem, false); }
+    }
+    if (remove) {
+      const next = row?.nextElementSibling || row?.previousElementSibling;
+      messages = messages.filter(m => m.id !== item.id);
+      row?.remove();
+      if (focusInRow) (next?.querySelector('.message-row') || byId('folder-title')).focus({preventScroll: true});
+      if (!messages.length && cursor) { loadList(true); return; }
+      if (!messages.length) listState('Ingen mails i denne visning.');
+      byId('mail-count').textContent = count.format(messages.length) + (cursor ? '+' : '') + (messages.length === 1 && !cursor ? ' mail' : ' mails');
+    } else if (row) {
+      const updated = messageRow(stored); row.replaceWith(updated);
+      if (focusInRow) updated.querySelector('.more-actions').focus({preventScroll: true});
+    }
+  }
+  const changing = new Set();
+  async function updateMessage(target, endpoint, body, notice) {
+    const {source, item, owner} = target;
+    const key = JSON.stringify([owner.csrfToken, source.id, item.id]);
+    if (session !== owner || changing.has(key)) return;
+    changing.add(key);
+    try {
+      await api('messages/' + encodeURIComponent(item.id) + '/' + endpoint + '?' + new URLSearchParams({folder: source.id}), {method: 'POST', body});
+      if (session !== owner) return;
+      notify(notice);
+      if (folder?.id === source.id) {
+        reflectChange(item, body, endpoint);
+        if (['read', 'unread', 'archive', 'trash', 'move'].includes(body.action)) loadFolders(true);
+      }
+    } finally { changing.delete(key); }
+  }
+  function openLabel(target) {
+    labelTarget = target; byId('label-form').reset(); setError('label-error');
+    byId('label-dialog').showModal(); byId('new-label').focus();
+  }
+  function openSnooze(target) {
+    snoozeTarget = target; setError('snooze-error');
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(9, 0, 0, 0);
+    const local = new Date(tomorrow.getTime() - tomorrow.getTimezoneOffset() * 60000);
+    byId('snooze-until').value = local.toISOString().slice(0, 16);
+    byId('snooze-dialog').showModal(); byId('snooze-until').focus();
+  }
+  function setupActionForm(name, run) {
+    const dialog = byId(name + '-dialog'), submit = byId('save-' + name);
+    byId('cancel-' + name).onclick = () => dialog.close();
+    byId(name + '-form').onsubmit = async event => {
+      event.preventDefault();
+      if (submit.disabled) return;
+      submit.disabled = true; setError(name + '-error');
+      try { await run(); if (dialog.open) dialog.close(); }
+      catch (error) { if (dialog.open) setError(name + '-error', message(error)); }
+      finally { submit.disabled = false; }
+    };
+  }
+  setupActionForm('label', () => {
+    const label = byId('new-label').value.trim();
+    if (!label) throw new ApiError('Skriv et navn på etiketten.', 400);
+    return changeMail(labelTarget, {action: 'label', label}, 'Etiketten er tilføjet.');
+  });
+  setupActionForm('snooze', () => {
+    const until = new Date(byId('snooze-until').value);
+    if (!(until.getTime() > Date.now())) throw new ApiError('Vælg et tidspunkt i fremtiden.', 400);
+    return updateMessage(snoozeTarget, 'snooze', {until: until.toISOString()}, 'Udsat til ' + dateTime.format(until) + '.');
+  });
+  function refreshInbox() {
+    if (document.hidden || !session || folder?.role !== 'inbox' || listExtended || listRequest || !menu.hidden ||
+        document.querySelector('dialog[open]') || byId('messages').contains(document.activeElement)) return;
+    loadList(false, true);
+  }
+  window.addEventListener('focus', refreshInbox);
+  window.setInterval(refreshInbox, 60000);
   byId('back').onclick = () => {
     const before = selected;
     clearReader();
@@ -493,7 +824,7 @@
     } catch (error) { status.textContent = message(error); }
     finally { link.removeAttribute('aria-busy'); }
   }
-  function renderMail(item) {
+  function renderMail(item, focus = true) {
     const article = node('article', 'letter');
     const title = node('h2', '', item.subject || '(Intet emne)');
     title.tabIndex = -1;
@@ -505,7 +836,10 @@
     if (sender.address && sender.address !== sender.name) detail.append(node('span', '', sender.address));
     if (item.to) detail.append(node('span', '', 'Til ' + item.to));
     if (item.cc) detail.append(node('span', '', 'Cc ' + item.cc));
-    area.append(avatar, detail); article.append(title, area);
+    const head = node('div', 'letter-head');
+    head.append(title, menuTrigger(item));
+    area.append(avatar, detail); article.append(head, area);
+    if (item.labels?.length) article.append(labelChips(item.labels));
     const stamp = dateValue(item.date, true);
     if (stamp) article.append(node('time', 'letter-date', stamp));
     article.append(node('div', 'letter-body', item.text || ''));
@@ -523,19 +857,24 @@
       }
       article.append(files, status);
     }
-    const to = folder.role === 'sent' ? item.to : item.replyTo || item.from;
-    if (to) {
-      const button = node('button', 'secondary'); button.type = 'button';
-      button.append(icon('reply'), document.createTextNode('Svar'));
-      button.onclick = () => openCompose({id: item.id, folder: folder.id, to, subject: item.subject || ''});
-      article.append(button);
+    const actions = node('div', 'letter-actions');
+    const target = {item, source: folder, owner: session};
+    const quick = folder.role === 'drafts' ? [['copy', 'write', 'Rediger som ny mail']] :
+      [['reply', 'reply', 'Svar'], ['forward', 'forward', 'Videresend']];
+    for (const [kind, glyph, text] of quick) {
+      const button = node('button', 'secondary');
+      button.type = 'button'; button.append(icon(glyph), document.createTextNode(text));
+      button.onclick = () => composeAction(target, kind).catch(error => { if (session === target.owner) notify(message(error)); });
+      actions.append(button);
     }
+    article.append(actions);
     byId('paper').replaceChildren(article);
-    title.focus({preventScroll: true});
+    if (focus) title.focus({preventScroll: true});
   }
   async function openMail(id) {
     detailRequest?.abort();
     const request = detailRequest = new AbortController();
+    readerItem = null;
     rowFor(selected)?.setAttribute('aria-pressed', 'false');
     selected = id; byId('workspace').dataset.reader = 'true';
     rowFor(id)?.setAttribute('aria-pressed', 'true');
@@ -549,7 +888,7 @@
         existing.unread = false; folder.unread = Math.max(0, folder.unread - 1);
         rowFor(id)?.closest('li')?.replaceWith(messageRow(existing)); drawFolders();
       }
-      renderMail(item);
+      readerItem = item; renderMail(item);
     } catch (error) {
       if (request.signal.aborted) return;
       const text = node('p', 'reader-error', message(error)); text.setAttribute('role', 'alert');
@@ -558,17 +897,56 @@
     }
   }
   function hasDraft() {
-    return Boolean(byId('recipient').value || byId('subject').value || byId('body').value);
+    return Boolean(reply || byId('recipient').value || byId('cc').value || byId('subject').value || byId('body').value);
+  }
+  async function composeAction(target, kind) {
+    const {source, owner} = target;
+    let {item} = target;
+    if (kind === 'forward' || kind === 'copy') {
+      if (typeof item.text !== 'string') {
+        await openMail(item.id);
+        if (session !== owner || folder?.id !== source.id || readerItem?.id !== item.id) return;
+        item = readerItem;
+      }
+    }
+    const replyTo = item.replyAddresses?.join(', ') || (source.role === 'sent' ? item.to : item.replyTo || item.from) || '';
+    const subject = item.subject || '';
+    const draft = {kind, id: item.id, folder: source.id, to: '', cc: '', subject, text: '', files: false};
+    if (kind === 'copy') {
+      draft.to = item.to || ''; draft.cc = item.cc || ''; draft.text = item.text || '';
+      draft.files = Boolean(item.attachments?.length);
+    } else if (kind === 'reply' || kind === 'replyAll') {
+      draft.to = kind === 'replyAll' ? item.replyAllTo?.join(', ') || replyTo : replyTo;
+      if (kind === 'replyAll') draft.cc = item.replyAllCc?.join(', ') || '';
+      if (!/^(re|sv):/i.test(subject)) draft.subject = 'Re: ' + subject;
+    } else {
+      if (!/^(fw|fwd|vs):/i.test(subject)) draft.subject = 'Fwd: ' + subject;
+      if (kind === 'forward') {
+        draft.text = ['', '', '---------- Videresendt mail ----------', 'Fra: ' + (item.from || ''),
+          'Dato: ' + dateValue(item.date, true), 'Emne: ' + subject, 'Til: ' + (item.to || ''),
+          ...(item.cc ? ['Cc: ' + item.cc] : []), '', item.text || ''].join('\n');
+        draft.files = Boolean(item.attachments?.length);
+      }
+    }
+    openCompose(draft);
   }
   function openCompose(target) {
-    if (target && (target.id !== reply?.id || target.folder !== reply?.folder)) {
-      if (hasDraft() && !confirm('Kassér den åbne kladde og begynd på dette svar?')) return;
+    if (target && (target.id !== reply?.id || target.folder !== reply?.folder || target.kind !== reply?.kind)) {
+      if (hasDraft() && !confirm('Kassér den åbne kladde og begynd på denne mail?')) return;
       resetDraft(); reply = target;
       byId('recipient').value = target.to;
-      byId('subject').value = /^(re|sv):/i.test(target.subject) ? target.subject : 'Re: ' + target.subject;
+      byId('cc').value = target.cc;
+      byId('subject').value = target.subject;
+      byId('body').value = target.text;
+      byId('body').required = target.kind !== 'attachment';
+      const note = byId('forward-files');
+      note.hidden = target.kind !== 'attachment' && !target.files;
+      note.textContent = target.kind === 'attachment' ? 'Vedhæftet: Original mail (.eml)' : 'De oprindelige vedhæftede filer følger med.';
     }
-    byId('compose-title').textContent = reply ? 'Svar på mail' : 'Ny mail';
-    byId('composer').showModal(); (reply ? byId('body') : byId('recipient')).focus();
+    const titles = {reply: 'Svar på mail', replyAll: 'Svar alle', forward: 'Videresend mail', attachment: 'Videresend som vedhæftet fil', copy: 'Rediger som ny mail'};
+    byId('compose-title').textContent = reply ? titles[reply.kind] : 'Ny mail';
+    byId('composer').showModal();
+    (byId('recipient').value ? byId('body') : byId('recipient')).focus();
   }
   byId('compose').onclick = () => openCompose();
   byId('close-compose').onclick = () => byId('composer').close();
@@ -581,8 +959,12 @@
     event.preventDefault();
     if (sending) return;
     const input = {to: byId('recipient').value.trim(), subject: byId('subject').value, text: byId('body').value};
-    if (reply) { input.replyToId = reply.id; input.replyToFolder = reply.folder; }
-    if (!input.to || !input.text.trim()) return setError('send-error', 'Udfyld modtager og besked.');
+    const cc = byId('cc').value.trim();
+    if (cc) input.cc = cc;
+    if (reply?.kind === 'reply' || reply?.kind === 'replyAll') { input.replyToId = reply.id; input.replyToFolder = reply.folder; }
+    if (reply?.kind === 'attachment') input.forwardAttachment = {id: reply.id, folder: reply.folder};
+    if (reply?.files) input.forwardFiles = {id: reply.id, folder: reply.folder};
+    if (!input.to || !input.text.trim() && !input.forwardAttachment) return setError('send-error', 'Udfyld modtager og besked.');
     const payload = JSON.stringify(input);
     if (sendAttempt?.payload !== payload) sendAttempt = {payload, key: crypto.randomUUID()};
     sending = true; setError('send-error');

@@ -33,8 +33,8 @@ h1:focus, h2:focus { outline: none; }
 .account summary .glyph { width: .95rem; }
 .account[open] summary .glyph { transform: rotate(180deg); }
 .account-actions { position: absolute; z-index: 2; top: calc(100% + .35rem); right: 0; min-width: 12rem; padding: .3rem; border: 1px solid var(--line); border-radius: .5rem; background: #fff; box-shadow: 0 4px 16px #211f1614; }
-.account-actions button { display: block; width: 100%; min-height: 2.75rem; padding: .6rem .85rem; border-radius: .3rem; background: #fff; text-align: left; }
-.account-actions button:hover, .account-actions button:focus-visible { background: #f4f2ec; }
+.account-actions button, .account-actions a { display: block; width: 100%; min-height: 2.75rem; padding: .6rem .85rem; border-radius: .3rem; background: #fff; text-align: left; color: inherit; text-decoration: none; }
+.account-actions :is(button,a):is(:hover,:focus-visible) { background: #f4f2ec; }
 .account-address, .folder-label, .row-sender, .row-title, .row-snippet { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .primary, .secondary, .back, .text-button, .icon-button { display: inline-flex; align-items: center; justify-content: center; gap: .55rem; min-height: 2.65rem; padding: .55rem 1rem; border-radius: .45rem; font-size: .9rem; font-weight: 650; }
 .primary { background: #24231e; color: white; }
@@ -96,11 +96,22 @@ h1:focus, h2:focus { outline: none; }
 .search input { width: 100%; min-width: 0; height: 2.65rem; border: 0; outline: none; background: transparent; font-size: .87rem; }
 .search input:focus-visible { outline: none; }
 .list-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.list-filters { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .65rem; }
+.list-filters label { max-width: 100%; }
+.list-filters select, .filter-chip { min-height: 2rem; max-width: 100%; border: 1px solid var(--line); border-radius: .4rem; padding: .27rem .5rem; background: white; color: #504d44; font: inherit; font-size: .78rem; }
+.filter-chip { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.list-filters select:focus-visible { outline: 2px solid #a53a12; outline-offset: 2px; }
 .message-list { list-style: none; padding: 0; border-top: 1px solid var(--line); }
+.message-list > li { position: relative; }
 .message-row { position: relative; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .22rem .65rem; width: 100%; padding: 1rem var(--inset) 1.1rem; text-align: left; background: white; border-bottom: 1px solid var(--line); }
 .message-row:hover { background: #faf9f7; }
 .message-row[aria-pressed=true] { background: #f9f0e7; box-shadow: inset 3px 0 #e75a22; }
 .message-row:focus-visible { outline-offset: -3px; }
+.message-list .message-row { padding-right: calc(var(--inset) + 2rem); }
+.message-list .more-actions { position: absolute; top: .55rem; right: .25rem; width: 2.25rem; height: 2.25rem; min-height: 2.25rem; color: var(--muted); }
+.more-actions:is(:hover,:focus-visible,[aria-expanded=true]) { background: #e9e6dd; color: #322c21; }
+.mail-labels { grid-column: 1/-1; display: flex; flex-wrap: wrap; gap: .28rem; min-width: 0; }
+.mail-label { border: 1px solid #d8d4c8; border-radius: .24rem; padding: .05rem .35rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: .7rem; font-weight: 560; color: #504b3b; background: #f5f3ed; }
 .row-sender { font-weight: 540; font-size: .9rem; }
 .row-time { display: inline-flex; gap: .35rem; align-items: center; color: var(--muted); font-size: .72rem; }
 .row-time .glyph, .row-time svg { width: .85rem; height: .85rem; }
@@ -118,6 +129,17 @@ h1:focus, h2:focus { outline: none; }
 .reader-empty h2 { color: #464238; font-size: clamp(1.75rem,2.8vw,2.7rem); font-weight: 570; letter-spacing: -.06em; }
 .reader-error { margin-bottom: 1rem; }
 .letter { max-width: 43rem; }
+.letter-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .8rem; }
+.letter .mail-labels { margin-top: .75rem; }
+.letter-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.mail-menu { position: fixed; z-index: 5; min-width: 15rem; width: max-content; max-width: min(22rem,calc(100vw - .75rem)); max-height: calc(100dvh - .75rem); overflow-y: auto; padding: .35rem; border: 1px solid #d6d3c9; border-radius: .65rem; box-shadow: 0 .5rem 2rem #30281c24, 0 .15rem .5rem #30281c12; background: #fff; overscroll-behavior: contain; }
+.menu-option { display: grid; grid-template-columns: 1rem minmax(0,1fr) auto; align-items: center; gap: .7rem; width: 100%; padding: .55rem .65rem; border-radius: .32rem; background: #fff; font-size: .86rem; text-align: left; }
+.menu-option > span:nth-child(2) { overflow-wrap: anywhere; }
+.menu-option .glyph, .menu-option svg { width: 1rem; height: 1rem; }
+.menu-option:is(:hover,:focus) { outline: 0; background: #f1eee7; }
+.mail-menu hr { border: 0; border-top: 1px solid var(--line); margin: .3rem -.35rem; }
+.menu-heading { display: block; color: var(--muted); font-size: .74rem; font-weight: 650; margin: .55rem .65rem .25rem; }
+.file-note { margin: .65rem 0; color: var(--muted); font-size: .83rem; }
 .letter h2 { margin: 0 0 2rem; font-size: clamp(2.1rem,3.5vw,4.4rem); line-height: 1.08; font-weight: 620; letter-spacing: -.065em; overflow-wrap: anywhere; }
 .sender { display: flex; align-items: center; gap: .8rem; }
 .avatar { display: grid; place-items: center; flex: none; width: 2.55rem; height: 2.55rem; border-radius: 50%; color: #453427; background: #ebc7a6; font-size: .82rem; font-weight: 720; }
@@ -156,6 +178,9 @@ dialog::backdrop { background: rgb(37 32 23 / 37%); }
   .reader { padding-inline: 1.5rem; }
 }
 @media (max-width: 46rem) {
+  .mail-menu { left: .5rem !important; right: .5rem; bottom: max(.5rem,env(safe-area-inset-bottom)); top: auto !important; width: auto; min-width: 0; max-width: none; max-height: 72dvh; }
+  .menu-option { min-height: 2.75rem; }
+  .message-list .more-actions { width: 2.75rem; height: 2.75rem; }
   :root { --bar: 4rem; --inset: 1.15rem; }
   .entry .appbar { height: 4.4rem; }
   .entry-desk { grid-template-columns: minmax(0,1fr); gap: 2.5rem; min-height: 0; padding: 2.5rem 0 2rem; }

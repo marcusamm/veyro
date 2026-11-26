@@ -19,6 +19,7 @@
       <div class="account-actions">
         <button type="button" id="open-password">Skift adgangskode</button>
         <button type="button" id="open-recovery-settings">Gendannelsesmail</button>
+        <a href="/ai">AI-forbindelser</a>
         <button type="button" id="sign-out">Log ud</button>
       </div>
     </details>
@@ -53,6 +54,11 @@
       <div class="list-head">
         <div class="folder-summary"><h1 id="folder-title" tabindex="-1">Indbakke</h1><span id="mail-count"></span><button id="refresh" type="button" class="icon-button" title="Opdater mappen" aria-label="Opdater mappen"><span class="glyph" data-icon="refresh" aria-hidden="true"></span></button></div>
         <label class="search"><span class="glyph" data-icon="search" aria-hidden="true"></span><input id="search" type="search" placeholder="Søg i mappen" aria-label="Søg i mappen" autocomplete="off" maxlength="180"></label>
+        <div class="list-filters">
+          <label><span class="visually-hidden">Visning i mappen</span><select id="folder-view"><option value="">Alle mails</option><optgroup id="category-filters" label="Faner"><option value="primary">Primær</option><option value="updates">Opdateringer</option><option value="social">Sociale medier</option><option value="promotions">Promoveringer</option></optgroup><optgroup label="Organisering"><option value="tasks">Huskeliste</option><option value="muted">Skjulte mails</option><option value="snoozed" id="snoozed-option">Udsatte mails</option></optgroup></select></label>
+          <label id="label-filter-wrap" hidden><span class="visually-hidden">Filtrér efter etiket</span><select id="label-filter"></select></label>
+          <button id="sender-filter" class="filter-chip" type="button" hidden></button>
+        </div>
       </div>
       <div class="list-scroll" id="list-scroll">
         <ul class="message-list" id="messages" aria-label="Mails"></ul>
@@ -66,6 +72,25 @@
       <div id="paper"></div>
     </section>
   </main>
+  <div id="mail-menu" class="mail-menu" role="menu" aria-label="Mailhandlinger" hidden></div>
+  <dialog id="snooze-dialog" class="account-dialog" aria-labelledby="snooze-title">
+    <form id="snooze-form" class="account-form">
+      <h2 id="snooze-title">Udsæt mail</h2>
+      <label for="snooze-until">Tilbage i indbakken den</label>
+      <input id="snooze-until" type="datetime-local" required>
+      <p id="snooze-error" class="error" role="alert" hidden></p>
+      <div class="compose-foot"><button type="button" id="cancel-snooze" class="secondary">Annuller</button><button id="save-snooze" type="submit" class="primary">Udsæt</button></div>
+    </form>
+  </dialog>
+  <dialog id="label-dialog" class="account-dialog" aria-labelledby="label-title">
+    <form id="label-form" class="account-form">
+      <h2 id="label-title">Tilføj etiket</h2>
+      <label for="new-label">Etikettens navn</label>
+      <input id="new-label" type="text" autocomplete="off" maxlength="40" required>
+      <p id="label-error" class="error" role="alert" hidden></p>
+      <div class="compose-foot"><button type="button" id="cancel-label" class="secondary">Annuller</button><button id="save-label" type="submit" class="primary">Tilføj</button></div>
+    </form>
+  </dialog>
   <dialog id="forgot-dialog" class="account-dialog" aria-labelledby="forgot-title" aria-describedby="forgot-hint">
     <h2 id="forgot-title">Glemt adgangskode?</h2>
     <p id="forgot-hint" class="account-note">Vi sender et link til den eksterne gendannelsesmail, du tidligere har tilknyttet din postkasse.</p>
@@ -120,8 +145,10 @@
     <form id="draft" method="post">
       <div class="compose-head"><h2 id="compose-title">Ny mail</h2><button id="close-compose" class="icon-button" type="button" aria-label="Luk kladde" title="Luk kladde"><span class="glyph" data-icon="close" aria-hidden="true"></span></button></div>
       <label for="recipient">Til</label><input id="recipient" type="text" autocomplete="off" inputmode="email" maxlength="4000" required>
+      <label for="cc">Cc</label><input id="cc" type="text" autocomplete="off" inputmode="email" maxlength="4000">
       <label for="subject">Emne</label><input id="subject" type="text" maxlength="500">
       <label for="body">Besked</label><textarea id="body" rows="8" maxlength="500000" required></textarea>
+      <p id="forward-files" class="file-note" hidden></p>
       <p class="error" id="send-error" role="alert" hidden></p>
       <div class="compose-foot"><button type="button" id="discard" class="text-button">Kassér kladde</button><button id="send" type="submit" class="primary"><span class="glyph" data-icon="sent" aria-hidden="true"></span>Send mail</button></div>
     </form>
