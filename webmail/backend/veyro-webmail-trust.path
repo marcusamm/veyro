@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch the public mailcow certificate for Veyro webmail
+
+[Path]
+PathChanged=/opt/mailcow-dockerized/data/assets/ssl/cert.pem
+Unit=veyro-webmail-trust.service
+
+[Install]
+WantedBy=multi-user.target

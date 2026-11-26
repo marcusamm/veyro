@@ -1,6 +1,6 @@
 # Veyro webmail API
 
-The Cloudflare Worker forwards same-origin webmail requests to this service on the mail guest. It listens on `127.0.0.1:18082`. Dovecot IMAPS and Postfix submission use local loopback with TLS, the hostname `post.veyro.dk`, and the guest's mailcow public certificate as the trust anchor. Run `sh stage.sh` in the root-owned runtime directory after installing these files or rotating the mail certificate.
+The Cloudflare Worker forwards same-origin webmail requests to this service on the mail guest. It listens on `127.0.0.1:18082`. Dovecot IMAPS and Postfix submission use local loopback with TLS and the hostname `post.veyro.dk`. Install these files in the root-owned `/etc/veyro-webmail-api` directory and run `sh stage.sh`. The systemd path unit watches mailcow's public certificate. Its one-shot service checks the certificate's validity and hostname, then atomically replaces the API's copy. New IMAP and SMTP connections pick up the new trust file. The API has no access to mailcow's private key.
 
 The Worker must replace the origin and client IP authentication headers with its own `X-Veyro-Origin-Token` secret and the visitor address from Cloudflare. The guest reads its token from `secrets/origin-token`. Preserve the original browser Origin and the session cookie. POST requests require the exact Veyro webmail origin. Authenticated mutations require the session's CSRF token. Forward `Idempotency-Key` for message submissions.
 

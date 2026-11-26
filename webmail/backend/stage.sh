@@ -14,5 +14,8 @@ if [ ! -s secrets/origin-token ]; then
 fi
 chown root:65532 secrets/origin-token
 chmod 0440 secrets/origin-token
-install -m 0440 -o root -g 65532 /opt/mailcow-dockerized/data/assets/ssl/cert.pem secrets/mailcow-public.pem
+sh refresh-trust.sh
+install -m 0644 veyro-webmail-trust.service veyro-webmail-trust.path /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now veyro-webmail-trust.path
 docker compose up -d --build

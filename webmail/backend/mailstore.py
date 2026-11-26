@@ -9,13 +9,14 @@ from email.header import decode_header, make_header
 from email.message import EmailMessage
 from email.parser import BytesHeaderParser
 from email.utils import formatdate, getaddresses, make_msgid, parsedate_to_datetime
+from functools import lru_cache
 from html.parser import HTMLParser
 from pathlib import Path
 
 from imapclient import IMAPClient
 
 HOST = "post.veyro.dk"
-TLS = ssl.create_default_context(cafile="/run/veyro/mailcow-public.pem")
+TRUST_FILE = Path("/run/veyro/mailcow-public.pem")
 PAGE = 30
 MAX_ATTACHMENT = 32 * 1024 * 1024
 HEADERS = "BODY.PEEK[HEADER.FIELDS (SUBJECT FROM TO CC REPLY-TO DATE MESSAGE-ID REFERENCES CONTENT-TYPE CONTENT-TRANSFER-ENCODING)]"
@@ -27,8 +28,21 @@ class MailError(Exception):
         self.message, self.status = message, status
 
 
+@lru_cache(maxsize=2)
+def _tls_context(version):
+    context = ssl.create_default_context()
+    context.load_verify_locations(cafile=str(TRUST_FILE))
+    context.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN
+    return context
+
+
+def verified_tls():
+    stat = TRUST_FILE.stat()
+    return _tls_context((stat.st_ino, stat.st_mtime_ns))
+
+
 def connect(email_address, password):
-    client = IMAPClient(HOST, port=993, ssl_context=TLS, timeout=15)
+    client = IMAPClient(HOST, port=993, ssl_context=verified_tls(), timeout=15)
     try:
         client.login(email_address, password)
         return client
@@ -283,7 +297,7 @@ def send_message(client, email_address, password, data, folders):
     msg.set_content(text)
     sent = next((folder_name(f["id"]) for f in folders if f["role"] == "sent"), None)
     refused = {}
-    smtp = smtplib.SMTP_SSL(HOST, port=465, context=TLS, timeout=18)
+    smtp = smtplib.SMTP_SSL(HOST, port=465, context=verified_tls(), timeout=18)
     try:
         smtp.login(email_address, password)
         try:
