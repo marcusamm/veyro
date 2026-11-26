@@ -1,4 +1,4 @@
-import { renderWebmail } from './view';
+import { renderUnavailable } from './view';
 import { previewHtml, previewCss, previewJs } from './preview';
 import { sogoCss, webmailCss } from './styles';
 
@@ -52,7 +52,7 @@ function allowedWrite(req: Request): boolean {
 // SOGo / SOPE cookies. Do not forward unrelated parent-domain Veyro cookies.
 function sogoCookie(value: string): boolean {
   const name = value.split('=', 1)[0];
-  return !!name && /^(?:0xHIGHFLYxSOGo|SOGoLogin|XSRF-TOKEN|sogo-user-domain|(?:cas|openid|saml2)-location)$/.test(name);
+  return !!name && /^(?:0xHIGHFLYxSOGo|SOGoLogin|SOGoWindowMode|XSRF-TOKEN|sogo-user-domain|(?:cas|openid|saml2)-location)$/.test(name);
 }
 
 function requestHeaders(req: Request): Headers {
@@ -98,7 +98,7 @@ const html = 'text/html; charset=utf-8';
 
 function unavailable(req: Request, installing = false) {
   const isPage = readMethods.has(req.method) && (req.headers.get('Accept') || '').includes('text/html');
-  return localResponse(req, isPage ? renderWebmail(false, installing) : 'Mailserveren er midlertidigt utilgængelig.', 503, isPage ? html : undefined);
+  return localResponse(req, isPage ? renderUnavailable(installing) : 'Mailserveren er midlertidigt utilgængelig.', 503, isPage ? html : undefined);
 }
 
 async function proxy(req: Request, url: URL): Promise<Response> {
@@ -150,7 +150,11 @@ export default {
     }
     if (read && url.pathname === '/forhaandsvisning.css') return localResponse(req, previewCss, 200, 'text/css; charset=utf-8');
     if (read && url.pathname === '/forhaandsvisning.js') return localResponse(req, previewJs, 200, 'text/javascript; charset=utf-8');
-    if (read && url.pathname === '/') return localResponse(req, renderWebmail(env.WEBMAIL_ENABLED === '1', env.WEBMAIL_ENABLED !== '1'), 200, html);
+    if (read && url.pathname === '/') {
+      const response = localResponse(req, '', 302);
+      response.headers.set('Location', '/SOGo/');
+      return response;
+    }
     if (read && url.pathname === '/robots.txt') return localResponse(req, 'User-agent: *\nDisallow: /\n', 200);
     if (read && assetPaths.has(url.pathname)) {
       // Assets receive no mailbox cookies or login data.

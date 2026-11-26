@@ -35,6 +35,32 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Kontrollér den offentlige webmail
         run: |
-          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors --max-time 15 https://mail.veyro.dk/ -o "$RUNNER_TEMP/webmail.html"
-          grep -Fq 'Veyro Mail' "$RUNNER_TEMP/webmail.html"
-          curl --fail --silent --show-error https://mail.veyro.dk/webmail.css -o /dev/null
+          base=https://mail.veyro.dk
+          page="$RUNNER_TEMP/webmail.html"
+          mode=$(python3 -c 'import tomllib; print(tomllib.load(open("webmail/wrangler.toml", "rb"))["vars"]["WEBMAIL_ENABLED"])')
+          fetch=(curl --silent --show-error --connect-timeout 5 --max-time 20)
+
+          check_entry() {
+            local result
+            result=$("${fetch[@]}" -o "$page" -w '%{http_code} %{redirect_url}' "$base/") || return 1
+            if [[ "$mode" == 1 ]]; then
+              [[ "$result" == "302 $base/SOGo/" ]] || return 1
+              "${fetch[@]}" --location --proto-redir '=https' --max-redirs 5 --fail "$base/SOGo/" -o "$page" || return 1
+              grep -Fq 'loginContent' "$page"
+            else
+              [[ "$result" == "200 " ]] && grep -Fq '/forhaandsvisning.js' "$page" || return 1
+              [[ "$("${fetch[@]}" -o /dev/null -w '%{http_code}' "$base/SOGo/")" == 503 ]]
+            fi
+          }
+
+          [[ "$mode" == 0 || "$mode" == 1 ]]
+          for attempt in {1..12}; do
+            if check_entry; then break; fi
+            if [[ "$attempt" == 12 ]]; then echo "Forsiden svarede forkert for WEBMAIL_ENABLED=$mode"; exit 1; fi
+            sleep 5
+          done
+          "${fetch[@]}" --fail "$base/forhaandsvisning" -o "$page"
+          grep -Fq '/forhaandsvisning.js' "$page"
+          for asset in forhaandsvisning.js forhaandsvisning.css sogo-theme.css webmail.css favicon.svg manrope.woff2; do
+            [[ "$("${fetch[@]}" -o "$page" -w '%{http_code}' "$base/$asset")" == 200 && -s "$page" ]] || { echo "Mangler $asset"; exit 1; }
+          done

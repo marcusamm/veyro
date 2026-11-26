@@ -1,6 +1,6 @@
 # Veyro Mail
 
-`mail.veyro.dk` er medarbejdernes indgang til webmail. Cloudflare Workeren viser Veyros danske startside og formidler SOGo-sessionen over HTTPS. Mailcow på Linux håndterer postkasser, mapper, søgning og afsendelse. Workeren har ingen database. Den særskilte workflow `Udgiv Veyro Mail` deployer kun denne Worker.
+`mail.veyro.dk` er medarbejdernes indgang til webmail. Når mailserveren er aktiv, åbner adressen SOGos login eller medarbejderens eksisterende session direkte. Cloudflare Workeren formidler sessionen over HTTPS. Mailcow på Linux håndterer postkasser, mapper, søgning og afsendelse. Workeren har ingen database. Den særskilte workflow `Udgiv Veyro Mail` deployer kun denne Worker.
 
 ## Tilslut den første mailserver
 
