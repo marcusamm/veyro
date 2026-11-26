@@ -1,6 +1,6 @@
 # AJ Auto · hjemmeside og booking
 
-AJ Auto bruger den eksisterende Veyro Worker, Hono, D1 og Resend. Domænet `aj.veyro.dk` routes særskilt i `src/index.ts`; alle værkstedets data ligger i isolerede `aj_*`-tabeller fra migration `0019_aj_booking.sql`. Veyros øvrige værter og kundeportal beholder deres routing og adgangskontrol.
+AJ Auto bruger Veyros eksisterende Worker, Hono, D1 og Resend. Hjemmesiden på `aj.veyro.dk` og kundedomænet `aj-auto-slagelse.dk` bruger samme kalender, aftaler og administration. Værkstedets data ligger i `aj_*`-tabellerne. Efter aktivering i Cloudflare viderestiller `www.aj-auto-slagelse.dk` til hoveddomænet.
 
 ## Leverance
 
@@ -44,7 +44,7 @@ Oplysninger anvendt: AJ Auto, Slagelse, Sorøvej 5kl, telefon 60 64 41 43, Insta
 
 `npm run typecheck`
 
-`npx vitest run tests/aj-time.test.mjs tests/aj-booking.test.mjs`
+`npx vitest run tests/aj-domain.test.mjs tests/aj-time.test.mjs tests/aj-booking.test.mjs`
 
 Testene starter separat lokal D1 og mock Resend med `.test`-adresser. De dækker lukket standardopsætning, engangslogin, CSRF, roller, medarbejdergrænse, kampagneudløb, booking/flyt/aflys, samtidige overlap, flere kalendere, blokeringer, databasefejl med rollback, mailfejl/genforsøg, sikre/roterbare kalenderlinks, dansk tidszone/sommertid og komplette browserforløb på mobil/computer. Ingen testmail sendes til rigtige modtagere.
 
@@ -52,6 +52,10 @@ Ved lokal drift sættes `AJ_HOSTS=127.0.0.1,localhost`; fjern custom-domain-rout
 
 ## Udgivelse
 
-Den eksisterende GitHub Actions-workflow `Deploy kundepanel` tager D1-bogmærke, anvender migrationerne og deployer Workeren med det nye Cloudflare custom domain. Kør ikke en gammel checkout over nyere produktion: integrér aktuel `main` først. Efter deploy verificeres de fem sider, `/api/config`, `/api/admin/data` (401), at kampagnen er skjult, og at booking stadig er lukket uden faktiske kundedata.
+Når `aj-auto-slagelse.dk` er tilføjet på Veyros Cloudflare-konto, klargør `Deploy kundepanel` to Worker-ruter til hoveddomænet og `www`. Efter navneserverskift og udstedelse af HTTPS-certifikatet kontrolleres forsiden, `/booking` og viderestillingen fra `www`. Eksisterende aftalelinks på `aj.veyro.dk` virker under skiftet.
+
+Maildomænet oprettes separat i Veyro Mail. Workflowet `Publicér AJ Autos domænebevis til Veyro Mail` lægger den offentlige TXT-værdi fra `ops/aj-auto-domain-proof.txt` på `_veyro-mail.aj-auto-slagelse.dk`. Hvis beviset udløber inden delegeringen, hentes en ny værdi i mailadministrationen. Opret organisationen efter DNS-verificeringen, og brug den returnerede DKIM-nøgle til domænet.
+
+`Deploy kundepanel` tager et D1-bogmærke, anvender migrationerne og udgiver Workeren fra `main`. Efter udgivelsen kontrolleres de offentlige sider, `/api/config`, adgangskontrollen på `/api/admin/data` (401) og den forventede bookingstatus.
 
 Rollback: vælg forrige Worker-deployment. De nye `aj_*`-tabeller kan blive liggende; de ændrer ikke andre systemers tabeller. Slet eller gendan ikke produktionsdata uden en konkret aftale.

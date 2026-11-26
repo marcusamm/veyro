@@ -1,4 +1,5 @@
 import { escapeHtml as esc } from '../lib/email';
+import { legacyAjOrigin } from './hosts';
 
 export const AJ_PHONE = '60 64 41 43';
 export const AJ_TELEPHONE = 'tel:+4560644143';
@@ -35,6 +36,7 @@ function visitActions(ready: boolean, className = 'actions'): string {
 }
 
 export interface ShellOptions {
+  canonicalOrigin?: string;
   bookingReady?: boolean;
   admin?: boolean;
   noindex?: boolean;
@@ -53,7 +55,7 @@ export function shell(path: string, title: string, description: string, body: st
   <meta name="theme-color" content="#1b1922">
   <title>${esc(title)}</title>
   <meta name="description" content="${esc(description)}">
-  <link rel="canonical" href="https://aj.veyro.dk${esc(path)}">
+  <link rel="canonical" href="${esc((options.canonicalOrigin ?? legacyAjOrigin) + path)}">
   <meta property="og:title" content="${esc(title)}">
   <meta property="og:description" content="${esc(description)}">
   <meta property="og:type" content="website">
