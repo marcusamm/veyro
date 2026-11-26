@@ -22,7 +22,7 @@ const mail = {
 const folders = ['inbox', 'archive', 'trash'].map(role => ({ id: role, name: role, role, unread: 0 }));
 const mime = { html: 'text/html', js: 'text/javascript', css: 'text/css', svg: 'image/svg+xml', woff2: 'font/woff2' };
 
-async function mailbox(t, options = {}, extraMails = []) {
+async function mailbox(t, options = {}, extraMails = [], canManageRecovery) {
   const context = await browser.newContext(options);
   t.after(() => context.close());
   const writes = [], lists = [], errors = [];
@@ -55,7 +55,7 @@ async function mailbox(t, options = {}, extraMails = []) {
       if (body.action === 'label') fixture.labels = [body.label];
       if (body.action === 'read' || body.action === 'unread') fixture.unread = body.action === 'unread';
       json = path === '/api/send' ? {sent: true} : {ok: true};
-    } else if (path === '/api/session') json = {email: 'you@example.test', csrfToken: csrf};
+    } else if (path === '/api/session') json = {email: 'you@example.test', csrfToken: csrf, canManageRecovery};
     else if (path === '/api/folders') json = {folders};
     else if (path === '/api/messages') {
       lists.push(url.searchParams);
@@ -74,6 +74,13 @@ async function mailbox(t, options = {}, extraMails = []) {
   t.after(() => assert.deepEqual(errors, []));
   return {page, writes, lists};
 }
+
+test('customer account menu only offers the actions available for its mailbox', async t => {
+  const {page} = await mailbox(t, {}, [], false);
+  await page.locator('#account-toggle').click();
+  assert.equal(await page.locator('#open-recovery-settings').isVisible(), false);
+  assert.equal(await page.getByRole('link', {name: 'AI-forbindelser'}).isVisible(), true);
+});
 
 test('uses the targeted row with native contextmenu, keyboard navigation, and safe reply-all recipients', async t => {
   const {page, writes} = await mailbox(t);

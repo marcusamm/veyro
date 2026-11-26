@@ -85,10 +85,62 @@ DELIMITER ;
 """)
 
 
+def staff_addresses():
+    return ",".join("'" + email + "'" for email in STAFF)
+
+
+def mailbox_view_query(staff_only=False):
+    addresses = staff_addresses()
+    if staff_only:
+        # Exact definition used by the release before customer login.
+        return (
+            "SELECT username, SHA2(CONCAT(password, '|', COALESCE(JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.passwd_update')), '')), 256) AS version "
+            f"FROM mailbox WHERE active=1 AND authsource='mailcow' AND username IN ({addresses})"
+        )
+    # Only the final generation is exposed. App credentials can change without
+    # a primary-password change. Include IMAP/SMTP grants and native factor state
+    # so a cached login expires after underlying access is revoked or restricted.
+    fingerprint = "SHA2(CONCAT_WS('|', ap.id, ap.password, ap.imap_access, ap.smtp_access), 256)"
+    app_keys = f"GROUP_CONCAT({fingerprint} ORDER BY ap.id SEPARATOR '')"
+    return f"""
+SELECT m.username,
+       SHA2(CONCAT(
+           m.password, '|', COALESCE(JSON_VALUE(m.attributes, '$.passwd_update'), ''),
+           (SELECT CASE WHEN COUNT(*)=0 THEN ''
+                        WHEN LENGTH({app_keys})=64*COUNT(*) THEN CONCAT('|', SHA2({app_keys}, 256))
+                        ELSE NULL END
+              FROM app_passwd ap WHERE ap.mailbox=m.username AND ap.active=1),
+           CASE WHEN EXISTS (SELECT 1 FROM tfa f WHERE f.username=m.username AND f.active=1)
+                THEN '|tfa' ELSE '' END
+       ), 256) AS version
+FROM mailbox m
+JOIN domain d ON d.domain=m.domain
+WHERE m.active=1 AND d.active=1 AND d.backupmx=0 AND d.relay_all_recipients=0
+  AND m.kind='' AND m.authsource='mailcow'
+  AND COALESCE(JSON_VALUE(m.attributes, '$.shared'), '0')='0'
+  AND COALESCE(JSON_VALUE(m.attributes, '$.imap_access'), '1')='1'
+  AND COALESCE(JSON_VALUE(m.attributes, '$.sogo_access'), '1')='1'
+  AND NOT EXISTS (SELECT 1 FROM admin a WHERE a.username=m.username)
+  AND (m.username IN ({addresses}) OR (
+       COALESCE(JSON_VALUE(m.attributes, '$.force_pw_update'), '0')='0'
+       AND COALESCE(JSON_VALUE(m.attributes, '$.force_tfa'), '0')='0'
+       AND NOT EXISTS (SELECT 1 FROM tfa f WHERE f.username=m.username)
+  ))"""
+
+
+def migrate_mailbox_view(staff_only=False):
+    if os.geteuid() != 0:
+        raise SystemExit("Run on the mail guest as root.")
+    # ALTER is atomic and preserves the existing view's grants. It also fails
+    # on an unprovisioned system rather than silently creating a new principal.
+    sql(f"ALTER SQL SECURITY DEFINER VIEW `{VIEW}` AS {mailbox_view_query(staff_only)};")
+    print("Restored staff-only login view." if staff_only else "Updated login view for provisioned mailboxes.")
+
+
 def configure():
     if os.geteuid() != 0:
         raise SystemExit("Run on the mail guest as root.")
-    addresses = ",".join("'" + email + "'" for email in STAFF)
+    addresses = staff_addresses()
     values = sql(f"SELECT username, pw_reset FROM user_acl WHERE username IN ({addresses}) ORDER BY username;")
     previous_acl = dict(line.split("\t") for line in values.splitlines())
     if set(previous_acl) != set(STAFF):
@@ -120,12 +172,10 @@ def configure():
         raise RuntimeError("Unexpected credential settings")
     # Do not replace or rotate a pre-existing database password on a retry.
     sql(f"CREATE USER IF NOT EXISTS {principal} IDENTIFIED BY '{password}';"
-        f"CREATE OR REPLACE SQL SECURITY DEFINER VIEW `{VIEW}` AS "
-        "SELECT username, SHA2(CONCAT(password, '|', COALESCE(JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.passwd_update')), '')), 256) AS version "
-        f"FROM mailbox WHERE active=1 AND authsource='mailcow' AND username IN ({addresses});"
+        f"CREATE OR REPLACE SQL SECURITY DEFINER VIEW `{VIEW}` AS {mailbox_view_query()};"
         f"GRANT SELECT ON `{db}`.`{VIEW}` TO {principal};")
-    if sql(f"SELECT COUNT(*) FROM `{VIEW}` WHERE LENGTH(version)=64;") != str(len(STAFF)):
-        raise RuntimeError("Missing mailbox version")
+    if sql(f"SELECT COUNT(*) FROM `{VIEW}` WHERE version IS NULL OR LENGTH(version)<>64;") != "0":
+        raise RuntimeError("Invalid mailbox version")
     install_trigger(addresses)
     sql(f"UPDATE user_acl SET pw_reset=1 WHERE username IN ({addresses}) AND pw_reset=0;")
     for key in ("PW_RESET_FROM", "PW_RESET_SUBJ"):
@@ -166,7 +216,11 @@ def rollback():
 if __name__ == "__main__":
     if sys.argv[1:] == ["--rollback"]:
         rollback()
+    elif sys.argv[1:] == ["--upgrade-mailbox-view"]:
+        migrate_mailbox_view()
+    elif sys.argv[1:] == ["--rollback-mailbox-view"]:
+        migrate_mailbox_view(staff_only=True)
     elif not sys.argv[1:]:
         configure()
     else:
-        raise SystemExit("Usage: python3 configure-recovery.py [--rollback]")
+        raise SystemExit("Usage: python3 configure-recovery.py [--upgrade-mailbox-view | --rollback-mailbox-view | --rollback]")

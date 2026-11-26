@@ -3,6 +3,7 @@ const backend = 'https://post.veyro.dk/webmail-api';
 const resource = issuer + '/mcp';
 const scopes = ['mail.read', 'mail.draft'];
 const assetPaths = new Map([
+  ['/ai/om', '/ai-about.html'],
   ['/ai', '/ai.html'], ['/ai/authorize', '/ai.html'], ['/ai.css', '/ai.css'], ['/ai.js', '/ai.js'],
 ]);
 const machinePaths = new Map([
