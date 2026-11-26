@@ -68,6 +68,12 @@ jobs:
             if [[ "$attempt" == 12 ]]; then echo "Forsiden svarede forkert for WEBMAIL_ENABLED=$mode"; exit 1; fi
             sleep 5
           done
+          if [[ "$mode" == 1 ]]; then
+            # An unused token exercises the same public route as a link from a recovery email.
+            probe=$(openssl rand -hex 15 | tr 'a-f' 'A-F' | sed -E 's/(.{6})(.{6})(.{6})(.{6})(.{6})/\1-\2-\3-\4-\5/')
+            result=$("${fetch[@]}" -o "$page" -w '%{http_code}' "https://post.veyro.dk/reset-password?token=$probe")
+            [[ "$result" == 200 ]] && grep -Fq 'var csrf_token' "$page" || { echo 'Det offentlige nulstillingslink virker ikke'; exit 1; }
+          fi
           for asset in forhaandsvisning.js forhaandsvisning.css; do
             [[ "$("${fetch[@]}" -o /dev/null -w '%{http_code}' "$base/$asset")" == 404 ]] || { echo "$asset er stadig offentligt"; exit 1; }
           done
