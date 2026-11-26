@@ -19,5 +19,5 @@ run_worker_first = true
 enabled = false
 
 [vars]
-# Enable after verifying the HTTPS mailcow origin and its public host mapping.
+# Enable after verifying public TLS and the mailbox login on post.veyro.dk.
 WEBMAIL_ENABLED = "0"
