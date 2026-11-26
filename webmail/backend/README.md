@@ -1,0 +1,9 @@
+# Veyro webmail API
+
+The Cloudflare Worker forwards same-origin webmail requests to this service on the mail guest. It listens on `127.0.0.1:18082`. Dovecot IMAPS and Postfix submission use local loopback with TLS, the hostname `post.veyro.dk`, and the guest's mailcow public certificate as the trust anchor. Run `sh stage.sh` in the root-owned runtime directory after installing these files or rotating the mail certificate.
+
+The Worker must replace the origin and client IP authentication headers with its own `X-Veyro-Origin-Token` secret and the visitor address from Cloudflare. The guest reads its token from `secrets/origin-token`. Preserve the original browser Origin and the session cookie. POST requests require the exact Veyro webmail origin. Authenticated mutations require the session's CSRF token. Forward `Idempotency-Key` for message submissions.
+
+The default allowed accounts are `marcus@veyro.dk` and `efe@veyro.dk`. For a mailbox with native mailcow MFA, use a mailcow app password with IMAP access and SMTP access for sending. The service delegates credential verification to mailcow. Sessions live in one Gunicorn process, expire after 30 idle minutes or eight hours, and use an opaque HttpOnly, Secure, host-only cookie. Mailbox credentials stay encrypted with a process-local ephemeral key while the session is active. Restarting the container invalidates browser sessions and the one-hour submission replay cache.
+
+Folder and message IDs are opaque to the frontend. Pagination uses the mailbox UIDVALIDITY and message UID boundaries. Listing reads message metadata. Opening a message retrieves its selected text part and marks it Seen. HTML-only mail is converted to plain text. Attachments are fetched separately with a 32 MiB encoded-part limit. New mail and replies submit through SMTP and add a copy to the IMAP Sent folder. The API accepts text-only compositions and JSON requests up to 256 KiB.

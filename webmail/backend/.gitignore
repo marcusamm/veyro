@@ -1,0 +1,4 @@
+secrets/
+.env
+qa/
+__pycache__/

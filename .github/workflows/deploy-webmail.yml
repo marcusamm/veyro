@@ -36,25 +36,24 @@ jobs:
       - name: Kontrollér den offentlige webmail
         run: |
           base=https://mail.veyro.dk
-          mailbox=https://post.veyro.dk/
           page="$RUNNER_TEMP/webmail.html"
           mode=$(node -e 'const { unstable_readConfig } = require("wrangler"); console.log(unstable_readConfig({ config: "webmail/wrangler.toml" }).vars.WEBMAIL_ENABLED)')
           fetch=(curl --silent --show-error --connect-timeout 5 --max-time 20)
 
           check_entry() {
             local result path
-            for path in / /forhaandsvisning /forhaandsvisning/ /SOGo/ /SOGo/so/; do
-              result=$("${fetch[@]}" -o "$page" -w '%{http_code} %{redirect_url}' "$base$path") || return 1
-              if [[ "$mode" == 1 ]]; then
-                [[ "$result" == "302 $mailbox" && ! -s "$page" ]] || return 1
-              else
-                [[ "$result" == "503 " ]] || return 1
-              fi
-            done
-            if [[ "$mode" == 1 ]]; then
-              result=$("${fetch[@]}" -o "$page" -w '%{http_code}' "$mailbox") || return 1
-              [[ "$result" == 200 ]] && grep -Fq 'login-card login-user' "$page"
+            result=$("${fetch[@]}" -H 'Accept: text/html' -o "$page" -w '%{http_code}' "$base/") || return 1
+            if [[ "$mode" == 0 ]]; then
+              [[ "$result" == 503 ]]
+              return
             fi
+            [[ "$result" == 200 ]] && grep -Fq '<title>Veyro Mail</title>' "$page" && grep -Fq 'src="/inbox.js"' "$page" || return 1
+            for path in /forhaandsvisning /forhaandsvisning/ /SOGo/ /SOGo/so/; do
+              result=$("${fetch[@]}" -o "$page" -w '%{http_code} %{redirect_url}' "$base$path") || return 1
+              [[ "$result" == "308 $base/" ]] || return 1
+            done
+            result=$("${fetch[@]}" -o "$page" -w '%{http_code} %{content_type}' "$base/api/session") || return 1
+            [[ "$result" == '401 application/json'* ]] && node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$page"
           }
 
           [[ "$mode" == 0 || "$mode" == 1 ]]
@@ -66,6 +65,6 @@ jobs:
           for asset in forhaandsvisning.js forhaandsvisning.css; do
             [[ "$("${fetch[@]}" -o /dev/null -w '%{http_code}' "$base/$asset")" == 404 ]] || { echo "$asset er stadig offentligt"; exit 1; }
           done
-          for asset in webmail.css favicon.svg manrope.woff2; do
+          for asset in inbox.js inbox.css webmail.css favicon.svg manrope.woff2; do
             [[ "$("${fetch[@]}" -o "$page" -w '%{http_code}' "$base/$asset")" == 200 && -s "$page" ]] || { echo "Mangler $asset"; exit 1; }
           done

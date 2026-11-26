@@ -1,0 +1,26 @@
+name: veyro-webmail-api
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    network_mode: host
+    extra_hosts:
+      - "post.veyro.dk:127.0.0.1"
+    environment:
+      WEBMAIL_STAFF: ${WEBMAIL_STAFF:-marcus@veyro.dk,efe@veyro.dk}
+      WEBMAIL_ORIGIN: https://mail.veyro.dk
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    ulimits:
+      core: 0
+    tmpfs:
+      - /tmp:size=48m,mode=1777
+    mem_limit: 400m
+    volumes:
+      - ./secrets:/run/veyro:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1',18082),2).close()"]
+      interval: 30s
+      timeout: 4s
+      retries: 3
