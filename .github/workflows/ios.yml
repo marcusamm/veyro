@@ -1,0 +1,72 @@
+name: Veyro Mail iOS
+
+on:
+  pull_request:
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and test on an available iPhone
+        working-directory: ios
+        shell: bash
+        run: |
+          set -euo pipefail
+          project=(-project VeyroMail.xcodeproj -scheme VeyroMail -configuration Debug)
+          xcodebuild -version
+          xcodebuild "${project[@]}" -showdestinations > "$RUNNER_TEMP/destinations.txt"
+          simulator=$(awk -F 'id:' '
+            /Ineligible destinations/ {exit}
+            /platform:iOS Simulator/ && /name:iPhone/ {
+              split($2, value, ",")
+              if (value[1] ~ /^[0-9a-fA-F-]+$/) {print value[1]; exit}
+            }
+          ' "$RUNNER_TEMP/destinations.txt")
+          if [[ -z "$simulator" ]]; then
+            cat "$RUNNER_TEMP/destinations.txt"
+            echo "No iPhone simulator is available for this scheme." >&2
+            exit 1
+          fi
+          xcodebuild "${project[@]}" \
+            -destination "platform=iOS Simulator,id=$simulator" \
+            -derivedDataPath "$RUNNER_TEMP/VeyroMailBuild" \
+            -parallel-testing-enabled NO \
+            -resultBundlePath "$RUNNER_TEMP/VeyroMailTests.xcresult" \
+            clean test
+
+      - name: Export verified login screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/login-attachments"
+          xcrun xcresulttool export attachments \
+            --path "$RUNNER_TEMP/VeyroMailTests.xcresult" --output-path "$dir"
+          screenshot=$(jq -er 'first(.[] | .attachments[] | select(.suggestedHumanReadableName | startswith("VeyroMail-Login")) | .exportedFileName)' "$dir/manifest.json")
+          cp "$dir/$screenshot" "$RUNNER_TEMP/VeyroMail-Login.png"
+
+      - name: Save login screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: Veyro-Mail-iPhone
+          path: ${{ runner.temp }}/VeyroMail-Login.png
+          if-no-files-found: error
+          retention-days: 7

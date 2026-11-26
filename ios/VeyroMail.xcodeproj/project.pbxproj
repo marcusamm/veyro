@@ -1,0 +1,355 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		52AA00000000000000000020 /* Application proxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 52AA00000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 52AA00000000000000000009;
+			remoteInfo = VeyroMail;
+		};
+		52AA00000000000000000033 /* Application proxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 52AA00000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 52AA00000000000000000009;
+			remoteInfo = VeyroMail;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		52AA00000000000000000007 /* VeyroMail.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VeyroMail.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		52AA00000000000000000008 /* VeyroMailTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VeyroMailTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		52AA00000000000000000031 /* VeyroMailUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VeyroMailUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		52AA00000000000000000004 /* VeyroMail */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = VeyroMail;
+			sourceTree = "<group>";
+		};
+		52AA00000000000000000005 /* VeyroMailTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = VeyroMailTests;
+			sourceTree = "<group>";
+		};
+		52AA00000000000000000032 /* VeyroMailUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = VeyroMailUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		52AA0000000000000000000C /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		52AA0000000000000000000F /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		52AA00000000000000000035 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		52AA00000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				52AA00000000000000000004 /* VeyroMail */,
+				52AA00000000000000000005 /* VeyroMailTests */,
+				52AA00000000000000000032 /* VeyroMailUITests */,
+				52AA00000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		52AA00000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				52AA00000000000000000007 /* VeyroMail.app */,
+				52AA00000000000000000008 /* VeyroMailTests.xctest */,
+				52AA00000000000000000031 /* VeyroMailUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		52AA00000000000000000009 /* VeyroMail */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 52AA00000000000000000016 /* App configurations */;
+			buildPhases = (
+				52AA0000000000000000000B /* Sources */,
+				52AA0000000000000000000C /* Frameworks */,
+				52AA0000000000000000000D /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			fileSystemSynchronizedGroups = (52AA00000000000000000004 /* VeyroMail */,);
+			name = VeyroMail;
+			productName = VeyroMail;
+			productReference = 52AA00000000000000000007 /* VeyroMail.app */;
+			productType = "com.apple.product-type.application";
+		};
+		52AA0000000000000000000A /* VeyroMailTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 52AA00000000000000000019 /* Test configurations */;
+			buildPhases = (
+				52AA0000000000000000000E /* Sources */,
+				52AA0000000000000000000F /* Frameworks */,
+				52AA00000000000000000010 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = (52AA00000000000000000021 /* App dependency */,);
+			fileSystemSynchronizedGroups = (52AA00000000000000000005 /* VeyroMailTests */,);
+			name = VeyroMailTests;
+			productName = VeyroMailTests;
+			productReference = 52AA00000000000000000008 /* VeyroMailTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		52AA00000000000000000038 /* VeyroMailUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 52AA00000000000000000039 /* UI test configurations */;
+			buildPhases = (
+				52AA00000000000000000037 /* Sources */,
+				52AA00000000000000000035 /* Frameworks */,
+				52AA00000000000000000036 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = (52AA00000000000000000034 /* App dependency */,);
+			fileSystemSynchronizedGroups = (52AA00000000000000000032 /* VeyroMailUITests */,);
+			name = VeyroMailUITests;
+			productName = VeyroMailUITests;
+			productReference = 52AA00000000000000000031 /* VeyroMailUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		52AA00000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					52AA00000000000000000009 = {CreatedOnToolsVersion = 16.4; };
+					52AA0000000000000000000A = {CreatedOnToolsVersion = 16.4; TestTargetID = 52AA00000000000000000009; };
+					52AA00000000000000000038 = {CreatedOnToolsVersion = 16.4; TestTargetID = 52AA00000000000000000009; };
+				};
+			};
+			buildConfigurationList = 52AA00000000000000000013 /* Project configurations */;
+			developmentRegion = da;
+			hasScannedForEncodings = 0;
+			knownRegions = (da, Base,);
+			mainGroup = 52AA00000000000000000002;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 52AA00000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				52AA00000000000000000009 /* VeyroMail */,
+				52AA0000000000000000000A /* VeyroMailTests */,
+				52AA00000000000000000038 /* VeyroMailUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		52AA0000000000000000000D /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		52AA00000000000000000010 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		52AA00000000000000000036 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		52AA0000000000000000000B /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		52AA0000000000000000000E /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		52AA00000000000000000037 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		52AA00000000000000000021 /* App dependency */ = {
+			isa = PBXTargetDependency;
+			target = 52AA00000000000000000009 /* VeyroMail */;
+			targetProxy = 52AA00000000000000000020 /* Application proxy */;
+		};
+		52AA00000000000000000034 /* App dependency */ = {
+			isa = PBXTargetDependency;
+			target = 52AA00000000000000000009 /* VeyroMail */;
+			targetProxy = 52AA00000000000000000033 /* Application proxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		52AA00000000000000000011 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		52AA00000000000000000012 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		52AA00000000000000000014 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Veyro Mail";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks",);
+				PRODUCT_BUNDLE_IDENTIFIER = dk.veyro.mail;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		52AA00000000000000000015 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Veyro Mail";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks",);
+				PRODUCT_BUNDLE_IDENTIFIER = dk.veyro.mail;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		52AA00000000000000000017 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks",);
+				PRODUCT_BUNDLE_IDENTIFIER = dk.veyro.mail.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VeyroMail.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/VeyroMail";
+			};
+			name = Debug;
+		};
+		52AA00000000000000000018 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks",);
+				PRODUCT_BUNDLE_IDENTIFIER = dk.veyro.mail.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VeyroMail.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/VeyroMail";
+			};
+			name = Release;
+		};
+		52AA0000000000000000003A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks",);
+				PRODUCT_BUNDLE_IDENTIFIER = dk.veyro.mail.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_TARGET_NAME = VeyroMail;
+			};
+			name = Debug;
+		};
+		52AA0000000000000000003B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks",);
+				PRODUCT_BUNDLE_IDENTIFIER = dk.veyro.mail.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_TARGET_NAME = VeyroMail;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		52AA00000000000000000013 /* Project configurations */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				52AA00000000000000000011 /* Debug */,
+				52AA00000000000000000012 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		52AA00000000000000000016 /* App configurations */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				52AA00000000000000000014 /* Debug */,
+				52AA00000000000000000015 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		52AA00000000000000000019 /* Test configurations */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				52AA00000000000000000017 /* Debug */,
+				52AA00000000000000000018 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		52AA00000000000000000039 /* UI test configurations */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				52AA0000000000000000003A /* Debug */,
+				52AA0000000000000000003B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 52AA00000000000000000001 /* Project object */;
+}
