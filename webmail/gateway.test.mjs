@@ -119,6 +119,7 @@ describe('Veyro Mail gateway', () => {
     expect(await result.text()).toBe(shell);
     expect(result.headers.get('Cache-Control')).toContain('no-store');
     expect(result.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'");
+    expect(result.headers.get('Strict-Transport-Security')).toMatch(/^max-age=[1-9]\d*(?:;|$)/i);
     expect(result.headers.has('Location')).toBe(false);
     for (const file of ['inbox.js', 'inbox.css', 'webmail.css', 'favicon.svg', 'manrope.woff2']) {
       expect((await fetch('/' + file + '?irrelevant=1', init)).status).toBe(200);
@@ -130,6 +131,35 @@ describe('Veyro Mail gateway', () => {
       expect(req.headers.has('Cookie')).toBe(false);
       expect(req.headers.has('Authorization')).toBe(false);
     }
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
+  it.each(['GET', 'HEAD'])('upgrades HTTP %s bookmarks on the mail host and preserves their path and query', async method => {
+    const { fetch, assets } = setup();
+    const upstream = mockBackend();
+    for (const path of ['/', '/administration?folder=a%2Fb&tag=1&tag=2', '//outside.invalid/?q=test']) {
+      const result = await fetch('http://mail.veyro.dk' + path, { method });
+      expect(result.status).toBe(308);
+      expect(result.headers.get('Location')).toBe(publicOrigin + path);
+    }
+    expect(assets).not.toHaveBeenCalled();
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
+  it('refuses plaintext writes and alternate origins without redirecting or contacting the backend', async () => {
+    const { fetch, assets } = setup();
+    const upstream = mockBackend();
+    for (const [origin, method] of [
+      ['http://mail.veyro.dk', 'POST'], ['http://mail.veyro.dk', 'PUT'],
+      ['http://mail.veyro.dk:8080', 'GET'], ['https://mail.veyro.dk:8443', 'HEAD'],
+      ['http://mail.veyro.dk.example.invalid', 'GET'],
+    ]) {
+      const result = await fetch(origin + '/api/login', { method });
+      expect(result.status).toBeGreaterThanOrEqual(400);
+      expect(result.status).toBeLessThan(500);
+      expect(result.headers.has('Location')).toBe(false);
+    }
+    expect(assets).not.toHaveBeenCalled();
     expect(upstream).not.toHaveBeenCalled();
   });
 
