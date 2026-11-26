@@ -5,11 +5,13 @@ import http.client
 from http.cookies import SimpleCookie
 import json
 import re
+import smtplib
+from email.message import EmailMessage
 from urllib.parse import urlencode
 
 from imapclient.exceptions import IMAPClientError
 
-from mailstore import HOST, MailError, connect, verified_tls
+from mailstore import HOST, MailError, connect, smtp_login, verified_tls
 
 
 class ChangeUnconfirmed(MailError):
@@ -23,6 +25,16 @@ class Portal:
     def __init__(self):
         self.sid = ""
         self.csrf = ""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        if self.sid:
+            try:
+                self.request("/", {"logout": "1"})
+            except (OSError, http.client.HTTPException, ValueError):
+                pass
 
     def request(self, path, form=None):
         # Mailcow binds its PHP session to the user agent captured at login.
@@ -76,6 +88,23 @@ class Portal:
         if status != 200 or not name or html.unescape(name[1]) != address or "var mailcow_cc_role = 'user';" not in page:
             raise ValueError("Mailbox identity was not confirmed")
         self.csrf = csrf_token(page)
+        return page
+
+    def set_recovery_address(self, address, current, recovery_address):
+        fields = {"user_old_pass": current, "pw_recovery_email": recovery_address}
+        status, _, body = self.request("/api/v1/edit/self", {"attr": json.dumps(fields)})
+        entries = json.loads(body)
+        if not isinstance(entries, list):
+            raise ValueError("Unexpected mailcow response")
+        if any(isinstance(item, dict) and item.get("type") == "danger" for item in entries):
+            raise MailError("Mailserveren afviste ændringen. Kontrollér din adgangskode, eller kontakt administratoren.", 403)
+        if status != 200 or not any(isinstance(item, dict) and item.get("type") == "success" and
+                                    item.get("msg") == ["mailbox_modified", html.escape(address)] for item in entries):
+            raise ValueError("Recovery address update was not confirmed")
+        status, _, page = self.request("/user")
+        saved = re.search(r'<input\b[^>]*\bname="pw_recovery_email"[^>]*\bvalue="([^"]*)"', page)
+        if status != 200 or not saved or html.unescape(saved[1]) != recovery_address:
+            raise ValueError("Recovery address readback failed")
 
     def policy_message(self):
         generic = "Den nye adgangskode opfylder ikke mailserverens krav."
@@ -133,12 +162,29 @@ def csrf_token(page):
 
 
 def change_password(address, current, new):
-    portal = Portal()
-    try:
+    with Portal() as portal:
         portal.change(address, current, new)
-    finally:
-        if portal.sid:
-            try:
-                portal.request("/", {"logout": "1"})
-            except (OSError, http.client.HTTPException, ValueError):
-                pass
+
+
+def request_reset(address):
+    with Portal() as portal:
+        status, _, page = portal.request("/reset-password")
+        if status != 200 or not portal.sid:
+            raise ValueError("Mailcow recovery form is unavailable")
+        portal.csrf = csrf_token(page)
+        status, location, _ = portal.request("/reset-password", {"username": address, "pw_reset_request": "1"})
+        if status not in (302, 303) or location not in ("/", "https://" + HOST + "/"):
+            raise ValueError("Mailcow did not acknowledge the request")
+
+
+def send_recovery_code(address, password, destination, code):
+    message = EmailMessage()
+    message["From"] = address
+    message["To"] = destination
+    message["Subject"] = "Bekræft din gendannelsesmail til Veyro Mail"
+    message.set_content(f"Din bekræftelseskode er {code}.\n\nIndtast koden i Veyro Mail for at knytte denne "
+                        f"adresse til {address}. Koden udløber efter 10 minutter.\n\n"
+                        "Hvis du ikke selv har bedt om koden, kan du se bort fra denne mail.")
+    with smtplib.SMTP_SSL(HOST, port=465, context=verified_tls(), timeout=15) as smtp:
+        smtp_login(smtp, address, password)
+        smtp.send_message(message, from_addr=address, to_addrs=[destination])
