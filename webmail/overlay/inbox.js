@@ -134,13 +134,12 @@
     ctl.setScrollSize(ctl.repeater.getItemCount() * height);
     ctl.updateSize();
   }
-  function rows(list) {
-    for (const row of list.querySelectorAll('#messagesList .sg-message-list-item')) {
+  function rows(items) {
+    for (const row of items) {
       const tile = row.querySelector('.sg-tile-content');
       if (!tile) continue;
       const ctrl = window.angular?.element(row).controller('sgMessageListItem');
       const msg = ctrl?.message;
-      row.classList.toggle('vm-checked',!!msg?.selected);
       let line = tile.querySelector('.vm-row-note');
       if (!line) {
         line = element('div','vm-row-note');
@@ -207,31 +206,67 @@
     }
   }
 
-  let frame;
+  let frame, main, list, detail;
+  const pending = new Set(['shell']);
+  const changedRows = new Set();
   function refresh() {
     frame = null;
-    const main = document.querySelector('main[ui-view="mailboxes"]');
-    if (!main) return;
-    const bar = main.querySelector('section[ui-view="mailbox"] > .toolbar-main');
-    const rail = main.querySelector(':scope > md-sidenav');
-    if (!rail || !bar) return;
-    main.classList.add('vm-workspace');
-    masthead(main,bar);
-    folderRail(main,rail);
-    const list = main.querySelector('.view-list');
-    if (list) { folderHead(list); sizeRows(list); rows(list); }
-    const action = main.querySelector('.sg-block-print [ng-click="mailbox.newMessage($event)"]');
-    main.querySelectorAll('.vm-compose').forEach(b => { b.disabled = !action || action.disabled; });
-    const detail = main.querySelector('#detailView');
-    if (detail) reader(detail);
+    const shell = pending.has('shell');
+    if (shell) {
+      main = document.querySelector('main[ui-view="mailboxes"]');
+      list = main?.querySelector('.view-list');
+      detail = main?.querySelector('#detailView:not(.ng-leave)');
+      const bar = main?.querySelector('section[ui-view="mailbox"] > .toolbar-main');
+      const rail = main?.querySelector(':scope > md-sidenav');
+      if (rail && bar) {
+        main.classList.add('vm-workspace');
+        masthead(main,bar);
+        folderRail(main,rail);
+      }
+    }
+    if (main && (shell || pending.has('compose'))) {
+      const action = main.querySelector('.sg-block-print [ng-click="mailbox.newMessage($event)"]');
+      main.querySelectorAll('.vm-compose').forEach(b => { b.disabled = !action || action.disabled; });
+    }
+    if (list && (shell || pending.has('header'))) folderHead(list);
+    if (list && (shell || pending.has('list'))) {
+      sizeRows(list);
+      rows(list.querySelectorAll('#messagesList .sg-message-list-item'));
+    } else if (changedRows.size) {
+      rows(changedRows);
+    }
+    if (detail && (shell || pending.has('reader'))) reader(detail);
+    pending.clear();
+    changedRows.clear();
   }
-  function schedule() {
-    if (!frame) frame = requestAnimationFrame(refresh);
-  }
+  // Angular reuses visible message rows and replaces UI views during navigation.
+  // Only re-read the affected view, including when mutations arrive together.
   const observer = new MutationObserver(changes => {
-    if (changes.some(({target}) => !(target.parentElement?.closest('.msg-body,#mailEditor,.vm-row-note,.vm-folder-title,.vm-count')))) schedule();
+    for (const {target,addedNodes} of changes) {
+      const node = target.nodeType === Node.ELEMENT_NODE ? target : target.parentElement;
+      if (!node) continue;
+      if (node === document.body) {
+        if ((main && !main.isConnected) || Array.from(addedNodes).some(n => n.matches?.('main[ui-view="mailboxes"]'))) pending.add('shell');
+        continue;
+      }
+      if (!main?.contains(node) || node.closest('.msg-body,#mailEditor,.vm-row-note,.vm-list-head,.vm-letter-avatar,.md-ripple-container')) continue;
+      if (node === main || node.matches('section[ui-view="mailbox"], .sg-block-print.layout-row')) {
+        pending.add('shell');
+      } else if (list?.contains(node)) {
+        const row = node.closest('.sg-message-list-item');
+        if (row) changedRows.add(row);
+        else if (node.matches('.sg-section-list,.md-virtual-repeat-offsetter,#messagesList,md-virtual-repeat-container')) pending.add('list');
+        else if (node === list || node.closest('.md-subheader,.sg-folder-name,md-toolbar.md-accent')) pending.add('header');
+      } else if (detail?.contains(node)) {
+        pending.add('reader');
+      } else if (node.closest('md-fab-speed-dial')) {
+        pending.add('compose');
+      } else if (node.closest('.toolbar-main:not([data-vm-appbar])')) {
+        pending.add('shell');
+      }
+    }
+    if ((pending.size || changedRows.size) && !frame) frame = requestAnimationFrame(refresh);
   });
   observer.observe(document.body,{subtree:true,childList:true,characterData:true});
-  window.addEventListener('resize',schedule);
   refresh();
 })();

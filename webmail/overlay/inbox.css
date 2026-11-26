@@ -234,8 +234,8 @@ main.vm-workspace #messagesList .sg-message-list-item.md-accent.md-bg {
   content:"";position:static;box-sizing:border-box;width:12px;height:12px;line-height:10px;
   border:1.5px solid #6e6558;border-radius:3px;background:white;color:white;opacity:1;
 }
-.vm-workspace #messagesList .sg-message-list-item.vm-checked .md-secondary-container button::after {content:"✓";font-size:10px;background:#a03a12;border-color:#a03a12;}
-.vm-workspace #messagesList .sg-message-list-item.vm-checked > .md-button > .md-secondary-container {opacity:1;}
+.vm-workspace #messagesList .sg-message-list-item:has(.sg-avatar-selected) .md-secondary-container button::after {content:"✓";font-size:10px;background:#a03a12;border-color:#a03a12;}
+.vm-workspace #messagesList .sg-message-list-item:has(.sg-avatar-selected) > .md-button > .md-secondary-container {opacity:1;}
 .vm-workspace #messagesList .sg-message-list-item:focus-within > .md-button > .md-secondary-container,
 .vm-workspace #messagesList .sg-list-selectable .sg-message-list-item > .md-button > .md-secondary-container {opacity:1;}
 @media(hover:hover) {
@@ -330,8 +330,14 @@ main.vm-workspace :is(md-sidenav,[data-vm-appbar],.view-list,.vm-letter-head,md-
   .vm-head-actions .vm-compose-icon {display:none;}
   main.vm-workspace .view-list {width:100%;max-width:100%;flex:1 1 100%;}
   main.vm-workspace #detailView {display:none;}
-  main.vm-workspace:has(#detailView .vm-letter) .view-list {display:none;}
-  main.vm-workspace:has(#detailView .vm-letter) #detailView {position:relative!important;inset:auto!important;display:flex;width:100%;height:100%;}
+  /* The router briefly keeps both detail views in the flex row. Show the
+     incoming view at its final width while Angular disposes of the old one. */
+  main.vm-workspace:has(#detailView:not(.ng-leave) .sg-face > md-card) .view-list {display:none;}
+  main.vm-workspace #detailView:not(.ng-leave):has(.sg-face > md-card) {
+    position:relative!important;inset:auto!important;display:flex;flex:0 0 100%;width:100%;height:100%;
+    transform:none!important;transition:none!important;
+  }
+  main.vm-workspace #detailView.ng-leave {display:none!important;}
   .vm-workspace #detailView .vm-letter .md-button[ng-click="viewer.close()"] {display:inline-flex!important;align-items:center;justify-content:center;}
   .vm-workspace #detailView .vm-letter > md-card-actions .md-button[ng-click="viewer.close()"] {width:auto;max-width:none;gap:.3rem;padding-inline:.25rem;letter-spacing:0;text-transform:none;font:620 .78rem/1.2 var(--vm-type);}
   .vm-back-label {display:inline;}
