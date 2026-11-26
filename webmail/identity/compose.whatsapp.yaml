@@ -1,0 +1,41 @@
+services:
+  worker:
+    volumes:
+      - ./optional/whatsapp.yaml:/blueprints/veyro-optional/whatsapp.yaml:ro
+    secrets:
+      - veyro_whatsapp_internal_token
+  whatsapp-delivery:
+    image: ghcr.io/goauthentik/server:2026.8.7@sha256:1675a017c46ba7f4f15333aeafeeb64538c581673bcbcd36af872cdf7de4e7f7
+    restart: unless-stopped
+    entrypoint: ["gunicorn"]
+    command: ["--chdir", "/app", "--bind", "0.0.0.0:9881", "--workers", "2", "--timeout", "15", "twilio_whatsapp:create_app()"]
+    volumes:
+      - ./optional/twilio_whatsapp.py:/app/twilio_whatsapp.py:ro
+    secrets:
+      - veyro_whatsapp_internal_token
+      - source: veyro_whatsapp_account_sid
+        target: veyro_twilio_account_sid
+      - veyro_whatsapp_auth_id
+      - veyro_whatsapp_auth_secret
+      - veyro_whatsapp_sender
+      - veyro_whatsapp_content_sid
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 256m
+secrets:
+  veyro_whatsapp_internal_token:
+    file: /etc/veyro-identity/phone-secrets/whatsapp/internal_token
+  veyro_whatsapp_account_sid:
+    file: /etc/veyro-identity/phone-secrets/whatsapp/account_sid
+  veyro_whatsapp_auth_id:
+    file: /etc/veyro-identity/phone-secrets/whatsapp/auth_id
+  veyro_whatsapp_auth_secret:
+    file: /etc/veyro-identity/phone-secrets/whatsapp/auth_secret
+  veyro_whatsapp_sender:
+    file: /etc/veyro-identity/phone-secrets/whatsapp/sender
+  veyro_whatsapp_content_sid:
+    file: /etc/veyro-identity/phone-secrets/whatsapp/content_sid
