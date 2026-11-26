@@ -87,7 +87,7 @@ test('ordinary sessions never request a customer directory', async t => {
 test('switches between organizations, protects the operator, and creates and suspends a mailbox', async t => {
   const {page} = await administration(t);
   await page.getByText('Beskyttet', {exact:true}).waitFor();
-  assert.equal(await page.getByRole('button', {name:'Deaktivér marcus@veyro.dk'}).count(), 0);
+  assert.equal(await page.getByRole('button', {name:'Deaktivér marcus@veyro.dk', exact:true}).count(), 0);
   assert.equal(await page.getByText('Intern fixture').count(), 0);
   await page.getByRole('button', {name:/Værkstedet/}).click();
   await page.getByText('hej@eksempel.dk', {exact:true}).waitFor();
@@ -104,16 +104,18 @@ test('switches between organizations, protects the operator, and creates and sus
   assert.equal(await dialog.getByLabel('Din adgangskode til Veyro Mail').inputValue(), '');
   await dialog.getByLabel('Din adgangskode til Veyro Mail').fill('operator-fixture');
   await dialog.getByRole('button', {name:'Opret postkasse'}).click();
-  await page.getByRole('button', {name:'Deaktivér karin@eksempel.dk'}).click();
+  const deactivate = page.getByRole('button', {name:'Deaktivér karin@eksempel.dk', exact:true});
+  const activate = page.getByRole('button', {name:'Aktivér karin@eksempel.dk', exact:true});
+  await deactivate.click();
   await dialog.getByLabel('Din adgangskode til Veyro Mail').fill('operator-fixture');
   await dialog.getByRole('button', {name:'Deaktivér postkasse'}).click();
-  await page.getByRole('button', {name:'Aktivér karin@eksempel.dk'}).waitFor();
+  await activate.waitFor();
   await page.getByLabel('Filtrér efter status').selectOption('inactive');
-  assert.equal(await page.locator('#mailboxes li').count(), 1);
-  await page.getByRole('button', {name:'Aktivér karin@eksempel.dk'}).click();
+  assert.deepEqual(await page.locator('#mailboxes .mail-id > span').allTextContents(), ['karin@eksempel.dk']);
+  await activate.click();
   await dialog.getByLabel('Din adgangskode til Veyro Mail').fill('operator-fixture');
   await dialog.getByRole('button', {name:'Aktivér postkasse'}).click();
-  await page.getByRole('button', {name:'Deaktivér karin@eksempel.dk'}).waitFor();
+  await deactivate.waitFor();
 });
 
 test('shows the DNS record before provisioning a customer and fits at mobile width', async t => {
