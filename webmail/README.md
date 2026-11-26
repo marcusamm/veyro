@@ -2,6 +2,8 @@
 
 `mail.veyro.dk` sender medarbejdere direkte til `https://post.veyro.dk/`, hvor mailcow håndterer brugerlogin, totrinsgodkendelse og udlogning. Med direkte viderestilling til SOGo åbner en medarbejder med en aktiv mailcow-session sin indbakke med det samme. Tidligere links til `/forhaandsvisning` og `/SOGo/` åbner samme login. Workflowet `Udgiv Veyro Mail` udgiver indgangen på Cloudflare.
 
+Veyros design til login og den indloggede postkasse installeres på mailserveren. Mapper, beskeder og handlinger kommer fra brugerens SOGo-session. [Installation af Veyros maildesign](overlay/README.md)
+
 ## Tilslut den første mailserver
 
 1. Klargør mailcow på en understøttet Linux-vært med `MAILCOW_HOSTNAME=post.veyro.dk`. Brug en DNS only-post til mailserverens IP. Tjek SMTP-port 25 og få VPS-udbyderen til at sætte PTR. [Mailcows krav til systemet](https://docs.mailcow.email/getstarted/prerequisite-system/) · [DNS](https://docs.mailcow.email/getstarted/prerequisite-dns/)

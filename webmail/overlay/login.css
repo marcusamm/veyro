@@ -1,0 +1,227 @@
+@font-face {
+  font-family: "Veyro Manrope";
+  src: url("/veyro-mail/manrope.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+/* Only mailcow's ordinary mailbox login uses this card. */
+html:has(.login-card.login-user) { font-size: 100%; }
+
+body:has(.login-card.login-user) {
+  --mail-canvas: #f4f2ec;
+  --mail-bar: #faf9f6;
+  --mail-paper: #fff;
+  --mail-ink: #201f1a;
+  --mail-muted: #5f5d54;
+  --mail-line: #dcd9cf;
+  --mail-field-line: #aaa79e;
+  --mail-action: #b7380c;
+  --mail-action-hover: #9e300b;
+  --mail-focus: #a53a12;
+  --mail-gutter: clamp(1rem, 2.6vw, 3rem);
+  --mail-bar-height: 4.55rem;
+  position: relative;
+  min-height: 100vh;
+  min-height: 100svh;
+  margin: 0;
+  background: var(--mail-canvas);
+  color: var(--mail-ink);
+  font-family: "Veyro Manrope", system-ui, sans-serif;
+}
+
+/* Mailcow attaches this link for both OS dark preference and its manual switch. */
+html:has(link#dark-mode-theme[href]:not([disabled])) body:has(.login-user) {
+  --mail-canvas: #201f1b;
+  --mail-bar: #292823;
+  --mail-paper: #2e2d28;
+  --mail-ink: #faf8ed;
+  --mail-muted: #c4c0b4;
+  --mail-line: #504e44;
+  --mail-field-line: #868377;
+  --mail-action: #b7380c;
+  --mail-action-hover: #a3310c;
+  --mail-focus: #ffac87;
+  color-scheme: dark;
+}
+
+body:has(.login-user)::before {
+  content: "";
+  display: block;
+  flex: 0 0 var(--mail-bar-height);
+  height: var(--mail-bar-height);
+  border-bottom: 1px solid var(--mail-line);
+  background: var(--mail-bar);
+}
+
+.container:has(.login-user) {
+  width: min(100%, 32rem);
+  max-width: none;
+  margin-block: 0 !important; /* Bootstrap's my-4 utility. */
+  padding: clamp(2rem, 8vh, 6rem) 1.1rem 2rem;
+}
+
+.row:has(.login-user) {
+  margin: 0 !important; /* Mailcow sets margin-top inline. */
+}
+
+.row > :has(> .login-user) {
+  width: 100%;
+  padding: 0;
+}
+
+.card.login-user {
+  position: static;
+  border: 1px solid var(--mail-line);
+  border-radius: 14px;
+  background: var(--mail-paper);
+  color: var(--mail-ink);
+  box-shadow: 0 3px 15px rgb(31 27 11 / 4%);
+}
+
+.card.login-card.login-user::before { content: none; }
+
+.login-user .mailcow-logo {
+  position: absolute;
+  top: 0;
+  left: var(--mail-gutter);
+  display: flex;
+  align-items: center;
+  height: var(--mail-bar-height);
+  margin: 0 !important;
+}
+
+.login-user .mailcow-logo img {
+  content: url("/veyro-mail/logo.svg");
+  width: 8.5rem;
+  height: 2.1rem;
+  max-height: none;
+  object-fit: contain;
+  object-position: left center;
+}
+
+html:has(link#dark-mode-theme[href]:not([disabled])) .login-user .mailcow-logo img {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+.login-user .card-header {
+  position: absolute;
+  top: 0;
+  right: var(--mail-gutter);
+  height: var(--mail-bar-height);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mail-ink);
+  font-size: 0; /* The native login heading is displayed in the card body. */
+}
+
+.login-user .card-header > .bi { display: none; }
+.login-user .card-header .form-switch,
+.login-user .card-header .dropdown-toggle { font-size: 1rem; }
+.login-user .card-header .form-switch .form-check-input { cursor: pointer; }
+.login-user .form-switch .form-check-input:checked { background-color: var(--mail-action); border-color: var(--mail-action); }
+.login-user .card-header .dropdown-toggle { min-width: 2.7rem; min-height: 2.75rem; color: var(--mail-ink) !important; }
+.login-user .card-header .dropdown-menu { max-height: min(65vh, 30rem); overflow-y: auto; }
+
+.login-user .card-body {
+  padding: clamp(1.4rem, 4.5vw, 2.65rem);
+}
+
+.login-user .card-body > legend {
+  float: none;
+  margin: 0 0 1.65rem;
+  border: none;
+  color: var(--mail-ink);
+  font: 740 clamp(1.65rem, 4.5vw, 2.1rem)/1.16 "Veyro Manrope", system-ui, sans-serif;
+  letter-spacing: -.045em;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.login-user .card-body > legend + hr { display: none; }
+.login-user form > .d-flex:has(> .input-group) { flex-direction: column; gap: .45rem; }
+
+.login-user form label.visually-hidden {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  clip: auto !important;
+  clip-path: none !important;
+  color: var(--mail-ink);
+  font-size: .91rem;
+  font-weight: 650;
+}
+
+.login-user .input-group {
+  flex-wrap: nowrap;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--mail-field-line);
+  border-radius: 7px;
+  background: var(--mail-paper);
+}
+
+.login-user .input-group:focus-within {
+  outline: 2px solid var(--mail-focus);
+  outline-offset: 2px;
+}
+
+.login-user .input-group > .form-control,
+.login-user .input-group > .input-group-text {
+  min-height: 2.9rem;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--mail-ink);
+  box-shadow: none;
+}
+
+.login-user .input-group > .form-control {
+  min-width: 0;
+  padding: .65rem .7rem;
+  font-size: 1rem;
+}
+
+.login-user .form-control::placeholder { color: var(--mail-muted); opacity: 1; }
+.login-user .input-group > div.input-group-text { padding: 0 0 0 .8rem; color: var(--mail-muted); }
+.login-user .input-group > button.input-group-text { min-width: 2.75rem; justify-content: center; }
+.login-user form a,
+.login-user + p a { color: var(--mail-muted); text-underline-offset: .19em; }
+.login-user form a:hover,
+.login-user + p a:hover { color: var(--mail-ink); }
+
+.login-user .btn[type="submit"],
+.login-user #fido2-login {
+  min-height: 2.9rem;
+  max-width: none !important;
+  padding: .7rem 1rem;
+  border-radius: 7px;
+  font: 700 .99rem/1.5 "Veyro Manrope", system-ui, sans-serif;
+}
+
+.login-user .btn.btn-success[type="submit"] {
+  --bs-btn-bg: var(--mail-action);
+  --bs-btn-hover-bg: var(--mail-action-hover);
+  border: 1px solid transparent;
+  background: var(--mail-action);
+  color: #fff;
+}
+.login-user .btn.btn-success[type="submit"]:hover { background: var(--mail-action-hover); }
+.login-user #fido2-login { border: 1px solid var(--mail-field-line); background: var(--mail-paper); color: var(--mail-ink); }
+.login-user #fido2-login:hover { background: var(--mail-bar); }
+.login-user .hr-title { margin-block: 1.3rem .5rem; color: var(--mail-muted); }
+.login-user .hr-title strong { padding-inline: .65rem; background: var(--mail-paper); font-size: .82rem; font-weight: 550; }
+.login-user #fido2-alerts:empty { margin: 0 !important; }
+.login-user + p.text-muted { color: var(--mail-muted) !important; font-size: .84rem; line-height: 1.8; }
+.login-user :is(a, button, input):focus-visible,
+.login-user + p a:focus-visible { outline: 2px solid var(--mail-focus); outline-offset: 2px; }
+.login-user .input-group > .form-control:focus-visible { outline: 0; }
+
+@media (max-width: 520px) {
+  body:has(.login-card.login-user) { --mail-bar-height: 4rem; }
+  .login-user .card-header > .ms-4 { margin-left: .6rem !important; }
+}
