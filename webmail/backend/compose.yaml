@@ -29,8 +29,8 @@ services:
 
   org-broker:
     build: .
-    user: "65531:65531"
-    group_add: ["65532"]
+    user: "65531:65532"
+    group_add: ["65531"]
     command: ["gunicorn", "--workers", "1", "--worker-class", "gthread", "--threads", "4", "--preload", "--umask", "7", "--bind", "unix:/run/veyro-org-socket/admin.sock", "--timeout", "50", "--no-control-socket", "--error-logfile", "-", "org_broker:app"]
     restart: unless-stopped
     network_mode: host
