@@ -46,10 +46,9 @@ shipped = subprocess.check_output(compose + ["cat /sogo_web/WebServerResources/j
 
 brand = overlay.parent / "assets"
 sources = {"login.css": overlay/"login.css", "inbox.css": overlay/"inbox.css",
+           "inbox.js": overlay/"inbox.js",
            "logo.svg": overlay/"logo.svg", "mark.svg": brand/"favicon.svg",
            "manrope.woff2": brand/"manrope.woff2", "Manrope-OFL.txt": brand/"Manrope-OFL.txt"}
-if (overlay/"inbox.js").is_file():
-    sources["inbox.js"] = overlay/"inbox.js"
 assets = {name: file.read_bytes() for name, file in sources.items()}
 login_js = (overlay/"login.js").read_bytes()
 public = web / "veyro-mail"
@@ -86,18 +85,13 @@ loader = """
     link.rel = 'stylesheet';
     link.href = '%s';
     document.head.appendChild(link);
-""" % versioned("inbox.css")
-if "inbox.js" in assets:
-    loader += """
     var script = document.createElement('script');
     script.src = '%s';
     document.head.appendChild(script);
-""" % versioned("inbox.js")
-loader += """
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyTheme);
   else applyTheme();
-})();"""
+})();""" % (versioned("inbox.css"), versioned("inbox.js"))
 add_managed(theme, loader.encode(), initial=shipped)
 
 # Preserve other customisations and keep recoverable originals outside the web root.

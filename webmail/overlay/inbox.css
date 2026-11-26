@@ -53,153 +53,301 @@ main[ui-view] md-toolbar > .sg-toolbar-group-last .md-button[disabled] md-icon {
   color: var(--vm-rust) !important;
 }
 
-main[ui-view="mailboxes"] md-sidenav.md-sidenav-left {
-  border-inline-end: 1px solid var(--vm-line);
-  background: var(--vm-rail);
-  box-shadow: none;
+/* The authenticated mailbox uses the same masthead, folder rail, message
+   list and reading canvas as the Veyro preview. Native SOGo elements keep
+   their indicators, Angular scopes, keyboard navigation and drag targets. */
+main.vm-workspace {
+  --mast: 4.55rem;
+  --rail: clamp(10rem,16.4vw,16rem);
+  --messages: clamp(18rem,30vw,32rem);
+  --inset: clamp(1rem,1.65vw,1.85rem);
+  display: grid !important;
+  grid-template: var(--mast) minmax(0,1fr) / var(--rail) minmax(0,1fr);
+  width: 100%; height: 100%; min-height: 0; overflow: hidden;
+  color: var(--vm-ink); background: white; font-family: var(--vm-type);
 }
-
-main[ui-view="mailboxes"] md-sidenav > md-content,
-main[ui-view="mailboxes"] md-sidenav > md-toolbar {
-  background: var(--vm-rail) !important;
-  color: var(--vm-ink) !important;
-  font-family: var(--vm-type);
+.vm-workspace :is(.vm-brand,.vm-folder-head,.vm-list-head,.vm-compose,.vm-head-actions,.vm-letter-head,.vm-empty) { box-sizing:border-box; }
+.vm-workspace > section[ui-view="mailbox"] { display: contents !important; }
+.vm-workspace > section[ui-view] > md-content,
+.vm-workspace > section[ui-view] > .sg-block-print {
+  grid-area: 2 / 2; min-width: 0; min-height: 0; width: 100%; height: 100%;
 }
-
-main[ui-view="mailboxes"] md-sidenav > md-toolbar {
-  border-bottom: 1px solid var(--vm-line);
-  padding-inline: 18px;
+main.vm-workspace md-toolbar[data-vm-appbar] {
+  grid-area: 1 / 1 / 2 / -1; position: relative; z-index: 15; display: flex;
+  flex-flow: row nowrap; align-items: center; justify-content: space-between;
+  width: 100%; height: var(--mast); min-height: var(--mast);
+  padding: 0 clamp(1.2rem,2.6vw,3rem); background: #faf9f6 !important;
+  color: #201f1a !important; border-bottom: 1px solid #dfded8; box-shadow: none;
 }
-
-main[ui-view="mailboxes"] md-sidenav > md-toolbar .sg-md-title {
-  letter-spacing: -.035em;
-  font-weight: 700;
+.vm-workspace [data-vm-appbar] > .sg-toolbar-group-1 { display: none; }
+.vm-brand, .vm-head-actions, .vm-compose { display: inline-flex; align-items: center; }
+.vm-brand { gap: .65rem; flex: 0 0 auto; color: #201f1a; }
+.vm-mark { width: 32px; height: 32px; }
+.vm-brand-name { font: 800 1.55rem/1 var(--vm-type); letter-spacing: -.06em; }
+.vm-brand-product { font-weight: 450; }
+.vm-head-actions { gap: .5rem; }
+.vm-workspace :is(.vm-apps-trigger,.vm-mobile-folders,.vm-compose,.vm-options) {
+  font-family: var(--vm-type); cursor: pointer; appearance: none;
 }
-
-main[ui-view="mailboxes"] md-sidenav > md-toolbar .md-caption,
-main[ui-view="mailboxes"] .sg-account-section .sg-quota .sg-md-caption:not(.md-warn) {
-  color: var(--vm-muted) !important;
+.vm-apps-trigger,.vm-mobile-folders {
+  border: 1px solid #d9d6cd; border-radius: .45rem; color: #514f47; background: transparent;
+  padding: .5rem .85rem; font-size: .83rem; font-weight: 690; line-height: 1.2;
 }
-
-main[ui-view="mailboxes"] .sg-account-section .sg-mailbox-list-item {
-  margin-inline: 6px;
-  border-radius: 6px;
-  font-family: var(--vm-type);
-  color: #514f47;
+.vm-workspace .vm-apps-trigger:hover,.vm-mobile-folders:hover { background: #edeae3; }
+.vm-workspace .vm-head-actions > .vm-compose, .vm-mobile-folders { display: none; }
+main.vm-workspace [data-vm-appbar] > .sg-toolbar-group-last {
+  display: none; position: absolute; inset: calc(100% - .35rem) clamp(1.2rem,2.6vw,3rem) auto auto;
+  z-index: 15; width: max-content; min-width: 11rem; max-width: 95vw; height: auto; max-height: 70vh;
+  background: white; border: 1px solid var(--vm-line); border-radius: .6rem;
+  padding: .35rem; box-shadow: 0 .5rem 1.6rem #3028131f; overflow-y:auto;
 }
-
-main[ui-view="mailboxes"] .sg-account-section .sg-mailbox-list-item.sg-selected {
-  background: #e7e3d9 !important;
-  color: var(--vm-ink) !important;
-  font-weight: 700;
+main.vm-workspace [data-vm-appbar].vm-open-menu > .sg-toolbar-group-last { display: grid; }
+.vm-open-menu .sg-toolbar-group-last > :is(a,button).md-icon-button:not(.ng-hide) {
+  display: flex !important; align-items: center; gap: .7rem; margin: 0; width: 100%; height: auto;
+  min-height: 2.5rem; padding: .4rem .65rem; border-radius: .35rem; color: var(--vm-ink);
+  text-align: left; text-transform:none; font: 600 .86rem/1.3 var(--vm-type); letter-spacing: normal;
 }
-
-main[ui-view="mailboxes"] .sg-mailbox-list-item.sg-selected .sg-item-name md-icon {
-  color: var(--vm-rust) !important;
+.vm-open-menu .sg-toolbar-group-last > :is(a,button) md-icon { margin:0; font-size:20px; }
+.vm-open-menu .sg-toolbar-group-last > div { display:none; }
+.vm-account-trigger { background:transparent; border:0; padding:.65rem; color:var(--vm-ink); text-align:left; font:600 .86rem/1.3 var(--vm-type); cursor:pointer; }
+.vm-account-trigger:hover { background:var(--vm-rail); }
+main.vm-workspace > md-sidenav.md-sidenav-left {
+  grid-area: 2 / 1; width: var(--rail); min-width: 0; max-width: none; height: 100%;
+  min-height: 0; background: #f4f2ec !important; border-right: 1px solid var(--vm-line); box-shadow:none;
 }
-
-main[ui-view="mailboxes"] .view-list {
-  border-inline-end: 1px solid var(--vm-line);
-  background: white;
+.vm-folder-head { flex: 0 0 auto; padding: 2.5rem .8rem .65rem; order: -1; }
+.vm-rail-title { margin: 0 0 .9rem .75rem; font: 650 .78rem/1.4 var(--vm-type); color: #68665e; }
+.vm-compose {
+  justify-content: center; gap: .55rem; width:100%; padding: .68rem .85rem;
+  border: 1px solid #302f29; background: #282720; color: #fff; border-radius: .44rem;
+  font: 680 .87rem/1.25 var(--vm-type); text-transform:none;
 }
-
-main[ui-view="mailboxes"] .view-list > md-toolbar {
-  border-bottom: 1px solid var(--vm-line);
-  background: white !important;
-  color: var(--vm-ink) !important;
-  font-family: var(--vm-type);
-  box-shadow: none;
+.vm-compose:hover { background:#433f33; }
+.vm-compose-icon { color: #ff935d; font: 650 1.1rem/1 var(--vm-type); }
+main.vm-workspace > md-sidenav > md-toolbar {
+  order: 3; min-height: 4rem; height:auto; padding:.6rem .95rem;
+  background:transparent !important; border-top:1px solid var(--vm-line); border-bottom:0;
+  color:var(--vm-ink)!important; font-family:var(--vm-type);
 }
-
-main[ui-view="mailboxes"] .view-list .sg-folder-name {
-  color: var(--vm-ink) !important;
-  font: 670 clamp(20px, 2vw, 30px)/1.15 var(--vm-type);
-  letter-spacing: -.055em;
+.vm-workspace > md-sidenav > md-toolbar > sg-avatar-image { display:none; }
+.vm-workspace > md-sidenav > md-toolbar .sg-md-title { font:680 .82rem/1.5 var(--vm-type); margin:0; }
+.vm-workspace > md-sidenav > md-toolbar .md-caption { margin:0;color:var(--vm-muted);font-size:.7rem; }
+main.vm-workspace > md-sidenav > md-content { background:transparent!important; min-height:0; padding:0 .55rem; }
+.vm-workspace .sg-account-section > md-list.md-dense { padding:0; }
+.vm-workspace .sg-account-section > md-list.md-dense .md-list-item-inner { min-height:2.1rem; font-size:.74rem; color:var(--vm-muted); }
+.vm-workspace .sg-account-section .sg-quota { padding-inline:.55rem; }
+.vm-workspace:not(.vm-show-account-tools) .sg-account-section:only-of-type.md-flex > :is(md-list,.sg-quota) {display:none;}
+main.vm-workspace .sg-account-section .sg-mailbox-list-item {
+  margin-inline:2px; width:calc(100% - 4px); border-radius:.44rem; color:#514f47;
+  background:transparent!important; font:600 .90rem/1.2 var(--vm-type);
 }
-
-main[ui-view="mailboxes"] #messagesList {
-  background: white;
-  font-family: var(--vm-type);
-  color: var(--vm-ink);
+main.vm-workspace .sg-account-section .sg-mailbox-list-item.sg-selected {background:#e7e3d9!important;color:#2a251e;font-weight:700;}
+.vm-workspace .sg-mailbox-list-item .sg-item-name md-icon { color:#696456!important; font-size:19px; }
+.vm-workspace .sg-mailbox-list-item.sg-selected .sg-item-name md-icon {color:#a03a12!important;}
+.vm-workspace .sg-mailbox-list-item .sg-item-name{overflow:hidden;}
+.vm-workspace md-sidenav .sg-account-section .sg-mailbox-list-item {padding-inline:.65rem;}
+.vm-workspace .sg-mailbox-list-item > [class="sg-child-level-0"] {min-width:0;}
+.vm-workspace .sg-mailbox-list-item > .md-secondary-container {width:1.25rem;min-width:1.25rem; margin-inline:auto 0;}
+@media(hover:hover) {
+  .vm-workspace .sg-mailbox-list-item:not(:hover):not(:focus-within) > .md-secondary-container {opacity:0;}
 }
-
-/* SOGo's virtual repeater measures fixed 56px messages and 40px folders. */
-#messagesList .sg-message-list-item {
-  box-shadow: inset 0 -1px var(--vm-line);
+.vm-workspace .sg-account-section md-divider { display:none; }
+main.vm-workspace .view-list {
+  position:relative; flex:0 0 var(--messages); width:var(--messages);max-width:var(--messages);min-width:0;
+  min-height:0; height:100%; background:white; border-right:1px solid #dfded8;
 }
-
-#messagesList .sg-message-list-item.unread:not(.sg-skeleton) .sg-md-subhead,
-#messagesList .sg-message-list-item.unread:not(.sg-skeleton) .sg-md-body {
-  font-weight: 720;
+.vm-workspace .vm-list-head {
+  flex:0 0 auto; display:flex; align-items:baseline; gap:.65rem; min-width:0;
+  padding:2.05rem var(--inset) 1.2rem;
 }
-
-#messagesList .sg-message-list-item.unread:not(.sg-skeleton) .sg-tile-date {
-  color: var(--vm-rust);
-  font-weight: 680;
+.vm-folder-title {
+  min-width:0; margin:0; color:#201f1a; overflow-wrap:anywhere;
+  font:660 clamp(1.85rem,2.6vw,2.7rem)/1.15 var(--vm-type);letter-spacing:-.065em;
 }
-
-#messagesList .sg-message-list-item.md-accent.md-bg.md-hue-2 {
-  background: var(--vm-selected) !important;
-  color: var(--vm-ink) !important;
-  box-shadow: inset 3px 0 var(--vm-orange), inset 0 -1px var(--vm-line);
+.vm-count { white-space:nowrap; color:#68665e; font:500 .80rem/1.2 var(--vm-type); }
+.vm-options {
+  align-self:center; margin-left:auto; border:0; background:transparent; color:#514f47;
+  border-radius:.4rem; padding:.15rem .4rem; font:700 1.2rem/1 var(--vm-type);
 }
-
-main[ui-view="mailboxes"] .sg-fab-bottom-center .md-fab:not([disabled]),
-main[ui-view="mailboxes"] .md-fab.sg-fab-bottom-center:not([disabled]) {
-  background: #ff743f !important;
-  color: #282118 !important;
+.vm-options:hover { background:#eeece6; }
+main.vm-workspace .view-list > md-toolbar {
+  flex:0 0 auto; height:auto; min-height:0; padding:0 var(--inset) 1.1rem;
+  background:white!important;color:#201f1a!important;box-shadow:none;
 }
-
-main[ui-view="mailboxes"] .sg-fab-bottom-center .md-fab:not([disabled]) md-icon,
-main[ui-view="mailboxes"] .md-fab.sg-fab-bottom-center:not([disabled]) md-icon {
-  color: #282118 !important;
+main.vm-workspace .view-list > md-divider, .vm-workspace #messagesList > :is(md-subheader,.md-subheader),
+.vm-workspace #messagesList > .md-subheader-wrapper {display:none;}
+main.vm-workspace .view-list > md-toolbar.md-accent > .md-toolbar-tools:not(form) {display:none;}
+main.vm-workspace .view-list.vm-options-open > md-toolbar.md-accent > .md-toolbar-tools:not(form) {
+  display:flex!important; height:2.4rem; min-height:0; margin-bottom:.35rem; padding:0;
 }
-
-/* Only the reader's shell and native metadata; email content retains its own CSS. */
-#detailView[ui-view="message"],
-main[ui-view="mailboxes"] #detailView > md-content {
-  background: white !important;
+.vm-workspace .view-list.vm-options-open .md-toolbar-tools:not(form) > :is(.sg-folder-name,button:first-child) { display:none; }
+main.vm-workspace .view-list > md-toolbar.md-accent:not(.ng-hide) > form[name="searchForm"] {
+  position:relative; display:flex!important; gap:.35rem; align-items:center;
+  height:2.6rem; min-height:0; padding:0 .65rem; background:#faf9f6;
+  border:1px solid #dad9d3; border-radius:.4rem;
 }
-
-#detailView[ui-view="message"] > md-content > .sg-md-title {
-  font: 550 18px/1.5 var(--vm-type);
-  color: var(--vm-muted) !important;
+.vm-workspace .view-list form[name="searchForm"]::before {
+  content:""; width:17px;height:17px;flex:0 0 17px;
+  background:radial-gradient(circle at 40% 40%,transparent 4.5px,#69675d 5px,#69675d 6px,transparent 6.5px),
+             linear-gradient(45deg,transparent 40%,#69675d 41% 59%,transparent 60%) right bottom/7px 7px no-repeat;
 }
-
-#detailView[ui-view="message"] > .sg-reversible > .sg-face > md-card {
-  border-radius: 0;
-  box-shadow: none;
+.vm-workspace .view-list form[name="searchForm"]:focus-within { outline:2px solid #9c3d18;outline-offset:1px; }
+.vm-workspace .view-list form[name="searchForm"] > :is(md-input-container, .md-input-container) {min-width:0;margin:0;padding:0;}
+.vm-workspace .view-list form[name="searchForm"] input {width:100%;height:2.35rem;padding:0 .15rem;border:0!important;background:transparent;font:500 .87rem/1.2 var(--vm-type);color:#201f1a;}
+.vm-workspace .view-list form[name="searchForm"] md-input-container .md-errors-spacer { display:none; }
+.vm-workspace .view-list form[name="searchForm"] md-input-container:has([name="folderSearch"]) > label,
+.vm-workspace .view-list form[name="searchForm"] > [ng-click="mailbox.cancelSearch()"],
+.vm-workspace .view-list:not(.vm-options-open) form[name="searchForm"] > :is([flex="25"],.show-advanced-search) { display:none; }
+.vm-workspace .view-list form[name="searchForm"]:has(input:not(:placeholder-shown)) > [ng-click="mailbox.cancelSearch()"]{display:inline-flex;align-items:center;justify-content:center;order:1;margin:0;padding:0;width:1.8rem;min-width:0;}
+main.vm-workspace #messagesList {
+  min-height:0; border-top:1px solid #dfded8; background:white!important;
+  color:var(--vm-ink); font-family:var(--vm-type);
 }
-
-#detailView .sg-face > md-card > md-card-actions {
-  border-bottom: 1px solid var(--vm-line);
-  background: white;
+.vm-workspace #messagesList .sg-section-list {padding:0;}
+main.vm-workspace #messagesList .sg-message-list-item {
+  display:flex; margin:0; padding:0; width:100%; min-height:var(--vm-row-height,56px);
+  height:var(--vm-row-height,56px);color:#201f1a; background:white;box-shadow:inset 0 -1px #dfded8;
+  font-family:var(--vm-type);
 }
-
-#detailView .sg-face > md-card > md-card-actions .md-icon-button:not([disabled]) md-icon {
-  color: #504d45 !important;
+main.vm-workspace #messagesList .sg-message-list-item:hover {background:#faf9f7;}
+main.vm-workspace #messagesList .sg-message-list-item.md-accent.md-bg {
+  background:#f9f0e7!important;color:#201f1a!important;
+  box-shadow:inset 3px 0 #e75a22,inset 0 -1px #dfded8;
 }
-
-#detailView .sg-face > md-card > md-card-content > .sg-padded > .sg-md-headline {
-  margin-block: .55em .3em;
-  font: 630 clamp(27px, 3.2vw, 54px)/1.12 var(--vm-type);
-  letter-spacing: -.055em;
-  color: var(--vm-ink);
-  overflow-wrap: anywhere;
+.vm-workspace #messagesList .sg-message-list-item > .md-button.md-no-style {
+  min-height:100%;height:100%;margin:0;padding:0 var(--inset);border-radius:0;
 }
-
-#detailView .sg-face > md-card > md-card-content > .sg-padded > .msg-date {
-  font: 500 13px/1.5 var(--vm-type);
-  color: var(--vm-muted);
+.vm-workspace #messagesList .sg-message-list-item > .md-button > .md-list-item-inner {
+  min-height:100%;height:100%;padding:0; display:flex;align-items:center;
 }
-
-#detailView .sg-face > md-card > md-card-content > [layout-wrap] {
-  font-family: var(--vm-type);
+.vm-workspace #messagesList .sg-message-list-item > .md-button > button.md-no-style {background:transparent!important;}
+.vm-workspace #messagesList .sg-message-list-item.md-with-secondary .md-button > .md-list-item-inner {width:100%;margin:0;}
+.vm-workspace #messagesList .sg-message-list-item > .md-button > .md-secondary-container {
+  position:absolute;inset:50% auto auto 2px;transform:translateY(-50%);
+  width:1.3rem;height:2rem;margin:0;z-index:1;opacity:0;
 }
-
-main[ui-view="mailboxes"] :is(md-sidenav, .toolbar-main, .view-list) :is(button, a, [tabindex]):focus-visible {
-  outline: 2px solid var(--vm-rust);
-  outline-offset: -2px;
+.vm-workspace #messagesList .sg-message-list-item > .md-button > .md-secondary-container > button.md-secondary {
+  margin:0;padding:0;min-width:0;width:100%;height:100%;display:grid;place-items:center;
+}
+.vm-workspace #messagesList .sg-message-list-item .md-secondary-container :is(sg-avatar-image,.md-avatar,.sg-avatar-selectable,md-icon) {display:none!important;}
+.vm-workspace #messagesList .sg-message-list-item .md-secondary-container button::after {
+  content:"";position:static;box-sizing:border-box;width:12px;height:12px;line-height:10px;
+  border:1.5px solid #6e6558;border-radius:3px;background:white;color:white;opacity:1;
+}
+.vm-workspace #messagesList .sg-message-list-item:has(.sg-avatar-selected) .md-secondary-container button::after {content:"✓";font-size:10px;background:#a03a12;border-color:#a03a12;}
+.vm-workspace #messagesList .sg-message-list-item:has(.sg-avatar-selected) > .md-button > .md-secondary-container {opacity:1;}
+.vm-workspace #messagesList .sg-message-list-item:focus-within > .md-button > .md-secondary-container,
+.vm-workspace #messagesList .sg-list-selectable .sg-message-list-item > .md-button > .md-secondary-container {opacity:1;}
+@media(hover:hover) {
+  .vm-workspace #messagesList .sg-message-list-item:hover > .md-button > .md-secondary-container {opacity:1;}
+}
+.vm-workspace #messagesList .sg-message-list-item-main {display:flex;min-width:0;min-height:0;margin:0;padding:0;width:100%;}
+.vm-workspace #messagesList .sg-message-list-item .sg-avatar-selectable {
+  width:18px;min-width:0;left:1px;position:absolute;top:50%;margin:0;transform:translateY(-50%);opacity:0;
+}
+.vm-workspace #messagesList .sg-message-list-item:is(:focus-within,:hover) .sg-avatar-selectable,
+.vm-workspace #messagesList .sg-list-selectable .sg-avatar-selectable,.vm-workspace #messagesList .sg-avatar-selected {opacity:1;}
+.vm-workspace #messagesList .sg-avatar-selectable :is(sg-avatar-image,.md-avatar) {width:17px!important;height:17px!important;font-size:12px;}
+.vm-workspace #messagesList .sg-tile-content {flex:1 1 auto;min-width:0;margin:0;padding:0;display:grid;gap:.18rem;}
+.vm-workspace #messagesList .sg-tile-content :is(.sg-md-subhead,.sg-md-body) {display:flex;align-items:baseline;min-width:0;margin:0;line-height:1.28;}
+.vm-workspace #messagesList .sg-md-subhead > div:first-child,
+.vm-workspace #messagesList .sg-tile-subject,.vm-row-note {overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vm-workspace #messagesList .sg-md-subhead > div:first-child {flex:1;min-width:0;font:690 .89rem/1.4 var(--vm-type);}
+.vm-workspace #messagesList .sg-tile-date { flex:0 0 auto;margin-left:auto; color:#68665e;font:520 .72rem/1.4 var(--vm-type); }
+.vm-workspace #messagesList .sg-tile-subject {flex:1;min-width:0;font:660 .93rem/1.45 var(--vm-type);color:inherit;}
+.vm-workspace #messagesList .sg-tile-size {display:none;}
+.vm-workspace #messagesList .sg-tile-icons {width:auto;min-width:0;margin:0;}
+.vm-row-note {color:#68665e;font:490 .8rem/1.5 var(--vm-type);}
+.vm-row-note:empty {display:none;}
+.vm-workspace .sg-block-print > .sg-fab-bottom-center {display:none!important;}
+main.vm-workspace #detailView {
+  flex:1 1 0;min-width:0;max-width:none;min-height:0;align-items:stretch;
+  background:white!important;color:var(--vm-ink);
+}
+main.vm-workspace #detailView > md-content {color:var(--vm-ink);background:#fff!important;}
+.vm-workspace #detailView > md-content:has(.vm-empty) > .sg-md-title {display:none;}
+.vm-empty {text-align:center;display:grid;place-items:center;gap:.85rem;color:#68665e;}
+.vm-empty-icon {display:grid;place-items:center;width:3rem;height:3rem;border-radius:50%;background:#f4f2ec;color:#a03a12;font-size:1.65rem;}
+.vm-empty-title {margin:0;font:620 1.25rem/1.3 var(--vm-type);letter-spacing:-.04em;}
+.vm-workspace #detailView .sg-face > md-card.vm-letter {display:flex;flex-direction:column;margin:0;padding:0;box-shadow:none;background:#fff;border-radius:0;}
+.vm-workspace #detailView .vm-letter > md-card-actions {
+  flex:0 0 auto;min-height:2.8rem;align-items:center;justify-content:flex-start;
+  margin:0;padding:.22rem clamp(.5rem,2vw,2rem);border-bottom:1px solid #eeede8;background:#fff;
+}
+.vm-workspace #detailView .vm-letter > md-card-actions .md-button {min-width:0;margin-inline:0;}
+.vm-workspace #detailView .vm-letter > md-card-actions .md-button md-icon {color:#565347!important;font-size:20px;}
+.vm-workspace #detailView .vm-letter > md-card-content {
+  width:100%;max-width:54rem;margin:0 auto;padding:clamp(1.6rem,3.4vw,4.5rem) clamp(1.45rem,4.2vw,5.6rem) 2.5rem;
+}
+.vm-letter-head {display:block;}
+.vm-workspace #detailView .vm-letter-head .sg-md-headline {
+  max-width:18ch;margin:0 0 2rem; font:620 clamp(2.1rem,3.5vw,4.4rem)/1.08 var(--vm-type);
+  letter-spacing:-.065em;color:#201f1a;overflow-wrap:anywhere;
+}
+.vm-letter-head > [layout-wrap] {display:flex;gap:.8rem;align-items:flex-start;font-family:var(--vm-type);}
+.vm-letter-head > [layout-wrap] > .pseudo-input-container--compact {flex:1 1 12rem;max-width:none;margin:0;}
+.vm-letter-head .pseudo-input-container--compact .layout-row {align-items:center;gap:.8rem;}
+.vm-letter-head .vm-letter-avatar {flex-shrink:0;display:grid;place-items:center;width:2.55rem;height:2.55rem;border-radius:50%;font:720 .82rem/1 var(--vm-type);color:#453427;background:#ebc7a6;}
+.vm-letter-head .vm-letter-avatar[hidden] {display:none;}
+.vm-letter-head .vm-letter-avatar:not([hidden]) + sg-avatar-image {display:none;}
+.vm-letter-head .md-caption,.vm-letter-head .pseudo-input-label {color:#68665e;font-size:.78rem;overflow-wrap:anywhere;}
+.vm-letter-head .msg-recipients {flex:1 1 12rem;max-width:100%;font-size:.78rem;}
+.vm-workspace #detailView .vm-letter-head > time.msg-date {display:block;margin:1.05rem 0 .8rem;padding:0 0 1.35rem;border-bottom:1px solid #dfded8;font:500 .78rem/1.5 var(--vm-type);color:#68665e;}
+.vm-workspace #detailView .vm-letter-head > time.msg-date:empty {display:none;}
+.vm-workspace #detailView .vm-letter-head + .sg-padded:empty {display:none;}
+.vm-back-label {display:none;}
+main.vm-workspace :is(md-sidenav,[data-vm-appbar],.view-list,.vm-letter-head,md-card-actions) :is(button,a,input,[tabindex]):not(.msg-body *):focus-visible {outline:2px solid #a53a12;outline-offset:-2px;}
+@media(min-width:1280px) {
+  main.vm-workspace > md-sidenav.md-locked-open {position:relative!important;inset:auto;transform:none;}
+  main.vm-workspace:has(.view-list--close) .view-list {display:none;}
+}
+@media(max-width:1279px) {
+  main.vm-workspace {grid-template-columns:0 minmax(0,1fr);}
+  main.vm-workspace > md-sidenav.md-sidenav-left {position:fixed;top:var(--mast);bottom:0;height:calc(100% - var(--mast));width:min(18rem,85vw);}
+  .vm-mobile-folders {display:inline-block;}
+  .vm-workspace .vm-head-actions > .vm-compose {display:inline-flex;width:auto;padding:.48rem .7rem;}
+}
+/* SOGo's configured drawer can already be locked open on tablets. Follow
+   that state so the folder control and the real navigation stay in sync. */
+@media(min-width:737px) and (max-width:1279px) {
+  main.vm-workspace:has(> md-sidenav.md-locked-open) {grid-template-columns:var(--rail) minmax(0,1fr);}
+  main.vm-workspace > md-sidenav.md-locked-open {position:relative!important;inset:auto;width:var(--rail);height:100%;transform:none;}
+  main.vm-workspace:has(> md-sidenav.md-locked-open) .vm-head-actions > :is(.vm-compose,.vm-mobile-folders) {display:none;}
+}
+@media(max-width:960px) {
+  main.vm-workspace {--messages:clamp(16rem,38vw,22rem);}
+  .vm-workspace #detailView .vm-letter > md-card-content {padding:1.6rem 1.2rem;}
+  .vm-workspace #detailView .vm-letter > md-card-actions {flex-wrap:wrap;}
+}
+@media(max-width:736px) {
+  main.vm-workspace {--mast:4rem;--inset:1rem;}
+  main.vm-workspace md-toolbar[data-vm-appbar] {padding:0 .85rem;}
+  .vm-mark {width:27px;height:27px;}
+  .vm-brand {gap:.42rem;}
+  .vm-brand-name {font-size:1.23rem;}
+  .vm-head-actions {gap:.25rem;}
+  .vm-head-actions :is(.vm-compose,.vm-apps-trigger,.vm-mobile-folders) {font-size:.76rem; padding:.45rem .5rem;}
+  .vm-head-actions .vm-compose-icon {display:none;}
+  main.vm-workspace .view-list {width:100%;max-width:100%;flex:1 1 100%;}
+  main.vm-workspace #detailView {display:none;}
+  /* The router briefly keeps both detail views in the flex row. Show the
+     incoming view at its final width while Angular disposes of the old one. */
+  main.vm-workspace:has(#detailView:not(.ng-leave) .sg-face > md-card) .view-list {display:none;}
+  main.vm-workspace #detailView:not(.ng-leave):has(.sg-face > md-card) {
+    position:relative!important;inset:auto!important;display:flex;flex:0 0 100%;width:100%;height:100%;
+    transform:none!important;transition:none!important;
+  }
+  main.vm-workspace #detailView.ng-leave {display:none!important;}
+  .vm-workspace #detailView .vm-letter .md-button[ng-click="viewer.close()"] {display:inline-flex!important;align-items:center;justify-content:center;}
+  .vm-workspace #detailView .vm-letter > md-card-actions .md-button[ng-click="viewer.close()"] {width:auto;max-width:none;gap:.3rem;padding-inline:.25rem;letter-spacing:0;text-transform:none;font:620 .78rem/1.2 var(--vm-type);}
+  .vm-back-label {display:inline;}
+  .vm-workspace #detailView .vm-letter [ng-click="toggleCenter()"] {display:none!important;}
+  .vm-workspace #detailView .vm-letter-head .sg-md-headline {font-size:clamp(2rem,8vw,3rem);}
+  .vm-workspace .vm-list-head {padding-top:1.3rem;}
+}
+@media print {
+  .vm-head-actions,.vm-folder-head,.vm-list-head,.vm-workspace .toolbar-main {display:none!important;}
+  main.vm-workspace {display:block!important;height:auto;overflow:visible;}
 }
 
 /* Compose and reply share this dialog, including SOGo's separate compose window. */
