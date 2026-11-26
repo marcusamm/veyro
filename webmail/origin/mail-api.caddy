@@ -4,8 +4,8 @@
 	expression `{http.request.orig_uri}.matches(r'^/reset-password[?]token=[A-F0-9]{6}(-[A-F0-9]{6}){4}$')`
 }
 handle @recoveryPage {
-	header Referrer-Policy "no-referrer"
-	header Cache-Control "no-store, private"
+	header >Referrer-Policy "no-referrer"
+	header >Cache-Control "no-store, private"
 	import mailbox_upstream
 }
 handle /webmail-api/api/* {
