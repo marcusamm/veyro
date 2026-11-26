@@ -331,7 +331,7 @@ main.vm-workspace :is(md-sidenav,[data-vm-appbar],.view-list,.vm-letter-head,md-
   main.vm-workspace .view-list {width:100%;max-width:100%;flex:1 1 100%;}
   main.vm-workspace #detailView {display:none;}
   main.vm-workspace:has(#detailView .vm-letter) .view-list {display:none;}
-  main.vm-workspace:has(#detailView .vm-letter) #detailView {display:flex;width:100%;height:100%;}
+  main.vm-workspace:has(#detailView .vm-letter) #detailView {position:relative!important;inset:auto!important;display:flex;width:100%;height:100%;}
   .vm-workspace #detailView .vm-letter .md-button[ng-click="viewer.close()"] {display:inline-flex!important;align-items:center;justify-content:center;}
   .vm-workspace #detailView .vm-letter > md-card-actions .md-button[ng-click="viewer.close()"] {width:auto;max-width:none;gap:.3rem;padding-inline:.25rem;letter-spacing:0;text-transform:none;font:620 .78rem/1.2 var(--vm-type);}
   .vm-back-label {display:inline;}
