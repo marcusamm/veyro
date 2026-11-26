@@ -18,6 +18,7 @@ from flask import Flask, g, jsonify, request, send_file
 from imapclient.exceptions import IMAPClientAbortError, LoginError
 from werkzeug.exceptions import HTTPException
 
+import account
 import mailstore
 from mailstore import MailError
 
@@ -25,6 +26,7 @@ app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 256 * 1024
 ORIGIN = os.environ["WEBMAIL_ORIGIN"]
 STAFF = {address.strip().lower() for address in os.environ["WEBMAIL_STAFF"].split(",") if address.strip()}
+ACCOUNT_LOCKS = {address: threading.Lock() for address in STAFF}
 COOKIE = "__Host-veyro_session"
 KEY = Fernet(Fernet.generate_key())
 SESSIONS = {}
@@ -131,7 +133,7 @@ def gateway():
     if request.method == "POST":
         if request.headers.get("Origin") != ORIGIN:
             raise MailError("Adgang afvist.", 403)
-        if request.path in {"/api/send","/api/login"} and not request.is_json:
+        if request.path in {"/api/send", "/api/login", "/api/password"} and not request.is_json:
             raise MailError("Der kræves JSON.", 415)
     if request.path == "/api/login":
         return
@@ -195,6 +197,12 @@ def login():
     if address not in STAFF or not 1 <= len(password) <= 1024 or any(c in password for c in "\0\r\n"):
         raise MailError("Mailadresse eller adgangskode er forkert.", 401)
     throttle(("mailbox", address), 15, 300)
+    # Serialize primary credential changes with admission of IMAP-backed sessions.
+    with ACCOUNT_LOCKS[address]:
+        return start_session(address, password)
+
+
+def start_session(address, password):
     try:
         client = mailstore.connect(address, password)
     except LoginError:
@@ -214,6 +222,53 @@ def login():
             old.secret = b""
     response = jsonify(public_session(current))
     response.set_cookie(COOKIE, sid, secure=True, httponly=True, samesite="Lax", path="/")
+    return response
+
+
+@app.post("/api/password")
+def password_change():
+    data = payload()
+    current, new = data.get("currentPassword"), data.get("newPassword")
+    if set(data) != {"currentPassword", "newPassword"} or not isinstance(current, str) or not isinstance(new, str):
+        raise MailError("Indtast den nuværende og den nye adgangskode.")
+    if not current or len(current) > 1024 or any(c in current for c in "\0\r\n"):
+        raise MailError("Den nuværende adgangskode er forkert.", 403)
+    try:
+        length = len(new.encode("utf-8"))
+        current.encode("utf-8")
+    except UnicodeEncodeError:
+        raise MailError("Adgangskoden indeholder et ugyldigt tegn.", 422) from None
+    if not length or length > 72:
+        raise MailError("Den nye adgangskode skal udfyldes og må højst fylde 72 byte. Æ, ø og å fylder to byte hver.", 422)
+    if new == "0" or re.match(r"^\{[A-Za-z0-9-]+\}", new) or any(c in new for c in "\0\r\n"):
+        raise MailError("Vælg en anden adgangskode. Formatet understøttes ikke.", 422)
+    if safe_equal(current, new):
+        raise MailError("Vælg en anden adgangskode end den nuværende.", 422)
+    session = g.session
+    throttle(("change-account", session.email), 6, 300)
+    throttle(("change-ip", g.ip), 12, 300)
+    failure = None
+    with ACCOUNT_LOCKS[session.email]:
+        with session.lock:
+            with TABLE:
+                if SESSIONS.get(g.sid) is not session:
+                    raise MailError("Log ind igen.", 401)
+            if not safe_equal(current, session.password()):
+                raise MailError("Den nuværende adgangskode er forkert. Log ind med mailkontoens egen adgangskode for at skifte den.", 403)
+            try:
+                account.change_password(session.email, current, new)
+            except account.ChangeUnconfirmed as exc:
+                failure = exc
+            with TABLE:
+                revoked = [SESSIONS.pop(k) for k, s in list(SESSIONS.items()) if s.email == session.email]
+        for other in revoked:
+            with other.lock:
+                other.close()
+                other.secret = b""
+    response = jsonify(error=failure.message, loginRequired=True) if failure else jsonify(ok=True)
+    if failure:
+        response.status_code = failure.status
+    response.delete_cookie(COOKIE, path="/", secure=True, httponly=True, samesite="Lax")
     return response
 
 
@@ -239,8 +294,9 @@ def operation(fn, retry=True):
     if not current.lock.acquire(timeout=15):
         raise MailError("Postkassen er optaget. Prøv igen.", 503)
     try:
-        if not current.secret:
-            raise MailError("Log ind igen.", 401)
+        with TABLE:
+            if SESSIONS.get(g.sid) is not current or not current.secret:
+                raise MailError("Log ind igen.", 401)
         for attempt in range(2):
             try:
                 return fn(current.imap())

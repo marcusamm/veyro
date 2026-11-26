@@ -14,10 +14,13 @@
   <header class="appbar">
     <a class="brand" href="/" aria-label="Veyro Mail, startside"><img src="/favicon.svg" width="34" height="34" alt=""><span>Veyro <b>Mail</b></span></a>
     <a class="entry-home" href="https://veyro.dk/">Veyros hjemmeside</a>
-    <div id="account" class="account" hidden>
-      <span class="account-address" id="address"></span>
-      <button type="button" id="sign-out" class="secondary">Log ud</button>
-    </div>
+    <details id="account" class="account" hidden>
+      <summary id="account-toggle"><span class="visually-hidden">Kontomenu for </span><span class="account-address" id="address"></span><span class="glyph" data-icon="down" aria-hidden="true"></span></summary>
+      <div class="account-actions">
+        <button type="button" id="open-password">Skift adgangskode</button>
+        <button type="button" id="sign-out">Log ud</button>
+      </div>
+    </details>
   </header>
   <noscript><p>Slå JavaScript til i din browser for at åbne Veyro Mail.</p></noscript>
   <main id="gate" class="gate">
@@ -27,6 +30,7 @@
         <p class="entry-lead">Log ind med din Veyro-mailadresse for at læse og sende mail.</p>
         <div id="connecting"><p id="connection-status" role="status">Henter din postkasse …</p><button type="button" id="connect-again" class="secondary" hidden>Prøv igen</button></div>
         <form id="login" method="post" hidden>
+          <p id="login-status" class="account-note" role="status" hidden></p>
           <label for="email">E-mailadresse</label>
           <input id="email" type="email" placeholder="E-mailadresse" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required>
           <label for="password">Adgangskode</label>
@@ -61,6 +65,22 @@
       <div id="paper"></div>
     </section>
   </main>
+  <dialog id="password-dialog" aria-labelledby="password-title" aria-describedby="password-hint">
+    <form id="password-form" method="post">
+      <h2 id="password-title">Skift adgangskode</h2>
+      <p id="password-hint" class="account-note">Når du skifter adgangskoden, bliver du logget ud af webmail på alle enheder.</p>
+      <p id="password-draft-note" class="account-note" hidden>Du har en usendt kladde i denne fane. Den kasseres, hvis du fortsætter.</p>
+      <input type="text" id="password-account" name="username" autocomplete="username" hidden>
+      <label for="current-password">Nuværende adgangskode</label>
+      <input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required>
+      <label for="new-password">Ny adgangskode</label>
+      <input id="new-password" name="newPassword" type="password" autocomplete="new-password" required>
+      <label for="repeat-password">Gentag ny adgangskode</label>
+      <input id="repeat-password" name="repeatPassword" type="password" autocomplete="new-password" required>
+      <p id="change-error" class="error" role="alert" hidden></p>
+      <div class="compose-foot"><button type="button" id="cancel-password" class="secondary">Annuller</button><button type="submit" id="save-password" class="primary">Skift adgangskode</button></div>
+    </form>
+  </dialog>
   <dialog id="composer" aria-labelledby="compose-title">
     <form id="draft" method="post">
       <div class="compose-head"><h2 id="compose-title">Ny mail</h2><button id="close-compose" class="icon-button" type="button" aria-label="Luk kladde" title="Luk kladde"><span class="glyph" data-icon="close" aria-hidden="true"></span></button></div>

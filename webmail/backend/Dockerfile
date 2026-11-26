@@ -3,6 +3,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY app.py mailstore.py ./
+COPY app.py mailstore.py account.py ./
 USER 65532:65532
 CMD ["gunicorn","--workers","1","--worker-class","gthread","--threads","8","--bind","127.0.0.1:18082","--timeout","60","--no-control-socket","--error-logfile","-","app:app"]

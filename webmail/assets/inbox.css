@@ -26,7 +26,15 @@ h1:focus, h2:focus { outline: none; }
 .appbar { height: var(--bar); display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0 clamp(1.15rem, 2.6vw, 3rem); border-bottom: 1px solid var(--line); background: #faf9f6; }
 .brand { display: inline-flex; align-items: center; gap: .65rem; font-weight: 800; letter-spacing: -.06em; font-size: 1.55rem; text-decoration: none; color: inherit; white-space: nowrap; }
 .brand b { font-weight: 450; }
-.account { display: flex; align-items: center; min-width: 0; gap: 1rem; font-size: .85rem; }
+.account { position: relative; min-width: 0; max-width: 60%; font-size: .85rem; }
+.account summary { display: flex; align-items: center; gap: .45rem; min-height: 2.75rem; padding: .45rem .65rem; border: 1px solid #d7d5ca; border-radius: .45rem; background: #fff; cursor: pointer; }
+.account summary::-webkit-details-marker { display: none; }
+.account summary:focus-visible { outline: 3px solid #a53a12; outline-offset: 2px; }
+.account summary .glyph { width: .95rem; }
+.account[open] summary .glyph { transform: rotate(180deg); }
+.account-actions { position: absolute; z-index: 2; top: calc(100% + .35rem); right: 0; min-width: 12rem; padding: .3rem; border: 1px solid var(--line); border-radius: .5rem; background: #fff; box-shadow: 0 4px 16px #211f1614; }
+.account-actions button { display: block; width: 100%; min-height: 2.75rem; padding: .6rem .85rem; border-radius: .3rem; background: #fff; text-align: left; }
+.account-actions button:hover, .account-actions button:focus-visible { background: #f4f2ec; }
 .account-address, .folder-label, .row-sender, .row-title, .row-snippet { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .primary, .secondary, .back, .text-button, .icon-button { display: inline-flex; align-items: center; justify-content: center; gap: .55rem; min-height: 2.65rem; padding: .55rem 1rem; border-radius: .45rem; font-size: .9rem; font-weight: 650; }
 .primary { background: #24231e; color: white; }
@@ -47,9 +55,9 @@ h1:focus, h2:focus { outline: none; }
 .gate h1 span { color: #e4480b; }
 .entry-lead { max-width: 32ch; margin: 1.3rem 0 0; color: #524e45; font-size: clamp(1.05rem,1.5vw,1.25rem); line-height: 1.55; }
 #connecting p { color: var(--muted); margin: 1rem 0; }
-#login, #draft { display: grid; }
-#login label, #draft label { margin: .7rem 0 .35rem; font-size: .84rem; font-weight: 650; }
-#login input, #draft input, #draft textarea { width: 100%; min-width: 0; border: 1px solid #cac8bf; border-radius: .4rem; padding: .65rem .75rem; background: #fff; }
+#login, #draft, #password-form { display: grid; }
+#login label, #draft label, #password-form label { margin: .7rem 0 .35rem; font-size: .84rem; font-weight: 650; }
+#login input, #draft input, #draft textarea, #password-form input { width: 100%; min-width: 0; border: 1px solid #cac8bf; border-radius: .4rem; padding: .65rem .75rem; background: #fff; }
 #login { max-width: 25rem; margin-top: 1.45rem; }
 #login label { margin-top: 1rem; font-size: .9rem; }
 #login input,.password-field { min-height: 3rem; border: 1px solid #cbc8c0; border-radius: .55rem; background: #faf9f6; }
@@ -122,7 +130,10 @@ h1:focus, h2:focus { outline: none; }
 dialog { width: min(36rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); padding: clamp(1.15rem,3vw,2rem); border: 1px solid var(--line); border-radius: .85rem; color: inherit; }
 dialog::backdrop { background: rgb(37 32 23 / 37%); }
 .compose-head,.compose-foot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
-.compose-head h2 { margin: 0; font-size: 1.8rem; font-weight: 650; letter-spacing: -.06em; }
+.compose-head h2,#password-title { margin: 0; font-size: 1.8rem; font-weight: 650; letter-spacing: -.06em; }
+#password-dialog { max-width: 27rem; }
+.account-note { margin: .55rem 0 .45rem; font-size: .88rem; line-height: 1.5; color: var(--muted); }
+#password-draft-note,#login-status { color: #634423; background: #faf2e8; padding: .55rem .7rem; border-radius: .35rem; }
 #draft textarea { min-height: 8rem; line-height: 1.55; resize: vertical; }
 .compose-foot { margin-top: 1rem; }
 .text-button { font-size: .8rem; color: var(--muted); }
@@ -147,8 +158,7 @@ dialog::backdrop { background: rgb(37 32 23 / 37%); }
   .appbar { padding: 0 1rem; gap: .5rem; }
   .brand { gap: .45rem; font-size: 1.3rem; }
   .brand img { width: 28px; height: 28px; }
-  .account { gap: .45rem; font-size: .72rem; }
-  .account .secondary { padding-inline: .65rem; flex-shrink: 0; font-size: .78rem; }
+  .account { font-size: .78rem; }
   .workspace { display: flex; flex-direction: column; min-height: 0; }
   .folders { display: flex; align-items: center; flex: none; gap: .5rem; padding: .45rem .75rem; border: 0; border-bottom: 1px solid var(--line); }
   .folders h2 { display: none; }
@@ -159,7 +169,7 @@ dialog::backdrop { background: rgb(37 32 23 / 37%); }
   .mailbox { flex: 1; border: 0; }
   .list-head { padding: 1.28rem var(--inset) 1rem; }
   .folder-summary { margin-bottom: .8rem; }
-  .search input, #login input, #draft input, #draft textarea { font-size: 1rem; }
+  .search input, #login input, #draft input, #draft textarea, #password-form input { font-size: 1rem; }
   .row-title { font-size: 1.02rem; }
   .row-snippet { font-size: .85rem; }
   .reader { display: none; padding: 1rem 1.15rem 2rem; }

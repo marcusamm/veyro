@@ -44,7 +44,11 @@ def verified_tls():
 def connect(email_address, password):
     client = IMAPClient(HOST, port=993, ssl_context=verified_tls(), timeout=15)
     try:
-        client.login(email_address, password)
+        if password.isascii():
+            client.login(email_address, password)
+        else:
+            # IMAP LOGIN encodes commands as ASCII. SASL PLAIN carries UTF-8.
+            client.plain_login(email_address, password)
         return client
     except Exception:
         client.shutdown()
@@ -275,6 +279,24 @@ def attachment(client, folder, identifier, section):
     return read_part(client, uid, part, MAX_ATTACHMENT), name
 
 
+def smtp_login(smtp, email_address, password):
+    if password.isascii():
+        return smtp.login(email_address, password)
+    # smtplib.auth accepts only ASCII responses. Use the RFC 4616 UTF-8
+    # response on this already certificate-verified implicit TLS connection.
+    smtp.ehlo_or_helo_if_needed()
+    if "PLAIN" not in smtp.esmtp_features.get("auth", "").upper().split():
+        raise smtplib.SMTPNotSupportedError("Mailserveren understøtter ikke AUTH PLAIN.")
+    code, reply = smtp.docmd("AUTH", "PLAIN")
+    if code != 334:
+        raise smtplib.SMTPAuthenticationError(code, reply)
+    credentials = b"\0" + email_address.encode("utf-8") + b"\0" + password.encode("utf-8")
+    code, reply = smtp.docmd(base64.b64encode(credentials).decode("ascii"))
+    if code != 235:
+        raise smtplib.SMTPAuthenticationError(code, reply)
+    return code, reply
+
+
 def send_message(client, email_address, password, data, folders):
     to, subject, text = (data.get(k, "") for k in ("to", "subject", "text"))
     if not all(isinstance(v, str) for v in (to, subject, text)) or any(c in to+subject for c in "\r\n\0"):
@@ -299,7 +321,7 @@ def send_message(client, email_address, password, data, folders):
     refused = {}
     smtp = smtplib.SMTP_SSL(HOST, port=465, context=verified_tls(), timeout=18)
     try:
-        smtp.login(email_address, password)
+        smtp_login(smtp, email_address, password)
         try:
             refused = smtp.send_message(msg, from_addr=email_address, to_addrs=recipients)
         except (smtplib.SMTPServerDisconnected, TimeoutError, ConnectionError) as exc:

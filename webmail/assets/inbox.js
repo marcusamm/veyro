@@ -24,6 +24,7 @@
     reply: '<path d="m10 5-7 7 7 7M3 12h10q7 0 8 7"/>',
     clip: '<path d="m9 13 6-6a2 2 0 0 1 3 3l-8 8a4 4 0 1 1-6-6l9-9"/>',
     eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+    down: '<path d="m6 9 6 6 6-6"/>',
   };
   function icon(name) {
     const el = node('span', 'glyph');
@@ -47,7 +48,11 @@
   let sendAttempt = null;
 
   class ApiError extends Error {
-    constructor(message, status) { super(message); this.status = status; }
+    constructor(message, status, loginRequired = false) {
+      super(message);
+      this.status = status;
+      this.loginRequired = loginRequired;
+    }
   }
   function message(error) {
     return error instanceof ApiError ? error.message : 'Forbindelsen blev afbrudt. Kontrollér din forbindelse.';
@@ -64,7 +69,8 @@
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       if (response.status === 401 && current && session === current && path !== 'login') loggedOut('Din session er udløbet. Log ind igen.');
-      throw new ApiError(typeof data.error === 'string' ? data.error : 'Postkassen kunne ikke behandle anmodningen.', response.status);
+      throw new ApiError(typeof data.error === 'string' ? data.error : 'Postkassen kunne ikke behandle anmodningen.',
+        response.status, data.loginRequired === true);
     }
     return data;
   }
@@ -91,6 +97,9 @@
   byId('show-password').onclick = () => revealPassword(byId('password').type === 'password');
   function loggedOut(reason = '') {
     session = null;
+    byId('account').open = false;
+    if (byId('password-dialog').open) byId('password-dialog').close();
+    byId('password-form').reset();
     document.body.classList.add('entry');
     folderRequest?.abort(); listRequest?.abort(); detailRequest?.abort();
     clearTimeout(searchTimer); clearTimeout(noticeTimer);
@@ -105,6 +114,7 @@
     revealPassword(false);
     document.title = 'Log ind · Veyro Mail';
     setError('login-error', reason);
+    setError('login-status');
     if (matchMedia('(min-width: 46.01rem)').matches && document.activeElement === document.body) byId('email').focus({preventScroll: true});
   }
   function loggedIn(data) {
@@ -133,7 +143,7 @@
     event.preventDefault();
     const button = byId('login-submit');
     if (button.disabled) return;
-    button.disabled = true; setError('login-error');
+    button.disabled = true; setError('login-error'); setError('login-status');
     try { loggedIn(await api('login', {method: 'POST', body: {email: byId('email').value.trim(), password: byId('password').value}})); }
     catch (error) { setError('login-error', message(error)); }
     finally { button.disabled = false; }
@@ -145,6 +155,74 @@
     try { await api('logout', {method: 'POST', body: {}}); loggedOut(); byId('email').focus(); }
     catch (error) { if (session) notify(message(error)); }
     finally { button.disabled = false; }
+  };
+  const account = byId('account');
+  const passwordDialog = byId('password-dialog');
+  const passwordForm = byId('password-form');
+  document.addEventListener('click', event => {
+    if (account.open && !account.contains(event.target)) account.open = false;
+  });
+  account.onkeydown = event => {
+    if (account.open && event.key === 'Escape') {
+      account.open = false; byId('account-toggle').focus();
+    }
+  };
+  account.onfocusout = event => {
+    if (event.relatedTarget && !account.contains(event.relatedTarget)) account.open = false;
+  };
+  byId('open-password').onclick = () => {
+    account.open = false;
+    passwordForm.reset(); setError('change-error');
+    byId('password-account').value = session.email;
+    byId('password-draft-note').hidden = !hasDraft();
+    byId('repeat-password').removeAttribute('aria-invalid');
+    passwordDialog.showModal(); byId('current-password').focus();
+  };
+  byId('cancel-password').onclick = () => passwordDialog.close();
+  passwordDialog.oncancel = event => { if (byId('save-password').disabled) event.preventDefault(); };
+  passwordDialog.onclose = () => {
+    passwordForm.reset(); setError('change-error');
+    if (session) byId('account-toggle').focus();
+  };
+  passwordForm.oninput = () => {
+    byId('repeat-password').removeAttribute('aria-invalid');
+    setError('change-error');
+  };
+  function returnToPasswordLogin(current, statusText) {
+    if (session && session !== current) return;
+    loggedOut();
+    byId('email').value = current.email;
+    setError('login-status', statusText);
+    byId('password').focus();
+  }
+  passwordForm.onsubmit = async event => {
+    event.preventDefault();
+    const current = session;
+    const repeat = byId('repeat-password');
+    if (!current || byId('save-password').disabled) return;
+    if (byId('new-password').value !== repeat.value) {
+      setError('change-error', 'De nye adgangskoder er forskellige. Skriv den samme adgangskode i begge felter.');
+      repeat.setAttribute('aria-invalid', 'true'); repeat.focus(); return;
+    }
+    if (hasDraft() && !confirm('Skift adgangskoden, og kassér din usendte kladde?')) return;
+    const controls = Array.from(passwordForm.elements);
+    controls.forEach(el => { el.disabled = true; });
+    setError('change-error');
+    try {
+      const result = await api('password', {method: 'POST', body: {
+        currentPassword: byId('current-password').value,
+        newPassword: byId('new-password').value,
+      }});
+      if (!result.ok) throw new ApiError('Adgangskodeskiftet kunne ikke bekræftes.', 502);
+      returnToPasswordLogin(current, 'Din adgangskode er ændret. Log ind med din nye adgangskode.');
+    } catch (error) {
+      if (error.status === 503 && error.loginRequired) {
+        returnToPasswordLogin(current, error.message);
+      } else if (session === current) {
+        setError('change-error', error instanceof ApiError ? message(error) :
+          'Forbindelsen blev afbrudt. Hvis du allerede er blevet logget ud, kan du prøve at logge ind med din nye adgangskode.');
+      }
+    } finally { controls.forEach(el => { el.disabled = false; }); }
   };
   function nameOf(f) { return Object.hasOwn(folderNames, f.role) ? folderNames[f.role] : f.name; }
   function drawFolders() {
