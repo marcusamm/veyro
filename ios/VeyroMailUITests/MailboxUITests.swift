@@ -34,7 +34,10 @@ final class MailboxUITests: XCTestCase {
         add(screenshot)
         row.tap()
 
-        let detail = app.staticTexts["Har du tid til at se på planen? Vi mødes tirsdag klokken ti."]
+        let fullText = "Har du tid til at se på planen? Vi mødes tirsdag klokken ti."
+        let detail = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@ OR value == %@", fullText, fullText)
+        ).firstMatch
         XCTAssertTrue(detail.waitForExistence(timeout: 10), app.debugDescription)
         let reply = app.buttons.matching(
             NSPredicate(format: "identifier == %@ OR label == %@", "reader-reply", "Svar")
