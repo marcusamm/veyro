@@ -11,6 +11,29 @@ final class MailboxUITests: XCTestCase {
     }
 
     @MainActor
+    private func declinePasswordSaveIfPresented(in app: XCUIApplication) {
+        let passwordPrompt = NSPredicate(
+            format: "label BEGINSWITH[c] %@ OR label BEGINSWITH[c] %@ OR label BEGINSWITH[c] %@",
+            "Save Password", "Gem adgangskod", "Vil du gemme adgangskod"
+        )
+        let decline = NSPredicate(format: "label ==[c] %@ OR label ==[c] %@", "Not Now", "Ikke nu")
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        for (surface, timeout) in [(app, 3.0), (springboard, 1.0)] {
+            for containers in [surface.sheets, surface.alerts] {
+                let prompt = containers.matching(passwordPrompt).firstMatch
+                guard prompt.waitForExistence(timeout: timeout) else { continue }
+                let button = prompt.buttons.matching(decline).firstMatch
+                requireHittable(button, in: app)
+                button.tap()
+                let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"),
+                                                           object: prompt)
+                XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 10), .completed, app.debugDescription)
+                return
+            }
+        }
+    }
+
+    @MainActor
     func testLoginReadAndReplyToFixtureMessage() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -27,6 +50,8 @@ final class MailboxUITests: XCTestCase {
         password.typeText("postkasse\n")
 
         let row = app.buttons["mail-row-41.7"]
+        XCTAssertTrue(row.waitForExistence(timeout: 10), app.debugDescription)
+        declinePasswordSaveIfPresented(in: app)
         requireHittable(row, in: app)
         let screenshot = XCTAttachment(data: app.screenshot().pngRepresentation, uniformTypeIdentifier: "public.png")
         screenshot.name = "VeyroMail-Indbakke"
