@@ -26,7 +26,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Compile the unsigned iPhone release
+        working-directory: ios
+        run: |
+          xcodebuild -project VeyroMail.xcodeproj -scheme VeyroMail -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/VeyroMailRelease" \
+            CODE_SIGNING_ALLOWED=NO build
+          test -s "$RUNNER_TEMP/VeyroMailRelease/Build/Products/Release-iphoneos/VeyroMail.app/VeyroMail"
+
       - name: Build and test on an available iPhone
+        id: tests
         working-directory: ios
         shell: bash
         run: |
@@ -61,25 +70,38 @@ jobs:
             clean test
 
       - name: Export verified app screens
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
+        id: export
         shell: bash
+        env:
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
         run: |
           set -euo pipefail
           dir="$RUNNER_TEMP/screen-attachments"
+          if [[ ! -d "$RUNNER_TEMP/VeyroMailTests.xcresult" && "$TEST_OUTCOME" != success ]]; then
+            exit 0
+          fi
           xcrun xcresulttool export attachments \
             --path "$RUNNER_TEMP/VeyroMailTests.xcresult" --output-path "$dir"
           mkdir -p "$RUNNER_TEMP/VeyroMailArtifacts"
           for name in VeyroMail-Login VeyroMail-Indbakke; do
-            screenshot=$(jq -er --arg name "$name" 'first(.[] | .attachments[] | select(.suggestedHumanReadableName | startswith($name)) | .exportedFileName)' "$dir/manifest.json")
-            cp "$dir/$screenshot" "$RUNNER_TEMP/VeyroMailArtifacts/$name.png"
+            screenshot=$(jq -r --arg name "$name" 'first(.[] | .attachments[] | select(.suggestedHumanReadableName | startswith($name)) | .exportedFileName) // empty' "$dir/manifest.json")
+            if [[ -n "$screenshot" ]]; then
+              cp "$dir/$screenshot" "$RUNNER_TEMP/VeyroMailArtifacts/$name.png"
+            elif [[ "$TEST_OUTCOME" == success ]]; then
+              echo "Missing simulator screenshot: $name" >&2
+              exit 1
+            fi
           done
 
       - name: Package the Xcode project
         run: git archive --format=zip --prefix=VeyroMail/ -o "$RUNNER_TEMP/VeyroMailArtifacts/VeyroMail-iPhone.zip" HEAD:ios
 
       - name: Save project and screenshots
+        if: ${{ !cancelled() && steps.export.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: Veyro-Mail-iPhone
           path: ${{ runner.temp }}/VeyroMailArtifacts/
-          if-no-files-found: error
+          if-no-files-found: ${{ steps.tests.outcome == 'success' && 'error' || 'ignore' }}
           retention-days: 7

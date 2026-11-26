@@ -12,7 +12,7 @@ Vil du installere appen på din egen iPhone, skal du tilslutte den til Mac’en.
 
 ## Brug
 
-- Åbn en mappe, søg i den, og hent næste side af resultater. Åbn en mail for at læse, svare eller gemme en vedhæftet fil i Arkiver.
+- Åbn en mappe, og søg efter mails. Når du åbner en mail, kan du svare, videresende den eller gemme en vedhæftet fil i Arkiver. Stryg på en mail i listen for at markere den som læst eller ulæst, arkivere den eller flytte den til papirkurven.
 - Skriv og send mail fra din egen postkasse. Hvis forbindelsen afbrydes under afsendelse, kan du tjekke mappen Sendt. Prøver du igen fra den åbne kladde med samme indhold, genbruger appen afsendelsesnøglen, så mailserveren kan genkende forsøget.
 - Brug **Glemt adgangskode?** på loginskærmen til en konto med en tilknyttet gendannelsesmail. En virksomhedsadministrator kan også nulstille medarbejderens adgangskode.
 

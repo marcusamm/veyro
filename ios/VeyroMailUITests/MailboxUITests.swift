@@ -26,9 +26,11 @@ final class MailboxUITests: XCTestCase {
         add(screenshot)
         row.tap()
 
-        let reply = app.buttons["Svar"]
+        let reply = app.buttons["reader-reply"]
         XCTAssertTrue(reply.waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Har du tid til at se på planen?"].exists)
+        let canTapReply = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: reply)
+        XCTAssertEqual(XCTWaiter.wait(for: [canTapReply], timeout: 10), .completed, app.debugDescription)
         reply.tap()
         let recipient = app.descendants(matching: .any)["compose-to"]
         XCTAssertTrue(recipient.waitForExistence(timeout: 10))

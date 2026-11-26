@@ -82,21 +82,36 @@ struct MessageReader: View {
                     } label: { Label("Flere handlinger", systemImage: "ellipsis.circle") }
                     .disabled(busy)
                 }
-                ToolbarItemGroup(placement: .bottomBar) {
-                    Button { reply(to: message, all: false) } label: {
-                        Label("Svar", systemImage: "arrowshape.turn.up.left")
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let message {
+                VStack(spacing: 0) {
+                    Divider()
+                    HStack(spacing: 12) {
+                        Button { reply(to: message, all: false) } label: {
+                            Label("Svar", systemImage: "arrowshape.turn.up.left")
+                                .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+                        }
+                        .accessibilityIdentifier("reader-reply")
+                        Spacer()
+                        if canArchive {
+                            Button { act(.archive) } label: {
+                                Label("Arkivér", systemImage: "archivebox").labelStyle(.iconOnly)
+                                    .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+                            }
+                        }
+                        if canTrash {
+                            Button { act(.trash) } label: {
+                                Label("Flyt til papirkurv", systemImage: "trash").labelStyle(.iconOnly)
+                                    .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+                            }
+                        }
                     }
+                    .padding(.horizontal, 16)
                     .disabled(busy)
-                    Spacer()
-                    if canArchive {
-                        Button { act(.archive) } label: { Label("Arkivér", systemImage: "archivebox") }
-                            .disabled(busy)
-                    }
-                    if canTrash {
-                        Button { act(.trash) } label: { Label("Flyt til papirkurv", systemImage: "trash") }
-                            .disabled(busy)
-                    }
                 }
+                .background(.bar)
             }
         }
         .task { await load() }
