@@ -143,35 +143,42 @@ async function administrationPage(req: Request, env: Env) {
   return localResponse(req, '<!doctype html><html lang="da"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Mailadministration · Veyro Mail</title><link rel="stylesheet" href="/administration.css"><main class="access"><h1>Mailadministration</h1><p>' + message + '</p><a href="/">Åbn Veyro Mail</a></main></html>', status, 'text/html; charset=utf-8');
 }
 
+async function serveWebmail(req: Request, env: Env, url: URL, read: boolean): Promise<Response> {
+  const path = url.pathname;
+  const assistant = await aiRoute(req, env, url);
+  if (assistant) return assistant;
+  const isReadApi = readApi.test(path) || adminReads.has(path);
+  const isWriteApi = writeApi.has(path) || messageWrite.test(path);
+  if (env.WEBMAIL_ENABLED !== '1' && (path === '/' || path === '/administration' || bookmarks.has(path) || path === '/SOGo/connect' || isReadApi || isWriteApi)) {
+    if (isReadApi || isWriteApi) return apiError(req, 'Webmail er midlertidigt lukket.', 503);
+    const page = read && req.headers.get('Accept')?.includes('text/html');
+    return localResponse(req, page ? unavailablePage : 'Webmail er midlertidigt lukket.', 503, page ? 'text/html; charset=utf-8' : undefined);
+  }
+  if (isReadApi || isWriteApi) {
+    if (isWriteApi && req.method === 'POST') return proxy(req, env, url, true);
+    if (isReadApi && req.method === 'GET') return proxy(req, env, url, false);
+    return methodNotAllowed(req, isReadApi && isWriteApi ? 'GET, POST' : isWriteApi ? 'POST' : 'GET');
+  }
+  if (!read) return methodNotAllowed(req, 'GET, HEAD');
+  if (path === '/') return asset(req, env, '/inbox.html', true);
+  if (path === '/administration') return administrationPage(req, env);
+  if (bookmarks.has(path)) return redirect('/');
+  if (path === '/robots.txt') return localResponse(req, 'User-agent: *\nDisallow: /\n', 200);
+  const file = staticFiles.get(path);
+  return file ? asset(req, env, file) : localResponse(req, 'Siden findes ikke.', 404);
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
-    const path = url.pathname;
     const read = req.method === 'GET' || req.method === 'HEAD';
     if (url.origin !== webOrigin) {
-      if (['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) && read && (path === '/' || bookmarks.has(path))) return redirect(webOrigin + '/');
+      if (read && url.origin === 'http://mail.veyro.dk') return redirect(webOrigin + url.pathname + url.search);
+      if (['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) && read && (url.pathname === '/' || bookmarks.has(url.pathname))) return redirect(webOrigin + '/');
       return localResponse(req, 'Ukendt adresse.', 404);
     }
-    const assistant = await aiRoute(req, env, url);
-    if (assistant) return assistant;
-    const isReadApi = readApi.test(path) || adminReads.has(path);
-    const isWriteApi = writeApi.has(path) || messageWrite.test(path);
-    if (env.WEBMAIL_ENABLED !== '1' && (path === '/' || path === '/administration' || bookmarks.has(path) || path === '/SOGo/connect' || isReadApi || isWriteApi)) {
-      if (isReadApi || isWriteApi) return apiError(req, 'Webmail er midlertidigt lukket.', 503);
-      const page = read && req.headers.get('Accept')?.includes('text/html');
-      return localResponse(req, page ? unavailablePage : 'Webmail er midlertidigt lukket.', 503, page ? 'text/html; charset=utf-8' : undefined);
-    }
-    if (isReadApi || isWriteApi) {
-      if (isWriteApi && req.method === 'POST') return proxy(req, env, url, true);
-      if (isReadApi && req.method === 'GET') return proxy(req, env, url, false);
-      return methodNotAllowed(req, isReadApi && isWriteApi ? 'GET, POST' : isWriteApi ? 'POST' : 'GET');
-    }
-    if (!read) return methodNotAllowed(req, 'GET, HEAD');
-    if (path === '/') return asset(req, env, '/inbox.html', true);
-    if (path === '/administration') return administrationPage(req, env);
-    if (bookmarks.has(path)) return redirect('/');
-    if (path === '/robots.txt') return localResponse(req, 'User-agent: *\nDisallow: /\n', 200);
-    const file = staticFiles.get(path);
-    return file ? asset(req, env, file) : localResponse(req, 'Siden findes ikke.', 404);
+    const response = await serveWebmail(req, env, url, read);
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000');
+    return response;
   },
 };
