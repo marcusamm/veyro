@@ -26,30 +26,38 @@ function api(initialRecords = {}, initialRoutes = []) {
     else throw new Error('Unexpected request');
     return {};
   }
-  return { request, writes, records };
+  function workerRequest(path, ...args) {
+    expect(path).toContain('/workers/');
+    return request(path, ...args);
+  }
+  function dnsRequest(path, ...args) {
+    expect(path).toContain('/dns_records');
+    return request(path, ...args);
+  }
+  return { workerRequest, dnsRequest, writes, records };
 }
 
 describe('AJ Auto Cloudflare provisioning', () => {
   it('stages both exact hosts in a pending zone and preserves the parking origin and mail records on retry', async () => {
     const mail = { name: domain, type: 'MX', content: 'mail.example.test' };
     const cf = api({ [domain]: [{ ...parking, name: domain }, mail] });
-    await configureWeb(cf.request, zone, 'account');
+    await configureWeb(cf.workerRequest, cf.dnsRequest, zone, 'account');
     expect(cf.writes.filter(write => write.body?.pattern).map(write => write.body)).toEqual([
       { pattern: domain + '/*', script: 'veyro' }, { pattern: www + '/*', script: 'veyro' },
     ]);
     expect(cf.records[domain]).toEqual([{ ...parking, name: domain, proxied: true }, mail]);
     expect(cf.records[www][0]).toMatchObject({ type: 'AAAA', proxied: true, content: '100::' });
     cf.writes.length = 0;
-    await configureWeb(cf.request, zone, 'account');
+    await configureWeb(cf.workerRequest, cf.dnsRequest, zone, 'account');
     expect(cf.writes).toEqual([]);
   });
 
   it('preflights both hosts and refuses an unrecognized origin or a wildcard route without any writes', async () => {
     const unknown = api({ [www]: [{ name: www, type: 'CNAME', content: 'vendor.example' }] });
-    await expect(configureWeb(unknown.request, zone, 'account')).rejects.toThrow('Ukendt web-DNS');
+    await expect(configureWeb(unknown.workerRequest, unknown.dnsRequest, zone, 'account')).rejects.toThrow('Ukendt web-DNS');
     expect(unknown.writes).toEqual([]);
     const wildcard = api({}, [{ pattern: '*.' + domain + '/images/*', script: 'other' }]);
-    await expect(configureWeb(wildcard.request, zone, 'account')).rejects.toThrow('anden Worker-rute');
+    await expect(configureWeb(wildcard.workerRequest, wildcard.dnsRequest, zone, 'account')).rejects.toThrow('anden Worker-rute');
     expect(wildcard.writes).toEqual([]);
     expect(routeExists(domain, [{ pattern: 'https://other.' + domain + '/*' }])).toBe(false);
     expect(() => webRecordPlan(domain, [{ ...parking }, { type: 'AAAA', content: '::1' }])).toThrow('Ukendt');
@@ -58,11 +66,11 @@ describe('AJ Auto Cloudflare provisioning', () => {
   it('publishes the one validated TXT alongside existing values and recognizes quoted records on retry', async () => {
     const previous = { name: proofHost, type: 'TXT', content: 'previous proof' };
     const cf = api({ [proofHost]: [previous] });
-    await expect(configureProof(cf.request, zone.id, 'invalid')).rejects.toThrow('Ugyldigt');
-    await configureProof(cf.request, zone.id, proof);
+    await expect(configureProof(cf.dnsRequest, zone.id, 'invalid')).rejects.toThrow('Ugyldigt');
+    await configureProof(cf.dnsRequest, zone.id, proof);
     expect(cf.records[proofHost][0]).toEqual(previous);
     cf.records[proofHost][1].content = '"' + proof + '"';
-    await configureProof(cf.request, zone.id, proof);
+    await configureProof(cf.dnsRequest, zone.id, proof);
     expect(cf.writes).toHaveLength(1);
     expect(cf.writes[0].body).toMatchObject({ type: 'TXT', name: proofHost, content: proof });
   });
