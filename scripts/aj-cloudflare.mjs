@@ -65,7 +65,7 @@ export function routeExists(host, routes) {
   return found;
 }
 
-export async function configureWeb(request, zone, account) {
+export async function configureWeb(request, dnsRequest, zone, account) {
   const zonePath = '/zones/' + zone.id;
   const routesPath = zonePath + '/workers/routes';
   const [routes, customDomains] = await Promise.all([
@@ -77,9 +77,9 @@ export async function configureWeb(request, zone, account) {
     if (customDomains.some(item => item.hostname === host)) {
       throw new Error(`Der er allerede et Worker Custom Domain på ${host}.`);
     }
-    const records = await dnsRecords(request, zonePath, host);
+    const records = await dnsRecords(dnsRequest, zonePath, host);
     if (host !== domain && !records.length) {
-      const wildcard = await dnsRecords(request, zonePath, '*.' + domain);
+      const wildcard = await dnsRecords(dnsRequest, zonePath, '*.' + domain);
       if (wildcard.some(record => ['A', 'AAAA', 'CNAME', 'HTTPS', 'SVCB'].includes(record.type))) {
         throw new Error(`${host} dækkes af en eksisterende wildcard-DNS-post.`);
       }
@@ -89,16 +89,16 @@ export async function configureWeb(request, zone, account) {
   for (const { host, dns, routed } of plans) {
     if (!routed) await request(routesPath, 'POST', { pattern: host + '/*', script: worker });
     if (dns.action === 'create') {
-      await request(zonePath + '/dns_records', 'POST', {
+      await dnsRequest(zonePath + '/dns_records', 'POST', {
         type: 'AAAA', name: host, content: placeholder, proxied: true, ttl: 1,
       });
     } else if (dns.action === 'proxy') {
-      await request(zonePath + '/dns_records/' + dns.id, 'PATCH', { proxied: true });
+      await dnsRequest(zonePath + '/dns_records/' + dns.id, 'PATCH', { proxied: true });
     }
   }
   const updatedRoutes = await request(routesPath);
   for (const host of webHosts) {
-    const records = await dnsRecords(request, zonePath, host);
+    const records = await dnsRecords(dnsRequest, zonePath, host);
     if (!routeExists(host, updatedRoutes) || webRecordPlan(host, records).action !== 'ready') {
       throw new Error(`Rute eller proxy kunne ikke bekræftes for ${host}.`);
     }
@@ -132,6 +132,7 @@ async function main(mode) {
   const token = process.env.CLOUDFLARE_API_TOKEN;
   if (!/^[0-9a-f]{32}$/i.test(account || '') || !token) throw new Error('Cloudflare-konto og API-token mangler.');
   const request = cloudflare(token);
+  const dnsRequest = cloudflare(process.env.AJ_AUTO_DNS_API_TOKEN || token);
   const zones = await request(`/zones?name=${domain}&account.id=${account}`);
   const [zone] = zones;
   if (zones.length !== 1 || zone.name !== domain || zone.account?.id !== account || !/^[0-9a-f]{32}$/i.test(zone.id)) {
@@ -141,10 +142,10 @@ async function main(mode) {
   if (zone.paused || !['pending', 'active'].includes(zone.status)) throw new Error('Zonen er ikke klar til opsætning.');
   if (mode === 'proof') {
     const proof = (await readFile(new URL('../ops/aj-auto-domain-proof.txt', import.meta.url), 'utf8')).trim();
-    await configureProof(request, zone.id, proof);
+    await configureProof(dnsRequest, zone.id, proof);
     console.log(`Ejerskabsbeviset er bekræftet i Cloudflare på ${proofName}.`);
   } else {
-    await configureWeb(request, zone, account);
+    await configureWeb(request, dnsRequest, zone, account);
   }
 }
 

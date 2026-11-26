@@ -127,16 +127,3 @@ jobs:
           side https://veyro.dk/pages/privatlivspolitik 'Kundepanelet og jeres aftaler'
           side https://veyro.dk/pages/cookiepolitik '__Host-vk_session'
           side https://veyro.dk/ 'href="/pages/databehandleraftale"'
-
-  aj-domain:
-    needs: deploy
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Knyt AJ Autos webadresser til den publicerede Worker
-        run: node scripts/aj-cloudflare.mjs web

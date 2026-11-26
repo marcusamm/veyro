@@ -52,7 +52,9 @@ Ved lokal drift sættes `AJ_HOSTS=127.0.0.1,localhost`; fjern custom-domain-rout
 
 ## Udgivelse
 
-Når `aj-auto-slagelse.dk` er tilføjet på Veyros Cloudflare-konto, klargør `Deploy kundepanel` to Worker-ruter til hoveddomænet og `www`. Efter navneserverskift og udstedelse af HTTPS-certifikatet kontrolleres forsiden, `/booking` og viderestillingen fra `www`. Eksisterende aftalelinks på `aj.veyro.dk` virker under skiftet.
+Efter en vellykket `Deploy kundepanel` fra `main` klargør det selvstændige workflow `Klargør AJ Autos webdomæne` to Worker-ruter til hoveddomænet og `www`. Det kan også køres manuelt fra `main`. Efter navneserverskift og udstedelse af HTTPS-certifikatet kontrolleres forsiden, `/booking` og viderestillingen fra `www`. Eksisterende aftalelinks på `aj.veyro.dk` virker under skiftet.
+
+Begge AJ-workflows kan bruge GitHub-hemmeligheden `AJ_AUTO_DNS_API_TOKEN` med Cloudflare-rettigheden **Zone → DNS → Edit** begrænset til `aj-auto-slagelse.dk`. Uden den bruges `CLOUDFLARE_API_TOKEN` også til DNS. Det fælles token læser zonen og Worker-domænerne og skal have **Zone → Workers Routes → Edit** for at oprette de to ruter.
 
 Maildomænet oprettes separat i Veyro Mail. Workflowet `Publicér AJ Autos domænebevis til Veyro Mail` lægger den offentlige TXT-værdi fra `ops/aj-auto-domain-proof.txt` på `_veyro-mail.aj-auto-slagelse.dk`. Hvis beviset udløber inden delegeringen, hentes en ny værdi i mailadministrationen. Opret organisationen efter DNS-verificeringen, og brug den returnerede DKIM-nøgle til domænet.
 
