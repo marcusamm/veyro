@@ -20,8 +20,36 @@ services:
     volumes:
       - ./secrets:/run/veyro:ro
       - organizer:/var/lib/veyro-webmail
+      - /etc/veyro-mail-admin/run:/run/veyro-org-socket:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1',18082),2).close()"]
+      interval: 30s
+      timeout: 4s
+      retries: 3
+
+  org-broker:
+    build: .
+    user: "65531:65531"
+    group_add: ["65532"]
+    command: ["gunicorn", "--workers", "1", "--worker-class", "gthread", "--threads", "4", "--preload", "--umask", "7", "--bind", "unix:/run/veyro-org-socket/admin.sock", "--timeout", "50", "--no-control-socket", "--error-logfile", "-", "org_broker:app"]
+    restart: unless-stopped
+    network_mode: host
+    extra_hosts:
+      - "post.veyro.dk:127.0.0.1"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    ulimits:
+      core: 0
+    tmpfs:
+      - /tmp:size=12m,mode=1777
+    mem_limit: 160m
+    volumes:
+      - /etc/veyro-mail-admin/private:/run/veyro-broker:ro
+      - ./secrets/broker-trust:/run/veyro:ro
+      - /etc/veyro-mail-admin/run:/run/veyro-org-socket
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(socket.AF_UNIX); s.settimeout(2); s.connect('/run/veyro-org-socket/admin.sock'); s.close()"]
       interval: 30s
       timeout: 4s
       retries: 3

@@ -1,5 +1,6 @@
 import hmac
 import hashlib
+import http.client
 import io
 import ipaddress
 import json
@@ -11,7 +12,7 @@ import smtplib
 import threading
 import time
 from collections import deque
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from queue import Full, Queue
 
@@ -24,6 +25,7 @@ from werkzeug.exceptions import HTTPException
 import account
 import ai_connector
 import mailstore
+import org_admin_client
 import snooze
 from mailstore import MailError
 
@@ -31,6 +33,7 @@ app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 256 * 1024
 ORIGIN = os.environ["WEBMAIL_ORIGIN"]
 STAFF = {address.strip().lower() for address in os.environ["WEBMAIL_STAFF"].split(",") if address.strip()}
+ORGANIZATION_ADMIN = "marcus@veyro.dk"
 # Serialize competing operations on the same mailbox without retaining every
 # address supplied to the public login endpoint. Python's string hash is salted.
 ACCOUNT_LOCKS = tuple(threading.Lock() for _ in range(128))
@@ -59,6 +62,7 @@ class Session:
         self.folder_time = 0
         self.generation = generation
         self.recovery = None
+        self.admin_verified_at = None
 
     def close(self):
         if self.client:
@@ -129,7 +133,12 @@ def throttle(key, maximum, seconds):
 
 
 def safe_equal(a, b):
-    return isinstance(a, str) and isinstance(b, str) and hmac.compare_digest(a.encode(), b.encode())
+    if not isinstance(a, str) or not isinstance(b, str):
+        return False
+    try:
+        return hmac.compare_digest(a.encode(), b.encode())
+    except UnicodeEncodeError:
+        return False
 
 
 def account_lock(address):
@@ -203,7 +212,7 @@ def gateway():
     g.sid = sid
 
 
-ai_connector.install(app, credential_version, throttle, KEY)
+revoke_ai_for_mailbox = ai_connector.install(app, credential_version, throttle, KEY)
 
 
 @app.after_request
@@ -239,7 +248,8 @@ def payload():
 
 
 def public_session(s):
-    return dict(email=s.email, csrfToken=s.csrf, canManageRecovery=s.email in STAFF)
+    return dict(email=s.email, csrfToken=s.csrf, canManageRecovery=s.email in STAFF,
+                canManageOrganizations=s.email == ORGANIZATION_ADMIN)
 
 
 def recovery_address(value):
@@ -480,6 +490,125 @@ def password_change():
 @app.get("/api/session")
 def session():
     return jsonify(public_session(g.session))
+
+
+@contextmanager
+def organization_access(*fields, changing_status=False):
+    current = g.session
+    if current.email != ORGANIZATION_ADMIN:
+        raise MailError("Du har ikke adgang til mailadministrationen.", 403)
+    write = request.method == "POST"
+    if write:
+        throttle(("organization-write", current.email), 30, 300)
+        data = payload().copy()
+        supplied = data.pop("currentPassword", None)
+        if request.args or set(data) != set(fields):
+            raise MailError("Ugyldige felter til mailadministration.", 422)
+    else:
+        data = request.args.to_dict()
+        if set(data) != set(fields) or any(len(request.args.getlist(k)) != 1 for k in data):
+            raise MailError("Ugyldige felter til mailadministration.", 422)
+    guard = nullcontext()
+    if changing_status:
+        address = recovery_address(data["email"]).lower()
+        if (address == ORGANIZATION_ADMIN or type(data["active"]) is not bool
+                or address.rpartition("@")[2] != data["domain"]):
+            raise MailError("Denne statusændring er ikke tilladt.", 422)
+        data["email"] = address
+        guard = account_lock(address)
+    with guard, current.lock:
+        with TABLE:
+            if SESSIONS.get(g.sid) is not current or not current.secret:
+                raise MailError("Log ind igen.", 401)
+        password = current.password()
+        if write and not safe_equal(supplied, password):
+            throttle(("organization-password", current.email), 6, 300)
+            raise MailError("Indtast din egen nuværende adgangskode for at godkende ændringen.", 403)
+        if write or current.admin_verified_at is None or time.monotonic() - current.admin_verified_at > 300:
+            throttle(("organization-native", current.email), 45, 300)
+            # Staff can use an IMAP app password for ordinary mail. Administration
+            # requires the primary credential, with the native security checks complete.
+            try:
+                with account.Portal() as portal:
+                    portal.identify(current.email, password, allow_password_change=False)
+            except MailError:
+                raise MailError("Log ind med mailkontoens egen adgangskode, og fuldfør Mailcows sikkerhedskontrol for at administrere.", 403) from None
+            except (OSError, ValueError, http.client.HTTPException):
+                raise MailError("Mailserveren kunne ikke bekræfte din administratoradgang. Prøv igen.", 503) from None
+            current.admin_verified_at = time.monotonic()
+        yield data
+
+
+def public_mailbox(record):
+    return dict(email=record["address"], name=record["name"], active=record["active"],
+                quotaMiB=record["quotaMiB"], protected=record["protected"])
+
+
+@app.get("/api/admin/organizations")
+def admin_organizations():
+    with organization_access():
+        return jsonify(organizations=org_admin_client.call("/organizations/list", {})["organizations"])
+
+
+@app.post("/api/admin/organizations")
+def admin_organization_create():
+    with organization_access("domain", "name") as data:
+        try:
+            record = org_admin_client.call("/organizations/create", data)["organization"]
+        except org_admin_client.DomainProofRequired as exc:
+            return jsonify(error=exc.message, dnsChallenge=exc.challenge), 409
+        log.info("Mail administration: organization provisioned by %s: %s", g.session.email, record["domain"])
+        return jsonify(organization=record)
+
+
+@app.get("/api/admin/mailboxes")
+def admin_mailboxes():
+    with organization_access("domain") as data:
+        records = org_admin_client.call("/mailboxes/list", data)["mailboxes"]
+        return jsonify(mailboxes=[public_mailbox(row) for row in records])
+
+
+@app.get("/api/admin/dns")
+def admin_domain_dns():
+    with organization_access("domain") as data:
+        return jsonify(dns=org_admin_client.call("/organizations/dns", data)["dns"])
+
+
+@app.post("/api/admin/mailboxes")
+def admin_mailbox_create():
+    with organization_access("domain", "localPart", "name", "password") as data:
+        record = org_admin_client.call("/mailboxes/create", data)["mailbox"]
+        log.info("Mail administration: mailbox provisioned by %s: %s", g.session.email, record["address"])
+        return jsonify(mailbox=public_mailbox(record))
+
+
+@app.post("/api/admin/mailboxes/status")
+def admin_mailbox_status():
+    with organization_access("domain", "email", "active", changing_status=True) as data:
+        address = data["email"]
+        try:
+            record = org_admin_client.call("/mailboxes/status", data)["mailbox"]
+            if record["address"] != address or record["active"] is not data["active"]:
+                raise MailError("Kontrollér postkassens status før du prøver igen.", 503)
+        except MailError as exc:
+            if exc.status == 503 and not data["active"]:
+                retire_mailbox_access(address)
+            raise
+        else:
+            if not record["active"]:
+                retire_mailbox_access(address)
+        log.info("Mail administration: status set by %s: %s active=%s", g.session.email, address, record["active"])
+        return jsonify(mailbox=public_mailbox(record))
+
+
+def retire_mailbox_access(address):
+    with TABLE:
+        retired = [SESSIONS.pop(k) for k, s in list(SESSIONS.items()) if s.email == address]
+    for other in retired:
+        with other.lock:
+            other.close()
+            other.secret = b""
+    revoke_ai_for_mailbox(address)
 
 
 @app.post("/api/logout")

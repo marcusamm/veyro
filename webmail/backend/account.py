@@ -63,7 +63,7 @@ class Portal:
         finally:
             conn.close()
 
-    def identify(self, address, current):
+    def identify(self, address, current, *, allow_password_change=True):
         status, _, page = self.request("/")
         if status != 200 or not self.sid:
             raise ValueError("Mailcow login unavailable")
@@ -78,6 +78,8 @@ class Portal:
         if status not in (302, 303) or location not in ("/user", "/SOGo/so/", "/"):
             raise ValueError("Unexpected mailcow login result")
         pending = location == "/"
+        if pending and not allow_password_change:
+            raise MailError("Færdiggør mailkontoens sikkerhedskontrol i Mailcow.", 403)
         status, _, page = self.request("/" if pending else "/user")
         if pending and 'changePWModal.show();' not in page:
             raise MailError("Færdiggør mailkontoens totrinsbekræftelse med mailadministratoren før adgangskodeskift.", 403)

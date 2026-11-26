@@ -29,6 +29,59 @@ function mockBackend(response) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Veyro Mail gateway', () => {
+  it('serves the operator page only after the origin grants the browser session access', async () => {
+    const {fetch, assets} = setup();
+    const cookie = '__Host-veyro_session=' + sessionValue;
+    const upstream = vi.fn()
+      .mockResolvedValueOnce(Response.json({error:'Log ind igen.'}, {status:401}))
+      .mockResolvedValueOnce(Response.json({email:'marcus@veyro.dk', canManageOrganizations:false}))
+      .mockResolvedValueOnce(Response.json({email:'marcus@veyro.dk', canManageOrganizations:true}));
+    vi.stubGlobal('fetch', upstream);
+    expect((await fetch('/administration')).status).toBe(401);
+    expect((await fetch('/administration?canManageOrganizations=true', {headers:{Cookie:cookie}})).status).toBe(403);
+    expect(assets).not.toHaveBeenCalled();
+    const page = await fetch('/administration', {headers:{Cookie:cookie}});
+    expect(page.status).toBe(200);
+    expect(page.headers.get('Cache-Control')).toBe('no-store');
+    expect(upstream.mock.calls[2][0]).toBe(backendOrigin + '/webmail-api/api/session');
+    expect(upstream.mock.calls[2][1].headers.get('Cookie')).toBe(cookie);
+    expect(new URL(assets.mock.calls[0][0].url).pathname).toBe('/administration.html');
+    expect((await fetch('/administration.html')).status).toBe(404);
+    expect((await setup({WEBMAIL_ENABLED:'0'}).fetch('/administration')).status).toBe(503);
+  });
+
+  it('limits the administration API to specific paths, methods and signed-in same-origin writes', async () => {
+    const {fetch} = setup();
+    const upstream = vi.fn(async () => Response.json({ok:true}));
+    vi.stubGlobal('fetch', upstream);
+    const headers = {Cookie:'__Host-veyro_session=' + sessionValue, Origin:publicOrigin, 'Content-Type':'application/json', 'X-CSRF-Token':csrfToken};
+    const get = {headers};
+    const post = {headers, method:'POST', body:'{}'};
+    for (const path of ['/api/admin/organizations', '/api/admin/mailboxes', '/api/admin/dns']) {
+      expect((await fetch(path)).status).toBe(401);
+      expect((await fetch(path, {method:'DELETE'})).status).toBe(405);
+    }
+    for (const path of ['/api/admin/organizations', '/api/admin/mailboxes', '/api/admin/mailboxes/status']) {
+      for (const [invalid, code] of [[{Cookie:''},401], [{'X-CSRF-Token':''},403], [{Origin:'https://elsewhere.invalid'},403]]) {
+        expect((await fetch(path, {...post, headers:{...headers,...invalid}})).status).toBe(code);
+      }
+      expect((await fetch(path + '/anything', post)).status).toBe(405);
+    }
+    expect((await fetch('/api/admin/mailboxes?domain=a.dk&domain=b.dk', get)).status).toBe(400);
+    expect((await fetch('/api/admin/mailboxes/status', get)).status).toBe(405);
+    expect((await fetch('/api/admin/dns?domain=example.dk', post)).status).toBe(405);
+    expect((await fetch('/api/admin/dns', get)).status).toBe(400);
+    expect(upstream).not.toHaveBeenCalled();
+    expect((await fetch('/api/admin/mailboxes?domain=customer.dk&unused=sensitive', get)).status).toBe(200);
+    expect(upstream.mock.calls[0][0]).toBe(backendOrigin + '/webmail-api/api/admin/mailboxes?domain=customer.dk');
+    expect((await fetch('/api/admin/organizations?unused=sensitive', get)).status).toBe(200);
+    expect(upstream.mock.calls[1][0]).toBe(backendOrigin + '/webmail-api/api/admin/organizations');
+    expect((await fetch('/api/admin/mailboxes/status', post)).status).toBe(200);
+    expect(upstream.mock.calls[2][1].headers.get('X-CSRF-Token')).toBe(csrfToken);
+    expect((await fetch('/api/admin/dns?domain=customer.dk&extra=x', get)).status).toBe(200);
+    expect(upstream.mock.calls[3][0]).toBe(backendOrigin + '/webmail-api/api/admin/dns?domain=customer.dk');
+  });
+
   it.each(['action', 'snooze'])('binds %s to a message, a folder and a signed-in browser', async action => {
     const { fetch } = setup();
     const upstream = mockBackend(Response.json({ ok: true }));

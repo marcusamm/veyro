@@ -22,7 +22,7 @@ const mail = {
 const folders = ['inbox', 'archive', 'trash'].map(role => ({ id: role, name: role, role, unread: 0 }));
 const mime = { html: 'text/html', js: 'text/javascript', css: 'text/css', svg: 'image/svg+xml', woff2: 'font/woff2' };
 
-async function mailbox(t, options = {}, extraMails = [], canManageRecovery) {
+async function mailbox(t, options = {}, extraMails = [], canManageRecovery, canManageOrganizations = false) {
   const context = await browser.newContext(options);
   t.after(() => context.close());
   const writes = [], lists = [], errors = [];
@@ -55,7 +55,7 @@ async function mailbox(t, options = {}, extraMails = [], canManageRecovery) {
       if (body.action === 'label') fixture.labels = [body.label];
       if (body.action === 'read' || body.action === 'unread') fixture.unread = body.action === 'unread';
       json = path === '/api/send' ? {sent: true} : {ok: true};
-    } else if (path === '/api/session') json = {email: 'you@example.test', csrfToken: csrf, canManageRecovery};
+    } else if (path === '/api/session') json = {email: 'you@example.test', csrfToken: csrf, canManageRecovery, canManageOrganizations};
     else if (path === '/api/folders') json = {folders};
     else if (path === '/api/messages') {
       lists.push(url.searchParams);
@@ -79,7 +79,16 @@ test('customer account menu only offers the actions available for its mailbox', 
   const {page} = await mailbox(t, {}, [], false);
   await page.locator('#account-toggle').click();
   assert.equal(await page.locator('#open-recovery-settings').isVisible(), false);
+  assert.equal(await page.locator('#open-administration').isVisible(), false);
   assert.equal(await page.getByRole('link', {name: 'AI-forbindelser'}).isVisible(), true);
+});
+
+test('the operator can open the organization window from the account menu', async t => {
+  const {page} = await mailbox(t, {}, [], true, true);
+  await page.locator('#account-toggle').click();
+  const link = page.getByRole('link', {name:'Mailadministration'});
+  assert.equal(await link.isVisible(), true);
+  assert.equal(await link.getAttribute('href'), '/administration');
 });
 
 test('uses the targeted row with native contextmenu, keyboard navigation, and safe reply-all recipients', async t => {
