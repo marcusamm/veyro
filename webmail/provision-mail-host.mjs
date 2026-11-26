@@ -1,6 +1,6 @@
-// Provision the VPS hostname independently of the domain's mail delivery.
+// Provision the web hosts independently of the domain's mail delivery.
 const zoneName = 'veyro.dk';
-const hostname = 'post.veyro.dk';
+const hostnames = ['post.veyro.dk', 'konto.veyro.dk'];
 const address = '31.56.4.59';
 const account = process.env.CLOUDFLARE_ACCOUNT_ID;
 const token = process.env.CLOUDFLARE_API_TOKEN;
@@ -32,7 +32,7 @@ if (zones.length !== 1 || zone.name !== zoneName || zone.status !== 'active' ||
 }
 
 const recordsPath = `/zones/${zone.id}/dns_records`;
-async function checkRecord() {
+async function checkRecord(hostname) {
   const { result, result_info } = await request(`${recordsPath}?name.exact=${hostname}&per_page=100`);
   if (result_info?.total_count !== result.length || result.some(record => record.name !== hostname)) {
     throw new Error('Cloudflare returnerede en uventet liste over DNS-poster.');
@@ -40,13 +40,15 @@ async function checkRecord() {
   if (result.length === 0) return false;
   const [record] = result;
   if (result.length !== 1 || record.type !== 'A' || record.content !== address || record.proxied !== false) {
-    throw new Error('Der findes allerede en anden DNS-post på post.veyro.dk. Kontrollér posten i Cloudflare.');
+    throw new Error(`Der findes allerede en anden DNS-post på ${hostname}. Kontrollér posten i Cloudflare.`);
   }
   return true;
 }
 
-if (!(await checkRecord())) {
-  await request(recordsPath, { type: 'A', name: hostname, content: address, proxied: false, ttl: 300 });
-  if (!(await checkRecord())) throw new Error('Den oprettede A-post kunne ikke genfindes.');
+for (const hostname of hostnames) {
+  if (!(await checkRecord(hostname))) {
+    await request(recordsPath, { type: 'A', name: hostname, content: address, proxied: false, ttl: 300 });
+    if (!(await checkRecord(hostname))) throw new Error('Den oprettede A-post kunne ikke genfindes.');
+  }
+  console.log(`Bekræftet i Cloudflare: ${hostname} A ${address}, DNS only.`);
 }
-console.log(`Bekræftet i Cloudflare: ${hostname} A ${address}, DNS only.`);
