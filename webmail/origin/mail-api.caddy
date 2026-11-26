@@ -1,3 +1,21 @@
+@recoveryPage {
+	method GET HEAD POST
+	path /reset-password
+	expression `{http.request.orig_uri}.matches(r'^/reset-password[?]token=[A-F0-9]{6}(-[A-F0-9]{6}){4}$')`
+}
+handle @recoveryPage {
+	reverse_proxy 127.0.0.1:80 {
+		header_up Host post.veyro.dk
+		header_up X-Forwarded-Proto https
+		header_up -X-Api-Key
+		header_up -X-Original-URL
+		header_up -X-Rewrite-URL
+		header_up -X-Real-IP
+		header_up -Forwarded
+		header_down Referrer-Policy "no-referrer"
+		header_down Cache-Control "no-store, private"
+	}
+}
 handle /webmail-api/api/* {
 	uri strip_prefix /webmail-api
 	request_body {
