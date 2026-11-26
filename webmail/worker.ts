@@ -9,7 +9,7 @@ const staticFiles = new Map([
 ]);
 const policy = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
 const readApi = /^\/api\/(?:session|folders|messages(?:\/[0-9]{1,10}\.[0-9]{1,10}(?:\/attachments\/[1-9][0-9]*(?:\.[1-9][0-9]*)*)?)?)$/;
-const writeApi = new Set(['/api/login', '/api/logout', '/api/send']);
+const writeApi = new Set(['/api/login', '/api/logout', '/api/password', '/api/send']);
 const sessionName = '__Host-veyro_session';
 const maxBody = 256 * 1024;
 
@@ -69,6 +69,7 @@ async function proxy(req: Request, env: Env, url: URL, write: boolean) {
     if (req.headers.get('Origin') !== webOrigin) return apiError(req, 'Ugyldig oprindelse.', 403);
     if (req.headers.get('Content-Type')?.split(';')[0]?.trim().toLowerCase() !== 'application/json') return apiError(req, 'Send data som JSON.', 415);
     if (Number(req.headers.get('Content-Length')) > maxBody) return apiError(req, 'Beskeden er for stor.', 413);
+    if (url.pathname === '/api/password' && !headers.has('Cookie')) return apiError(req, 'Log ind igen.', 401);
     if (url.pathname !== '/api/login') {
       const csrf = req.headers.get('X-CSRF-Token');
       if (!csrf || csrf.length > 256) return apiError(req, 'Log ind igen.', 403);

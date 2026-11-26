@@ -159,6 +159,30 @@ describe('Veyro Mail gateway', () => {
     expect(upstream.mock.calls[0][1].headers.get('Idempotency-Key')).toBe(key);
   });
 
+  it('changes passwords only through a same-origin authenticated POST and clears the session cookie', async () => {
+    const { fetch } = setup();
+    const expired = '__Host-veyro_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax';
+    const upstream = mockBackend(Response.json({ ok: true }, { headers: { 'Set-Cookie': expired } }));
+    const headers = { Origin: publicOrigin, 'Content-Type': 'application/json', Cookie: `__Host-veyro_session=${sessionValue}` };
+    const body = JSON.stringify({ currentPassword: 'old-fixture', newPassword: 'new-fixture' });
+    expect((await fetch('/api/password')).status).toBe(405);
+    expect((await fetch('/api/password', { method: 'POST', headers, body })).status).toBe(403);
+    const signed = { ...headers, 'X-CSRF-Token': csrfToken };
+    expect((await fetch('/api/password', { method: 'POST', headers: { ...signed, Cookie: '' }, body })).status).toBe(401);
+    expect((await fetch('/api/password', { method: 'POST', headers: { ...signed, Origin: 'https://elsewhere.invalid' }, body })).status).toBe(403);
+    expect(upstream).not.toHaveBeenCalled();
+    const result = await fetch('/api/password?unused=1', { method: 'POST', headers: signed, body });
+    expect(result.status).toBe(200);
+    expect(result.headers.get('Set-Cookie')).toBe(expired);
+    expect(result.headers.get('Cache-Control')).toContain('no-store');
+    const [url, init] = upstream.mock.calls[0];
+    expect(url).toBe(backendOrigin + '/webmail-api/api/password');
+    const sent = new Request(url, { ...init, duplex: 'half' });
+    expect(sent.headers.get('Cookie')).toBe(`__Host-veyro_session=${sessionValue}`);
+    expect(sent.headers.get('X-CSRF-Token')).toBe(csrfToken);
+    expect(await sent.text()).toBe(body);
+  });
+
   it('limits reads to message and MIME part identifiers and serves attachments as downloads', async () => {
     const { fetch } = setup();
     const data = new Uint8Array([31, 139, 8]);

@@ -11,6 +11,8 @@ På `mail.veyro.dk` udgiver Cloudflare Veyros brugerflade og formidler kald til 
 
 Medarbejdere bruger deres egen postkasseadgang. Browserens sessionscookie er markeret HttpOnly og Secure. Ændringer kræver den korrekte oprindelse og et CSRF-token efter login. Eksterne billeder og scripts i modtagne mails indlæses ikke. Hentede vedhæftninger leveres som downloads.
 
+For at skifte adgangskode skal medarbejderen vælge sin mailadresse øverst til højre og derefter **Skift adgangskode**. Mailcow kontrollerer den nuværende kode og kravene til den nye. Når skiftet er gennemført, skal medarbejderen logge ind igen på alle enheder i Veyros webmail.
+
 ## Maillevering
 
 MX gælder hele `@veyro.dk`. Før et aftalt skift skal virksomhedens postkasser, grupper og aliaser være klar til at modtage mail. Webmailen kan læse mail, der allerede ligger i Mailcow, og levere interne beskeder mellem postkasserne.
