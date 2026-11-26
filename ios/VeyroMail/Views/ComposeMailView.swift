@@ -3,6 +3,7 @@ import SwiftUI
 struct ComposeSeed: Identifiable {
     let id = UUID()
     let draft: MailDraft
+    var isForward = false
 }
 
 struct ComposeMailView: View {
@@ -37,10 +38,17 @@ struct ComposeMailView: View {
     }
 
     private var draft: MailDraft {
-        MailDraft(to: to.trimmingCharacters(in: .whitespacesAndNewlines),
-                  cc: cc.trimmingCharacters(in: .whitespacesAndNewlines),
-                  subject: subject, text: text, replyToId: seed.draft.replyToId,
-                  replyToFolder: seed.draft.replyToFolder)
+        var edited = seed.draft
+        edited.to = to.trimmingCharacters(in: .whitespacesAndNewlines)
+        edited.cc = cc.trimmingCharacters(in: .whitespacesAndNewlines)
+        edited.subject = subject
+        edited.text = text
+        return edited
+    }
+
+    private var title: String {
+        if seed.isForward { return "Videresend mail" }
+        return seed.draft.replyToId == nil ? "Ny mail" : "Svar"
     }
 
     var body: some View {
@@ -66,8 +74,9 @@ struct ComposeMailView: View {
                             .textInputAutocapitalization(.never).autocorrectionDisabled()
                             .focused($focus, equals: .cc)
                     }
-                    TextField("Emne", text: $subject, axis: .vertical)
-                        .lineLimit(1...3).focused($focus, equals: .subject)
+                    TextField("Emne", text: $subject)
+                        .focused($focus, equals: .subject)
+                        .submitLabel(.next).onSubmit { focus = .body }
                         .accessibilityIdentifier("compose-subject")
                 }
                 Section {
@@ -75,6 +84,10 @@ struct ComposeMailView: View {
                         .lineLimit(6...32).focused($focus, equals: .body)
                         .accessibilityLabel("Besked")
                         .accessibilityIdentifier("compose-body")
+                    if seed.draft.forwardFiles != nil {
+                        Label("De oprindelige vedhæftede filer følger med.", systemImage: "paperclip")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
                 }
                 if let errorText {
                     Section {
@@ -85,7 +98,7 @@ struct ComposeMailView: View {
             .scrollContentBackground(.hidden).background(Color.mailPaper)
             .scrollDismissesKeyboard(.interactively)
             .disabled(sending)
-            .navigationTitle(seed.draft.replyToId == nil ? "Ny mail" : "Svar")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

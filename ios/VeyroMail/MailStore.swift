@@ -19,12 +19,6 @@ final class MailStore: ObservableObject {
 
     func restore() async {
         guard phase == .starting || phase == .restoreFailed else { return }
-        #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-VeyroSignedOutPreview") {
-            phase = .signedOut
-            return
-        }
-        #endif
         phase = .starting
         let revision = accountRevision
         do {

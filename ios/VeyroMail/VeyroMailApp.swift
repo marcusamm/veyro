@@ -2,8 +2,18 @@ import SwiftUI
 
 @main
 struct VeyroMailApp: App {
-    @StateObject private var store = MailStore()
+    @StateObject private var store: MailStore
     @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("-VeyroMailUITestFixture") {
+            _store = StateObject(wrappedValue: MailStore(api: SimulatorMailboxFixture.api()))
+            return
+        }
+        #endif
+        _store = StateObject(wrappedValue: MailStore())
+    }
 
     var body: some Scene {
         WindowGroup {

@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   simulator:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -33,19 +33,26 @@ jobs:
           set -euo pipefail
           project=(-project VeyroMail.xcodeproj -scheme VeyroMail -configuration Debug)
           xcodebuild -version
-          xcodebuild "${project[@]}" -showdestinations > "$RUNNER_TEMP/destinations.txt"
-          simulator=$(awk -F 'id:' '
-            /Ineligible destinations/ {exit}
-            /platform:iOS Simulator/ && /name:iPhone/ {
-              split($2, value, ",")
-              if (value[1] ~ /^[0-9a-fA-F-]+$/) {print value[1]; exit}
-            }
-          ' "$RUNNER_TEMP/destinations.txt")
-          if [[ -z "$simulator" ]]; then
-            cat "$RUNNER_TEMP/destinations.txt"
-            echo "No iPhone simulator is available for this scheme." >&2
-            exit 1
+          sdk=$(xcrun --sdk iphonesimulator --show-sdk-version)
+          find_runtime() {
+            xcrun simctl list runtimes --json | jq -r --arg sdk "$sdk" '
+              [.runtimes[] | select(.isAvailable and (.name | startswith("iOS ")))
+                | select((.version | split(".")[0]) == ($sdk | split(".")[0]))
+                | select((.version | split(".")[:2] | map(tonumber)) <= ($sdk | split(".")[:2] | map(tonumber)))]
+              | sort_by(.version | split(".") | map(tonumber)) | last | .identifier // empty'
+          }
+          runtime=$(find_runtime)
+          if [[ -z "$runtime" ]]; then
+            xcodebuild -downloadPlatform iOS
+            runtime=$(find_runtime)
           fi
+          test -n "$runtime"
+          simulator=$(xcrun simctl list devices available --json | jq -r --arg runtime "$runtime" '
+            first(.devices[$runtime][]? | select(.name | startswith("iPhone")) | .udid) // empty')
+          if [[ -z "$simulator" ]]; then
+            simulator=$(xcrun simctl create VeyroMailTest com.apple.CoreSimulator.SimDeviceType.iPhone-16 "$runtime")
+          fi
+          xcrun simctl bootstatus "$simulator" -b
           xcodebuild "${project[@]}" \
             -destination "platform=iOS Simulator,id=$simulator" \
             -derivedDataPath "$RUNNER_TEMP/VeyroMailBuild" \
@@ -53,20 +60,26 @@ jobs:
             -resultBundlePath "$RUNNER_TEMP/VeyroMailTests.xcresult" \
             clean test
 
-      - name: Export verified login screen
+      - name: Export verified app screens
         shell: bash
         run: |
           set -euo pipefail
-          dir="$RUNNER_TEMP/login-attachments"
+          dir="$RUNNER_TEMP/screen-attachments"
           xcrun xcresulttool export attachments \
             --path "$RUNNER_TEMP/VeyroMailTests.xcresult" --output-path "$dir"
-          screenshot=$(jq -er 'first(.[] | .attachments[] | select(.suggestedHumanReadableName | startswith("VeyroMail-Login")) | .exportedFileName)' "$dir/manifest.json")
-          cp "$dir/$screenshot" "$RUNNER_TEMP/VeyroMail-Login.png"
+          mkdir -p "$RUNNER_TEMP/VeyroMailArtifacts"
+          for name in VeyroMail-Login VeyroMail-Indbakke; do
+            screenshot=$(jq -er --arg name "$name" 'first(.[] | .attachments[] | select(.suggestedHumanReadableName | startswith($name)) | .exportedFileName)' "$dir/manifest.json")
+            cp "$dir/$screenshot" "$RUNNER_TEMP/VeyroMailArtifacts/$name.png"
+          done
 
-      - name: Save login screenshot
+      - name: Package the Xcode project
+        run: git archive --format=zip --prefix=VeyroMail/ -o "$RUNNER_TEMP/VeyroMailArtifacts/VeyroMail-iPhone.zip" HEAD:ios
+
+      - name: Save project and screenshots
         uses: actions/upload-artifact@v4
         with:
           name: Veyro-Mail-iPhone
-          path: ${{ runner.temp }}/VeyroMail-Login.png
+          path: ${{ runner.temp }}/VeyroMailArtifacts/
           if-no-files-found: error
           retention-days: 7

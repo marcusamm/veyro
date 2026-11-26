@@ -13,7 +13,7 @@ Vil du installere appen på din egen iPhone, skal du tilslutte den til Mac’en.
 ## Brug
 
 - Åbn en mappe, søg i den, og hent næste side af resultater. Åbn en mail for at læse, svare eller gemme en vedhæftet fil i Arkiver.
-- Skriv og send mail fra din egen postkasse. Et nyt forsøg på at sende samme kladde bruger samme afsendelsesnøgle, så en afbrudt forbindelse ikke medfører en dobbelt afsendelse.
+- Skriv og send mail fra din egen postkasse. Hvis forbindelsen afbrydes under afsendelse, kan du tjekke mappen Sendt. Prøver du igen fra den åbne kladde med samme indhold, genbruger appen afsendelsesnøglen, så mailserveren kan genkende forsøget.
 - Brug **Glemt adgangskode?** på loginskærmen til en konto med en tilknyttet gendannelsesmail. En virksomhedsadministrator kan også nulstille medarbejderens adgangskode.
 
 Appen gemmer sessionens adgangsnøgle i iPhones nøglering. Mailserveren bestemmer, hvornår sessionen udløber. Appen kræver netforbindelse for at hente og sende mail.

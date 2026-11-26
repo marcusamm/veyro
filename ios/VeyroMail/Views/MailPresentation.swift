@@ -47,6 +47,22 @@ extension MailMessage {
         (try? Date(date, strategy: .iso8601)) ??
             (try? Date(date, strategy: Date.ISO8601FormatStyle(includingFractionalSeconds: true)))
     }
+
+    func forwardingDraft(in folder: String) -> MailDraft {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "da_DK")
+        formatter.dateStyle = .long
+        formatter.timeStyle = .short
+        let dateLine = receivedDate.map { formatter.string(from: $0) } ?? ""
+        var lines = ["", "", "---------- Videresendt mail ----------",
+                     "Fra: " + from, "Dato: " + dateLine, "Emne: " + subject, "Til: " + to]
+        if !cc.isEmpty { lines.append("Cc: " + cc) }
+        lines.append(contentsOf: ["", text ?? ""])
+        let hasPrefix = ["fw:", "fwd:", "vs:"].contains { subject.lowercased().hasPrefix($0) }
+        return MailDraft(subject: hasPrefix ? subject : "Fwd: " + subject,
+                         text: lines.joined(separator: "\n"),
+                         forwardFiles: attachments.isEmpty ? nil : .init(id: id, folder: folder))
+    }
 }
 
 private func displayPerson(_ header: String) -> String {

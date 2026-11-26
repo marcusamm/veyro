@@ -18,7 +18,7 @@ final class MailRedirectPolicy: NSObject, URLSessionTaskDelegate {
 actor MailAPI {
     private static let origin = "https://mail.veyro.dk"
     private static let cookieName = "__Host-veyro_session"
-    private static let attachmentLimit = 32 * 1024 * 1024
+    static let attachmentLimit = 32 * 1024 * 1024
 
     private let transport: URLSession
     private let vault: any MailSessionVault
@@ -138,6 +138,11 @@ actor MailAPI {
             _ = try Self.folderQuery(folder)
         } else if draft.replyToId != nil || draft.replyToFolder != nil {
             throw MailAPIError.invalidItem
+        }
+        if let source = draft.forwardFiles {
+            guard draft.replyToId == nil else { throw MailAPIError.invalidItem }
+            _ = try Self.messagePath(source.id)
+            _ = try Self.folderQuery(source.folder)
         }
         let body = try JSONEncoder().encode(draft)
         let data = try await authenticated(path: "/api/send", body: body, key: idempotencyKey)

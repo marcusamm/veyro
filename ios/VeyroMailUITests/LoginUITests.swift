@@ -5,7 +5,7 @@ final class LoginUITests: XCTestCase {
     func testSignedOutLoginScreen() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launchArguments = ["-VeyroSignedOutPreview", "-AppleLanguages", "(da)", "-AppleLocale", "da_DK"]
+        app.launchArguments = ["-VeyroMailUITestFixture", "-AppleLanguages", "(da)", "-AppleLocale", "da_DK"]
         app.launch()
 
         let address = app.textFields["Mailadresse"]

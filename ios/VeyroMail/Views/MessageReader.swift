@@ -9,7 +9,7 @@ struct MessageReader: View {
     let canTrash: Bool
     let onRead: (MailMessage) -> Void
     let onAction: (MailAction) async throws -> Void
-    let compose: (MailDraft) -> Void
+    let compose: (ComposeSeed) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var message: MailMessage?
@@ -66,6 +66,11 @@ struct MessageReader: View {
             if let message {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        Button {
+                            compose(ComposeSeed(draft: message.forwardingDraft(in: folder.id), isForward: true))
+                        } label: {
+                            Label("Videresend", systemImage: "arrowshape.turn.up.right")
+                        }
                         Button { act(.unread) } label: {
                             Label("Markér som ulæst", systemImage: "envelope.badge")
                         }
@@ -114,24 +119,33 @@ struct MessageReader: View {
         Text(files.count == 1 ? "Vedhæftet fil" : "Vedhæftede filer")
             .font(.headline).accessibilityAddTraits(.isHeader)
         ForEach(files) { file in
-            Button {
-                downloadTask = Task { await download(file) }
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "doc")
-                    VStack(alignment: .leading) {
-                        Text(file.name).multilineTextAlignment(.leading).foregroundStyle(.primary)
-                        Text(ByteCountFormatter.string(fromByteCount: Int64(file.size), countStyle: .file))
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    if activeFile == file.id { ProgressView() }
-                    else { Image(systemName: "square.and.arrow.down") }
+            if file.size > MailAPI.attachmentLimit {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(file.name, systemImage: "doc")
+                    Text("Filen er for stor til at hente. Grænsen er 32 MiB.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
-                .padding(.vertical, 6).contentShape(Rectangle())
+                .accessibilityElement(children: .combine)
+            } else {
+                Button {
+                    downloadTask = Task { await download(file) }
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "doc")
+                        VStack(alignment: .leading) {
+                            Text(file.name).multilineTextAlignment(.leading).foregroundStyle(.primary)
+                            Text(ByteCountFormatter.string(fromByteCount: Int64(file.size), countStyle: .file))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if activeFile == file.id { ProgressView() }
+                        else { Image(systemName: "square.and.arrow.down") }
+                    }
+                    .padding(.vertical, 6).contentShape(Rectangle())
+                }
+                .disabled(activeFile != nil)
+                .accessibilityLabel("Gem " + file.name + " i Arkiver")
             }
-            .disabled(activeFile != nil)
-            .accessibilityLabel("Gem " + file.name + " i Arkiver")
         }
         if let fileError { Label(fileError, systemImage: "exclamationmark.circle").font(.subheadline) }
     }
@@ -153,10 +167,11 @@ struct MessageReader: View {
         let hasPrefix = ["re:", "sv:"].contains { subject.lowercased().hasPrefix($0) }
         let recipients = all ? message.replyAllTo : message.replyAddresses
         let fallback = folder.role == "sent" ? message.to : message.replyTo
-        compose(MailDraft(to: recipients.isEmpty ? fallback : recipients.joined(separator: ", "),
+        let draft = MailDraft(to: recipients.isEmpty ? fallback : recipients.joined(separator: ", "),
                           cc: all ? message.replyAllCc.joined(separator: ", ") : "",
                           subject: hasPrefix ? subject : "Re: " + subject, replyToId: message.id,
-                          replyToFolder: folder.id))
+                          replyToFolder: folder.id)
+        compose(ComposeSeed(draft: draft))
     }
 
     private func act(_ action: MailAction) {

@@ -98,7 +98,7 @@ struct MailboxView: View {
                                   canTrash: canMove(from: source, to: "trash"),
                                   onRead: { noteRead($0, at: location) },
                                   onAction: { try await apply($0, at: location) },
-                                  compose: { compose = ComposeSeed(draft: $0) })
+                                  compose: { compose = $0 })
                 } else {
                     ContentUnavailableView("Mappen findes ikke længere", systemImage: "folder")
                 }

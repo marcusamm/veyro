@@ -51,12 +51,31 @@ struct MailPage: Decodable, Sendable {
 }
 
 struct MailDraft: Encodable, Equatable, Sendable {
+    struct SourceFiles: Encodable, Equatable, Sendable {
+        let id: String
+        let folder: String
+    }
+
     var to = ""
     var cc = ""
     var subject = ""
     var text = ""
     var replyToId: String? = nil
     var replyToFolder: String? = nil
+    var forwardFiles: SourceFiles? = nil
+
+    private enum CodingKeys: String, CodingKey { case to, cc, subject, text, replyToId, replyToFolder, forwardFiles }
+
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(to, forKey: .to)
+        if !cc.isEmpty { try values.encode(cc, forKey: .cc) }
+        try values.encode(subject, forKey: .subject)
+        try values.encode(text, forKey: .text)
+        try values.encodeIfPresent(replyToId, forKey: .replyToId)
+        try values.encodeIfPresent(replyToFolder, forKey: .replyToFolder)
+        try values.encodeIfPresent(forwardFiles, forKey: .forwardFiles)
+    }
 }
 
 enum MailAction: String, Sendable {
