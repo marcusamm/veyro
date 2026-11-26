@@ -5,223 +5,240 @@
   font-display: swap;
 }
 
-/* Only mailcow's ordinary mailbox login uses this card. */
-html:has(.login-card.login-user) { font-size: 100%; }
-
-body:has(.login-card.login-user) {
+/* Only the ordinary mailbox sign-in is wrapped. Recovery, SSO and
+   administration screens without that card retain their native layout. */
+html:has(.veyro-entry-page) { font-size: 100%; }
+body:has(.veyro-entry-page) {
   --mail-canvas: #f4f2ec;
-  --mail-bar: #faf9f6;
-  --mail-paper: #fff;
-  --mail-ink: #201f1a;
-  --mail-muted: #5f5d54;
-  --mail-line: #dcd9cf;
-  --mail-field-line: #aaa79e;
-  --mail-action: #b7380c;
-  --mail-action-hover: #9e300b;
-  --mail-focus: #a53a12;
-  --mail-gutter: clamp(1rem, 2.6vw, 3rem);
-  --mail-bar-height: 4.55rem;
-  position: relative;
-  min-height: 100vh;
-  min-height: 100svh;
+  --mail-field: #faf9f6;
+  --mail-ink: #191916;
+  --mail-soft: #524e45;
+  --mail-line: #cbc8c0;
+  --mail-button: #191916;
+  --mail-button-text: #fffaf4;
+  --mail-focus: #a03a12;
+  display: block;
   margin: 0;
+  min-height: 100svh;
   background: var(--mail-canvas);
   color: var(--mail-ink);
   font-family: "Veyro Manrope", system-ui, sans-serif;
 }
-
-/* Mailcow attaches this link for both OS dark preference and its manual switch. */
-html:has(link#dark-mode-theme[href]:not([disabled])) body:has(.login-user) {
+html:has(link#dark-mode-theme[href]:not([disabled])) body:has(.veyro-entry-page) {
   --mail-canvas: #201f1b;
-  --mail-bar: #292823;
-  --mail-paper: #2e2d28;
+  --mail-field: #292823;
   --mail-ink: #faf8ed;
-  --mail-muted: #c4c0b4;
-  --mail-line: #504e44;
-  --mail-field-line: #868377;
-  --mail-action: #b7380c;
-  --mail-action-hover: #a3310c;
+  --mail-soft: #d1cdc1;
+  --mail-line: #787569;
+  --mail-button: #faf8ed;
+  --mail-button-text: #201f1b;
   --mail-focus: #ffac87;
   color-scheme: dark;
 }
-
-body:has(.login-user)::before {
-  content: "";
-  display: block;
-  flex: 0 0 var(--mail-bar-height);
-  height: var(--mail-bar-height);
-  border-bottom: 1px solid var(--mail-line);
-  background: var(--mail-bar);
+.veyro-entry-page {
+  box-sizing: border-box;
+  width: min(100%, 100rem);
+  margin-inline: auto;
+  padding: 0 clamp(1.35rem,6.1vw,7rem);
 }
-
-.container:has(.login-user) {
-  width: min(100%, 32rem);
-  max-width: none;
-  margin-block: 0 !important; /* Bootstrap's my-4 utility. */
-  padding: clamp(2rem, 8vh, 6rem) 1.1rem 2rem;
-}
-
-.row:has(.login-user) {
-  margin: 0 !important; /* Mailcow sets margin-top inline. */
-}
-
-.row > :has(> .login-user) {
-  width: 100%;
-  padding: 0;
-}
-
-.card.login-user {
-  position: static;
-  border: 1px solid var(--mail-line);
-  border-radius: 14px;
-  background: var(--mail-paper);
-  color: var(--mail-ink);
-  box-shadow: 0 3px 15px rgb(31 27 11 / 4%);
-}
-
-.card.login-card.login-user::before { content: none; }
-
-.login-user .mailcow-logo {
-  position: absolute;
-  top: 0;
-  left: var(--mail-gutter);
+.veyro-entry-bar {
+  min-height: 5.25rem;
   display: flex;
   align-items: center;
-  height: var(--mail-bar-height);
-  margin: 0 !important;
+  gap: clamp(.6rem, 1.4vw, 1.5rem);
+  border-bottom: 1px solid var(--mail-line);
 }
-
-.login-user .mailcow-logo img {
-  content: url("/veyro-mail/logo.svg");
-  width: 8.5rem;
-  height: 2.1rem;
-  max-height: none;
-  object-fit: contain;
-  object-position: left center;
+.veyro-entry-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  margin-right: auto;
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -.075em;
 }
-
-html:has(link#dark-mode-theme[href]:not([disabled])) .login-user .mailcow-logo img {
-  filter: invert(1) hue-rotate(180deg);
+.veyro-entry-brand img { display: block; }
+.veyro-home-short { display: none; }
+.veyro-entry-bar a.veyro-home {
+  padding-block: .8rem;
+  color: var(--mail-soft);
+  font-size: .9rem;
+  font-weight: 600;
+  text-underline-offset: .24em;
 }
-
-.login-user .card-header {
-  position: absolute;
-  top: 0;
-  right: var(--mail-gutter);
-  height: var(--mail-bar-height);
+.veyro-entry-bar .card-header {
+  gap: .35rem;
   padding: 0;
+  font-size: 0;
   border: 0;
   background: transparent;
   color: var(--mail-ink);
-  font-size: 0; /* The native login heading is displayed in the card body. */
 }
-
-.login-user .card-header > .bi { display: none; }
-.login-user .card-header .form-switch,
-.login-user .card-header .dropdown-toggle { font-size: 1rem; }
-.login-user .card-header .form-switch .form-check-input { cursor: pointer; }
-.login-user .form-switch .form-check-input:checked { background-color: var(--mail-action); border-color: var(--mail-action); }
-.login-user .card-header .dropdown-toggle { min-width: 2.7rem; min-height: 2.75rem; color: var(--mail-ink) !important; }
-.login-user .card-header .dropdown-menu { max-height: min(65vh, 30rem); overflow-y: auto; }
-
-.login-user .card-body {
-  padding: clamp(1.4rem, 4.5vw, 2.65rem);
+.veyro-entry-bar .card-header > i { display: none; }
+.veyro-entry-bar .form-switch, .veyro-entry-bar .dropdown-toggle { font-size: 1rem; }
+.veyro-entry-bar .form-switch .form-check-input { cursor: pointer; }
+.veyro-entry-bar .form-check-input:checked { background-color: #9a350f; border-color: #9a350f; }
+.veyro-entry-bar .card-header .ms-4 { margin-left: .3rem !important; }
+.veyro-entry-bar .dropdown-toggle { min-height: 2.75rem; padding-inline: .25rem !important; color: var(--mail-soft) !important; }
+.veyro-entry-bar .dropdown-menu { max-height: min(65vh,30rem); overflow-y: auto; }
+.veyro-entry-desk {
+  display: grid;
+  grid-template-columns: minmax(0,1.05fr) minmax(0,1fr);
+  align-items: center;
+  gap: clamp(2.25rem,5vw,6rem);
+  max-width: 78rem;
+  min-height: min(47rem,calc(100svh - 5.25rem));
+  margin: 0 auto;
+  padding: clamp(2.4rem,5vw,5.5rem) 0;
 }
-
-.login-user .card-body > legend {
-  float: none;
-  margin: 0 0 1.65rem;
-  border: none;
+.veyro-entry { min-width: 0; }
+.veyro-entry-page [hidden] { display: none !important; }
+.veyro-entry h1 {
+  margin: 0;
+  font: 650 clamp(3.4rem,6.3vw,6.8rem)/1.02 "Veyro Manrope",system-ui,sans-serif;
+  letter-spacing: -.077em;
   color: var(--mail-ink);
-  font: 740 clamp(1.65rem, 4.5vw, 2.1rem)/1.16 "Veyro Manrope", system-ui, sans-serif;
-  letter-spacing: -.045em;
-  text-align: left;
-  overflow-wrap: anywhere;
 }
+.veyro-entry-title span { color: #e4480b; }
+.veyro-entry-lead { max-width: 32ch; margin: 1.3rem 0 0; color: var(--mail-soft); font-size: clamp(1.05rem,1.5vw,1.25rem); line-height: 1.55; }
 
-.login-user .card-body > legend + hr { display: none; }
-.login-user form > .d-flex:has(> .input-group) { flex-direction: column; gap: .45rem; }
-
-.login-user form label.visually-hidden {
+.veyro-entry > .container {
+  width: 100%;
+  max-width: 25rem;
+  margin: 1.45rem 0 0 !important;
+  padding: 0;
+}
+.veyro-entry .row:has(.login-user) { margin: 0 !important; }
+.veyro-entry .row > :has(> .login-user) { padding: 0; width: 100%; }
+.veyro-entry .login-card.login-user {
+  max-width: none;
+  margin: 0;
+  color: var(--mail-ink);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.veyro-entry .login-card.login-user::before,
+.veyro-entry .mailcow-logo,
+.veyro-entry .card-body > legend.visually-hidden + hr { display: none; }
+.veyro-entry .card-body { padding: 0; }
+.veyro-entry .card-body > legend:not(.visually-hidden) {
+  float: none;
+  font-size: 1.15rem;
+  color: var(--mail-ink);
+}
+.veyro-entry form > .d-flex:has(> .input-group) { flex-direction: column; gap: .4rem; }
+.veyro-entry form label.visually-hidden {
   position: static !important;
   width: auto !important;
   height: auto !important;
   margin: 0 !important;
-  overflow: visible !important;
   clip: auto !important;
   clip-path: none !important;
-  color: var(--mail-ink);
-  font-size: .91rem;
+  overflow: visible !important;
+  font-size: .9rem;
   font-weight: 650;
+  color: var(--mail-ink);
 }
-
-.login-user .input-group {
+.veyro-entry .input-group {
   flex-wrap: nowrap;
   align-items: stretch;
-  overflow: hidden;
-  border: 1px solid var(--mail-field-line);
-  border-radius: 7px;
-  background: var(--mail-paper);
+  border: 1px solid var(--mail-line);
+  border-radius: .55rem;
+  background: var(--mail-field);
 }
-
-.login-user .input-group:focus-within {
-  outline: 2px solid var(--mail-focus);
-  outline-offset: 2px;
-}
-
-.login-user .input-group > .form-control,
-.login-user .input-group > .input-group-text {
+.veyro-entry .input-group:focus-within { outline: 2px solid var(--mail-focus); outline-offset: 2px; }
+.veyro-entry .input-group > .form-control,
+.veyro-entry .input-group > .input-group-text {
   min-height: 2.9rem;
   margin: 0;
   border: 0;
-  border-radius: 0;
+  border-radius: .55rem;
   background: transparent;
   color: var(--mail-ink);
   box-shadow: none;
 }
-
-.login-user .input-group > .form-control {
-  min-width: 0;
-  padding: .65rem .7rem;
-  font-size: 1rem;
-}
-
-.login-user .form-control::placeholder { color: var(--mail-muted); opacity: 1; }
-.login-user .input-group > div.input-group-text { padding: 0 0 0 .8rem; color: var(--mail-muted); }
-.login-user .input-group > button.input-group-text { min-width: 2.75rem; justify-content: center; }
-.login-user form a,
-.login-user + p a { color: var(--mail-muted); text-underline-offset: .19em; }
-.login-user form a:hover,
-.login-user + p a:hover { color: var(--mail-ink); }
-
-.login-user .btn[type="submit"],
-.login-user #fido2-login {
-  min-height: 2.9rem;
+.veyro-entry .input-group > .form-control { min-width: 0; font-size: 1rem; padding: .65rem .8rem; }
+.veyro-entry .input-group > div.input-group-text { display: none; }
+.veyro-entry .form-control::placeholder { color: var(--mail-soft); opacity: .8; }
+.veyro-entry .input-group > button { min-width: 2.75rem; justify-content: center; }
+.veyro-entry form a, .veyro-entry .login-user + p a { color: var(--mail-soft); text-underline-offset: .23em; }
+.veyro-entry .btn[type="submit"], .veyro-entry #fido2-login {
+  min-height: 2.95rem;
   max-width: none !important;
-  padding: .7rem 1rem;
-  border-radius: 7px;
-  font: 700 .99rem/1.5 "Veyro Manrope", system-ui, sans-serif;
+  border-radius: .65rem;
+  padding: .65rem 1rem;
+  font: 650 1rem/1.5 "Veyro Manrope",system-ui,sans-serif;
+  text-transform: none;
 }
-
-.login-user .btn.btn-success[type="submit"] {
-  --bs-btn-bg: var(--mail-action);
-  --bs-btn-hover-bg: var(--mail-action-hover);
-  border: 1px solid transparent;
-  background: var(--mail-action);
-  color: #fff;
+.veyro-entry .btn.btn-success[type="submit"] {
+  color: var(--mail-button-text);
+  background: var(--mail-button);
+  border: 1px solid var(--mail-button);
 }
-.login-user .btn.btn-success[type="submit"]:hover { background: var(--mail-action-hover); }
-.login-user #fido2-login { border: 1px solid var(--mail-field-line); background: var(--mail-paper); color: var(--mail-ink); }
-.login-user #fido2-login:hover { background: var(--mail-bar); }
-.login-user .hr-title { margin-block: 1.3rem .5rem; color: var(--mail-muted); }
-.login-user .hr-title strong { padding-inline: .65rem; background: var(--mail-paper); font-size: .82rem; font-weight: 550; }
-.login-user #fido2-alerts:empty { margin: 0 !important; }
-.login-user + p.text-muted { color: var(--mail-muted) !important; font-size: .84rem; line-height: 1.8; }
-.login-user :is(a, button, input):focus-visible,
-.login-user + p a:focus-visible { outline: 2px solid var(--mail-focus); outline-offset: 2px; }
-.login-user .input-group > .form-control:focus-visible { outline: 0; }
+.veyro-entry .btn[type="submit"]:hover { opacity: .86; }
+.veyro-entry #fido2-login { background: transparent; color: var(--mail-ink); border: 1px solid var(--mail-line); }
+.veyro-entry #fido2-login:hover { background: var(--mail-field); }
+.veyro-entry .hr-title { margin: .9rem 0 .3rem; }
+.veyro-entry .hr-title strong { background: var(--mail-canvas); color: var(--mail-soft); padding: 0 .65rem; font-size: .82rem; font-weight: 550; }
+.veyro-entry #fido2-alerts:empty { margin: 0 !important; }
+.veyro-entry .login-user + p.text-muted { text-align: left !important; font-size: .82rem !important; color: var(--mail-soft) !important; }
+.veyro-entry-page :is(a,button,input):focus-visible { outline: 2px solid var(--mail-focus); outline-offset: 3px; }
+.veyro-entry .input-group > input:focus-visible { outline: 0; }
 
-@media (max-width: 520px) {
-  body:has(.login-card.login-user) { --mail-bar-height: 4rem; }
-  .login-user .card-header > .ms-4 { margin-left: .6rem !important; }
+/* Fold, seal and postmark from the original Veyro Mail entry artwork. */
+.veyro-mail-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1.13;
+  contain: paint;
+  border-radius: 1.1rem;
+  background: #ff662e;
+}
+.veyro-envelope {
+  position: relative;
+  width: 74%;
+  aspect-ratio: 1.53;
+  transform: rotate(-9deg);
+  border: 1px solid #b43e17;
+  border-radius: 5px;
+  background: #ffab7f;
+  box-shadow: 0 2px 0 #b34521, 0 21px 26px -11px #8c2c1d70;
+}
+.veyro-envelope-flap, .veyro-envelope-flap::before {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  clip-path: polygon(0 0,100% 0,52% 57%,48% 57%);
+  background: #ad441e;
+}
+.veyro-envelope-flap::before { content: ""; inset: -1px 0 2px; background: #ffbc98; }
+.veyro-envelope .veyro-mark { position: absolute; left: 50%; top: 54%; width: 13%; height: auto; transform: translate(-50%,-50%); }
+.veyro-postmark { position: absolute; right: 7%; bottom: 10%; color: #7e321a; font: clamp(.65rem,1vw,.9rem) ui-monospace,monospace; }
+@media (max-width: 46rem) {
+  .veyro-entry-bar { min-height: 4.4rem; }
+  .veyro-entry-desk { grid-template-columns: minmax(0,1fr); gap: 2.5rem; min-height: 0; padding: 2.5rem 0 2rem; }
+  .veyro-entry h1 { font-size: clamp(3.2rem,12vw,4.9rem); }
+  .veyro-entry-lead { margin-top: 1.15rem; }
+  .veyro-mail-art { aspect-ratio: 1.75; max-height: 18rem; }
+  .veyro-envelope { width: 55%; }
+}
+@media (max-width: 25rem) {
+  .veyro-entry-page { padding-inline: 1rem; }
+  .veyro-entry-brand { font-size: 1.25rem; gap: .35rem; }
+  .veyro-entry-brand img { width: 26px; height: 26px; }
+  .veyro-entry-bar { gap: .45rem; }
+  .veyro-entry-bar a.veyro-home { font-size: .78rem; }
+}
+@media (max-width: 22rem) {
+  .veyro-home-full { display: none; }
+  .veyro-home-short { display: inline; }
+  .veyro-entry-bar .form-switch { padding-left: 0; }
+  .veyro-entry-bar .card-header { gap: .2rem; }
+}
+@media (max-height: 28rem) and (orientation: landscape) {
+  .veyro-entry-desk { min-height: auto; padding-block: 2rem; }
+  .veyro-mail-art { max-height: 14rem; }
 }
