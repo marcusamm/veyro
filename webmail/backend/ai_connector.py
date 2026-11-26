@@ -260,6 +260,8 @@ def install(app, credential_version, throttle, encryption):
             code = secrets.token_urlsafe(36)
             with lock:
                 prune()
+                if not g.session.secret:
+                    raise MailError("Log ind igen.", 401)
                 active = [item["grant"] for item in codes.values()] + list(tokens.values())
                 if sum(t.address == grant.address for t in active) >= 24:
                     raise MailError("Fjern en tidligere AI-forbindelse og prøv igen.", 409)
@@ -393,3 +395,13 @@ def install(app, credential_version, throttle, encryption):
         else:
             return rpc_error(rid, -32601, "Method not found.")
         return jsonify(jsonrpc="2.0", id=rid, result=result)
+
+    def revoke_mailbox(address):
+        # Remove outstanding codes too, so reactivating a mailbox cannot revive its grants.
+        with lock:
+            for key in [k for k, grant in tokens.items() if grant.address == address]:
+                del tokens[key]
+            for key in [k for k, item in codes.items() if item["grant"].address == address]:
+                del codes[key]
+
+    return revoke_mailbox

@@ -74,6 +74,62 @@ class MailboxAccessTest(unittest.TestCase):
         self.assertFalse(owner.json["canManageRecovery"])
         self.assertTrue(self.login(self.employee).json["canManageRecovery"])
 
+    def test_only_named_operator_can_request_organization_data(self):
+        broker = self.patch(webmail.org_admin_client, "call", return_value={"organizations": []})
+        native = self.patch(webmail.account, "Portal")
+        endpoint = "/api/admin/organizations"
+        def browse():
+            return self.http.get(endpoint, base_url=webmail.ORIGIN, headers=self.edge)
+        self.assertEqual(browse().status_code, 401)
+        for address in (self.employee, self.owner):
+            result = self.login(address).json
+            self.assertFalse(result["canManageOrganizations"])
+            self.assertEqual(browse().status_code, 403)
+            self.assertEqual(self.post(endpoint, {}, csrf=result["csrfToken"]).status_code, 403)
+        native.assert_not_called()
+        broker.assert_not_called()
+        self.versions[webmail.ORGANIZATION_ADMIN] = "4" * 64
+        self.assertTrue(self.login(webmail.ORGANIZATION_ADMIN).json["canManageOrganizations"])
+        identify = native.return_value.__enter__.return_value.identify
+        identify.side_effect = webmail.MailError("Application password", 403)
+        self.assertEqual(browse().status_code, 403)
+        broker.assert_not_called()
+        identify.side_effect = None
+        self.assertEqual(browse().json, {"organizations": []})
+        identify.assert_called_with(webmail.ORGANIZATION_ADMIN, "fixture", allow_password_change=False)
+
+    def test_domain_proof_and_status_require_operator_password_and_csrf(self):
+        admin = webmail.ORGANIZATION_ADMIN
+        self.versions[admin] = "4" * 64
+        customer = webmail.app.test_client()
+        self.login(self.owner, customer)
+        csrf = self.login(admin).json["csrfToken"]
+        self.patch(webmail.account, "Portal")
+        broker = self.patch(webmail.org_admin_client, "call")
+        organizations = "/api/admin/organizations"
+        data = {"domain": "first.example", "name": "Fixture", "currentPassword": "fixture"}
+        self.assertEqual(self.post(organizations, data).status_code, 403)
+        self.assertEqual(self.post(organizations, {**data, "currentPassword": "wrong"}, csrf=csrf).status_code, 403)
+        broker.assert_not_called()
+        challenge = {"name": "_veyro-mail.first.example", "type": "TXT", "value": "fixture-proof"}
+        broker.side_effect = webmail.org_admin_client.DomainProofRequired("Bekræft domænet.", challenge)
+        response = self.post(organizations, data, csrf=csrf)
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json["dnsChallenge"], challenge)
+        broker.assert_called_once_with("/organizations/create", {"domain": "first.example", "name": "Fixture"})
+        status = "/api/admin/mailboxes/status"
+        access = {"domain": "first.example", "email": self.owner, "active": False, "currentPassword": "fixture"}
+        self.assertEqual(self.post(status, {**access, "email": admin}, csrf=csrf).status_code, 422)
+        self.assertEqual(self.post(status, {**access, "domain": "second.example"}, csrf=csrf).status_code, 422)
+        broker.side_effect = None
+        broker.return_value = {"mailbox": {"address": self.owner, "name": "Fixture", "active": False,
+                                           "quotaMiB": 1024, "protected": False}}
+        revoke = self.patch(webmail, "revoke_ai_for_mailbox")
+        self.assertEqual(self.post(status, access, csrf=csrf).json["mailbox"]["email"], self.owner)
+        revoke.assert_called_once_with(self.owner)
+        self.assertEqual(customer.get("/api/session", base_url=webmail.ORIGIN, headers=self.edge).status_code, 401)
+        self.assertEqual(self.http.get("/api/session", base_url=webmail.ORIGIN, headers=self.edge).status_code, 200)
+
     def test_rejected_password_and_ineligible_mailbox_share_response(self):
         bad = self.login(self.owner, password="incorrect")
         self.assertEqual(bad.status_code, 401)

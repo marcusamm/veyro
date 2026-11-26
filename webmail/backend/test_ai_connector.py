@@ -27,7 +27,7 @@ class ConnectorTest(unittest.TestCase):
             g.ip = "127.0.0.1"
             g.session = SimpleNamespace(email=self.address, generation=self.version, secret=self.key.encrypt(b"fixture"))
 
-        ai.install(app, lambda address: self.version, lambda *args: None, self.key)
+        self.revoke_mailbox = ai.install(app, lambda address: self.version, lambda *args: None, self.key)
         self.http = app.test_client()
         self.sign = patch.object(ai, "signing_key", return_value=b"fixture-signing-key")
         self.sign.start()
@@ -86,6 +86,14 @@ class ConnectorTest(unittest.TestCase):
         access = self.exchange(cid, code)
         self.assertEqual(access.json["scope"], ai.READ)
         self.assertEqual(self.exchange(cid, code).status_code, 400)
+
+    def test_disabling_mailbox_retires_issued_and_pending_grants(self):
+        cid = self.register().json["client_id"]
+        issued = self.exchange(cid, self.start(self.params(cid), [ai.READ])).json["access_token"]
+        pending = self.start(self.params(cid), [ai.READ])
+        self.revoke_mailbox(self.address)
+        self.assertEqual(self.exchange(cid, pending).json["error"], "invalid_grant")
+        self.assertEqual(self.rpc(issued, "tools/list").status_code, 401)
 
     def test_confidential_client_secret(self):
         client = self.register(method="client_secret_post").json

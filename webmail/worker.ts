@@ -7,11 +7,14 @@ const bookmarks = new Set(['/forhaandsvisning', '/forhaandsvisning/', '/SOGo', '
 const staticFiles = new Map([
   ['/inbox.css', '/inbox.css'], ['/webmail.css', '/inbox.css'], ['/inbox.js', '/inbox.js'],
   ['/favicon.svg', '/favicon.svg'], ['/manrope.woff2', '/manrope.woff2'], ['/Manrope-OFL.txt', '/Manrope-OFL.txt'],
+  ['/administration.css', '/administration.css'], ['/administration.js', '/administration.js'],
 ]);
 const policy = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
 const readApi = /^\/api\/(?:session|folders|messages(?:\/[0-9]{1,10}\.[0-9]{1,10}(?:\/attachments\/[1-9][0-9]*(?:\.[1-9][0-9]*)*)?)?)$/;
 const recoveryRequest = '/api/recovery/request';
-const accountWrites = new Set(['/api/password', '/api/recovery/enroll/start', '/api/recovery/enroll/confirm']);
+const adminReads = new Set(['/api/admin/organizations', '/api/admin/mailboxes', '/api/admin/dns']);
+const accountWrites = new Set(['/api/password', '/api/recovery/enroll/start', '/api/recovery/enroll/confirm',
+  '/api/admin/organizations', '/api/admin/mailboxes', '/api/admin/mailboxes/status']);
 const writeApi = new Set(['/api/login', '/api/logout', '/api/send', recoveryRequest, ...accountWrites]);
 const messageWrite = /^\/api\/messages\/[0-9]{1,10}\.[0-9]{1,10}\/(?:action|snooze)$/;
 const sessionName = '__Host-veyro_session';
@@ -68,6 +71,7 @@ async function proxy(req: Request, env: Env, url: URL, write: boolean) {
   if (ip && /^[0-9a-f:.]{2,45}$/i.test(ip)) headers.set('X-Veyro-Client-IP', ip);
   const session = (req.headers.get('Cookie') || '').split(';').map(c => c.trim()).find(c => c.startsWith(sessionName + '='));
   if (url.pathname !== recoveryRequest && session && /^[A-Za-z0-9_-]{1,256}$/.test(session.slice(sessionName.length + 1))) headers.set('Cookie', session);
+  if (url.pathname.startsWith('/api/admin/') && !headers.has('Cookie')) return apiError(req, 'Log ind igen.', 401);
 
   if (write) {
     if (req.headers.get('Origin') !== webOrigin) return apiError(req, 'Ugyldig oprindelse.', 403);
@@ -91,7 +95,12 @@ async function proxy(req: Request, env: Env, url: URL, write: boolean) {
   }
 
   try {
-    let search = write ? '' : url.search;
+    let search = write || url.pathname.startsWith('/api/admin/') ? '' : url.search;
+    if (!write && (url.pathname === '/api/admin/mailboxes' || url.pathname === '/api/admin/dns')) {
+      const domains = url.searchParams.getAll('domain');
+      if (domains.length !== 1 || !domains[0] || domains[0].length > 253) return apiError(req, 'Vælg en organisation.', 400);
+      search = '?' + new URLSearchParams({domain: domains[0]});
+    }
     if (messageWrite.test(url.pathname)) {
       const folders = url.searchParams.getAll('folder');
       if (folders.length !== 1 || !folders[0] || !/^[A-Za-z0-9_-]{1,1600}$/.test(folders[0])) return apiError(req, 'Ugyldig mappe.', 400);
@@ -122,6 +131,17 @@ async function proxy(req: Request, env: Env, url: URL, write: boolean) {
   }
 }
 
+async function administrationPage(req: Request, env: Env) {
+  const url = new URL('/api/session', webOrigin);
+  const session = await proxy(new Request(url, {headers:req.headers}), env, url, false);
+  const data = await session.json<{canManageOrganizations?: boolean}>().catch(() => null);
+  if (session.ok && data?.canManageOrganizations === true) return asset(req, env, '/administration.html', true);
+  const status = session.ok ? 403 : session.status;
+  const message = status === 401 ? 'Log ind i Veyro Mail for at fortsætte.'
+    : status === 403 ? 'Din konto har ikke adgang til mailadministrationen.' : 'Mailadministrationen er midlertidigt utilgængelig.';
+  return localResponse(req, '<!doctype html><html lang="da"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Mailadministration · Veyro Mail</title><link rel="stylesheet" href="/administration.css"><main class="access"><h1>Mailadministration</h1><p>' + message + '</p><a href="/">Åbn Veyro Mail</a></main></html>', status, 'text/html; charset=utf-8');
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
@@ -133,19 +153,21 @@ export default {
     }
     const assistant = await aiRoute(req, env, url);
     if (assistant) return assistant;
-    const isReadApi = readApi.test(path);
+    const isReadApi = readApi.test(path) || adminReads.has(path);
     const isWriteApi = writeApi.has(path) || messageWrite.test(path);
-    if (env.WEBMAIL_ENABLED !== '1' && (path === '/' || bookmarks.has(path) || path === '/SOGo/connect' || isReadApi || isWriteApi)) {
+    if (env.WEBMAIL_ENABLED !== '1' && (path === '/' || path === '/administration' || bookmarks.has(path) || path === '/SOGo/connect' || isReadApi || isWriteApi)) {
       if (isReadApi || isWriteApi) return apiError(req, 'Webmail er midlertidigt lukket.', 503);
       const page = read && req.headers.get('Accept')?.includes('text/html');
       return localResponse(req, page ? unavailablePage : 'Webmail er midlertidigt lukket.', 503, page ? 'text/html; charset=utf-8' : undefined);
     }
     if (isReadApi || isWriteApi) {
-      const method = isWriteApi ? 'POST' : 'GET';
-      return req.method === method ? proxy(req, env, url, isWriteApi) : methodNotAllowed(req, method);
+      if (isWriteApi && req.method === 'POST') return proxy(req, env, url, true);
+      if (isReadApi && req.method === 'GET') return proxy(req, env, url, false);
+      return methodNotAllowed(req, isReadApi && isWriteApi ? 'GET, POST' : isWriteApi ? 'POST' : 'GET');
     }
     if (!read) return methodNotAllowed(req, 'GET, HEAD');
     if (path === '/') return asset(req, env, '/inbox.html', true);
+    if (path === '/administration') return administrationPage(req, env);
     if (bookmarks.has(path)) return redirect('/');
     if (path === '/robots.txt') return localResponse(req, 'User-agent: *\nDisallow: /\n', 200);
     const file = staticFiles.get(path);

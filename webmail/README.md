@@ -20,3 +20,11 @@ Vælg **Glemt adgangskode?** på loginsiden, og indtast din Veyro-mailadresse. M
 ## Maillevering
 
 MX gælder hele `@veyro.dk`. Før et aftalt skift skal virksomhedens postkasser, grupper og aliaser være klar til at modtage mail. Webmailen kan læse mail, der allerede ligger i Mailcow, og levere interne beskeder mellem postkasserne.
+
+## Administration af virksomheder
+
+Log ind på `mail.veyro.dk` som `marcus@veyro.dk` med postkassens egen adgangskode. Åbn kontomenuen og vælg **Mailadministration**. Hver organisation har ét maildomæne. Vælg virksomheden for at se og filtrere dens aktive og inaktive postkasser. Når du opretter eller ændrer en postkasse, godkender du handlingen med din egen adgangskode. Deaktivering bevarer beskederne, så postkassen senere kan aktiveres igen.
+
+1. Vælg **Tilføj organisation**, og indtast virksomhedens navn og eget maildomæne.
+2. Bed kunden tilføje den viste TXT-post hos sin DNS-udbyder. Vælg **Kontrollér DNS** i panelet, når posten er publiceret.
+3. Opret kundens postkasser. Under **DNS til maillevering** kan du hente domænets MX-post og offentlige DKIM-nøgle. Planlæg skift af MX med kunden, og afstem SPF og DMARC med de tjenester, kunden bruger til at sende mail.

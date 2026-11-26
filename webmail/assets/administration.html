@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf9f6">
+  <title>Mailadministration · Veyro Mail</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/administration.css">
+  <script src="/administration.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><img alt="" width="32" height="32" src="/favicon.svg"><span>Veyro <b>Mail</b></span></a>
+    <a class="back" href="/"><span aria-hidden="true">←</span> Til indbakken</a>
+  </header>
+  <main class="content">
+    <h1>Mailadministration<span aria-hidden="true">.</span></h1>
+    <noscript><p>Slå JavaScript til for at administrere organisationer og postkasser.</p></noscript>
+    <p id="page-status" role="status">Henter organisationer …</p>
+    <button id="reload" type="button" hidden>Prøv igen</button>
+    <div class="workspace" id="workspace" hidden>
+      <nav class="organizations" aria-labelledby="org-heading">
+        <div class="org-header"><h2 id="org-heading">Organisationer</h2></div>
+        <ul class="org-list" id="org-list"></ul>
+        <button class="add-org" id="open-organization" type="button"><span aria-hidden="true">+</span> Tilføj organisation</button>
+      </nav>
+      <section class="detail" aria-labelledby="org-name">
+        <div class="detail-heading">
+          <div><h2 id="org-name">Vælg en organisation</h2><p id="org-domain" class="muted"></p></div>
+          <button class="primary" id="open-mailbox" type="button" hidden><span aria-hidden="true">+</span> Opret postkasse</button>
+        </div>
+        <section id="directory" aria-labelledby="boxes-heading" hidden>
+          <div class="tools">
+            <h3 id="boxes-heading">Postkasser</h3>
+            <div class="filters">
+              <label class="sr-only" for="search">Søg efter navn eller mailadresse</label>
+              <input id="search" type="search" placeholder="Søg i postkasser" autocomplete="off">
+              <label class="sr-only" for="filter">Filtrér efter status</label>
+              <select id="filter"><option value="all">Alle statusser</option><option value="active">Aktive</option><option value="inactive">Inaktive</option></select>
+            </div>
+          </div>
+          <p id="list-status" class="muted" role="status"></p>
+          <button type="button" id="retry-mailboxes" hidden>Prøv igen</button>
+          <ul id="mailboxes" class="boxes" aria-label="Postkasser"></ul>
+        </section>
+        <details id="delivery" hidden>
+          <summary>DNS til maillevering</summary>
+          <p>Aftal med kunden, hvornår indgående mail skal flyttes, før I ændrer MX. Behold DKIM-poster for afsendere, der fortsat sender mail for domænet.</p>
+          <p id="dns-status" role="status"></p>
+          <button id="retry-dns" type="button" hidden>Hent DNS igen</button>
+          <div id="records"></div>
+        </details>
+      </section>
+    </div>
+  </main>
+  <dialog id="editor" aria-labelledby="editor-title">
+    <form id="edit-form" method="post">
+      <h2 id="editor-title"></h2>
+      <p id="form-context" class="muted"></p>
+      <fieldset id="organization-fields" hidden disabled>
+        <label>Virksomhedsnavn<input name="orgName" maxlength="80" required></label>
+        <label>Maildomæne<input name="domain" placeholder="virksomhed.dk" maxlength="253" autocapitalize="none" spellcheck="false" required></label>
+        <div id="challenge" class="challenge" hidden>
+          <h3>Bekræft domænet</h3>
+          <p>Tilføj denne TXT-post hos domænets DNS-udbyder. Vælg derefter <strong>Kontrollér DNS</strong>.</p>
+          <dl><dt>Navn</dt><dd><code id="dns-name"></code></dd><dt>Værdi</dt><dd><code id="dns-value"></code></dd></dl>
+        </div>
+      </fieldset>
+      <fieldset id="mailbox-fields" hidden disabled>
+        <label>Navn<input name="mailboxName" maxlength="80" required></label>
+        <label>Mailadresse<span class="address-input"><input name="localPart" placeholder="fornavn" maxlength="64" required autocapitalize="none" spellcheck="false" aria-label="Første del af mailadressen"><span id="domain-suffix"></span></span></label>
+        <label>Postkassens startadgangskode<input name="initialPassword" type="password" autocomplete="new-password" required></label>
+      </fieldset>
+      <label class="confirm-password">Din adgangskode til Veyro Mail<input name="currentPassword" type="password" autocomplete="current-password" required></label>
+      <p id="form-error" role="alert" hidden></p>
+      <div class="actions"><button id="cancel" type="button">Annuller</button><button class="primary" id="save" type="submit">Gem</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

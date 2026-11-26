@@ -19,4 +19,5 @@ install -m 0644 veyro-webmail-trust.service veyro-webmail-trust.path /etc/system
 systemctl daemon-reload
 systemctl enable --now veyro-webmail-trust.path
 python3 configure-recovery.py
+python3 configure-org-broker.py
 docker compose up -d --build
