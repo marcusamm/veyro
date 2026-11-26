@@ -55,11 +55,14 @@ h1:focus, h2:focus { outline: none; }
 .gate h1 span { color: #e4480b; }
 .entry-lead { max-width: 32ch; margin: 1.3rem 0 0; color: #524e45; font-size: clamp(1.05rem,1.5vw,1.25rem); line-height: 1.55; }
 #connecting p { color: var(--muted); margin: 1rem 0; }
-#login, #draft, #password-form { display: grid; }
-#login label, #draft label, #password-form label { margin: .7rem 0 .35rem; font-size: .84rem; font-weight: 650; }
-#login input, #draft input, #draft textarea, #password-form input { width: 100%; min-width: 0; border: 1px solid #cac8bf; border-radius: .4rem; padding: .65rem .75rem; background: #fff; }
+#login, #draft, .account-form, #recovery-verification { display: grid; }
+#login label, #draft label, .account-form label { margin: .7rem 0 .35rem; font-size: .84rem; font-weight: 650; }
+#login input, #draft input, #draft textarea, .account-form input { width: 100%; min-width: 0; border: 1px solid #cac8bf; border-radius: .4rem; padding: .65rem .75rem; background: #fff; }
 #login { max-width: 25rem; margin-top: 1.45rem; }
 #login label { margin-top: 1rem; font-size: .9rem; }
+.password-label { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin: .5rem 0 .12rem; }
+#login .password-label label { margin: 0; }
+.inline-action { background: transparent; color: #70402a; text-decoration: underline; text-underline-offset: .2em; font-size: .85rem; font-weight: 600; padding: .5rem 0; }
 #login input,.password-field { min-height: 3rem; border: 1px solid #cbc8c0; border-radius: .55rem; background: #faf9f6; }
 .password-field { display: flex; align-items: center; }
 #login .password-field input { min-height: 2.9rem; border: 0; background: transparent; }
@@ -130,9 +133,14 @@ h1:focus, h2:focus { outline: none; }
 dialog { width: min(36rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); padding: clamp(1.15rem,3vw,2rem); border: 1px solid var(--line); border-radius: .85rem; color: inherit; }
 dialog::backdrop { background: rgb(37 32 23 / 37%); }
 .compose-head,.compose-foot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
-.compose-head h2,#password-title { margin: 0; font-size: 1.8rem; font-weight: 650; letter-spacing: -.06em; }
-#password-dialog { max-width: 27rem; }
+.compose-head h2,.account-dialog h2 { margin: 0; font-size: 1.8rem; font-weight: 650; letter-spacing: -.06em; }
+.account-dialog { max-width: 27rem; }
 .account-note { margin: .55rem 0 .45rem; font-size: .88rem; line-height: 1.5; color: var(--muted); }
+.recovery-help { margin-top: 1.15rem; padding-top: .8rem; border-top: 1px solid var(--line); }
+#recovery-verification .inline-action { text-align: left; justify-self: start; }
+#recovery-verification .account-note { overflow-wrap: anywhere; }
+#recovery-email:read-only { background: #f4f2ec; }
+#back-to-login { margin-top: .5rem; }
 #password-draft-note,#login-status { color: #634423; background: #faf2e8; padding: .55rem .7rem; border-radius: .35rem; }
 #draft textarea { min-height: 8rem; line-height: 1.55; resize: vertical; }
 .compose-foot { margin-top: 1rem; }
@@ -169,7 +177,7 @@ dialog::backdrop { background: rgb(37 32 23 / 37%); }
   .mailbox { flex: 1; border: 0; }
   .list-head { padding: 1.28rem var(--inset) 1rem; }
   .folder-summary { margin-bottom: .8rem; }
-  .search input, #login input, #draft input, #draft textarea, #password-form input { font-size: 1rem; }
+  .search input, #login input, #draft input, #draft textarea, .account-form input { font-size: 1rem; }
   .row-title { font-size: 1.02rem; }
   .row-snippet { font-size: .85rem; }
   .reader { display: none; padding: 1rem 1.15rem 2rem; }

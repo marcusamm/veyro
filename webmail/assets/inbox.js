@@ -59,13 +59,14 @@
   }
   async function api(path, options = {}) {
     const {body, signal, idempotencyKey, method = 'GET'} = options;
-    const current = session;
+    const anonymous = path === 'recovery/request';
+    const current = anonymous ? null : session;
     const headers = {Accept: 'application/json'};
     if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
-    if (method !== 'GET' && session) headers['X-CSRF-Token'] = session.csrfToken;
+    if (method !== 'GET' && current) headers['X-CSRF-Token'] = current.csrfToken;
     const response = await fetch('/api/' + path, {method, headers, signal, mode: 'same-origin',
-      credentials: 'same-origin', cache: 'no-store', body: body === undefined ? undefined : JSON.stringify(body)});
+      credentials: anonymous ? 'omit' : 'same-origin', cache: 'no-store', body: body === undefined ? undefined : JSON.stringify(body)});
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       if (response.status === 401 && current && session === current && path !== 'login') loggedOut('Din session er udløbet. Log ind igen.');
@@ -98,6 +99,8 @@
   function loggedOut(reason = '') {
     session = null;
     byId('account').open = false;
+    if (recoveryDialog.open) recoveryDialog.close();
+    recoveryForm.reset();
     if (byId('password-dialog').open) byId('password-dialog').close();
     byId('password-form').reset();
     document.body.classList.add('entry');
@@ -120,6 +123,7 @@
   function loggedIn(data) {
     if (!data.email || !data.csrfToken) throw new ApiError('Postkassen returnerede en ugyldig session.', 502);
     session = {email: data.email, csrfToken: data.csrfToken};
+    if (forgotDialog.open) forgotDialog.close();
     document.body.classList.remove('entry');
     byId('password').value = '';
     byId('address').textContent = data.email;
@@ -159,6 +163,13 @@
   const account = byId('account');
   const passwordDialog = byId('password-dialog');
   const passwordForm = byId('password-form');
+  const forgotDialog = byId('forgot-dialog');
+  const forgotForm = byId('forgot-form');
+  const recoveryDialog = byId('recovery-dialog');
+  const recoveryForm = byId('recovery-form');
+  const recoveryEmail = byId('recovery-email');
+  const recoveryCode = byId('recovery-code');
+  let forgotRequest, enrollmentRequest;
   document.addEventListener('click', event => {
     if (account.open && !account.contains(event.target)) account.open = false;
   });
@@ -169,6 +180,90 @@
   };
   account.onfocusout = event => {
     if (event.relatedTarget && !account.contains(event.relatedTarget)) account.open = false;
+  };
+  byId('forgot-password').onclick = () => {
+    forgotForm.reset(); setError('forgot-error');
+    forgotForm.hidden = false;
+    byId('forgot-result').hidden = true;
+    byId('forgot-hint').hidden = false;
+    byId('forgot-email').value = byId('email').value.trim();
+    forgotDialog.showModal(); byId('forgot-email').focus();
+  };
+  byId('cancel-forgot').onclick = byId('back-to-login').onclick = () => forgotDialog.close();
+  forgotDialog.onclose = () => {
+    forgotRequest?.abort(); forgotRequest = null;
+    forgotForm.reset(); byId('send-reset').disabled = false;
+    if (!session) byId('forgot-password').focus();
+  };
+  forgotForm.onsubmit = async event => {
+    event.preventDefault();
+    if (forgotRequest) return;
+    const request = forgotRequest = new AbortController();
+    byId('send-reset').disabled = true; setError('forgot-error');
+    try {
+      await api('recovery/request', {method: 'POST', signal: request.signal, body: {email: byId('forgot-email').value.trim()}});
+      if (!forgotDialog.open || request.signal.aborted) return;
+      forgotForm.hidden = byId('forgot-hint').hidden = true;
+      byId('forgot-result').hidden = false; byId('back-to-login').focus();
+    } catch (error) {
+      if (forgotDialog.open && !request.signal.aborted) setError('forgot-error', message(error));
+    } finally {
+      if (forgotRequest === request) { forgotRequest = null; byId('send-reset').disabled = false; }
+    }
+  };
+  function enrollmentStep(verify) {
+    byId('recovery-verification').hidden = !verify;
+    recoveryEmail.readOnly = verify;
+    recoveryCode.required = verify;
+    recoveryCode.disabled = !verify;
+    recoveryCode.value = '';
+    byId('recovery-instruction').textContent = verify ? 'Vi har sendt en kode til ' + recoveryEmail.value + '. Den er gyldig i 10 minutter.' : '';
+    byId('save-recovery').textContent = verify ? 'Bekræft adresse' : 'Send kode';
+  }
+  byId('open-recovery-settings').onclick = () => {
+    account.open = false; recoveryForm.reset();
+    byId('recovery-account').value = session.email;
+    enrollmentStep(false); setError('recovery-error');
+    recoveryDialog.showModal(); recoveryEmail.focus();
+  };
+  byId('restart-enrollment').onclick = () => {
+    if (!enrollmentRequest) { enrollmentStep(false); setError('recovery-error'); recoveryEmail.focus(); }
+  };
+  byId('cancel-recovery').onclick = () => recoveryDialog.close();
+  recoveryDialog.onclose = () => {
+    enrollmentRequest?.abort(); enrollmentRequest = null;
+    recoveryForm.reset(); enrollmentStep(false);
+    byId('save-recovery').disabled = false;
+    if (session) byId('account-toggle').focus();
+  };
+  recoveryForm.onsubmit = async event => {
+    event.preventDefault();
+    const current = session;
+    if (!current || enrollmentRequest) return;
+    const request = enrollmentRequest = new AbortController();
+    const verifying = !byId('recovery-verification').hidden;
+    const body = {email: recoveryEmail.value.trim(), currentPassword: byId('recovery-password').value};
+    if (verifying) body.code = recoveryCode.value.trim();
+    recoveryEmail.readOnly = true;
+    byId('save-recovery').disabled = true; setError('recovery-error');
+    try {
+      await api('recovery/enroll/' + (verifying ? 'confirm' : 'start'), {method: 'POST', body, signal: request.signal});
+      if (request.signal.aborted || session !== current || !recoveryDialog.open) return;
+      if (verifying) {
+        recoveryDialog.close();
+        notify('Gendannelsesmailen er bekræftet og gemt.');
+      } else {
+        enrollmentStep(true); recoveryCode.focus();
+      }
+    } catch (error) {
+      if (!request.signal.aborted && session === current && recoveryDialog.open) setError('recovery-error', message(error));
+    } finally {
+      if (enrollmentRequest === request) {
+        enrollmentRequest = null;
+        recoveryEmail.readOnly = !byId('recovery-verification').hidden;
+        byId('save-recovery').disabled = false;
+      }
+    }
   };
   byId('open-password').onclick = () => {
     account.open = false;

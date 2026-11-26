@@ -13,6 +13,10 @@ Medarbejdere bruger deres egen postkasseadgang. Browserens sessionscookie er mar
 
 For at skifte adgangskode skal medarbejderen vælge sin mailadresse øverst til højre og derefter **Skift adgangskode**. Mailcow kontrollerer den nuværende kode og kravene til den nye. Når skiftet er gennemført, skal medarbejderen logge ind igen på alle enheder i Veyros webmail.
 
+Under **Gendannelsesmail** i samme menu kan medarbejderen tilknytte en ekstern adresse. Indtast postkassens nuværende adgangskode og bekræft koden fra den eksterne indbakke. Brug en adresse, som du også kan åbne, hvis du mister adgangen til din Veyro-postkasse.
+
+Vælg **Glemt adgangskode?** på loginsiden, og indtast din Veyro-mailadresse. Mailcow sender et tidsbegrænset nulstillingslink til den tilknyttede gendannelsesmail. Følg linket til `post.veyro.dk`, vælg en ny adgangskode, og log ind på `mail.veyro.dk`. Hvis du er låst ude uden adgang til en tilknyttet gendannelsesmail, skal Veyros mailadministrator hjælpe dig.
+
 ## Maillevering
 
 MX gælder hele `@veyro.dk`. Før et aftalt skift skal virksomhedens postkasser, grupper og aliaser være klar til at modtage mail. Webmailen kan læse mail, der allerede ligger i Mailcow, og levere interne beskeder mellem postkasserne.

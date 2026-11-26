@@ -18,6 +18,7 @@
       <summary id="account-toggle"><span class="visually-hidden">Kontomenu for </span><span class="account-address" id="address"></span><span class="glyph" data-icon="down" aria-hidden="true"></span></summary>
       <div class="account-actions">
         <button type="button" id="open-password">Skift adgangskode</button>
+        <button type="button" id="open-recovery-settings">Gendannelsesmail</button>
         <button type="button" id="sign-out">Log ud</button>
       </div>
     </details>
@@ -33,7 +34,7 @@
           <p id="login-status" class="account-note" role="status" hidden></p>
           <label for="email">E-mailadresse</label>
           <input id="email" type="email" placeholder="E-mailadresse" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required>
-          <label for="password">Adgangskode</label>
+          <div class="password-label"><label for="password">Adgangskode</label><button id="forgot-password" type="button" class="inline-action">Glemt adgangskode?</button></div>
           <div class="password-field"><input id="password" type="password" placeholder="Adgangskode" autocomplete="current-password" required><button type="button" id="show-password" class="icon-button" aria-label="Vis adgangskode" title="Vis adgangskode" aria-pressed="false"><span class="glyph" data-icon="eye" aria-hidden="true"></span></button></div>
           <p id="login-error" class="error" role="alert" hidden></p>
           <button id="login-submit" type="submit" class="primary">Log ind</button>
@@ -65,8 +66,42 @@
       <div id="paper"></div>
     </section>
   </main>
-  <dialog id="password-dialog" aria-labelledby="password-title" aria-describedby="password-hint">
-    <form id="password-form" method="post">
+  <dialog id="forgot-dialog" class="account-dialog" aria-labelledby="forgot-title" aria-describedby="forgot-hint">
+    <h2 id="forgot-title">Glemt adgangskode?</h2>
+    <p id="forgot-hint" class="account-note">Vi sender et link til den eksterne gendannelsesmail, du tidligere har tilknyttet din postkasse.</p>
+    <form id="forgot-form" class="account-form" method="post">
+      <label for="forgot-email">Din Veyro-mailadresse</label>
+      <input id="forgot-email" name="username" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required>
+      <p id="forgot-error" class="error" role="alert" hidden></p>
+      <div class="compose-foot"><button type="button" id="cancel-forgot" class="secondary">Annuller</button><button type="submit" id="send-reset" class="primary">Send link</button></div>
+    </form>
+    <div id="forgot-result" hidden>
+      <p class="account-note" role="status">Hvis din konto har en gendannelsesmail, får du et link dér. Følg linket for at vælge en ny adgangskode, og log derefter ind her igen.</p>
+      <button type="button" id="back-to-login" class="secondary">Tilbage til login</button>
+    </div>
+    <p class="account-note recovery-help">Har du ingen gendannelsesmail, eller kan du ikke åbne den, så kontakt Veyros mailadministrator.</p>
+  </dialog>
+  <dialog id="recovery-dialog" class="account-dialog" aria-labelledby="recovery-title" aria-describedby="recovery-hint">
+    <h2 id="recovery-title">Gendannelsesmail</h2>
+    <p id="recovery-hint" class="account-note">Vælg en mailadresse, du kan åbne, hvis du bliver låst ude af Veyro Mail.</p>
+    <form id="recovery-form" class="account-form" method="post">
+      <input type="text" id="recovery-account" name="username" autocomplete="username" hidden>
+      <label for="recovery-email">Ekstern mailadresse</label>
+      <input id="recovery-email" name="recoveryEmail" type="email" inputmode="email" autocomplete="off" autocapitalize="none" spellcheck="false" required>
+      <label for="recovery-password">Nuværende adgangskode til Veyro Mail</label>
+      <input id="recovery-password" name="currentPassword" type="password" autocomplete="current-password" required>
+      <div id="recovery-verification" hidden>
+        <p id="recovery-instruction" class="account-note" role="status"></p>
+        <label for="recovery-code">Bekræftelseskode</label>
+        <input id="recovery-code" name="code" type="text" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" disabled>
+        <button type="button" id="restart-enrollment" class="inline-action">Vælg en anden adresse, eller få en ny kode</button>
+      </div>
+      <p id="recovery-error" class="error" role="alert" hidden></p>
+      <div class="compose-foot"><button type="button" id="cancel-recovery" class="secondary">Annuller</button><button type="submit" id="save-recovery" class="primary">Send kode</button></div>
+    </form>
+  </dialog>
+  <dialog id="password-dialog" class="account-dialog" aria-labelledby="password-title" aria-describedby="password-hint">
+    <form id="password-form" class="account-form" method="post">
       <h2 id="password-title">Skift adgangskode</h2>
       <p id="password-hint" class="account-note">Når du skifter adgangskoden, bliver du logget ud af webmail på alle enheder.</p>
       <p id="password-draft-note" class="account-note" hidden>Du har en usendt kladde i denne fane. Den kasseres, hvis du fortsætter.</p>

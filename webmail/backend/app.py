@@ -11,11 +11,14 @@ import smtplib
 import threading
 import time
 from collections import deque
+from contextlib import contextmanager
 from pathlib import Path
+from queue import Full, Queue
 
 from cryptography.fernet import Fernet
 from flask import Flask, g, jsonify, request, send_file
 from imapclient.exceptions import IMAPClientAbortError, LoginError
+import pymysql
 from werkzeug.exceptions import HTTPException
 
 import account
@@ -27,6 +30,8 @@ app.config["MAX_CONTENT_LENGTH"] = 256 * 1024
 ORIGIN = os.environ["WEBMAIL_ORIGIN"]
 STAFF = {address.strip().lower() for address in os.environ["WEBMAIL_STAFF"].split(",") if address.strip()}
 ACCOUNT_LOCKS = {address: threading.Lock() for address in STAFF}
+RECOVERY_REQUESTS = Queue(maxsize=16)
+RECOVERY_KEY = secrets.token_bytes(32)
 COOKIE = "__Host-veyro_session"
 KEY = Fernet(Fernet.generate_key())
 SESSIONS = {}
@@ -39,7 +44,7 @@ log = logging.getLogger("gunicorn.error")
 
 
 class Session:
-    def __init__(self, address, password, client):
+    def __init__(self, address, password, client, generation):
         self.email = address
         self.secret = KEY.encrypt(password.encode())
         self.csrf = secrets.token_urlsafe(32)
@@ -48,6 +53,8 @@ class Session:
         self.lock = threading.Lock()
         self.folders = None
         self.folder_time = 0
+        self.generation = generation
+        self.recovery = None
 
     def close(self):
         if self.client:
@@ -121,6 +128,27 @@ def safe_equal(a, b):
     return isinstance(a, str) and isinstance(b, str) and hmac.compare_digest(a.encode(), b.encode())
 
 
+def credential_version(address):
+    # The dedicated SQL user has SELECT on one restricted generation view only.
+    try:
+        config = json.loads(Path("/run/veyro/credential-version.json").read_text())
+        if config["host"] != "127.0.0.1":
+            raise ValueError("Expected loopback database")
+        with pymysql.connect(host=config["host"], port=int(config["port"]), user=config["user"],
+                             password=config["password"], database=config["database"],
+                             connect_timeout=3, read_timeout=3, write_timeout=3) as db:
+            with db.cursor() as cursor:
+                cursor.execute("SELECT version FROM veyro_webmail_credential_version WHERE username=%s", (address,))
+                row = cursor.fetchone()
+        if row is None:
+            return None
+        if not isinstance(row[0], str) or not re.fullmatch(r"[0-9a-fA-F]{64}", row[0]):
+            raise ValueError("Invalid credential version")
+        return row[0]
+    except (pymysql.MySQLError, OSError, ValueError, KeyError, TypeError):
+        raise MailError("Mailserveren kunne ikke kontrollere din konto. Prøv igen.", 503) from None
+
+
 @app.before_request
 def gateway():
     token = Path("/run/veyro/origin-token").read_text().strip()
@@ -133,9 +161,10 @@ def gateway():
     if request.method == "POST":
         if request.headers.get("Origin") != ORIGIN:
             raise MailError("Adgang afvist.", 403)
-        if request.path in {"/api/send", "/api/login", "/api/password"} and not request.is_json:
+        if (request.path in {"/api/send", "/api/login", "/api/password"} or
+                request.path.startswith("/api/recovery/")) and not request.is_json:
             raise MailError("Der kræves JSON.", 415)
-    if request.path == "/api/login":
+    if request.path in {"/api/login", "/api/recovery/request"}:
         return
     sid = request.cookies.get(COOKIE, "")
     now = time.monotonic()
@@ -146,6 +175,14 @@ def gateway():
         if request.method == "POST" and not safe_equal(request.headers.get("X-CSRF-Token"), current.csrf):
             raise MailError("Sikkerhedskontrollen mislykkedes.", 403)
         current.touched = now
+    if current.generation != credential_version(current.email):
+        with TABLE:
+            SESSIONS.pop(sid, None)
+        with current.lock:
+            current.close()
+            current.secret = b""
+            current.recovery = None
+        raise MailError("Adgangskoden er ændret. Log ind igen.", 401)
     g.session = current
     g.sid = sid
 
@@ -186,6 +223,137 @@ def public_session(s):
     return dict(email=s.email, csrfToken=s.csrf)
 
 
+def recovery_address(value):
+    if not isinstance(value, str):
+        raise MailError("Skriv en gyldig mailadresse.", 422)
+    value = value.strip()
+    local, separator, domain = value.rpartition("@")
+    atom = r"[A-Za-z0-9!#$%&'*+/=?^_\x60{|}~-]+"
+    label = r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+    if (not separator or len(value) > 254 or len(local) > 64 or
+            not re.fullmatch(atom + r"(?:\." + atom + ")*", local) or
+            not re.fullmatch(label + r"(?:\." + label + ")+", domain)):
+        raise MailError("Skriv en gyldig mailadresse.", 422)
+    return local + "@" + domain.lower()
+
+
+def dispatch_resets():
+    while True:
+        address = RECOVERY_REQUESTS.get()
+        try:
+            account.request_reset(address)
+        except Exception as exc:
+            log.error("Mailcow recovery request unavailable (%s)", type(exc).__name__)
+        finally:
+            RECOVERY_REQUESTS.task_done()
+
+
+threading.Thread(target=dispatch_resets, daemon=True).start()
+
+
+@app.post("/api/recovery/request")
+def request_recovery():
+    throttle(("recovery-request-ip", g.ip), 10, 900)
+    data = payload()
+    if set(data) != {"email"}:
+        raise MailError("Skriv din Veyro-mailadresse.")
+    address = recovery_address(data["email"]).lower()
+    if address in STAFF:
+        # The public reply must also be identical when an address has no recovery
+        # address or its per-account limit has been reached. SMTP runs off-request.
+        try:
+            throttle(("recovery-request", address), 3, 900)
+            RECOVERY_REQUESTS.put_nowait(address)
+        except (MailError, Full):
+            pass
+    return jsonify(ok=True), 202
+
+
+@contextmanager
+def enrollment(data):
+    session = g.session
+    destination = recovery_address(data.get("email"))
+    if destination.rpartition("@")[2] in {address.rpartition("@")[2] for address in STAFF}:
+        raise MailError("Brug en ekstern mailadresse, som du også kan åbne uden adgang til Veyro Mail.", 422)
+    password = data.get("currentPassword")
+    if not isinstance(password, str) or not 1 <= len(password) <= 1024 or any(c in password for c in "\0\r\n"):
+        raise MailError("Indtast din nuværende adgangskode.", 403)
+    try:
+        password.encode("utf-8")
+    except UnicodeEncodeError:
+        raise MailError("Adgangskoden kunne ikke læses.", 422) from None
+    with ACCOUNT_LOCKS[session.email], session.lock:
+        with TABLE:
+            if SESSIONS.get(g.sid) is not session:
+                raise MailError("Log ind igen.", 401)
+        if not safe_equal(password, session.password()):
+            raise MailError("Den nuværende adgangskode er forkert.", 403)
+        yield session, destination, password
+
+
+def recovery_digest(sid, destination, code):
+    return hmac.digest(RECOVERY_KEY, "\0".join((sid, destination, code)).encode(), "sha256")
+
+
+def clear_enrollments(address):
+    # Called under this account's lock, which also protects its pending proofs.
+    with TABLE:
+        for session in SESSIONS.values():
+            if session.email == address:
+                session.recovery = None
+
+
+@app.post("/api/recovery/enroll/start")
+def start_recovery_enrollment():
+    throttle(("recovery-start", g.session.email), 5, 900)
+    throttle(("recovery-start-ip", g.ip), 10, 900)
+    data = payload()
+    if set(data) != {"email", "currentPassword"}:
+        raise MailError("Skriv din eksterne mailadresse og nuværende adgangskode.")
+    with enrollment(data) as (session, destination, password):
+        with account.Portal() as portal:
+            page = portal.identify(session.email, password)
+            if 'href="#pwRecoveryEmailModal"' not in page:
+                raise MailError("Gendannelsesmail er ikke tilgængelig for denne konto. Kontakt administratoren.", 403)
+        code = secrets.token_hex(6).upper()
+        try:
+            account.send_recovery_code(session.email, password, destination, code)
+        except (OSError, smtplib.SMTPException):
+            raise MailError("Bekræftelsesmailen kunne ikke afsendes. Kontrollér adressen, og prøv igen.", 502) from None
+        clear_enrollments(session.email)
+        session.recovery = {"digest": recovery_digest(g.sid, destination, code),
+                            "expires": time.monotonic() + 600, "attempts": 5}
+    return jsonify(ok=True)
+
+
+@app.post("/api/recovery/enroll/confirm")
+def confirm_recovery_enrollment():
+    throttle(("recovery-confirm-ip", g.ip), 24, 900)
+    throttle(("recovery-confirm", g.session.email), 15, 900)
+    data = payload()
+    if set(data) != {"email", "currentPassword", "code"} or not isinstance(data.get("code"), str):
+        raise MailError("Skriv bekræftelseskoden fra din mail.")
+    code = re.sub(r"[\s-]", "", data["code"]).upper()
+    with enrollment(data) as (session, destination, password):
+        challenge = session.recovery
+        if not challenge or challenge["expires"] <= time.monotonic():
+            session.recovery = None
+            raise MailError("Koden er udløbet, eller der er ingen aktiv kode. Bed om en ny.", 422)
+        challenge["attempts"] -= 1
+        if not re.fullmatch(r"[0-9A-F]{12}", code) or not hmac.compare_digest(
+                challenge["digest"], recovery_digest(g.sid, destination, code)):
+            if not challenge["attempts"]:
+                session.recovery = None
+            raise MailError("Koden er forkert. Kontrollér koden, eller bed om en ny.", 422)
+        # Consume the proof even if Mailcow commits the change and the response is lost.
+        session.recovery = None
+        with account.Portal() as portal:
+            portal.identify(session.email, password)
+            portal.set_recovery_address(session.email, password, destination)
+        clear_enrollments(session.email)
+    return jsonify(ok=True)
+
+
 @app.post("/api/login")
 def login():
     throttle(("ip", g.ip), 12, 300)
@@ -203,11 +371,20 @@ def login():
 
 
 def start_session(address, password):
+    generation = credential_version(address)
+    if not generation:
+        raise MailError("Mailadresse eller adgangskode er forkert.", 401)
     try:
         client = mailstore.connect(address, password)
     except LoginError:
         raise MailError("Mailadresse eller adgangskode er forkert.", 401) from None
-    current = Session(address, password, client)
+    try:
+        if generation != credential_version(address):
+            raise MailError("Adgangskoden er ændret. Log ind igen.", 401)
+    except Exception:
+        client.shutdown()
+        raise
+    current = Session(address, password, client, generation)
     sid = secrets.token_urlsafe(36)
     purge()
     with TABLE:

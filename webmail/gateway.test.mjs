@@ -183,6 +183,53 @@ describe('Veyro Mail gateway', () => {
     expect(await sent.text()).toBe(body);
   });
 
+  it('accepts anonymous recovery requests from the login site without forwarding session details', async () => {
+    const { fetch } = setup();
+    const upstream = mockBackend(Response.json({ ok: true }, { status: 202, headers: {
+      'Set-Cookie': '__Host-veyro_session=unexpected; Path=/; Secure',
+    } }));
+    const path = '/api/recovery/request';
+    const headers = { Origin: publicOrigin, 'Content-Type': 'application/json' };
+    const body = JSON.stringify({ email: 'user@example.test' });
+    expect((await fetch(path)).status).toBe(405);
+    for (const invalid of [{ ...headers, Origin: 'https://other.invalid' }, { ...headers, 'Content-Type': 'text/plain' }]) {
+      expect((await fetch(path, { method: 'POST', headers: invalid, body })).status).toBe(invalid.Origin === publicOrigin ? 415 : 403);
+    }
+    expect(upstream).not.toHaveBeenCalled();
+    const result = await fetch(path + '?unused=yes', { method: 'POST', headers: {
+      ...headers, Cookie: '__Host-veyro_session=' + sessionValue, 'X-CSRF-Token': csrfToken,
+    }, body });
+    expect(result.status).toBe(202);
+    expect(await result.json()).toEqual({ ok: true });
+    expect(result.headers.has('Set-Cookie')).toBe(false);
+    expect(result.headers.get('Cache-Control')).toContain('no-store');
+    const [url, init] = upstream.mock.calls[0];
+    expect(url).toBe(backendOrigin + '/webmail-api' + path);
+    expect(init.headers.has('Cookie')).toBe(false);
+    expect(init.headers.has('X-CSRF-Token')).toBe(false);
+    expect(init.headers.get('X-Veyro-Origin-Token')).toBe(originToken);
+    expect(await new Response(init.body).text()).toBe(body);
+  });
+
+  it.each(['start', 'confirm'])('protects recovery address enrollment (%s) with a signed-in session and CSRF', async step => {
+    const { fetch } = setup();
+    const upstream = mockBackend(Response.json({ ok: true }));
+    const path = '/api/recovery/enroll/' + step;
+    const headers = { Origin: publicOrigin, 'Content-Type': 'application/json' };
+    const post = extra => fetch(path, { method: 'POST', headers: { ...headers, ...extra }, body: '{}' });
+    const cookie = { Cookie: '__Host-veyro_session=' + sessionValue };
+    expect((await fetch(path)).status).toBe(405);
+    expect((await post({ 'X-CSRF-Token': csrfToken })).status).toBe(401);
+    expect((await post(cookie)).status).toBe(403);
+    expect((await post({ ...cookie, Origin: 'https://other.invalid', 'X-CSRF-Token': csrfToken })).status).toBe(403);
+    expect(upstream).not.toHaveBeenCalled();
+    expect((await post({ ...cookie, 'X-CSRF-Token': csrfToken })).status).toBe(200);
+    const [url, init] = upstream.mock.calls[0];
+    expect(url).toBe(backendOrigin + '/webmail-api' + path);
+    expect(init.headers.get('Cookie')).toBe(cookie.Cookie);
+    expect(init.headers.get('X-CSRF-Token')).toBe(csrfToken);
+  });
+
   it('limits reads to message and MIME part identifiers and serves attachments as downloads', async () => {
     const { fetch } = setup();
     const data = new Uint8Array([31, 139, 8]);

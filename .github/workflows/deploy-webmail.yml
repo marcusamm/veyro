@@ -49,7 +49,10 @@ jobs:
             fi
             [[ "$result" == 200 ]] && grep -Fq '<title>Veyro Mail</title>' "$page" && grep -Fq 'src="/inbox.js"' "$page" || return 1
             grep -Fq 'id="password-form"' "$page" || return 1
+            grep -Fq 'id="forgot-password"' "$page" && grep -Fq 'id="recovery-form"' "$page" || return 1
             result=$("${fetch[@]}" -o /dev/null -w '%{http_code}' "$base/api/password") || return 1
+            [[ "$result" == 405 ]] || return 1
+            result=$("${fetch[@]}" -o /dev/null -w '%{http_code}' "$base/api/recovery/request") || return 1
             [[ "$result" == 405 ]] || return 1
             for path in /forhaandsvisning /forhaandsvisning/ /SOGo/ /SOGo/so/; do
               result=$("${fetch[@]}" -o "$page" -w '%{http_code} %{redirect_url}' "$base$path") || return 1

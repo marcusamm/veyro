@@ -9,7 +9,9 @@ const staticFiles = new Map([
 ]);
 const policy = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
 const readApi = /^\/api\/(?:session|folders|messages(?:\/[0-9]{1,10}\.[0-9]{1,10}(?:\/attachments\/[1-9][0-9]*(?:\.[1-9][0-9]*)*)?)?)$/;
-const writeApi = new Set(['/api/login', '/api/logout', '/api/password', '/api/send']);
+const recoveryRequest = '/api/recovery/request';
+const accountWrites = new Set(['/api/password', '/api/recovery/enroll/start', '/api/recovery/enroll/confirm']);
+const writeApi = new Set(['/api/login', '/api/logout', '/api/send', recoveryRequest, ...accountWrites]);
 const sessionName = '__Host-veyro_session';
 const maxBody = 256 * 1024;
 
@@ -63,14 +65,14 @@ async function proxy(req: Request, env: Env, url: URL, write: boolean) {
   const ip = req.headers.get('CF-Connecting-IP');
   if (ip && /^[0-9a-f:.]{2,45}$/i.test(ip)) headers.set('X-Veyro-Client-IP', ip);
   const session = (req.headers.get('Cookie') || '').split(';').map(c => c.trim()).find(c => c.startsWith(sessionName + '='));
-  if (session && /^[A-Za-z0-9_-]{1,256}$/.test(session.slice(sessionName.length + 1))) headers.set('Cookie', session);
+  if (url.pathname !== recoveryRequest && session && /^[A-Za-z0-9_-]{1,256}$/.test(session.slice(sessionName.length + 1))) headers.set('Cookie', session);
 
   if (write) {
     if (req.headers.get('Origin') !== webOrigin) return apiError(req, 'Ugyldig oprindelse.', 403);
     if (req.headers.get('Content-Type')?.split(';')[0]?.trim().toLowerCase() !== 'application/json') return apiError(req, 'Send data som JSON.', 415);
     if (Number(req.headers.get('Content-Length')) > maxBody) return apiError(req, 'Beskeden er for stor.', 413);
-    if (url.pathname === '/api/password' && !headers.has('Cookie')) return apiError(req, 'Log ind igen.', 401);
-    if (url.pathname !== '/api/login') {
+    if (accountWrites.has(url.pathname) && !headers.has('Cookie')) return apiError(req, 'Log ind igen.', 401);
+    if (url.pathname !== '/api/login' && url.pathname !== recoveryRequest) {
       const csrf = req.headers.get('X-CSRF-Token');
       if (!csrf || csrf.length > 256) return apiError(req, 'Log ind igen.', 403);
       headers.set('X-CSRF-Token', csrf);
@@ -103,7 +105,7 @@ async function proxy(req: Request, env: Env, url: URL, write: boolean) {
       out.set('Content-Security-Policy', "default-src 'none'; sandbox");
     }
     const cookie = upstream.headers.get('Set-Cookie');
-    if (cookie?.startsWith(sessionName + '=') && !/[,;]\s*domain=/i.test(cookie)) out.set('Set-Cookie', cookie);
+    if (url.pathname !== recoveryRequest && cookie?.startsWith(sessionName + '=') && !/[,;]\s*domain=/i.test(cookie)) out.set('Set-Cookie', cookie);
     const retryAfter = upstream.headers.get('Retry-After');
     if (retryAfter && /^\d{1,6}$/.test(retryAfter)) out.set('Retry-After', retryAfter);
     return new Response(upstream.body, { status: upstream.status, headers: out });
