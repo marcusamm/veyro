@@ -1,0 +1,32 @@
+name: Klargør mailserverens DNS-navn
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'webmail/provision-mail-host.mjs'
+      - '.github/workflows/prepare-mail-host.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veyro-post-dns
+  cancel-in-progress: false
+
+jobs:
+  provision:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Kontrollér og opret post.veyro.dk
+        run: node webmail/provision-mail-host.mjs
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
