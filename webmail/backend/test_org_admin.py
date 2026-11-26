@@ -60,7 +60,8 @@ class TenantManagement(unittest.TestCase):
             return [{"type": "success", "msg": ["mailbox_added", addr]}]
         if path == "edit/mailbox":
             addr = data["items"][0]
-            self.db["get/mailbox/" + addr]["active_int"] = data["attr"]["active"]
+            if "active" in data["attr"]:
+                self.db["get/mailbox/" + addr]["active_int"] = data["attr"]["active"]
             return [{"type": "success", "msg": ["mailbox_modified", addr]}]
         self.fail("Unexpected native path")
 
@@ -179,6 +180,68 @@ class TenantManagement(unittest.TestCase):
         self.db["get/domain/aliased.dk"] = org(self.domain)
         with self.assertRaises(MailError):
             admin.domain_dns("aliased.dk")
+
+    def test_password_reset_preserves_native_fields_and_accepts_existing_punctuation(self):
+        address = "accounts!payable@" + self.domain
+        self.db["get/mailbox/" + address.replace("!", "%21")] = box(address, attributes={"attribute_hash": "saved"})
+        result = admin.reset_password(self.domain, address, "initial-test-value")
+        self.assertEqual(result["address"], address)
+        self.assertEqual(self.writes, [("edit/mailbox", {"items": [address], "attr": {
+            "password": "initial-test-value", "password2": "initial-test-value", "attribute_hash": "saved",
+        }})])
+        self.assertNotIn("initial-test-value", str(result))
+        for value in ["{SHA512}hash", "line\nbreak", "0", "x"*73, "\ud800", "x\0", "x\ry"]:
+            with self.subTest(value=value), self.assertRaises(MailError):
+                admin.reset_password(self.domain, address, value)
+        self.assertEqual(len(self.writes), 1)
+
+
+class GrantRegistry(unittest.TestCase):
+    def setUp(self):
+        self.config = {"host": "127.0.0.1", "port": 13306, "user": "veyro_org_roles",
+                       "database": "mailcow", "password": "private-db-value"}
+        secret = Mock()
+        secret.read_text.side_effect = lambda *_: json.dumps(self.config)
+        patcher = patch.object(admin, "ROLE_CONFIG", new=secret)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        patcher = patch.object(admin.pymysql, "connect")
+        self.connect = patcher.start()
+        self.addCleanup(patcher.stop)
+        self.cursor = self.connect.return_value.__enter__.return_value.cursor.return_value.__enter__.return_value
+
+    def test_exact_row_identity_and_parameterized_lookup(self):
+        address = "real+staff@client.dk"
+        self.cursor.description = ("mailbox",)
+        self.cursor.fetchall.return_value = (("other@client.dk",),)
+        self.assertFalse(admin.has_role(address))
+        query, args = self.cursor.execute.call_args.args
+        self.assertNotIn(address, query)
+        self.assertEqual(args, (address,))
+        self.cursor.fetchall.return_value = ((address,),)
+        self.assertTrue(admin.has_role(address))
+
+    def test_readback_required_and_only_duplicate_insert_is_retryable(self):
+        address = "retry@client.dk"
+        self.cursor.description = ("mailbox",)
+        self.cursor.fetchall.return_value = ((address,),)
+        self.cursor.execute.side_effect = [admin.pymysql.IntegrityError(1062, "duplicate"), None]
+        admin._change_role(address, True)
+        self.cursor.execute.side_effect = admin.pymysql.OperationalError(1644, "private trigger message")
+        with self.assertRaises(MailError) as rejected:
+            admin._change_role(address, True)
+        self.assertEqual(rejected.exception.status, 409)
+        self.assertNotIn("private trigger message", rejected.exception.message)
+        self.cursor.execute.side_effect = None
+        with self.assertRaises(MailError) as stale:
+            admin._change_role(address, False)
+        self.assertEqual(stale.exception.status, 503)
+
+    def test_nonlocal_or_alternate_principal_cannot_open_a_connection(self):
+        for field, value in [("host", "external.dk"), ("user", "root"), ("port", "3306")]:
+            with self.subTest(field=field), patch.dict(self.config, {field: value}), self.assertRaises(MailError):
+                admin.has_role("user@client.dk")
+        self.connect.assert_not_called()
 
 
 if __name__ == "__main__":

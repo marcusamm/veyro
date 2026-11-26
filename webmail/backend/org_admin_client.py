@@ -20,11 +20,12 @@ class DomainProofRequired(MailError):
         self.challenge = challenge
 
 
-def call(path, data):
+def call(path, data, *, actor):
     # Path is a constant supplied by the endpoint, never an URL from the browser.
     connection = BrokerConnection("localhost", timeout=25)
     try:
-        connection.request("POST", path, json.dumps(data).encode(), {"Content-Type": "application/json"})
+        connection.request("POST", path, json.dumps(data).encode(),
+                           {"Content-Type": "application/json", "X-Veyro-Actor": actor})
         response = connection.getresponse()
         raw = response.read(2_097_153)
         if len(raw) > 2_097_152:

@@ -23,7 +23,7 @@
       <nav class="organizations" aria-labelledby="org-heading">
         <div class="org-header"><h2 id="org-heading">Organisationer</h2></div>
         <ul class="org-list" id="org-list"></ul>
-        <button class="add-org" id="open-organization" type="button"><span aria-hidden="true">+</span> Tilføj organisation</button>
+        <button class="add-org" id="open-organization" type="button" hidden><span aria-hidden="true">+</span> Tilføj organisation</button>
       </nav>
       <section class="detail" aria-labelledby="org-name">
         <div class="detail-heading">
@@ -71,6 +71,10 @@
         <label>Navn<input name="mailboxName" maxlength="80" required></label>
         <label>Mailadresse<span class="address-input"><input name="localPart" placeholder="fornavn" maxlength="64" required autocapitalize="none" spellcheck="false" aria-label="Første del af mailadressen"><span id="domain-suffix"></span></span></label>
         <label>Postkassens startadgangskode<input name="initialPassword" type="password" autocomplete="new-password" required></label>
+      </fieldset>
+      <fieldset id="reset-fields" hidden disabled>
+        <label>Ny adgangskode til medarbejderen<input name="newPassword" type="password" autocomplete="new-password" required></label>
+        <label>Gentag den nye adgangskode<input name="repeatPassword" type="password" autocomplete="new-password" required></label>
       </fieldset>
       <label class="confirm-password">Din adgangskode til Veyro Mail<input name="currentPassword" type="password" autocomplete="current-password" required></label>
       <p id="form-error" role="alert" hidden></p>

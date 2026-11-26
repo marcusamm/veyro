@@ -20,4 +20,5 @@ systemctl daemon-reload
 systemctl enable --now veyro-webmail-trust.path
 python3 configure-recovery.py
 python3 configure-org-broker.py
+python3 configure-recovery.py --configure-org-roles
 docker compose up -d --build
