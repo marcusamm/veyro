@@ -77,7 +77,9 @@
     if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     if (method !== 'GET' && current) headers['X-CSRF-Token'] = current.csrfToken;
+    // Send the site's Origin on writes even when the login page suppresses referrers.
     const response = await fetch('/api/' + path, {method, headers, signal, mode: 'same-origin',
+      referrerPolicy: method === 'POST' ? 'strict-origin' : undefined, redirect: 'error',
       credentials: anonymous ? 'omit' : 'same-origin', cache: 'no-store', body: body === undefined ? undefined : JSON.stringify(body)});
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
