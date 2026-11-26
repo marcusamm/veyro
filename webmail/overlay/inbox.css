@@ -1,0 +1,280 @@
+@font-face {
+  font-family: "Veyro Manrope";
+  src: url("/veyro-mail/manrope.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+/* These are SOGo's four authenticated module views and its native composer. */
+main:is([ui-view="mailboxes"], [ui-view="calendars"], [ui-view="addressbooks"], [ui-view="preferences"]),
+#detailView[ui-view="message"],
+#mailEditor.sg-mail-editor {
+  --vm-type: "Veyro Manrope", system-ui, sans-serif;
+  --vm-ink: #201f1a;
+  --vm-muted: #68665e;
+  --vm-line: #dfded8;
+  --vm-paper: #faf9f6;
+  --vm-rail: #f4f2ec;
+  --vm-selected: #f9f0e7;
+  --vm-orange: #e75a22;
+  --vm-rust: #98390f;
+}
+
+main:is([ui-view="mailboxes"], [ui-view="calendars"], [ui-view="addressbooks"]) md-toolbar.toolbar-main,
+main[ui-view="preferences"] md-toolbar.md-tall:has(> .sg-toolbar-group-1) {
+  background: var(--vm-paper) !important;
+  color: var(--vm-ink) !important;
+  border-bottom: 1px solid var(--vm-line);
+  box-shadow: none;
+  font-family: var(--vm-type);
+}
+
+main[ui-view] md-toolbar > .sg-toolbar-group-1::before {
+  content: "";
+  flex: 0 0 clamp(115px, 10vw, 158px);
+  height: 36px;
+  margin-inline: 2px 12px;
+  background: url("/veyro-mail/logo.svg") left center / contain no-repeat;
+}
+
+main[ui-view] md-toolbar > .sg-toolbar-group-1 .sg-date-group,
+main[ui-view] md-toolbar > .sg-toolbar-group-1 .sg-date-today {
+  color: var(--vm-muted);
+}
+
+main[ui-view] md-toolbar > :is(.sg-toolbar-group-1, .sg-toolbar-group-last) .md-button:not([disabled]) md-icon,
+main[ui-view="mailboxes"] md-sidenav .md-icon-button:not([disabled]) md-icon,
+main[ui-view="mailboxes"] .view-list > md-toolbar .sg-icon-button md-icon {
+  color: #504d45 !important;
+}
+
+main[ui-view] md-toolbar > .sg-toolbar-group-last .md-button[disabled] md-icon {
+  color: var(--vm-rust) !important;
+}
+
+main[ui-view="mailboxes"] md-sidenav.md-sidenav-left {
+  border-inline-end: 1px solid var(--vm-line);
+  background: var(--vm-rail);
+  box-shadow: none;
+}
+
+main[ui-view="mailboxes"] md-sidenav > md-content,
+main[ui-view="mailboxes"] md-sidenav > md-toolbar {
+  background: var(--vm-rail) !important;
+  color: var(--vm-ink) !important;
+  font-family: var(--vm-type);
+}
+
+main[ui-view="mailboxes"] md-sidenav > md-toolbar {
+  border-bottom: 1px solid var(--vm-line);
+  padding-inline: 18px;
+}
+
+main[ui-view="mailboxes"] md-sidenav > md-toolbar .sg-md-title {
+  letter-spacing: -.035em;
+  font-weight: 700;
+}
+
+main[ui-view="mailboxes"] md-sidenav > md-toolbar .md-caption,
+main[ui-view="mailboxes"] .sg-account-section .sg-quota .sg-md-caption:not(.md-warn) {
+  color: var(--vm-muted) !important;
+}
+
+main[ui-view="mailboxes"] .sg-account-section .sg-mailbox-list-item {
+  margin-inline: 6px;
+  border-radius: 6px;
+  font-family: var(--vm-type);
+  color: #514f47;
+}
+
+main[ui-view="mailboxes"] .sg-account-section .sg-mailbox-list-item.sg-selected {
+  background: #e7e3d9 !important;
+  color: var(--vm-ink) !important;
+  font-weight: 700;
+}
+
+main[ui-view="mailboxes"] .sg-mailbox-list-item.sg-selected .sg-item-name md-icon {
+  color: var(--vm-rust) !important;
+}
+
+main[ui-view="mailboxes"] .view-list {
+  border-inline-end: 1px solid var(--vm-line);
+  background: white;
+}
+
+main[ui-view="mailboxes"] .view-list > md-toolbar {
+  border-bottom: 1px solid var(--vm-line);
+  background: white !important;
+  color: var(--vm-ink) !important;
+  font-family: var(--vm-type);
+  box-shadow: none;
+}
+
+main[ui-view="mailboxes"] .view-list .sg-folder-name {
+  color: var(--vm-ink) !important;
+  font: 670 clamp(20px, 2vw, 30px)/1.15 var(--vm-type);
+  letter-spacing: -.055em;
+}
+
+main[ui-view="mailboxes"] #messagesList {
+  background: white;
+  font-family: var(--vm-type);
+  color: var(--vm-ink);
+}
+
+/* SOGo's virtual repeater measures fixed 56px messages and 40px folders. */
+#messagesList .sg-message-list-item {
+  box-shadow: inset 0 -1px var(--vm-line);
+}
+
+#messagesList .sg-message-list-item.unread:not(.sg-skeleton) .sg-md-subhead,
+#messagesList .sg-message-list-item.unread:not(.sg-skeleton) .sg-md-body {
+  font-weight: 720;
+}
+
+#messagesList .sg-message-list-item.unread:not(.sg-skeleton) .sg-tile-date {
+  color: var(--vm-rust);
+  font-weight: 680;
+}
+
+#messagesList .sg-message-list-item.md-accent.md-bg.md-hue-2 {
+  background: var(--vm-selected) !important;
+  color: var(--vm-ink) !important;
+  box-shadow: inset 3px 0 var(--vm-orange), inset 0 -1px var(--vm-line);
+}
+
+main[ui-view="mailboxes"] .sg-fab-bottom-center .md-fab:not([disabled]),
+main[ui-view="mailboxes"] .md-fab.sg-fab-bottom-center:not([disabled]) {
+  background: #ff743f !important;
+  color: #282118 !important;
+}
+
+main[ui-view="mailboxes"] .sg-fab-bottom-center .md-fab:not([disabled]) md-icon,
+main[ui-view="mailboxes"] .md-fab.sg-fab-bottom-center:not([disabled]) md-icon {
+  color: #282118 !important;
+}
+
+/* Only the reader's shell and native metadata; email content retains its own CSS. */
+#detailView[ui-view="message"],
+main[ui-view="mailboxes"] #detailView > md-content {
+  background: white !important;
+}
+
+#detailView[ui-view="message"] > md-content > .sg-md-title {
+  font: 550 18px/1.5 var(--vm-type);
+  color: var(--vm-muted) !important;
+}
+
+#detailView[ui-view="message"] > .sg-reversible > .sg-face > md-card {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#detailView .sg-face > md-card > md-card-actions {
+  border-bottom: 1px solid var(--vm-line);
+  background: white;
+}
+
+#detailView .sg-face > md-card > md-card-actions .md-icon-button:not([disabled]) md-icon {
+  color: #504d45 !important;
+}
+
+#detailView .sg-face > md-card > md-card-content > .sg-padded > .sg-md-headline {
+  margin-block: .55em .3em;
+  font: 630 clamp(27px, 3.2vw, 54px)/1.12 var(--vm-type);
+  letter-spacing: -.055em;
+  color: var(--vm-ink);
+  overflow-wrap: anywhere;
+}
+
+#detailView .sg-face > md-card > md-card-content > .sg-padded > .msg-date {
+  font: 500 13px/1.5 var(--vm-type);
+  color: var(--vm-muted);
+}
+
+#detailView .sg-face > md-card > md-card-content > [layout-wrap] {
+  font-family: var(--vm-type);
+}
+
+main[ui-view="mailboxes"] :is(md-sidenav, .toolbar-main, .view-list) :is(button, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--vm-rust);
+  outline-offset: -2px;
+}
+
+/* Compose and reply share this dialog, including SOGo's separate compose window. */
+#mailEditor.sg-mail-editor {
+  border: 1px solid var(--vm-line);
+  border-radius: 10px;
+  background: white;
+}
+
+#mailEditor.sg-mail-editor > form > md-toolbar {
+  border-bottom: 1px solid var(--vm-line);
+  background: var(--vm-paper) !important;
+  color: var(--vm-ink) !important;
+  font-family: var(--vm-type);
+}
+
+#mailEditor.sg-mail-editor md-toolbar .md-toolbar-tools > md-autocomplete {
+  background: white !important;
+  color: var(--vm-ink) !important;
+  border-radius: 5px;
+}
+
+#mailEditor.sg-mail-editor md-toolbar .md-toolbar-tools > md-autocomplete input {
+  font-family: var(--vm-type);
+  color: var(--vm-ink) !important;
+}
+
+#mailEditor.sg-mail-editor md-toolbar .md-toolbar-tools > .md-button:not([disabled]) md-icon {
+  color: #504d45 !important;
+}
+
+#mailEditor.sg-mail-editor md-toolbar .md-toolbar-tools > .md-button[disabled] md-icon {
+  color: #928f85 !important;
+}
+
+#mailEditor.sg-mail-editor md-toolbar .md-toolbar-tools > .md-button[ng-click="editor.send()"]:not([disabled]) {
+  border-radius: 6px;
+  background: #ff743f !important;
+}
+
+#mailEditor.sg-mail-editor md-toolbar .md-toolbar-tools > .md-button[ng-click="editor.send()"]:not([disabled]) md-icon {
+  color: #282118 !important;
+}
+
+#mailEditor.sg-mail-editor md-dialog-content > header.sg-padded {
+  border-bottom: 1px solid var(--vm-line);
+  font-family: var(--vm-type);
+}
+
+#mailEditor.sg-mail-editor .msg-header-content :is(.pseudo-input-label, label) {
+  color: var(--vm-muted);
+}
+
+#mailEditor.sg-mail-editor .msg-header-content input[name="subject"] {
+  font-family: var(--vm-type);
+  font-weight: 600;
+  color: var(--vm-ink);
+}
+
+#mailEditor.sg-mail-editor .msg-header-buttons button:not([disabled]),
+#mailEditor.sg-mail-editor .sg-mail-editor-attachments button:not([disabled]) {
+  color: var(--vm-rust);
+}
+
+@media screen and (max-width: 700px) {
+  main[ui-view] md-toolbar > .sg-toolbar-group-1::before {
+    flex-basis: 28px;
+    height: 28px;
+    margin-inline: 0 4px;
+    background-image: url("/veyro-mail/mark.svg");
+  }
+}
+
+@media print {
+  main[ui-view] md-toolbar > .sg-toolbar-group-1::before {
+    content: none;
+  }
+}
