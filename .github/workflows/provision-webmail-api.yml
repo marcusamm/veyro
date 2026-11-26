@@ -1,0 +1,64 @@
+name: Klargør forbindelsen til webmailens API
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/provision-webmail-api.yml']
+  workflow_dispatch:
+
+permissions: {}
+concurrency:
+  group: provision-veyro-webmail-api
+  cancel-in-progress: false
+
+jobs:
+  provision:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Opret webmailens servernøgle og forsegl en kopi til VPS’en
+        env:
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { constants, publicEncrypt, randomBytes } from 'node:crypto';
+          const publicKey = `-----BEGIN PUBLIC KEY-----
+          MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAv5lld/NklY81y0bsSCpD
+          FJp1ix46LA7riv0o+lxtcveGHQleODR49AnPWeCaegwNUSgEbeKDxLOHFvJP8S3C
+          BZUcWEUnNimA7jvodsY46v3CCcRGHvDMsQHn2bU8Al9VBSVN8rKNem0/YZ7Mo1NC
+          nc+TkKeB53Csfwmc3AUREsRWDusjTTJLQw73KQ1YPLuoMbtkGDCOOQWQnMAIO2Q0
+          9heiRht+uNyHXQ0zn5Se26WASVAKz1txr+LT99921yX/QXRBqnx/yxCeSQNxLjPu
+          Tdb4AOh+hIA77ax0eV1r/SFLhUEoOwDEgLjtPgCjY7bwRnA3Q4d6a313gJhdbKJF
+          qu42z0EiNy9s6YBG7U0mxEgVPsdOES7uIgglPJiV4eMa+0Afq3VqKXgFCLEXVi6P
+          yhRD5bDWQ5/wDL1ExAuEO3ibsNqFU5H6Fj+uN6LEfrOfeQLyLhawEDaQWNwVPojt
+          5SO6q55tMLpuSQORFHi9AHOu94e6gteX+9J3Egf9LlLTAgMBAAE=
+          -----END PUBLIC KEY-----`;
+          const name = 'VEYRO_MAIL_ORIGIN_TOKEN';
+          const account = process.env.CF_ACCOUNT;
+          if (!/^[0-9a-f]{32}$/.test(account) || !process.env.CF_TOKEN) throw Error('Cloudflare-adgang mangler');
+          const endpoint = `https://api.cloudflare.com/client/v4/accounts/${account}/workers/scripts/veyro-webmail/secrets`;
+          async function request(method, data) {
+            const response = await fetch(endpoint, {
+              method, redirect: 'error', signal: AbortSignal.timeout(20000),
+              headers: { Authorization: 'Bearer ' + process.env.CF_TOKEN, 'Content-Type': 'application/json' },
+              body: data && JSON.stringify(data),
+            });
+            const json = await response.json();
+            if (!response.ok || !json.success) throw Error('Cloudflare HTTP ' + response.status);
+            return json.result;
+          }
+          const bindings = await request('GET');
+          if (!Array.isArray(bindings)) throw Error('Ukendt svar fra Cloudflare');
+          if (bindings.some(binding => binding.name === name)) {
+            console.log('Servernøglen findes allerede.');
+          } else {
+            const token = randomBytes(48).toString('hex');
+            // The guest holds the RSA private key. Only the encrypted envelope is logged.
+            const envelope = publicEncrypt({ key: publicKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(token));
+            console.log('VEYRO_SEALED_ORIGIN=' + envelope.toString('base64'));
+            await request('PUT', { name, type: 'secret_text', text: token });
+            console.log('Servernøglen er oprettet.');
+          }
+          NODE
