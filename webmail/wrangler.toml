@@ -1,0 +1,23 @@
+name = "veyro-webmail"
+main = "worker.ts"
+compatibility_date = "2026-10-01"
+workers_dev = false
+preview_urls = false
+routes = [
+  { pattern = "mail.veyro.dk", custom_domain = true }
+]
+
+[dev]
+host = "localhost"
+
+[assets]
+directory = "./assets"
+binding = "ASSETS"
+run_worker_first = true
+
+[observability]
+enabled = false
+
+[vars]
+# Enable after verifying the HTTPS mailcow origin and its public host mapping.
+WEBMAIL_ENABLED = "0"
