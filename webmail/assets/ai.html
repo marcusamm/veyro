@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI-forbindelser · Veyro Mail</title>
+  <link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/ai.css">
+  <script src="/ai.js" defer></script>
+</head>
+<body>
+  <header><a class="brand" href="/"><img src="/favicon.svg" alt="">Veyro <span>Mail</span></a><a href="/">Til indbakken</a></header>
+  <main>
+    <h1 id="title">AI-forbindelser</h1>
+    <p id="status" role="status">Henter forbindelser …</p>
+    <section id="login" hidden>
+      <p>Åbn Veyro Mail, log ind og vend tilbage til denne fane.</p>
+      <a class="button" href="/" target="_blank" rel="noopener">Log ind i Veyro Mail</a>
+      <button id="retry" type="button">Jeg er logget ind</button>
+    </section>
+    <section id="links" hidden>
+      <h2>Forbundne tjenester</h2>
+      <div id="connections"></div>
+      <h2>Tilføj en forbindelse</h2>
+      <p>Tilføj denne server i din AI-tjeneste. Når Veyro åbner, vælger du, hvad tjenesten må gøre i din postkasse.</p>
+      <div class="endpoint"><code>https://mail.veyro.dk/mcp</code><button type="button" id="copy">Kopiér</button></div>
+      <details><summary>ChatGPT</summary><p>Åbn <a href="https://chatgpt.com/plugins" target="_blank" rel="noreferrer">Plugins i ChatGPT</a> i din browser. Vælg <b>+ → Add custom MCP server</b>, giv den navnet Veyro Mail og indsæt serveradressen ovenfor. Vælg <b>OAuth</b> med automatisk klientregistrering. Vælg <b>Create as a plugin</b> og godkend adgangen hos Veyro. Muligheden afhænger af dit abonnement og dine rettigheder i arbejdsområdet.</p>
+        <a href="https://help.openai.com/en/articles/12584461-connecting-custom-mcp-servers-in-chatgpt" target="_blank" rel="noreferrer">ChatGPTs vejledning</a></details>
+      <details><summary>Claude</summary><p>Vælg <b>Customize → Connectors → Add custom connector</b> i Claude. Indsæt serveradressen, vælg OAuth og <b>Register automatically</b>.</p>
+        <a href="https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp" target="_blank" rel="noreferrer">Claudes vejledning</a></details>
+      <details><summary>Gemini</summary><p>Gemini CLI kan bruge serveren fra Danmark. Registrér den i terminalen, og godkend forbindelsen i din browser via <b>/mcp auth veyro</b>.</p>
+        <pre><code>gemini mcp add --transport http veyro https://mail.veyro.dk/mcp</code></pre>
+        <p>Googles webapp tilbyder aktuelt brugerdefinerede apps til engelsksprogede, personlige konti i USA for brugere på mindst 18 år med Keep Activity slået til. Her tilføjes adressen under <b>Settings → Connected Apps</b>.</p>
+        <a href="https://geminicli.com/docs/tools/mcp-server/" target="_blank" rel="noreferrer">Gemini CLI</a> · <a href="https://support.google.com/gemini/answer/17209137" target="_blank" rel="noreferrer">Gemini på web</a></details>
+    </section>
+    <section id="consent" hidden>
+      <p id="requester"></p>
+      <p id="callback"></p>
+      <fieldset><legend>Vælg tilladelser</legend>
+        <label id="read-row"><input id="mail-read" type="checkbox"> <span><b>Læs indbakken</b><small>Tjenesten kan søge i din indbakke og hente afsender, emne og mailtekst til din samtale.</small></span></label>
+        <label id="draft-row"><input id="mail-draft" type="checkbox"> <span><b>Gem kladder</b><small>Tjenesten kan gemme tekst og modtager i Kladder. Du gennemser og sender selv i Veyro Mail.</small></span></label>
+      </fieldset>
+      <p>Adgangen gælder i op til otte timer. Du kan lukke den under AI-forbindelser i Veyro Mail.</p>
+      <div class="buttons"><button class="primary" type="button" id="allow">Tillad adgang</button><button type="button" id="deny">Afvis</button></div>
+    </section>
+    <p id="notice" aria-live="polite"></p>
+  </main>
+</body></html>

@@ -1,0 +1,19 @@
+@font-face{font-family:Manrope;src:url('/manrope.woff2') format('woff2');font-weight:100 900;font-display:swap}
+*{box-sizing:border-box}
+:root{font:16px/1.55 Manrope,system-ui,sans-serif;color:#211f1d;background:#faf9f6}
+body{margin:0}header{display:flex;align-items:center;justify-content:space-between;padding:16px clamp(18px,5vw,64px);border-bottom:1px solid #dedbd3}
+a{color:inherit;text-underline-offset:3px}a:hover{text-decoration-thickness:2px}
+.brand{display:flex;align-items:center;gap:5px;text-decoration:none;font-weight:800;font-size:21px;letter-spacing:-1px}.brand img{width:32px;height:32px;margin-right:4px}.brand span{font-weight:500}
+main{max-width:680px;margin:clamp(26px,6vw,72px) auto;padding:0 20px 64px}
+h1{font-size:clamp(29px,5vw,42px);line-height:1.12;letter-spacing:-.06em;margin:0 0 15px}h2{font-size:21px;letter-spacing:-.04em;margin:32px 0 12px}
+p{margin:12px 0}#status,#callback,small{color:#58554e}#callback{overflow-wrap:anywhere;font-size:.84rem}
+button,.button{display:inline-block;background:white;color:#24221f;font:inherit;font-weight:650;border-radius:7px;border:1px solid #bdb9ad;padding:8px 14px;cursor:pointer;text-decoration:none}button:disabled{opacity:.55;cursor:wait}
+.primary{background:#262421;color:white;border-color:#262421}a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid #b84716;outline-offset:3px}
+.buttons,.endpoint,.connected{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.endpoint,.connected{border:1px solid #dedbd3;background:#fff;padding:14px;border-radius:10px;justify-content:space-between}
+.connected+.connected{margin-top:8px}.connected span{flex:1 1 200px}.connected small,fieldset small{display:block}
+code{overflow-wrap:anywhere}pre{padding:12px;background:white;white-space:pre-wrap;border-radius:6px}
+details{border-bottom:1px solid #dedbd3;padding:13px 0}summary{cursor:pointer;font-weight:700}
+fieldset{border:1px solid #dedbd3;border-radius:10px;background:#fff;margin:22px 0 14px;padding:3px 16px 10px}legend{font-weight:700;padding:0 5px}
+fieldset label{display:flex;align-items:flex-start;gap:10px;padding:10px 0}input[type=checkbox]{width:18px;height:18px;margin:4px 0 0;accent-color:#262421;flex:none}
+[hidden]{display:none!important}#notice:not(:empty){padding:10px 0;color:#69310f}

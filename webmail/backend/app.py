@@ -22,7 +22,9 @@ import pymysql
 from werkzeug.exceptions import HTTPException
 
 import account
+import ai_connector
 import mailstore
+import snooze
 from mailstore import MailError
 
 app = Flask(__name__)
@@ -158,11 +160,18 @@ def gateway():
         g.ip = str(ipaddress.ip_address(request.headers.get("X-Veyro-Client-IP", "")))
     except ValueError:
         raise MailError("Adgang afvist.", 403) from None
+    if request.path in {"/api/ai/protocol/register", "/api/ai/protocol/token",
+                        "/api/ai/protocol/revoke", "/api/ai/protocol/mcp"}:
+        # The origin proxy strips public Authorization. The Worker alone supplies
+        # this header after checking the protocol endpoint and credential type.
+        credential = request.headers.get("X-Veyro-AI-Authorization")
+        if credential:
+            request.environ["HTTP_AUTHORIZATION"] = credential
+        return
     if request.method == "POST":
         if request.headers.get("Origin") != ORIGIN:
             raise MailError("Adgang afvist.", 403)
-        if (request.path in {"/api/send", "/api/login", "/api/password"} or
-                request.path.startswith("/api/recovery/")) and not request.is_json:
+        if not request.is_json:
             raise MailError("Der kræves JSON.", 415)
     if request.path in {"/api/login", "/api/recovery/request"}:
         return
@@ -185,6 +194,9 @@ def gateway():
         raise MailError("Adgangskoden er ændret. Log ind igen.", 401)
     g.session = current
     g.sid = sid
+
+
+ai_connector.install(app, credential_version, throttle, KEY)
 
 
 @app.after_request
@@ -505,16 +517,36 @@ def messages():
     q = request.args.get("q", "").strip()
     if len(q) > 180 or any(ord(c)<32 for c in q):
         raise MailError("Ugyldig søgning.")
-    return jsonify(operation(lambda c: mailstore.list_messages(c, folder(), request.args.get("cursor"), q)))
+    source = folder()
+    view = request.args.get("view", "")
+    return jsonify(operation(lambda c: mailstore.list_messages(
+        c, source, request.args.get("cursor"), q, address=g.session.email,
+        sender=request.args.get("sender", ""), label=request.args.get("label", ""),
+        category=request.args.get("category", ""), view=view, only_snoozed=view == "snoozed",
+        snoozed=(lambda validity: snooze.active(g.session.email, validity)) if source.upper() == "INBOX" else None,
+    )))
 
 
 @app.get("/api/messages/<identifier>")
 def message(identifier):
     def read(c):
-        result = mailstore.read_message(c, folder(), identifier)
+        result = mailstore.read_message(c, folder(), identifier, address=g.session.email)
         g.session.folder_time = 0
         return result
     return jsonify(operation(read))
+
+
+@app.post("/api/messages/<identifier>/action")
+def message_action(identifier):
+    data = payload()
+    def apply(c):
+        folders = g.session.cached_folders(c) if data.get("action") in ("archive", "trash", "move") else ()
+        result = mailstore.message_action(c, folder(), identifier, data, folders)
+        g.session.folder_time = 0
+        return result
+    # If the server moved the UID but its reply was lost, retrying it could
+    # report a misleading not-found result instead of an uncertain outcome.
+    return jsonify(operation(apply, retry=False))
 
 
 @app.get("/api/messages/<identifier>/attachments/<part>")
@@ -523,6 +555,22 @@ def attachment(identifier, part):
     response = send_file(io.BytesIO(blob), mimetype="application/octet-stream", as_attachment=True, download_name=name, etag=False)
     response.headers["Content-Security-Policy"] = "sandbox"
     return response
+
+
+@app.post("/api/messages/<identifier>/snooze")
+def snooze_message(identifier):
+    if folder() != "INBOX":
+        raise MailError("Du kan udsætte mails fra indbakken.")
+    data = payload()
+    if "until" not in data:
+        raise MailError("Vælg hvornår mailen skal vises igen.")
+    wake_at = snooze.wake_time(data["until"])
+
+    def update(client):
+        validity, uid, _ = mailstore.lookup(client, "INBOX", identifier)
+        snooze.save(g.session.email, validity, uid, wake_at)
+    operation(update)
+    return jsonify(ok=True)
 
 
 @app.post("/api/send")

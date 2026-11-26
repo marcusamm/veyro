@@ -19,8 +19,12 @@ services:
     mem_limit: 400m
     volumes:
       - ./secrets:/run/veyro:ro
+      - organizer:/var/lib/veyro-webmail
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1',18082),2).close()"]
       interval: 30s
       timeout: 4s
       retries: 3
+
+volumes:
+  organizer:
