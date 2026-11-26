@@ -207,7 +207,6 @@ main[ui-view="mailboxes"] :is(md-sidenav, .toolbar-main, .view-list) :is(button,
   border: 1px solid var(--vm-line);
   border-radius: 10px;
   background: white;
-  color: var(--vm-ink);
 }
 
 #mailEditor.sg-mail-editor > form > md-toolbar {
