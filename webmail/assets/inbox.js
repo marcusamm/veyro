@@ -142,6 +142,7 @@
   function loggedIn(data) {
     if (!data.email || !data.csrfToken) throw new ApiError('Postkassen returnerede en ugyldig session.', 502);
     session = {email: data.email, csrfToken: data.csrfToken};
+    byId('open-recovery-settings').hidden = data.canManageRecovery === false;
     if (forgotDialog.open) forgotDialog.close();
     document.body.classList.remove('entry');
     byId('password').value = '';

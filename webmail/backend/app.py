@@ -31,7 +31,9 @@ app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 256 * 1024
 ORIGIN = os.environ["WEBMAIL_ORIGIN"]
 STAFF = {address.strip().lower() for address in os.environ["WEBMAIL_STAFF"].split(",") if address.strip()}
-ACCOUNT_LOCKS = {address: threading.Lock() for address in STAFF}
+# Serialize competing operations on the same mailbox without retaining every
+# address supplied to the public login endpoint. Python's string hash is salted.
+ACCOUNT_LOCKS = tuple(threading.Lock() for _ in range(128))
 RECOVERY_REQUESTS = Queue(maxsize=16)
 RECOVERY_KEY = secrets.token_bytes(32)
 COOKIE = "__Host-veyro_session"
@@ -130,6 +132,10 @@ def safe_equal(a, b):
     return isinstance(a, str) and isinstance(b, str) and hmac.compare_digest(a.encode(), b.encode())
 
 
+def account_lock(address):
+    return ACCOUNT_LOCKS[hash(address) % len(ACCOUNT_LOCKS)]
+
+
 def credential_version(address):
     # The dedicated SQL user has SELECT on one restricted generation view only.
     try:
@@ -140,13 +146,14 @@ def credential_version(address):
                              password=config["password"], database=config["database"],
                              connect_timeout=3, read_timeout=3, write_timeout=3) as db:
             with db.cursor() as cursor:
-                cursor.execute("SELECT version FROM veyro_webmail_credential_version WHERE username=%s", (address,))
+                cursor.execute("SELECT username, version FROM veyro_webmail_credential_version WHERE username=%s", (address,))
                 row = cursor.fetchone()
-        if row is None:
+        # SQL collation alone is insufficient to bind an authenticated IMAP name.
+        if row is None or row[0] != address:
             return None
-        if not isinstance(row[0], str) or not re.fullmatch(r"[0-9a-fA-F]{64}", row[0]):
+        if not isinstance(row[1], str) or not re.fullmatch(r"[0-9a-fA-F]{64}", row[1]):
             raise ValueError("Invalid credential version")
-        return row[0]
+        return row[1]
     except (pymysql.MySQLError, OSError, ValueError, KeyError, TypeError):
         raise MailError("Mailserveren kunne ikke kontrollere din konto. Prøv igen.", 503) from None
 
@@ -232,7 +239,7 @@ def payload():
 
 
 def public_session(s):
-    return dict(email=s.email, csrfToken=s.csrf)
+    return dict(email=s.email, csrfToken=s.csrf, canManageRecovery=s.email in STAFF)
 
 
 def recovery_address(value):
@@ -284,6 +291,8 @@ def request_recovery():
 @contextmanager
 def enrollment(data):
     session = g.session
+    if session.email not in STAFF:
+        raise MailError("Kontakt din mailadministrator om gendannelse af kontoen.", 403)
     destination = recovery_address(data.get("email"))
     if destination.rpartition("@")[2] in {address.rpartition("@")[2] for address in STAFF}:
         raise MailError("Brug en ekstern mailadresse, som du også kan åbne uden adgang til Veyro Mail.", 422)
@@ -294,7 +303,7 @@ def enrollment(data):
         password.encode("utf-8")
     except UnicodeEncodeError:
         raise MailError("Adgangskoden kunne ikke læses.", 422) from None
-    with ACCOUNT_LOCKS[session.email], session.lock:
+    with account_lock(session.email), session.lock:
         with TABLE:
             if SESSIONS.get(g.sid) is not session:
                 raise MailError("Log ind igen.", 401)
@@ -373,24 +382,31 @@ def login():
     address, password = data.get("email"), data.get("password")
     if not isinstance(address, str) or not isinstance(password, str):
         raise MailError("Mailadresse eller adgangskode er forkert.", 401)
-    address = address.strip().lower()
-    if address not in STAFF or not 1 <= len(password) <= 1024 or any(c in password for c in "\0\r\n"):
+    if not 1 <= len(password) <= 1024 or any(c in password for c in "\0\r\n"):
         raise MailError("Mailadresse eller adgangskode er forkert.", 401)
-    throttle(("mailbox", address), 15, 300)
+    try:
+        address = recovery_address(address).lower()
+        password.encode("utf-8")
+    except (MailError, UnicodeEncodeError):
+        raise MailError("Mailadresse eller adgangskode er forkert.", 401) from None
+    # Bound the login-specific limiter even when many nonexistent names are tried.
+    throttle(("mailbox", hash(address) % 1024), 15, 300)
     # Serialize primary credential changes with admission of IMAP-backed sessions.
-    with ACCOUNT_LOCKS[address]:
+    with account_lock(address):
         return start_session(address, password)
 
 
 def start_session(address, password):
     generation = credential_version(address)
-    if not generation:
-        raise MailError("Mailadresse eller adgangskode er forkert.", 401)
+    # Dovecot performs the same credential check for every valid mailbox name.
+    # IMAP acceptance alone does not grant webmail or allow skipping native MFA.
     try:
         client = mailstore.connect(address, password)
     except LoginError:
         raise MailError("Mailadresse eller adgangskode er forkert.", 401) from None
     try:
+        if not generation:
+            raise MailError("Mailadresse eller adgangskode er forkert.", 401)
         if generation != credential_version(address):
             raise MailError("Adgangskoden er ændret. Log ind igen.", 401)
     except Exception:
@@ -437,7 +453,7 @@ def password_change():
     throttle(("change-account", session.email), 6, 300)
     throttle(("change-ip", g.ip), 12, 300)
     failure = None
-    with ACCOUNT_LOCKS[session.email]:
+    with account_lock(session.email):
         with session.lock:
             with TABLE:
                 if SESSIONS.get(g.sid) is not session:

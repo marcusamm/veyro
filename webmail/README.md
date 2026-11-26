@@ -9,7 +9,7 @@ På `mail.veyro.dk` udgiver Cloudflare Veyros brugerflade og formidler kald til 
 3. Kør `sh origin/publish.sh` på gæsten. Caddy sender `/webmail-api/api/` på `post.veyro.dk` til den lokale API. API'et kontrollerer Workerens nøgle og brugerens session.
 4. GitHub-opgaven *Udgiv Veyro Mail* tester og udgiver Worker og aktiver. `WEBMAIL_ENABLED` styrer vedligeholdelsessiden. Prøv login, åbn en mail, og send en besked til samme testpostkasse. Kontrollér også Sendt og udlogning.
 
-Medarbejdere bruger deres egen postkasseadgang. Browserens sessionscookie er markeret HttpOnly og Secure. Ændringer kræver den korrekte oprindelse og et CSRF-token efter login. Eksterne billeder og scripts i modtagne mails indlæses ikke. Hentede vedhæftninger leveres som downloads.
+Kunder og medarbejdere bruger login til deres egen aktive Veyro Mail-postkasse. Browserens sessionscookie er markeret HttpOnly og Secure. Ændringer kræver den korrekte oprindelse og et CSRF-token efter login. Eksterne billeder og scripts i modtagne mails indlæses ikke. Hentede vedhæftninger leveres som downloads.
 
 For at skifte adgangskode skal medarbejderen vælge sin mailadresse øverst til højre og derefter **Skift adgangskode**. Mailcow kontrollerer den nuværende kode og kravene til den nye. Når skiftet er gennemført, skal medarbejderen logge ind igen på alle enheder i Veyros webmail.
 
