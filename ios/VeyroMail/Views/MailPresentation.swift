@@ -116,7 +116,6 @@ struct MessageRow: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityValue(message.unread ? "Ulæst" : "Læst")
-        .accessibilityIdentifier("mail-row-" + message.id)
     }
 
     private var timestamp: some View {

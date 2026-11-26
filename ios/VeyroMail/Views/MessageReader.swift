@@ -41,6 +41,17 @@ struct MessageReader: View {
                             }
                         }
                         .font(.subheadline).foregroundStyle(.secondary)
+                        Button {
+                            reply(to: message, all: false)
+                        } label: {
+                            Label("Svar", systemImage: "arrowshape.turn.up.left")
+                                .frame(minHeight: 32)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .accessibilityLabel("Svar")
+                        .accessibilityIdentifier("reader-reply")
+                        .disabled(busy)
                         Divider()
                         if let text = message.text, !text.isEmpty {
                             Text(verbatim: text)
@@ -52,7 +63,6 @@ struct MessageReader: View {
                     }
                     .padding(20).frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .accessibilityIdentifier("mail-reader")
             } else if let fetchError {
                 MailProblem(text: fetchError, retry: load).padding()
             } else {
@@ -79,39 +89,15 @@ struct MessageReader: View {
                                 Label("Svar alle", systemImage: "arrowshape.turn.up.left.2")
                             }
                         }
+                        if canArchive {
+                            Button { act(.archive) } label: { Label("Arkivér", systemImage: "archivebox") }
+                        }
+                        if canTrash {
+                            Button { act(.trash) } label: { Label("Flyt til papirkurv", systemImage: "trash") }
+                        }
                     } label: { Label("Flere handlinger", systemImage: "ellipsis.circle") }
                     .disabled(busy)
                 }
-            }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let message {
-                VStack(spacing: 0) {
-                    Divider()
-                    HStack(spacing: 12) {
-                        Button { reply(to: message, all: false) } label: {
-                            Label("Svar", systemImage: "arrowshape.turn.up.left")
-                                .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
-                        }
-                        .accessibilityIdentifier("reader-reply")
-                        Spacer()
-                        if canArchive {
-                            Button { act(.archive) } label: {
-                                Label("Arkivér", systemImage: "archivebox").labelStyle(.iconOnly)
-                                    .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
-                            }
-                        }
-                        if canTrash {
-                            Button { act(.trash) } label: {
-                                Label("Flyt til papirkurv", systemImage: "trash").labelStyle(.iconOnly)
-                                    .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .disabled(busy)
-                }
-                .background(.bar)
             }
         }
         .task { await load() }

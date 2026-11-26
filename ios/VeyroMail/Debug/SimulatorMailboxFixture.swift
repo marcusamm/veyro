@@ -86,7 +86,7 @@ private final class SimulatorMailboxProtocol: URLProtocol, @unchecked Sendable {
         case ("GET", "/api/messages/" + Self.identifier) where url.query == "folder=" + Self.inbox:
             var detail = summary
             detail["unread"] = false
-            detail["text"] = "Har du tid til at se på planen?"
+            detail["text"] = "Har du tid til at se på planen? Vi mødes tirsdag klokken ti."
             detail["attachments"] = []
             return Reply(json: detail)
         case ("POST", "/api/send"):

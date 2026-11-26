@@ -46,6 +46,7 @@ struct MailboxView: View {
                         NavigationLink(value: location) {
                             MessageRow(message: item, folderRole: folder?.role ?? "")
                         }
+                        .accessibilityIdentifier("mail-row-" + item.id)
                         .swipeActions(edge: .leading, allowsFullSwipe: false) {
                             Button {
                                 change(item.unread ? .read : .unread, at: location)
