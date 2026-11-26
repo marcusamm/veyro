@@ -1,0 +1,54 @@
+version: 1
+metadata:
+  name: Veyro - WhatsApp
+entries:
+  - model: authentik_flows.flow
+    id: enrollment
+    identifiers:
+      slug: veyro-tilfoej-whatsapp
+    attrs:
+      name: Veyro - tilføj WhatsApp
+      title: Bekræft dit telefonnummer via WhatsApp
+      designation: stage_configuration
+      authentication: require_authenticated
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf enrollment
+      group: !Find [authentik_core.group, [name, Veyro Mail]]
+      order: 0
+  - model: authentik_events.notificationwebhookmapping
+    id: message
+    identifiers:
+      name: Veyro - WhatsApp-kode
+    attrs:
+      expression: |
+        return {"to": str(device.phone_number), "code": str(token)}
+  - model: authentik_stages_authenticator_sms.authenticatorsmsstage
+    id: device
+    identifiers:
+      name: veyro-whatsapp
+    attrs:
+      configure_flow: !KeyOf enrollment
+      friendly_name: WhatsApp
+      provider: generic
+      from_number: Veyro WhatsApp
+      account_sid: http://whatsapp-delivery:9881/send
+      auth_type: bearer
+      auth: !File /run/secrets/veyro_whatsapp_internal_token
+      verify_only: false
+      mapping: !KeyOf message
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf enrollment
+      stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
+      order: 10
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf enrollment
+      stage: !Find [authentik_stages_authenticator_validate.authenticatorvalidatestage, [name, veyro-enrollment-reauth]]
+      order: 20
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf enrollment
+      stage: !KeyOf device
+      order: 30

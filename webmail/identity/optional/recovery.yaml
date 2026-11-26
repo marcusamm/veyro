@@ -1,0 +1,91 @@
+version: 1
+metadata:
+  name: Veyro - gendan adgangskoden
+entries:
+  - model: authentik_flows.flow
+    id: recovery
+    identifiers: {slug: veyro-gendan-adgang}
+    attrs:
+      name: Gendan adgang til Veyro
+      title: Gendan din adgangskode
+      designation: recovery
+      authentication: require_unauthenticated
+  - model: authentik_stages_identification.identificationstage
+    id: identify
+    identifiers: {name: veyro-recovery-identify}
+    attrs:
+      user_fields: [username]
+      pretend_user_exists: true
+      show_matched_user: false
+      enrollment_flow: null
+  - model: authentik_stages_deny.denystage
+    id: unavailable
+    identifiers: {name: veyro-recovery-unavailable}
+    attrs:
+      deny_message: Kontakt den ansvarlige for din Veyro-konto for at gendanne adgang.
+  - model: authentik_policies_expression.expressionpolicy
+    id: deny-ineligible
+    identifiers: {name: veyro-recovery-deny-ineligible}
+    attrs:
+      expression: |
+        user = request.context["flow_plan"].context.get("pending_user")
+        if not user:
+            return True
+        if not user.pk:
+            # Authentik handles unknown users with its normal email-sent screen.
+            return False
+        if not user.is_active or not user.groups.filter(name="Veyro Mail").exists():
+            return True
+        address = (user.email or "").strip().lower()
+        return not address or address.endswith("@veyro.dk")
+  - model: authentik_stages_email.emailstage
+    id: email
+    identifiers: {name: veyro-recovery-email}
+    attrs:
+      use_global_settings: false
+      host: !File /run/secrets/veyro_smtp_host
+      port: 587
+      username: !File /run/secrets/veyro_smtp_username
+      password: !File /run/secrets/veyro_smtp_password
+      use_tls: true
+      use_ssl: false
+      timeout: 12
+      from_address: !File /run/secrets/veyro_smtp_from
+      token_expiry: minutes=15
+      recovery_max_attempts: 5
+      recovery_cache_timeout: minutes=10
+      activate_user_on_success: false
+      subject: Gendan din adgang til Veyro
+      template: email/password_reset.html
+  - model: authentik_flows.flowstagebinding
+    identifiers: {target: !KeyOf recovery, stage: !KeyOf identify, order: 10}
+  - model: authentik_flows.flowstagebinding
+    id: eligibility
+    identifiers: {target: !KeyOf recovery, stage: !KeyOf unavailable, order: 15}
+    attrs: {evaluate_on_plan: false, re_evaluate_policies: true}
+  - model: authentik_policies.policybinding
+    identifiers: {target: !KeyOf eligibility, policy: !KeyOf deny-ineligible, order: 0}
+    attrs: {failure_result: true}
+  - model: authentik_flows.flowstagebinding
+    identifiers: {target: !KeyOf recovery, stage: !KeyOf email, order: 20}
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf recovery
+      stage: !Find [authentik_stages_authenticator_validate.authenticatorvalidatestage, [name, veyro-enrollment-reauth]]
+      order: 30
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf recovery
+      stage: !Find [authentik_stages_prompt.promptstage, [name, default-password-change-prompt]]
+      order: 40
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf recovery
+      stage: !Find [authentik_stages_user_write.userwritestage, [name, default-password-change-write]]
+      order: 50
+  - model: authentik_brands.brand
+    identifiers: {domain: konto.veyro.dk}
+    attrs: {flow_recovery: !KeyOf recovery}
+  - model: authentik_stages_identification.identificationstage
+    identifiers: {name: veyro-identify}
+    attrs: {recovery_flow: !KeyOf recovery}

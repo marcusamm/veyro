@@ -1,0 +1,58 @@
+name: veyro-identity
+x-authentik: &authentik
+  image: ghcr.io/goauthentik/server:2026.8.7@sha256:1675a017c46ba7f4f15333aeafeeb64538c581673bcbcd36af872cdf7de4e7f7
+  restart: unless-stopped
+  depends_on:
+    db:
+      condition: service_healthy
+  environment: &settings
+    AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?}
+    AUTHENTIK_POSTGRESQL__HOST: db
+    AUTHENTIK_POSTGRESQL__USER: authentik
+    AUTHENTIK_POSTGRESQL__NAME: authentik
+    AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASSWORD:?}
+    AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+    AUTHENTIK_DISABLE_UPDATE_CHECK: "true"
+    AUTHENTIK_DISABLE_STARTUP_ANALYTICS: "true"
+    AUTHENTIK_AVATARS: initials
+    AUTHENTIK_WEB__WORKERS: "2"
+    AUTHENTIK_WORKER__PROCESSES: "1"
+    AUTHENTIK_WORKER__THREADS: "2"
+  shm_size: 128mb
+  volumes:
+    - media:/data
+    - ./blueprints:/blueprints/veyro:ro
+    - ./assets:/web/dist/veyro:ro
+services:
+  db:
+    image: docker.io/library/postgres:16.16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: authentik
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "authentik", "-U", "authentik"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - db:/var/lib/postgresql/data
+    mem_limit: 512m
+  server:
+    <<: *authentik
+    command: server
+    ports:
+      - "127.0.0.1:18081:9000"
+    mem_limit: 1536m
+  worker:
+    <<: *authentik
+    command: worker
+    environment:
+      <<: *settings
+      AUTHENTIK_BOOTSTRAP_PASSWORD_HASH: ${BOOTSTRAP_PASSWORD_HASH:?}
+      VEYRO_OIDC_SECRET: ${VEYRO_OIDC_SECRET:?}
+    mem_limit: 1024m
+volumes:
+  db:
+  media:

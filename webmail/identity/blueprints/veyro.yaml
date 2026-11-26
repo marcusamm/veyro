@@ -1,0 +1,196 @@
+version: 1
+metadata:
+  name: Veyro - Identity and webmail
+entries:
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs: {identifiers: {path: default/flow-default-authentication-flow.yaml}}
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs: {identifiers: {path: default/flow-default-authenticator-totp-setup.yaml}}
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs: {identifiers: {path: default/flow-default-authenticator-webauthn-setup.yaml}}
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs: {identifiers: {path: default/flow-default-invalidation-flow.yaml}}
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs: {identifiers: {path: default/flow-default-user-settings-flow.yaml}}
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs: {identifiers: {path: default/flow-default-provider-authorization-implicit-consent.yaml}}
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs: {identifiers: {path: default/flow-default-provider-invalidation.yaml}}
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs: {identifiers: {path: system/providers-oauth2.yaml}}
+  - model: authentik_core.group
+    identifiers: {name: Veyro Mail}
+    id: mail-users
+    attrs:
+      is_superuser: false
+      attributes:
+        goauthentik.io/user/can-change-email: false
+        goauthentik.io/user/can-change-username: false
+  # Membership in one administrator-owned group named veyro-mailbox:<address>
+  # is the assignment. The editable profile email is never an identity claim.
+  - model: authentik_policies_expression.expressionpolicy
+    identifiers: {name: veyro-verified-mailbox}
+    id: assigned
+    attrs:
+      expression: |
+        assignments = request.user.groups.filter(name__startswith="veyro-mailbox:")
+        if assignments.count() != 1:
+            return False
+        assignment = assignments.first()
+        address = assignment.name.split(":", 1)[1]
+        return address.endswith("@veyro.dk") and address == request.user.username and assignment.users.filter(is_active=True).count() == 1
+  - model: authentik_providers_oauth2.scopemapping
+    identifiers: {name: Veyro verified mailbox address}
+    id: mailbox-email
+    attrs:
+      scope_name: email
+      expression: |
+        groups = request.user.groups.filter(name__startswith="veyro-mailbox:")
+        if groups.count() != 1:
+            return {}
+        assignment = groups.first()
+        address = assignment.name.split(":", 1)[1]
+        if not address.endswith("@veyro.dk") or address != request.user.username or assignment.users.filter(is_active=True).count() != 1:
+            return {}
+        return {"email": address, "email_verified": True}
+  - model: authentik_flows.flow
+    id: login
+    identifiers: {slug: veyro-login}
+    attrs:
+      name: Veyro Konto
+      title: Log ind på din Veyro-konto
+      designation: authentication
+      authentication: none
+  - model: authentik_stages_authenticator_webauthn.authenticatorwebauthnstage
+    identifiers: {name: default-authenticator-webauthn-setup}
+    attrs:
+      friendly_name: Adgangsnøgle
+      user_verification: required
+      resident_key_requirement: required
+  - model: authentik_stages_authenticator_validate.authenticatorvalidatestage
+    id: passkey
+    identifiers: {name: veyro-passkey}
+    attrs:
+      device_classes: [webauthn]
+      webauthn_user_verification: required
+      not_configured_action: deny
+  - model: authentik_stages_identification.identificationstage
+    id: identify
+    identifiers: {name: veyro-identify}
+    attrs:
+      user_fields: [username]
+      pretend_user_exists: true
+      show_matched_user: true
+      webauthn_stage: !KeyOf passkey
+      enrollment_flow: null
+  - model: authentik_stages_authenticator_validate.authenticatorvalidatestage
+    id: mfa
+    identifiers: {name: veyro-mfa}
+    attrs:
+      device_classes: [totp, webauthn, static, sms]
+      not_configured_action: configure
+      webauthn_user_verification: required
+      configuration_stages:
+        - !Find [authentik_stages_authenticator_totp.authenticatortotpstage, [name, default-authenticator-totp-setup]]
+        - !Find [authentik_stages_authenticator_webauthn.authenticatorwebauthnstage, [name, default-authenticator-webauthn-setup]]
+  - model: authentik_stages_authenticator_validate.authenticatorvalidatestage
+    identifiers: {name: default-authentication-mfa-validation}
+    attrs:
+      device_classes: [totp, webauthn, static, sms]
+      not_configured_action: configure
+      webauthn_user_verification: required
+      configuration_stages:
+        - !Find [authentik_stages_authenticator_totp.authenticatortotpstage, [name, default-authenticator-totp-setup]]
+        - !Find [authentik_stages_authenticator_webauthn.authenticatorwebauthnstage, [name, default-authenticator-webauthn-setup]]
+  - model: authentik_stages_authenticator_validate.authenticatorvalidatestage
+    identifiers: {name: veyro-enrollment-reauth}
+    attrs:
+      device_classes: [totp, webauthn, static]
+      not_configured_action: deny
+      webauthn_user_verification: required
+  - model: authentik_flows.flowstagebinding
+    identifiers: {target: !KeyOf login, stage: !KeyOf identify, order: 10}
+  - model: authentik_flows.flowstagebinding
+    id: password-binding
+    identifiers:
+      target: !KeyOf login
+      stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
+      order: 20
+    attrs: {re_evaluate_policies: true}
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf password-binding
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, default-authentication-flow-password-stage]]
+      order: 0
+    attrs: {failure_result: true}
+  - model: authentik_flows.flowstagebinding
+    id: mfa-binding
+    identifiers: {target: !KeyOf login, stage: !KeyOf mfa, order: 30}
+    attrs: {re_evaluate_policies: true}
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf mfa-binding
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, default-authentication-flow-authenticator-validate-stage]]
+      order: 0
+    attrs: {failure_result: true}
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf login
+      stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
+      order: 100
+  - model: authentik_brands.brand
+    identifiers: {domain: konto.veyro.dk}
+    attrs:
+      branding_title: Veyro Konto
+      branding_logo: /static/dist/veyro/logo.svg
+      branding_favicon: /static/dist/veyro/mark.svg
+      attributes:
+        settings:
+          theme: {base: light}
+          locale: da
+      branding_custom_css: |
+        :root, :host {
+          --ak-color-primary: #b54118;
+          --ak-accent: #b54118;
+          --pf-c-button--m-primary--BackgroundColor: #1b1b18;
+          --pf-c-button--m-primary--hover--BackgroundColor: #393833;
+        }
+        .pf-c-login__container { max-width: 33rem; }
+        .pf-c-login__main { border-radius: 16px; box-shadow: 0 12px 50px #24201612; }
+        .pf-c-login { background: #f4f2ec; }
+      flow_authentication: !KeyOf login
+      flow_invalidation: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
+      flow_user_settings: !Find [authentik_flows.flow, [slug, default-user-settings-flow]]
+  - model: authentik_providers_oauth2.oauth2provider
+    id: oidc
+    identifiers: {name: Veyro Webmail}
+    attrs:
+      authentication_flow: !KeyOf login
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      client_id: veyro-webmail
+      client_secret: !Env VEYRO_OIDC_SECRET
+      client_type: confidential
+      grant_types: [authorization_code, refresh_token]
+      redirect_uris:
+        - {url: "https://post.veyro.dk/", matching_mode: strict}
+      issuer_mode: per_provider
+      signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
+        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
+        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-offline_access]]
+        - !KeyOf mailbox-email
+  - model: authentik_core.application
+    id: app
+    identifiers: {slug: veyro-mail}
+    attrs:
+      name: Veyro Mail
+      provider: !KeyOf oidc
+      policy_engine_mode: all
+      meta_launch_url: https://post.veyro.dk/?iam_sso
+  - model: authentik_policies.policybinding
+    identifiers: {target: !KeyOf app, group: !KeyOf mail-users, order: 0}
+  - model: authentik_policies.policybinding
+    identifiers: {target: !KeyOf app, policy: !KeyOf assigned, order: 1}
+    attrs: {failure_result: false}

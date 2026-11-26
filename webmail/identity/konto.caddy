@@ -1,0 +1,18 @@
+http://konto.veyro.dk {
+	bind 192.168.247.2
+	redir https://konto.veyro.dk{uri} 308
+}
+
+https://konto.veyro.dk {
+	bind 192.168.247.2
+	@private path /setup /setup/* /if/admin /if/admin/* /if/flow/initial-setup /if/flow/initial-setup/* /api/v3/flows/executor/initial-setup /api/v3/flows/executor/initial-setup/* /api/v3/admin /api/v3/admin/* /metrics /-/metrics /-/health/*
+	route {
+		respond @private 404
+		reverse_proxy 127.0.0.1:18081 {
+			header_up Host konto.veyro.dk
+			header_up -Forwarded
+			header_up -X-Original-URL
+			header_up -X-Rewrite-URL
+		}
+	}
+}

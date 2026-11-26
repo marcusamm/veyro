@@ -1,0 +1,53 @@
+version: 1
+metadata:
+  name: Veyro - SMS
+entries:
+  - model: authentik_flows.flow
+    id: enrollment
+    identifiers:
+      slug: veyro-tilfoej-sms
+    attrs:
+      name: Veyro - tilføj SMS
+      title: Bekræft dit telefonnummer via SMS
+      designation: stage_configuration
+      authentication: require_authenticated
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf enrollment
+      group: !Find [authentik_core.group, [name, Veyro Mail]]
+      order: 0
+  - model: authentik_events.notificationwebhookmapping
+    id: message
+    identifiers:
+      name: Veyro - SMS-kode
+    attrs:
+      expression: |
+        return {"message": f"Din bekræftelseskode til Veyro er {token}."}
+  - model: authentik_stages_authenticator_sms.authenticatorsmsstage
+    id: device
+    identifiers:
+      name: veyro-sms
+    attrs:
+      configure_flow: !KeyOf enrollment
+      friendly_name: SMS
+      provider: twilio
+      account_sid: !File /run/secrets/veyro_twilio_account_sid
+      auth: !File /run/secrets/veyro_twilio_auth_token
+      from_number: !File /run/secrets/veyro_sms_sender
+      verify_only: false
+      mapping: !KeyOf message
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf enrollment
+      stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
+      order: 10
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf enrollment
+      stage: !Find [authentik_stages_authenticator_validate.authenticatorvalidatestage, [name, veyro-enrollment-reauth]]
+      order: 20
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf enrollment
+      stage: !KeyOf device
+      order: 30

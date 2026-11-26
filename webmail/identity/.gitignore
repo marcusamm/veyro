@@ -1,0 +1,6 @@
+.env
+.env.*
+phone-secrets/
+recovery-secrets/
+qa/
+__pycache__/

@@ -1,0 +1,18 @@
+services:
+  worker:
+    volumes:
+      - ./optional/recovery.yaml:/blueprints/veyro-optional/recovery.yaml:ro
+    secrets:
+      - veyro_smtp_host
+      - veyro_smtp_from
+      - veyro_smtp_username
+      - veyro_smtp_password
+secrets:
+  veyro_smtp_host:
+    file: /etc/veyro-identity/recovery-secrets/smtp_host
+  veyro_smtp_from:
+    file: /etc/veyro-identity/recovery-secrets/smtp_from
+  veyro_smtp_username:
+    file: /etc/veyro-identity/recovery-secrets/smtp_username
+  veyro_smtp_password:
+    file: /etc/veyro-identity/recovery-secrets/smtp_password

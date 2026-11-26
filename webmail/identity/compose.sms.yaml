@@ -1,0 +1,15 @@
+services:
+  worker:
+    volumes:
+      - ./optional/sms.yaml:/blueprints/veyro-optional/sms.yaml:ro
+    secrets:
+      - veyro_twilio_account_sid
+      - veyro_twilio_auth_token
+      - veyro_sms_sender
+secrets:
+  veyro_twilio_account_sid:
+    file: /etc/veyro-identity/phone-secrets/sms/account_sid
+  veyro_twilio_auth_token:
+    file: /etc/veyro-identity/phone-secrets/sms/auth_token
+  veyro_sms_sender:
+    file: /etc/veyro-identity/phone-secrets/sms/sender
