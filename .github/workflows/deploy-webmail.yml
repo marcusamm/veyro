@@ -35,8 +35,8 @@ jobs:
           python -m pip install -r webmail/backend/requirements.txt
           python -m unittest discover -s webmail/backend -p 'test_*.py'
       - run: |
-          npx playwright install --with-deps chromium
-          node --test webmail/context-menu.browser.mjs webmail/administration.browser.mjs
+          npx playwright install --with-deps chromium webkit
+          node --test webmail/context-menu.browser.mjs webmail/administration.browser.mjs webmail/mobile-login.browser.mjs
       - name: Udgiv webmail
         run: npx wrangler deploy --config webmail/wrangler.toml
         env:
