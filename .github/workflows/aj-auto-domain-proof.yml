@@ -1,0 +1,30 @@
+name: Publicér AJ Autos domænebevis til Veyro Mail
+
+on:
+  push:
+    branches: [main]
+    paths: ['ops/aj-auto-domain-proof.txt']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aj-auto-domain-proof
+  cancel-in-progress: false
+
+jobs:
+  proof:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Publicér den valgte TXT-post
+        run: node scripts/aj-cloudflare.mjs proof
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

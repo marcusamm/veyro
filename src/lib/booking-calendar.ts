@@ -1,5 +1,6 @@
 import type { CustomerRow, Env, SubscriptionRow } from '../env';
 import { copenhagenInstants, iso, validDate, zonedParts } from '../aj/store';
+import { legacyAjOrigin, publicAjOrigin } from '../aj/hosts';
 import { nowSec } from './crypto';
 import { getCurrentSubscription, getCustomerByEmail, normalizeEmail } from './db';
 
@@ -153,8 +154,8 @@ export async function loadBookingCalendar(db: D1Database, access: BookingCalenda
 
 /** Only trusted configured AJ hosts; data from customer profiles is never used. */
 export function bookingAdminUrl(env: Pick<Env, 'AJ_URL' | 'AJ_HOSTS' | 'DEV_MODE'>, requestOrigin?: string): string {
-  const fallback = 'https://aj.veyro.dk/admin';
-  const configuredHosts = (env.AJ_HOSTS || 'aj.veyro.dk').split(',').map(host => host.trim().toLowerCase()).filter(Boolean);
+  const fallback = legacyAjOrigin + '/admin';
+  const configuredHosts = (env.AJ_HOSTS || '').split(',').map(host => host.trim().toLowerCase()).filter(Boolean);
   if (env.DEV_MODE === '1' && requestOrigin) {
     try {
       const request = new URL(requestOrigin);
@@ -165,9 +166,11 @@ export function bookingAdminUrl(env: Pick<Env, 'AJ_URL' | 'AJ_HOSTS' | 'DEV_MODE
     } catch { /* Use the canonical link. */ }
   }
   try {
-    const url = new URL(env.AJ_URL || 'https://aj.veyro.dk');
+    const url = new URL(env.AJ_URL || legacyAjOrigin);
     if (url.protocol !== 'https:' || url.username || url.password || url.port) return fallback;
-    if (!['aj.veyro.dk', ...configuredHosts].includes(url.hostname) || !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z][a-z0-9-]*$/i.test(url.hostname)) return fallback;
+    const publicOrigin = publicAjOrigin(url.hostname);
+    if (publicOrigin) return publicOrigin + '/admin';
+    if (!configuredHosts.includes(url.hostname) || !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z][a-z0-9-]*$/i.test(url.hostname)) return fallback;
     return `${url.origin}/admin`;
   } catch { return fallback; }
 }

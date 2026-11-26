@@ -2,6 +2,7 @@ import type { Env } from '../env';
 import { nowSec, randomToken, sha256Hex } from '../lib/crypto';
 import { escapeHtml, sendEmail, type EmailMessage } from '../lib/email';
 import { AjError, bookingTimingNote, type AjEnv, type Settings, type Service, type Staff, type Hours, type Block, type Booking, type BookingInput, type Slot } from './types';
+import { legacyAjOrigin, publicAjOrigin } from './hosts';
 
 export const TIMEZONE = 'Europe/Copenhagen';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -41,8 +42,13 @@ export function parseInstant(value: unknown): number {
   return millis / 1000;
 }
 export function ajOrigin(env: AjEnv, requestOrigin?: string): string {
-  if (requestOrigin) { const u=new URL(requestOrigin); if (['localhost','127.0.0.1','[::1]'].includes(u.hostname)) return u.origin; }
-  try { return new URL(env.AJ_URL || 'https://aj.veyro.dk').origin; } catch { return 'https://aj.veyro.dk'; }
+  if (requestOrigin) {
+    const url = new URL(requestOrigin);
+    const origin = publicAjOrigin(url.hostname);
+    if (origin) return origin;
+    if (['localhost','127.0.0.1','[::1]'].includes(url.hostname)) return url.origin;
+  }
+  try { return new URL(env.AJ_URL || legacyAjOrigin).origin; } catch { return legacyAjOrigin; }
 }
 export const manageLink = (origin: string,token: string) => `${origin}/booking/aftale#token=${token}`;
 export function databaseError(error: unknown): never {

@@ -8,10 +8,12 @@ import { formValidation } from './form-validation';
 import { css } from './styles';
 import { shell, home, services, about, booking, contact, manage } from './views';
 import { carListPath, carIndex, carDetail, publishedCars, publishedCar, publishedPhoto } from './cars';
+import { legacyAjOrigin, primaryAjHost, primaryAjOrigin, publicAjOrigin, wwwAjHost } from './hosts';
 
 export function isAjRequest(req: Request, env: Env): boolean {
   const host = new URL(req.url).hostname.toLowerCase();
-  return (env.AJ_HOSTS || 'aj.veyro.dk').split(',').some(value => value.trim().toLowerCase() === host);
+  if (env.AJ_HOSTS) return env.AJ_HOSTS.split(',').some(value => value.trim().toLowerCase() === host);
+  return publicAjOrigin(host) !== undefined;
 }
 
 const app = new Hono<AppEnv>();
@@ -23,8 +25,18 @@ app.use('*', async (c, next) => {
   c.header('Referrer-Policy', 'no-referrer');
   c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
   c.header('Cache-Control', 'no-store');
-  if (new URL(c.req.url).protocol === 'https:') c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  if (c.req.path.startsWith('/api') || c.req.path.startsWith('/admin') || c.req.path.startsWith('/booking/aftale') || new URL(c.req.url).hostname !== 'aj.veyro.dk') c.header('X-Robots-Tag', 'noindex, nofollow');
+  const url = new URL(c.req.url);
+  if (url.protocol === 'https:') c.header('Strict-Transport-Security', url.hostname === primaryAjHost ? 'max-age=31536000' : 'max-age=31536000; includeSubDomains');
+  if (c.req.path.startsWith('/api') || c.req.path.startsWith('/admin') || c.req.path.startsWith('/booking/aftale') || !publicAjOrigin(url.hostname)) c.header('X-Robots-Tag', 'noindex, nofollow');
+});
+app.use('*', async (c, next) => {
+  const url = new URL(c.req.url);
+  const insecureApex = url.hostname === primaryAjHost && url.protocol === 'http:';
+  if (url.hostname !== wwwAjHost && !insecureApex) return next();
+  if (c.req.method !== 'GET' && c.req.method !== 'HEAD') {
+    return c.json({ error: `Åbn ${primaryAjOrigin}, og prøv igen.` }, 403);
+  }
+  return c.redirect(primaryAjOrigin + url.pathname + url.search, 308);
 });
 app.get('/healthz', c => c.text('ok'));
 app.get('/aj.css', c => c.body(css, 200, { 'Content-Type': 'text/css; charset=utf-8' }));
@@ -56,7 +68,8 @@ type Page = {
 
 async function render(c: Context<AppEnv>, page: Page, status: 200 | 404 = 200) {
   const bookingReady = await canBook(c.env);
-  const options = { bookingReady, noindex: page.noindex, admin: page.admin };
+  const options = { bookingReady, noindex: page.noindex, admin: page.admin,
+    canonicalOrigin: publicAjOrigin(new URL(c.req.url).hostname) };
   return c.html(shell(c.req.path, page.title, page.description, page.content(bookingReady), options), status);
 }
 
@@ -133,8 +146,15 @@ app.get('/biler-til-salg/:id{[1-9][0-9]*}/billeder/:photoId{[1-9][0-9]*}', async
   const bytes = await publishedPhoto(c.env.DB, id, photoId);
   return bytes ? c.body(bytes, 200, { 'Content-Type': 'image/jpeg' }) : c.body(null, 404);
 });
-app.get('/robots.txt', c => c.text(new URL(c.req.url).hostname === 'aj.veyro.dk' ? 'User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /booking/aftale\nSitemap: https://aj.veyro.dk/sitemap.xml\n' : 'User-agent: *\nDisallow: /\n'));
-app.get('/sitemap.xml', c => c.body(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/ydelser', carListPath, '/om-os', '/booking', '/kontakt'].map(path => `<url><loc>https://aj.veyro.dk${path}</loc></url>`).join('')}</urlset>`, 200, { 'Content-Type': 'application/xml' }));
+app.get('/robots.txt', c => {
+  const origin = publicAjOrigin(new URL(c.req.url).hostname);
+  return c.text(origin ? `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /booking/aftale\nSitemap: ${origin}/sitemap.xml\n` : 'User-agent: *\nDisallow: /\n');
+});
+app.get('/sitemap.xml', c => {
+  const origin = publicAjOrigin(new URL(c.req.url).hostname) ?? legacyAjOrigin;
+  const entries = ['/', '/ydelser', carListPath, '/om-os', '/booking', '/kontakt'].map(path => `<url><loc>${origin}${path}</loc></url>`).join('');
+  return c.body(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entries}</urlset>`, 200, { 'Content-Type': 'application/xml' });
+});
 app.notFound(c => render(c, {
   title: 'Siden findes ikke | AJ Auto',
   description: 'Gå til forsiden eller kontakt AJ Auto.',
@@ -151,6 +171,6 @@ app.onError((_error, c) => {
     `<section class="container message-page"><h1>Siden kunne ikke indlæses</h1>
      <p>Prøv igen om lidt, eller ring til værkstedet.</p>
      <a class="button" href="tel:+4560644143">Ring på 60 64 41 43</a></section>`,
-    { noindex: true, bookingReady: false }), 500);
+    { noindex: true, bookingReady: false, canonicalOrigin: publicAjOrigin(new URL(c.req.url).hostname) }), 500);
 });
 export default app;

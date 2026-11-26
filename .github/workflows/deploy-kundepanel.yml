@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['src/aj/**', 'src/lib/booking-calendar.ts', 'src/routes/booking-calendar.ts', 'src/views/booking-calendar.ts', 'public/aj/**', 'migrations/**', 'public/logistik/**', 'public/logistics-site/**', 'src/logistics-site.ts', 'wrangler.toml']
+    paths: ['src/aj/**', 'src/lib/booking-calendar.ts', 'src/routes/booking-calendar.ts', 'src/views/booking-calendar.ts', 'public/aj/**', 'migrations/**', 'public/logistik/**', 'public/logistics-site/**', 'src/logistics-site.ts', 'wrangler.toml', 'scripts/aj-cloudflare.mjs', '.github/workflows/deploy-kundepanel.yml']
 
 concurrency:
   group: deploy-kundepanel
@@ -35,6 +35,7 @@ jobs:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci
           npm run typecheck
           npm run build:site -- --check
+          npx vitest run tests/aj-cloudflare.test.mjs tests/aj-domain.test.mjs
       - name: Tilbagerulning (bogmærke fra før migrationerne)
         run: npx wrangler d1 time-travel info "$DB"
       - name: Migrationslog
@@ -126,3 +127,16 @@ jobs:
           side https://veyro.dk/pages/privatlivspolitik 'Kundepanelet og jeres aftaler'
           side https://veyro.dk/pages/cookiepolitik '__Host-vk_session'
           side https://veyro.dk/ 'href="/pages/databehandleraftale"'
+
+  aj-domain:
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Knyt AJ Autos webadresser til den publicerede Worker
+        run: node scripts/aj-cloudflare.mjs web
