@@ -26,6 +26,7 @@ import account
 import ai_connector
 import mailstore
 import org_admin_client
+import remembered_sessions
 import snooze
 from mailstore import MailError
 
@@ -41,20 +42,25 @@ RECOVERY_REQUESTS = Queue(maxsize=16)
 RECOVERY_KEY = secrets.token_bytes(32)
 COOKIE = "__Host-veyro_session"
 KEY = Fernet(Fernet.generate_key())
+REMEMBERED = remembered_sessions.Store()
 SESSIONS = {}
 LIMITS = {}
 DELIVERIES = {}
 TABLE = threading.Lock()
+# Serializes durable writes with cache admission. Never acquire a session lock
+# while holding this lock; mailbox operations use account -> session -> state.
+SESSION_STATE = threading.Lock()
 IDLE = 1800
 LIFETIME = 8 * 3600
 log = logging.getLogger("gunicorn.error")
 
 
 class Session:
-    def __init__(self, address, password, client, generation):
+    def __init__(self, address, password, client, generation, *, csrf=None, remembered_until=None):
         self.email = address
         self.secret = KEY.encrypt(password.encode())
-        self.csrf = secrets.token_urlsafe(32)
+        self.csrf = csrf or secrets.token_urlsafe(32)
+        self.remembered_until = remembered_until
         self.created = self.touched = self.connected = time.monotonic()
         self.client = client
         self.lock = threading.Lock()
@@ -75,6 +81,11 @@ class Session:
     def password(self):
         return KEY.decrypt(self.secret).decode()
 
+    def expired(self, now):
+        if self.remembered_until is not None:
+            return time.time() >= self.remembered_until
+        return now - self.touched >= IDLE or now - self.created >= LIFETIME
+
     def imap(self):
         if self.client and time.monotonic() - self.connected > 180:
             self.close()
@@ -92,8 +103,10 @@ class Session:
 
 def purge():
     now = time.monotonic()
-    with TABLE:
-        old = [(k, s) for k, s in SESSIONS.items() if now-s.touched >= IDLE or now-s.created >= LIFETIME]
+    with SESSION_STATE, TABLE:
+        # Remembered logins may rehydrate later; idle IMAP connections/passwords
+        # still leave RAM. Their fixed durable expiry is never extended here.
+        old = [(k, s) for k, s in SESSIONS.items() if now-s.touched >= IDLE or s.expired(now)]
         for k, s in old:
             if s.lock.acquire(blocking=False):
                 try:
@@ -114,6 +127,10 @@ def janitor():
     while True:
         time.sleep(60)
         purge()
+        try:
+            REMEMBERED.purge()
+        except remembered_sessions.Unavailable:
+            log.error("Remembered session cleanup unavailable")
 
 
 threading.Thread(target=janitor, daemon=True).start()
@@ -192,24 +209,60 @@ def gateway():
     if request.path in {"/api/login", "/api/recovery/request"}:
         return
     sid = request.cookies.get(COOKIE, "")
-    now = time.monotonic()
-    with TABLE:
-        current = SESSIONS.get(sid)
-        if not current or now-current.touched >= IDLE or now-current.created >= LIFETIME:
-            raise MailError("Log ind for at fortsætte.", 401)
-        if request.method == "POST" and not safe_equal(request.headers.get("X-CSRF-Token"), current.csrf):
-            raise MailError("Sikkerhedskontrollen mislykkedes.", 403)
-        current.touched = now
-    if current.generation != credential_version(current.email):
-        with TABLE:
-            SESSIONS.pop(sid, None)
-        with current.lock:
-            current.close()
-            current.secret = b""
-            current.recovery = None
-        raise MailError("Adgangskoden er ændret. Log ind igen.", 401)
-    g.session = current
+    g.session = authenticated_session(sid)
     g.sid = sid
+
+
+def authenticated_session(sid):
+    with TABLE:
+        candidate = SESSIONS.get(sid)
+    stored = REMEMBERED.get(sid) if candidate is None else None
+    if candidate is None and stored is None:
+        raise MailError("Log ind for at fortsætte.", 401)
+    address = candidate.email if candidate else stored["email"]
+    retired = None
+    try:
+        # Password/reset/admin mutations hold this same mailbox lock. A durable
+        # row read before acquiring it is only a hint, and is checked again below.
+        with account_lock(address):
+            generation = credential_version(address)
+            with SESSION_STATE:
+                with TABLE:
+                    current = SESSIONS.get(sid)
+                stored = REMEMBERED.get(sid) if current is None or current.remembered_until is not None else None
+                now = time.monotonic()
+                if current and (current.expired(now) or (current.remembered_until is not None and stored is None)):
+                    with TABLE:
+                        retired = SESSIONS.pop(sid, None)
+                    current = None
+                if current is None and stored is None:
+                    raise MailError("Log ind for at fortsætte.", 401)
+                csrf = current.csrf if current else stored["csrf"]
+                if request.method == "POST" and not safe_equal(request.headers.get("X-CSRF-Token"), csrf):
+                    raise MailError("Sikkerhedskontrollen mislykkedes.", 403)
+                expected = current.generation if current else stored["generation"]
+                if not generation or generation != expected:
+                    try:
+                        REMEMBERED.delete_account(address)
+                    finally:
+                        with TABLE:
+                            retired = SESSIONS.pop(sid, None) or retired
+                    raise MailError("Adgangen er ændret. Log ind igen.", 401)
+                if current is None:
+                    current = Session(address, stored["password"], None, generation,
+                                      csrf=stored["csrf"], remembered_until=stored["expires"])
+                    with TABLE:
+                        if len(SESSIONS) >= 128:
+                            raise MailError("For mange aktive sessioner. Prøv igen senere.", 503)
+                        SESSIONS[sid] = current
+                current.touched = now
+                return current
+    finally:
+        if retired:
+            with retired.lock:
+                retired.close()
+                retired.secret = b""
+                retired.recovery = None
 
 
 revoke_ai_for_mailbox = ai_connector.install(app, credential_version, throttle, KEY)
@@ -226,6 +279,16 @@ def privacy(response):
 @app.errorhandler(MailError)
 def handled(exc):
     return jsonify(error=exc.message), exc.status
+
+
+@app.errorhandler(remembered_sessions.Unavailable)
+def remembered_unavailable(exc):
+    return jsonify(error="Vedvarende login er midlertidigt utilgængeligt. Prøv igen senere."), 503
+
+
+@app.errorhandler(remembered_sessions.Full)
+def remembered_full(exc):
+    return jsonify(error="For mange gemte login. Log ud på en anden enhed, eller log ind uden at forblive logget ind."), 503
 
 
 @app.errorhandler(HTTPException)
@@ -403,6 +466,9 @@ def confirm_recovery_enrollment():
 def login():
     throttle(("ip", g.ip), 12, 300)
     data = payload()
+    remember = data.get("rememberMe", False)
+    if type(remember) is not bool:
+        raise MailError("Vælg, om du vil forblive logget ind.", 422)
     address, password = data.get("email"), data.get("password")
     if not isinstance(address, str) or not isinstance(password, str):
         raise MailError("Mailadresse eller adgangskode er forkert.", 401)
@@ -417,10 +483,10 @@ def login():
     throttle(("mailbox", hash(address) % 1024), 15, 300)
     # Serialize primary credential changes with admission of IMAP-backed sessions.
     with account_lock(address):
-        return start_session(address, password)
+        return start_session(address, password, remember=remember)
 
 
-def start_session(address, password):
+def start_session(address, password, *, remember=False):
     generation = credential_version(address)
     # Dovecot performs the same credential check for every valid mailbox name.
     # IMAP acceptance alone does not grant webmail or allow skipping native MFA.
@@ -439,18 +505,31 @@ def start_session(address, password):
     current = Session(address, password, client, generation)
     sid = secrets.token_urlsafe(36)
     purge()
-    with TABLE:
-        if len(SESSIONS) >= 128:
-            current.close()
-            raise MailError("For mange aktive sessioner. Prøv igen senere.", 503)
-        old = SESSIONS.pop(request.cookies.get(COOKIE, ""), None)
-        SESSIONS[sid] = current
+    old_sid = request.cookies.get(COOKIE, "")
+    try:
+        with SESSION_STATE:
+            with TABLE:
+                if len(SESSIONS) >= 128 and old_sid not in SESSIONS:
+                    raise MailError("For mange aktive sessioner. Prøv igen senere.", 503)
+            if remember:
+                current.remembered_until = REMEMBERED.put(sid, email=address, password=password,
+                    csrf=current.csrf, generation=generation, replaces=old_sid)
+            else:
+                REMEMBERED.delete(old_sid)
+            with TABLE:
+                old = SESSIONS.pop(old_sid, None)
+                SESSIONS[sid] = current
+    except Exception:
+        current.close()
+        current.secret = b""
+        raise
     if old:
         with old.lock:
             old.close()
             old.secret = b""
     response = jsonify(public_session(current))
-    response.set_cookie(COOKIE, sid, secure=True, httponly=True, samesite="Lax", path="/")
+    response.set_cookie(COOKIE, sid, secure=True, httponly=True, samesite="Lax", path="/",
+                        max_age=remembered_sessions.LIFETIME if remember else None)
     return response
 
 
@@ -478,22 +557,32 @@ def password_change():
     throttle(("change-ip", g.ip), 12, 300)
     failure = None
     with account_lock(session.email):
-        with session.lock:
-            with TABLE:
-                if SESSIONS.get(g.sid) is not session:
-                    raise MailError("Log ind igen.", 401)
-            if not safe_equal(current, session.password()):
-                raise MailError("Den nuværende adgangskode er forkert. Log ind med mailkontoens egen adgangskode for at skifte den.", 403)
-            try:
-                account.change_password(session.email, current, new)
-            except account.ChangeUnconfirmed as exc:
-                failure = exc
-            with TABLE:
-                revoked = [SESSIONS.pop(k) for k, s in list(SESSIONS.items()) if s.email == session.email]
-        for other in revoked:
-            with other.lock:
-                other.close()
-                other.secret = b""
+        revoked = []
+        try:
+            with session.lock:
+                with TABLE:
+                    if SESSIONS.get(g.sid) is not session:
+                        raise MailError("Log ind igen.", 401)
+                if not safe_equal(current, session.password()):
+                    raise MailError("Den nuværende adgangskode er forkert. Log ind med mailkontoens egen adgangskode for at skifte den.", 403)
+                try:
+                    account.change_password(session.email, current, new)
+                except account.ChangeUnconfirmed as exc:
+                    failure = exc
+                # Detach while holding this session's operation lock, so an
+                # already queued mailbox operation cannot reuse the old login.
+                with SESSION_STATE:
+                    try:
+                        REMEMBERED.delete_account(session.email)
+                    finally:
+                        with TABLE:
+                            revoked = [SESSIONS.pop(k) for k, s in list(SESSIONS.items()) if s.email == session.email]
+        finally:
+            for other in revoked:
+                with other.lock:
+                    other.close()
+                    other.secret = b""
+                    other.recovery = None
     response = jsonify(error=failure.message, loginRequired=True) if failure else jsonify(ok=True)
     if failure:
         response.status_code = failure.status
@@ -663,6 +752,10 @@ def admin_mailbox_password():
 @app.post("/api/admin/mailboxes/role")
 def admin_mailbox_role():
     with organization_access("domain", "email", "admin", platform_only=True) as data:
+        # A role change need not alter Mailcow's credential generation. Durable
+        # revocation must succeed BEFORE granting/removing access, including when
+        # the broker commits a change but its response is subsequently lost.
+        close_mailbox_sessions(data["email"])
         try:
             record = update_mailbox("/mailboxes/role", data)
             if record.get("organizationAdmin") is not data["admin"]:
@@ -680,13 +773,20 @@ def admin_mailbox_role():
 
 
 def close_mailbox_sessions(address):
-    with TABLE:
-        retired = [SESSIONS.pop(k) for k, s in list(SESSIONS.items()) if s.email == address]
-    for other in retired:
-        with other.lock:
-            other.close()
-            other.secret = b""
-            other.recovery = None
+    retired = []
+    try:
+        with SESSION_STATE:
+            try:
+                REMEMBERED.delete_account(address)
+            finally:
+                with TABLE:
+                    retired = [SESSIONS.pop(k) for k, s in list(SESSIONS.items()) if s.email == address]
+    finally:
+        for other in retired:
+            with other.lock:
+                other.close()
+                other.secret = b""
+                other.recovery = None
 
 
 def retire_mailbox_access(address):
@@ -696,11 +796,18 @@ def retire_mailbox_access(address):
 
 @app.post("/api/logout")
 def logout():
-    with TABLE:
-        SESSIONS.pop(g.sid, None)
-    with g.session.lock:
-        g.session.close()
-        g.session.secret = b""
+    try:
+        with account_lock(g.session.email), SESSION_STATE:
+            try:
+                REMEMBERED.delete(g.sid)
+            finally:
+                with TABLE:
+                    SESSIONS.pop(g.sid, None)
+    finally:
+        with g.session.lock:
+            g.session.close()
+            g.session.secret = b""
+            g.session.recovery = None
     response = jsonify(ok=True)
     response.delete_cookie(COOKIE, path="/", secure=True, httponly=True, samesite="Lax")
     return response
@@ -719,9 +826,13 @@ def operation(fn, retry=True):
                 return fn(current.imap())
             except LoginError:
                 current.close()
-                with TABLE:
-                    SESSIONS.pop(g.sid, None)
-                current.secret = b""
+                with SESSION_STATE:
+                    try:
+                        REMEMBERED.delete(g.sid)
+                    finally:
+                        with TABLE:
+                            SESSIONS.pop(g.sid, None)
+                        current.secret = b""
                 raise MailError("Log ind igen.", 401) from None
             except (IMAPClientAbortError, OSError):
                 current.close()

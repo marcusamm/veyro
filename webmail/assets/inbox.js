@@ -135,6 +135,7 @@
     byId('account').hidden = byId('workspace').hidden = byId('connecting').hidden = true;
     byId('gate').hidden = byId('login').hidden = false;
     byId('password').value = '';
+    byId('remember-me').checked = false;
     revealPassword(false);
     document.title = 'Log ind · Veyro Mail';
     setError('login-error', reason);
@@ -171,7 +172,7 @@
     const button = byId('login-submit');
     if (button.disabled) return;
     button.disabled = true; setError('login-error'); setError('login-status');
-    try { loggedIn(await api('login', {method: 'POST', body: {email: byId('email').value.trim(), password: byId('password').value}})); }
+    try { loggedIn(await api('login', {method: 'POST', body: {email: byId('email').value.trim(), password: byId('password').value, rememberMe: byId('remember-me').checked}})); }
     catch (error) { setError('login-error', message(error)); }
     finally { button.disabled = false; }
   };

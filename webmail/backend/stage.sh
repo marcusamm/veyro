@@ -14,6 +14,25 @@ if [ ! -s secrets/origin-token ]; then
 fi
 chown root:65532 secrets/origin-token
 chmod 0440 secrets/origin-token
+# Retained across releases: generating a new key during deployment would sign
+# every remembered browser out. Never repair/overwrite an existing invalid key.
+if [ ! -e secrets/remembered-session-key ]; then
+  tmp=$(mktemp secrets/.remembered.XXXXXX)
+  trap 'rm -f "$tmp"' EXIT
+  openssl rand -base64 32 | tr '+/' '-_' > "$tmp"
+  ln "$tmp" secrets/remembered-session-key
+  rm "$tmp"
+  trap - EXIT
+fi
+python3 - <<'PY'
+import base64
+from pathlib import Path
+key = Path('secrets/remembered-session-key').read_bytes().strip()
+if len(key) != 44 or len(base64.b64decode(key, altchars=b'-_', validate=True)) != 32:
+    raise RuntimeError('Invalid remembered-session key; restore the existing key from backup')
+PY
+chown root:65532 secrets/remembered-session-key
+chmod 0440 secrets/remembered-session-key
 sh refresh-trust.sh
 install -m 0644 veyro-webmail-trust.service veyro-webmail-trust.path /etc/systemd/system/
 systemctl daemon-reload

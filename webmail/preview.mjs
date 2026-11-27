@@ -12,6 +12,7 @@ const bundle = join(temporary, 'gateway.mjs');
 await build({entryPoints:[join(here, 'worker.ts')], outfile:bundle, bundle:true, platform:'node', format:'esm', logLevel:'silent'});
 const {default:gateway, messageFramePolicy} = await import(pathToFileURL(bundle));
 const port = 58901, origin = `http://127.0.0.1:${port}`;
+const loginPreview = process.argv.includes('--login');
 const mime = {html:'text/html; charset=utf-8', js:'text/javascript; charset=utf-8', css:'text/css; charset=utf-8', svg:'image/svg+xml', woff2:'font/woff2'};
 const folders = [{id:'inbox',name:'Indbakke',role:'inbox',unread:1}];
 const assets = {async fetch(request) {
@@ -25,6 +26,11 @@ const server = createServer(async (request, response) => {
     const url = new URL(request.url, origin);
     let result;
     if (url.pathname.startsWith('/api/')) {
+      if (loginPreview) {
+        response.writeHead(401, {'Content-Type':'application/json', 'Cache-Control':'no-store'});
+        response.end(JSON.stringify({error:'Kun lokal loginvisning.'}));
+        return;
+      }
       const {newsletter} = await import('./fixtures/rich-newsletter.mjs');
       const item = {id:'1.2',from:'Nord Studio <nyheder@example.test>',to:'test@veyro.dk',subject:'Nyt fra studiet',date:'2026-11-27T12:00:00Z',unread:false,labels:[],attachments:[],...newsletter};
       const data = url.pathname === '/api/session' ? {email:'test@veyro.dk',csrfToken:'local-preview',canManageRecovery:false,canManageOrganizations:false}
