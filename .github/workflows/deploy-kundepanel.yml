@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['src/aj/**', 'src/lib/booking-calendar.ts', 'src/routes/booking-calendar.ts', 'src/views/booking-calendar.ts', 'public/aj/**', 'migrations/**', 'public/logistik/**', 'public/logistics-site/**', 'src/logistics-site.ts', 'wrangler.toml', 'scripts/aj-cloudflare.mjs', '.github/workflows/deploy-kundepanel.yml']
+    paths: ['src/aj/**', 'src/lib/booking-calendar.ts', 'src/routes/booking-calendar.ts', 'src/views/booking-calendar.ts', 'src/lib/accounting*.ts', 'src/routes/admin-accounting.ts', 'src/views/accounting*.ts', 'public/aj/**', 'migrations/**', 'public/logistik/**', 'public/logistics-site/**', 'src/logistics-site.ts', 'wrangler.toml', 'scripts/aj-cloudflare.mjs', '.github/workflows/deploy-kundepanel.yml']
 
 concurrency:
   group: deploy-kundepanel
@@ -36,6 +36,7 @@ jobs:
           npm run typecheck
           npm run build:site -- --check
           npx vitest run tests/aj-cloudflare.test.mjs tests/aj-domain.test.mjs
+          npx vitest run tests/accounting-core.test.mjs tests/accounting-import.test.mjs tests/accounting-ui.test.mjs tests/accounting-routes.test.mjs
       - name: Tilbagerulning (bogmærke fra før migrationerne)
         run: npx wrangler d1 time-travel info "$DB"
       - name: Migrationslog
@@ -73,6 +74,8 @@ jobs:
           check https://aj.veyro.dk/api/admin/data 401
           check https://kunde.veyro.dk/konto/kalender 303
           check https://kunde.veyro.dk/login 200
+          check https://kunde.veyro.dk/admin/bogfoering 303
+          check https://kunde.veyro.dk/admin/bogfoering/bilag/1/original 303
           check https://kunde.veyro.dk/logistik/ 200
           check https://kunde.veyro.dk/logistik/login 200
           check https://kunde.veyro.dk/logistik/vaerktoejer/eoq/ 200

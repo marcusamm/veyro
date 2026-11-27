@@ -46,6 +46,12 @@ database_name = "veyro-kundepanel"
 database_id = "0f56d7df-f658-4f26-b0a7-53ab048d120a"
 migrations_dir = "migrations"
 
+# Same private OCR service used by Bilag. No public upload URL or outside AI provider.
+# Originals stay in this Worker's private D1 file store.
+[[services]]
+binding = "RECEIPT_OCR"
+service = "veyro-receipt-ocr"
+
 # Kundekatalog: hvilke kundesystemer (fx ek.veyro.dk) en e-mail har adgang til.
 # Kundernes lagerstyring skriver til det (se scripts/deploy-kunder.mjs); Kundelogin slår op i det.
 [[kv_namespaces]]

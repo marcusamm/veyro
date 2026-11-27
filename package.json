@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
+    "preview:accounting": "node scripts/accounting-preview.mjs",
     "deploy": "wrangler deploy",
     "migrate": "wrangler d1 migrations apply veyro-kundepanel --remote",
     "migrate:local": "wrangler d1 migrations apply veyro-kundepanel --local",

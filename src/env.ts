@@ -1,5 +1,7 @@
 export interface Env {
   DB: D1Database;
+  /** Existing private OCR service. Optional; no public third-party OCR endpoint. */
+  RECEIPT_OCR?: Fetcher;
 
   // Offentlige indstillinger ([vars] i wrangler.toml)
   APP_URL: string;
