@@ -25,6 +25,7 @@ import adminNda from './routes/admin-nda';
 import kasse from './routes/kasse';
 import adminProspects from './routes/admin-prospects';
 import adminCosts from './routes/admin-costs';
+import adminAccounting from './routes/admin-accounting';
 import adminMail from './routes/admin-mail';
 import adminProspectTools from './routes/admin-prospect-tools';
 import adminProspectImport from './routes/admin-prospect-import';
@@ -121,6 +122,7 @@ app.route('/', webhook);
 
 // Session + CSRF for resten
 app.use('/tools/*', bodyLimit({ maxSize: 80 * 1024, onError: c => c.text('Request too large.', 413) }));
+app.use('/admin/bogfoering/*', bodyLimit({ maxSize: 16 * 1024 * 1024, onError: c => c.text('Filen er for stor. Brug højst 15 MB.', 413) }));
 app.use('/logistik/*', bodyLimit({ maxSize: 512 * 1024, onError: c => c.json({ code: 'body_too_large', error: 'Beregningen fylder for meget. Reducér antallet af rækker eller tekstlængden.' }, 413) }));
 app.use('*', sessionMiddleware);
 app.use('*', csrfMiddleware);
@@ -142,6 +144,7 @@ app.route('/admin', adminProspectTools);
 app.route('/admin', adminProspectImport);
 app.route('/admin', adminProspects);
 app.route('/admin', adminCosts);
+app.route('/admin', adminAccounting);
 app.route('/admin', adminSite);
 app.route('/admin', adminStats);
 app.route('/admin', adminVisitors);
