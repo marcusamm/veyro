@@ -31,7 +31,7 @@ function responseHeaders(type = 'text/plain; charset=utf-8') {
   return new Headers({
     'Content-Type': type, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer',
     'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex, nofollow',
-    'Content-Security-Policy': policy, 'X-Frame-Options': 'DENY',
+    'Content-Security-Policy': policy, 'X-Frame-Options': 'DENY', 'X-DNS-Prefetch-Control': 'off',
   });
 }
 

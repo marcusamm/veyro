@@ -59,7 +59,7 @@ async function mailbox(t, options = {}, extraMails = [], canManageRecovery, canM
     else if (path === '/api/folders') json = {folders};
     else if (path === '/api/messages') {
       lists.push(url.searchParams);
-      json = {messages: fixtures.map(({text, attachments, ...summary}) => summary),
+      json = {messages: fixtures.map(({text, html, security, attachments, ...summary}) => summary),
         nextCursor: null, availableLabels: fixtures.flatMap(item => item.labels)};
     } else if (path.startsWith('/api/messages/') && fixtures.some(item => item.id === path.split('/')[3])) {
       const fixture = fixtures.find(item => item.id === path.split('/')[3]);
@@ -74,6 +74,84 @@ async function mailbox(t, options = {}, extraMails = [], canManageRecovery, canM
   t.after(() => assert.deepEqual(errors, []));
   return {page, writes, lists};
 }
+
+test('opens mail links safely with formatted text, the real destination and no fetched mail resources', async t => {
+  const sample = {
+    ...mail, id: '1.2', security: {status: 'clean', reasons: []}, text: 'Tekstversion',
+    html: '<div id="from-message" style="color:red"><p><strong>Hjælp</strong> ' +
+      '<a href="https://docs.example.test/start" target="_self" id="remote-link" ping="/unexpected">andet.example.test</a></p>' +
+      '<a href="mailto:team@example.test">Skriv til os</a> ' +
+      '<a href="data:,Eksempel">Datatekst</a> <a href="javascript:">Anden protokol</a> ' +
+      '<a href="/intern">Relativ sti</a> <a href="https://person@docs.example.test/">Ugyldig adresse</a>' +
+      '<img src="/favicon.svg?message-test" alt="Billede"><iframe src="https://media.example.test/frame"></iframe>' +
+      '<script type="application/json">{"fixture":true}</script><p>https://docs.example.test/tekst</p></div>',
+  };
+  const {page} = await mailbox(t, {}, [sample]);
+  const fetched = [];
+  page.context().on('request', request => fetched.push(request.url()));
+  await page.locator('li[data-mail="1.2"] .message-row').click();
+  const body = page.locator('.letter-rich');
+  await body.waitFor();
+  await page.waitForLoadState('networkidle');
+  assert.equal(fetched.some(url => /message-test|media\.example\.test|unexpected/.test(url)), false);
+  assert.equal(await body.locator('strong').textContent(), 'Hjælp');
+  assert.equal(await body.locator('a').count(), 3);
+  assert.equal(await body.locator('img,iframe,script,[style],[ping],[id]').count(), 0);
+  assert.equal(await body.getByText('Datatekst', {exact: false}).first().isVisible(), true);
+  const external = body.getByRole('link', {name: 'andet.example.test'});
+  assert.equal(await external.getAttribute('rel'), 'noopener noreferrer');
+  assert.equal(await external.getAttribute('referrerpolicy'), 'no-referrer');
+  assert.equal(await external.locator('xpath=following-sibling::*[1]').textContent(), ' (docs.example.test)');
+  assert.equal(await body.getByRole('link', {name: 'Skriv til os'}).getAttribute('href'), 'mailto:team@example.test');
+  let referer;
+  await page.context().route('https://docs.example.test/start', route => {
+    referer = route.request().headers().referer;
+    return route.fulfill({contentType: 'text/html', body: 'Testside'});
+  });
+  const opened = page.context().waitForEvent('page');
+  await external.click();
+  const destination = await opened;
+  await destination.waitForLoadState();
+  assert.equal(destination.url(), 'https://docs.example.test/start');
+  assert.equal(await destination.locator('body').textContent(), 'Testside');
+  assert.equal(await destination.evaluate(() => window.opener === null), true);
+  assert.equal(referer, undefined);
+});
+
+test('shows legacy status, preserves punctuation and keeps suspect HTML links usable on mobile', async t => {
+  const legacy = {...mail, id: '1.2', text: 'Se (https://docs.example.test/kursus_(A)).\n' +
+    'Svar på mailto:anne@example.test eller åbn http://docs.example.test/a.'};
+  const suspect = {...mail, id: '1.3', text: 'Tekst', html: '<p><a href="https://portal.example.test">Åbn demoen</a></p>',
+    security: {status:'suspicious', reasons:['Linkteksten kan være vildledende.']}};
+  const oldHtml = {...suspect, id:'1.4', security: undefined, text: '',
+    html: '<p>Aftale</p><dl><dt>Booking</dt><dd><a href="https://portal.example.test">Åbn demoen</a></dd></dl>'};
+  const dangerous = {...legacy, id:'1.5', html: '<p>Skjult HTML</p>', security: {status:'dangerous', reasons:[]}};
+  const {page} = await mailbox(t, {viewport:{width:375,height:700}, isMobile:true, hasTouch:true},
+    [legacy, suspect, oldHtml, dangerous]);
+  async function open(id) {
+    if (await page.locator('#back').isVisible()) await page.locator('#back').tap();
+    await page.locator('li[data-mail="' + id + '"] .message-row').tap();
+    await page.locator('.letter .mail-scan').waitFor();
+  }
+  await open(legacy.id);
+  assert.equal(await page.locator('.mail-scan.unknown').isVisible(), true);
+  assert.equal(await page.locator('.letter-body').textContent(), legacy.text);
+  assert.deepEqual(await page.locator('.body-link').evaluateAll(links => links.map(link => link.href)),
+    ['https://docs.example.test/kursus_(A)', 'mailto:anne@example.test', 'http://docs.example.test/a']);
+  await open(suspect.id);
+  assert.match(await page.locator('.mail-scan.suspicious').textContent(), /Linkteksten/);
+  assert.equal(await page.getByRole('link', {name:'Åbn demoen'}).getAttribute('href'), 'https://portal.example.test/');
+  assert.match(await page.locator('.link-destination').textContent(), /portal\.example\.test/);
+  assert.equal(await page.locator('.attachments a').count(), 1);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await open(oldHtml.id);
+  assert.equal(await page.locator('.mail-scan.unknown').isVisible(), true);
+  assert.equal(await page.locator('.letter-rich dd').getByRole('link', {name:'Åbn demoen'}).getAttribute('href'), 'https://portal.example.test/');
+  await open(dangerous.id);
+  assert.equal(await page.locator('.mail-scan.dangerous').isVisible(), true);
+  assert.equal(await page.locator('.letter-body a').count(), 0);
+  assert.doesNotMatch(await page.locator('.letter-body').textContent(), /Skjult HTML/);
+});
 
 test('customer account menu only offers the actions available for its mailbox', async t => {
   const {page} = await mailbox(t, {}, [], false);

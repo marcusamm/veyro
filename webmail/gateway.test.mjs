@@ -119,6 +119,7 @@ describe('Veyro Mail gateway', () => {
     expect(await result.text()).toBe(shell);
     expect(result.headers.get('Cache-Control')).toContain('no-store');
     expect(result.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'");
+    expect(result.headers.get('X-DNS-Prefetch-Control')).toBe('off');
     expect(result.headers.get('Strict-Transport-Security')).toMatch(/^max-age=[1-9]\d*(?:;|$)/i);
     expect(result.headers.has('Location')).toBe(false);
     for (const file of ['inbox.js', 'inbox.css', 'webmail.css', 'favicon.svg', 'manrope.woff2']) {
