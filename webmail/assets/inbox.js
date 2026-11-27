@@ -834,8 +834,17 @@
     suspicious: 'Mulig svindel',
     dangerous: 'Advarsel · Farlig mail',
   };
-  const allowedMailTags = new Set('a p div span br hr b strong i em u s del small sub sup blockquote pre code dl dt dd ul ol li h1 h2 h3 h4 h5 h6 table caption thead tbody tfoot tr th td'.split(' '));
-  const mailWrappers = new Set('font center section article main header footer address'.split(' '));
+  let activeMailFrame = null;
+  window.addEventListener('message', event => {
+    const current = activeMailFrame;
+    if (!current || !current.frame.isConnected || event.source !== current.frame.contentWindow ||
+        event.data?.type !== 'veyro-mail-size' || event.data.token !== current.token) return;
+    const height = event.data.height;
+    if (typeof height !== 'number' || !Number.isFinite(height)) return;
+    // Very long messages retain their own scroll area instead of making the app unusable.
+    current.frame.style.height = Math.max(80, Math.min(16000, Math.ceil(height))) + 'px';
+    current.frame.removeAttribute('aria-busy');
+  });
 
   function mailLinkUrl(value) {
     if (!value || value.length > 8192 || /[\s\\\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u.test(value)) return null;
@@ -904,30 +913,51 @@
 
   function messageBody(item, status) {
     const body = node('div', 'letter-body');
+    activeMailFrame = null;
     if (typeof item.html === 'string' && item.html && status !== 'dangerous') {
-      // Template content in a document with no browsing context stays inert. Never adopt these nodes.
-      const template = document.implementation.createHTMLDocument('').createElement('template');
-      template.innerHTML = item.html;
-      function copyChildren(source, target) {
-        for (const child of source.childNodes) {
-          if (child.nodeType === Node.TEXT_NODE) { appendMailText(target, child.data, status); continue; }
-          if (child.namespaceURI !== 'http://www.w3.org/1999/xhtml') continue;
-          const tag = child.localName;
-          if (mailWrappers.has(tag)) { copyChildren(child, target); continue; }
-          if (!allowedMailTags.has(tag)) continue;
-          if (tag === 'a') {
-            const href = child.getAttribute('href') || '';
-            appendMailLink(target, href, child.textContent.trim(), status);
-          } else {
-            const el = node(tag);
-            copyChildren(child, el);
-            target.append(el);
-          }
-        }
+      body.classList.add('letter-rich');
+      const tools = node('div', 'mail-view-tools');
+      const remote = item.has_external_images === true || /data-veyro-src\s*=|<img\b[^>]*\bsrc\s*=\s*["']?https?:/i.test(item.html);
+      const imageNote = node('span', 'mail-image-note', 'Eksterne billeder er skjult.');
+      const showImages = node('button', 'secondary', 'Vis billeder'); showImages.type = 'button';
+      const toggle = node('button', 'text-button', 'Vis som tekst'); toggle.type = 'button';
+      let images = false, textOnly = false;
+      const content = node('div', 'mail-view-content');
+      function showFrame() {
+        const frame = node('iframe', 'mail-frame');
+        const token = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+        frame.title = 'Mailens indhold';
+        frame.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
+        frame.referrerPolicy = 'no-referrer';
+        frame.setAttribute('aria-busy', 'true');
+        frame.src = '/message-frame' + (images ? '?images=1' : '');
+        frame.addEventListener('load', () => {
+          if (activeMailFrame?.frame !== frame || !frame.isConnected) return;
+          // The sandbox intentionally has an opaque origin. Only this frame receives the content.
+          frame.contentWindow.postMessage({type:'veyro-mail-init', token, html:item.html, images}, '*');
+        }, {once:true});
+        activeMailFrame = {frame, token};
+        content.replaceChildren(frame);
       }
-      copyChildren(template.content, body);
-      if (body.textContent.trim()) { body.classList.add('letter-rich'); return body; }
-      body.replaceChildren();
+      if (remote) {
+        tools.append(imageNote, showImages);
+        showImages.onclick = () => {
+          images = true;
+          imageNote.textContent = 'Billeder vises i denne mail.';
+          showImages.remove();
+          if (!textOnly) showFrame();
+        };
+      }
+      toggle.onclick = () => {
+        textOnly = !textOnly; toggle.textContent = textOnly ? 'Vis original opsætning' : 'Vis som tekst';
+        if (textOnly) {
+          activeMailFrame = null;
+          const plain = node('div', 'mail-plain');
+          appendMailText(plain, item.text || '', status); content.replaceChildren(plain);
+        } else showFrame();
+      };
+      tools.append(toggle); body.append(tools, content); showFrame();
+      return body;
     }
     appendMailText(body, typeof item.text === 'string' ? item.text : '', status);
     return body;
