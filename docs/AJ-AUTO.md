@@ -56,7 +56,7 @@ Efter en vellykket `Deploy kundepanel` fra `main` klargør det selvstændige wor
 
 Begge AJ-workflows kan bruge GitHub-hemmeligheden `AJ_AUTO_DNS_API_TOKEN` med Cloudflare-rettigheden **Zone → DNS → Edit** begrænset til `aj-auto-slagelse.dk`. Uden den bruges `CLOUDFLARE_API_TOKEN` også til DNS. Det fælles token læser zonen og Worker-domænerne og skal have **Zone → Workers Routes → Edit** for at oprette de to ruter.
 
-Maildomænet oprettes separat i Veyro Mail. Workflowet `Publicér AJ Autos domænebevis til Veyro Mail` lægger den offentlige TXT-værdi fra `ops/aj-auto-domain-proof.txt` på `_veyro-mail.aj-auto-slagelse.dk`. Hvis beviset udløber inden delegeringen, hentes en ny værdi i mailadministrationen. Opret organisationen efter DNS-verificeringen, og brug den returnerede DKIM-nøgle til domænet.
+Filen `ops/aj-auto-domain-proof.txt` kan importeres under DNS → Records → Import i Cloudflare. Den indeholder de to proxiede webadresser og den offentlige TXT-post til Veyro Mail. Workflowet `Publicér AJ Autos domænebevis til Veyro Mail` kan også oprette TXT-posten. Hvis beviset udløber inden delegeringen, hentes en ny værdi i mailadministrationen. Opret organisationen efter DNS-verificeringen, og brug den returnerede DKIM-nøgle til domænet.
 
 `Deploy kundepanel` tager et D1-bogmærke, anvender migrationerne og udgiver Workeren fra `main`. Efter udgivelsen kontrolleres de offentlige sider, `/api/config`, adgangskontrollen på `/api/admin/data` (401) og den forventede bookingstatus.
 
