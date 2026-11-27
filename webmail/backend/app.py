@@ -758,7 +758,11 @@ def messages():
 @app.get("/api/messages/<identifier>")
 def message(identifier):
     def read(c):
-        result = mailstore.read_message(c, folder(), identifier, address=g.session.email)
+        source = folder()
+        # Use Dovecot's special-use folder, including localized names.
+        folders = g.session.folders if g.session.folders is not None else g.session.cached_folders(c)
+        in_junk = any(f["name"] == source and f["role"] == "junk" for f in folders)
+        result = mailstore.read_message(c, source, identifier, address=g.session.email, inspect_content=True, in_junk=in_junk)
         g.session.folder_time = 0
         return result
     return jsonify(operation(read))

@@ -11,11 +11,12 @@ from email.message import EmailMessage
 from email.parser import BytesHeaderParser, BytesParser
 from email.utils import formatdate, getaddresses, make_msgid, parsedate_to_datetime
 from functools import lru_cache
-from html.parser import HTMLParser
 from pathlib import Path
 
 from imapclient import IMAPClient
 from imapclient.exceptions import IMAPClientError
+
+import message_view
 
 HOST = "post.veyro.dk"
 TRUST_FILE = Path("/run/veyro/mailcow-public.pem")
@@ -293,7 +294,7 @@ def lookup(client, folder, identifier, readonly=True):
     meta = client.select_folder(folder, readonly=readonly)
     if validity != meta[b"UIDVALIDITY"]:
         raise MailError("Meddelelsen findes ikke længere i mappen.", 404)
-    rows = client.fetch([uid], ["UID", "FLAGS", "INTERNALDATE", HEADERS, "BODYSTRUCTURE"])
+    rows = client.fetch([uid], ["UID", "FLAGS", "INTERNALDATE", HEADERS, "BODYSTRUCTURE", "RFC822.SIZE"])
     if uid not in rows or b"BODYSTRUCTURE" not in rows[uid]:
         raise MailError("Meddelelsen findes ikke.", 404)
     rows[uid][b"UID"] = uid
@@ -365,45 +366,43 @@ def read_part(client, uid, part, max_bytes):
     return data
 
 
-class VisibleText(HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.chunks, self.hidden = [], 0
-
-    def handle_starttag(self, tag, attrs):
-        if tag in {"script", "style", "head"}:
-            self.hidden += 1
-        if tag in {"br", "p", "div", "tr", "li", "blockquote"} and not self.hidden:
-            self.chunks.append("\n")
-
-    def handle_endtag(self, tag):
-        if tag in {"script", "style", "head"} and self.hidden:
-            self.hidden -= 1
-
-    def handle_data(self, data):
-        if not self.hidden:
-            self.chunks.append(data)
+def read_text_part(client, uid, part):
+    if part is None:
+        return "", False
+    try:
+        data = read_part(client, uid, part, message_view.BODY_LIMIT)
+    except MailError as exc:
+        # A malformed or missing MIME alternative must not hide the other body.
+        if exc.status not in (404, 422):
+            raise
+        return "", True
+    try:
+        text = data.decode(part["charset"], "replace")
+    except LookupError:
+        text = data.decode("utf-8", "replace")
+    return text, part["size"] > message_view.BODY_LIMIT
 
 
-def read_message(client, folder, identifier, *, mark_seen=True, address=""):
+def read_message(client, folder, identifier, *, mark_seen=True, address="", inspect_content=False, in_junk=False):
     validity, uid, row = lookup(client, folder, identifier, readonly=not mark_seen)
     parts = section_tree(row[b"BODYSTRUCTURE"])
-    text_parts = [p for p in parts if not p["attachment"]]
-    body = next((p for p in text_parts if p["mime"] == "text/plain"), next(iter(text_parts), None))
-    text = ""
-    if body:
-        data = read_part(client, uid, body, 1024 * 1024)
-        try:
-            text = data.decode(body["charset"], "replace")
-        except LookupError:
-            text = data.decode("utf-8", "replace")
-        if body["mime"] == "text/html":
-            parser = VisibleText()
-            parser.feed(text)
-            text = "".join(parser.chunks).strip()
-        if body["size"] > 1024 * 1024:
-            text += "\n\n[Resten af den meget lange besked er udeladt.]"
+    plain = next((p for p in parts if not p["attachment"] and p["mime"] == "text/plain"), None)
+    rich = next((p for p in parts if not p["attachment"] and p["mime"] == "text/html"), None)
+    text, plain_incomplete = read_text_part(client, uid, plain)
+    html, html_text, mismatch = None, "", False
+    rich_incomplete = False
+    if rich and (inspect_content or not text):
+        raw_html, rich_incomplete = read_text_part(client, uid, rich)
+        html, html_text, mismatch = message_view.html_view(raw_html)
+    incomplete = plain_incomplete if text else rich_incomplete
+    text = text or html_text
+    if incomplete or (not text and (plain_incomplete or rich_incomplete)):
+        text += "\n\n[Mailens tekst kunne ikke vises fuldstændigt.]"
     result = message_summary(row, validity, address)
+    if inspect_content:
+        verdict = message_view.assess(client, uid, row.get(b"RFC822.SIZE"), parts, text, html_text,
+                                      mismatch, plain_incomplete or rich_incomplete, in_junk)
+        result.update(security=verdict, html=html if verdict["status"] != "dangerous" else None)
     if mark_seen:
         client.add_flags([uid], [b"\\Seen"], silent=True)
         result["unread"] = False

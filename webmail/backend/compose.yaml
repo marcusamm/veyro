@@ -9,6 +9,8 @@ services:
     environment:
       WEBMAIL_STAFF: ${WEBMAIL_STAFF:-marcus@veyro.dk,efe@veyro.dk}
       WEBMAIL_ORIGIN: https://mail.veyro.dk
+      WEBMAIL_CLAMD_HOST: 127.0.0.1
+      WEBMAIL_CLAMD_PORT: "13310"
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]

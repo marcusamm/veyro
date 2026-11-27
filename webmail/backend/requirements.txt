@@ -3,3 +3,4 @@ gunicorn==27.0.1
 IMAPClient==4.3.0
 cryptography==50.0.2
 PyMySQL==1.2.4
+nh3==0.3.8

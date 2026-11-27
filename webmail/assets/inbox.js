@@ -1,4 +1,4 @@
-// All message headers, file names and bodies are untrusted plain text.
+// All message content is untrusted. The reader builds its own DOM from allowed values.
 (() => {
   'use strict';
   const byId = id => document.getElementById(id);
@@ -828,6 +828,122 @@
     } catch (error) { status.textContent = message(error); }
     finally { link.removeAttribute('aria-busy'); }
   }
+  const scanLabels = {
+    unknown: 'Ingen scanningsstatus for denne mail',
+    clean: 'Scannet · Ingen kendte tegn på svindel',
+    suspicious: 'Mulig svindel',
+    dangerous: 'Advarsel · Farlig mail',
+  };
+  const allowedMailTags = new Set('a p div span br hr b strong i em u s del small sub sup blockquote pre code dl dt dd ul ol li h1 h2 h3 h4 h5 h6 table caption thead tbody tfoot tr th td'.split(' '));
+  const mailWrappers = new Set('font center section article main header footer address'.split(' '));
+
+  function mailLinkUrl(value) {
+    if (!value || value.length > 8192 || /[\s\\\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u.test(value)) return null;
+    try {
+      const url = new URL(value);
+      if (/^https?:\/\/[^/\\]/i.test(value) && url.hostname && !url.username && !url.password) return url;
+      if (url.protocol === 'mailto:' && /^[^@/?#%\\,;:\s]+@[^@/?#%\\,;:\s]+$/u.test(url.pathname) &&
+          !url.hash && !/%(?:00|0a|0d)/i.test(value) && [...url.searchParams.keys()].every(key => /^(?:subject|body)$/i.test(key))) return url;
+    } catch { /* An incomplete or unsupported address stays readable as text. */ }
+    return null;
+  }
+
+  function appendMailLink(parent, value, label, status) {
+    const url = mailLinkUrl(value);
+    if (!url) { parent.append(label); return; }
+    const destination = url.host || url.pathname;
+    const caption = label || destination;
+    if (status === 'dangerous') {
+      parent.append(caption);
+    } else {
+      const anchor = node('a', 'body-link', caption);
+      anchor.href = url.href;
+      if (url.protocol !== 'mailto:') anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+      anchor.referrerPolicy = 'no-referrer';
+      parent.append(anchor);
+    }
+    // Show where a labelled link leads, even when its text resembles another site's address.
+    const displayed = mailLinkUrl(caption);
+    if ((displayed?.href !== url.href && caption !== destination) || status === 'suspicious' ||
+        status === 'dangerous' || url.hostname.includes('xn--')) {
+      parent.append(node('span', 'link-destination', ' (' + destination + ')'));
+    }
+  }
+
+  function trimMailUrl(value) {
+    let end = value.length;
+    while (end && '.,!?:;'.includes(value[end - 1])) end--;
+    const pairs = {')': '(', ']': '[', '}': '{'};
+    const balance = {')': 0, ']': 0, '}': 0};
+    for (const char of value.slice(0, end)) {
+      if (Object.hasOwn(pairs, char)) balance[char]++;
+      else if (char === '(') balance[')']--;
+      else if (char === '[') balance[']']--;
+      else if (char === '{') balance['}']--;
+    }
+    while (end && balance[value[end - 1]] > 0) {
+      balance[value[end - 1]]--;
+      end--;
+    }
+    return value.slice(0, end);
+  }
+
+  function appendMailText(parent, text, status) {
+    const links = /(^|[\s([{<"'«“])((?:https?:\/\/|mailto:)[^\s<>"'»”]+)/giu;
+    let offset = 0;
+    for (const match of text.matchAll(links)) {
+      const start = match.index + match[1].length;
+      const value = trimMailUrl(match[2]);
+      parent.append(text.slice(offset, start));
+      appendMailLink(parent, value, value, status);
+      offset = start + value.length;
+    }
+    parent.append(text.slice(offset));
+  }
+
+  function messageBody(item, status) {
+    const body = node('div', 'letter-body');
+    if (typeof item.html === 'string' && item.html && status !== 'dangerous') {
+      // Template content in a document with no browsing context stays inert. Never adopt these nodes.
+      const template = document.implementation.createHTMLDocument('').createElement('template');
+      template.innerHTML = item.html;
+      function copyChildren(source, target) {
+        for (const child of source.childNodes) {
+          if (child.nodeType === Node.TEXT_NODE) { appendMailText(target, child.data, status); continue; }
+          if (child.namespaceURI !== 'http://www.w3.org/1999/xhtml') continue;
+          const tag = child.localName;
+          if (mailWrappers.has(tag)) { copyChildren(child, target); continue; }
+          if (!allowedMailTags.has(tag)) continue;
+          if (tag === 'a') {
+            const href = child.getAttribute('href') || '';
+            appendMailLink(target, href, child.textContent.trim(), status);
+          } else {
+            const el = node(tag);
+            copyChildren(child, el);
+            target.append(el);
+          }
+        }
+      }
+      copyChildren(template.content, body);
+      if (body.textContent.trim()) { body.classList.add('letter-rich'); return body; }
+      body.replaceChildren();
+    }
+    appendMailText(body, typeof item.text === 'string' ? item.text : '', status);
+    return body;
+  }
+
+  function scanNotice(security, status) {
+    const notice = node('div', 'mail-scan ' + status);
+    notice.append(node('strong', '', scanLabels[status]));
+    if (status !== 'clean' && Array.isArray(security?.reasons)) {
+      const reasons = security.reasons.filter(reason => typeof reason === 'string' && reason.trim());
+      if (reasons.length) notice.append(node('p', '', reasons.join(' ')));
+    }
+    if (status === 'dangerous') notice.append(node('p', '', 'Links i denne mail vises som tekst.'));
+    return notice;
+  }
+
   function renderMail(item, focus = true) {
     const article = node('article', 'letter');
     const title = node('h2', '', item.subject || '(Intet emne)');
@@ -846,7 +962,8 @@
     if (item.labels?.length) article.append(labelChips(item.labels));
     const stamp = dateValue(item.date, true);
     if (stamp) article.append(node('time', 'letter-date', stamp));
-    article.append(node('div', 'letter-body', item.text || ''));
+    const scanStatus = Object.hasOwn(scanLabels, item.security?.status) ? item.security.status : 'unknown';
+    article.append(scanNotice(item.security, scanStatus), messageBody(item, scanStatus));
     if (item.attachments?.length) {
       const files = node('ul', 'attachments'); files.setAttribute('aria-label', 'Vedhæftede filer');
       const status = node('p', 'download-status'); status.setAttribute('role', 'status');

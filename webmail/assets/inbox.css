@@ -148,6 +148,21 @@ h1:focus, h2:focus { outline: none; }
 .sender-detail span,.letter-date { color: var(--muted); font-size: .78rem; }
 .letter-date { display: block; margin-top: 1.05rem; }
 .letter-body { margin: 1.35rem 0; padding-top: 1.4rem; border-top: 1px solid var(--line); font-size: clamp(.97rem,1.17vw,1.1rem); line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mail-scan { margin: .85rem 0; color: var(--muted); font-size: .8rem; line-height: 1.5; overflow-wrap: anywhere; }
+.mail-scan strong { font-weight: 600; }
+.mail-scan.suspicious,.mail-scan.dangerous { padding: .7rem .9rem; border-inline-start: .22rem solid; background: #fff4dd; color: #714516; }
+.mail-scan.dangerous { background: #fff0ec; color: #8a3024; }
+.mail-scan p { margin-top: .25rem; }
+.body-link { color: #70401e; text-decoration: underline; text-underline-offset: .15em; unicode-bidi: isolate; }
+.link-destination { color: var(--muted); font-size: .85em; direction: ltr; unicode-bidi: isolate; }
+.letter-rich { white-space: normal; overflow-x: auto; }
+.letter-rich :is(p,ul,ol,blockquote,pre,table) { margin: 0 0 .8em; }
+.letter-rich :is(h1,h2,h3,h4,h5,h6) { margin: 1em 0 .4em; font-size: 1.15em; line-height: 1.35; letter-spacing: normal; }
+.letter-rich :is(ul,ol) { padding-inline-start: 1.5em; }
+.letter-rich blockquote { padding-inline-start: .9em; border-inline-start: 2px solid var(--line); }
+.letter-rich pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.letter-rich table { border-collapse: collapse; max-width: 100%; }
+.letter-rich :is(td,th) { padding: .2em .5em; border: 1px solid var(--line); text-align: start; }
 .attachments { list-style: none; margin: 1rem 0; padding: 0; }
 .attachments a { display: inline-flex; align-items: baseline; gap: .45rem; color: #83401d; overflow-wrap: anywhere; font-size: .87rem; padding: .5rem 0; }
 .download-status:not(:empty) { margin: .5rem 0 1.25rem; color: var(--muted); font-size: .86rem; }
