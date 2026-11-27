@@ -1,11 +1,14 @@
 import base64
 import binascii
 import email.policy
+import io
 import quopri
 import re
 import smtplib
 import ssl
+import threading
 import unicodedata
+from dataclasses import dataclass
 from email.header import decode_header, make_header
 from email.message import EmailMessage
 from email.parser import BytesHeaderParser, BytesParser
@@ -15,6 +18,7 @@ from pathlib import Path
 
 from imapclient import IMAPClient
 from imapclient.exceptions import IMAPClientError
+from PIL import Image
 
 import message_view
 
@@ -29,6 +33,18 @@ TASK = b"veyro-task"
 MUTED = b"veyro-muted"
 CATEGORIES = {value: f"veyro-category-{value}".encode() for value in ("updates", "social", "promotions")}
 MAX_FORWARD = 16 * 1024 * 1024
+INLINE_FORMATS = {"image/png": "PNG", "image/jpeg": "JPEG", "image/gif": "GIF", "image/webp": "WEBP"}
+INLINE_COUNT = 16
+INLINE_SIZE = 1024 * 1024
+INLINE_TOTAL = 3 * 1024 * 1024 - 1024  # Includes headroom for data URL prefixes in a 4 MiB HTML budget.
+INLINE_WIRE_SIZE = INLINE_SIZE * 3 // 2  # MIME transfer encoding and line breaks.
+INLINE_WIRE_TOTAL = 5 * 1024 * 1024
+INLINE_PIXELS = 16 * 1024 * 1024
+IMAGE_DECODERS = threading.BoundedSemaphore(2)
+MIME_NODES = 256
+MIME_DEPTH = 24
+MIME_HEADER_READS = 8
+MIME_HEADER_BYTES = 8192
 
 
 class MailError(Exception):
@@ -107,31 +123,151 @@ def headers(row):
     return BytesHeaderParser(policy=email.policy.default).parsebytes(raw or b"")
 
 
-def section_tree(body, section=""):
+def content_id(value):
+    if isinstance(value, bytes):
+        try:
+            value = value.decode("ascii")
+        except UnicodeDecodeError:
+            return ""
+    if not isinstance(value, str):
+        return ""
+    value = value.strip()
+    if value.startswith("<") and value.endswith(">"):
+        value = value[1:-1]
+    if not 1 <= len(value) <= 255 or not value.isascii() or not value.isprintable() or re.search(r"[\s<>]", value):
+        return ""
+    return value.casefold()
+
+
+def mime_options(fields):
+    if not isinstance(fields, (list, tuple)):
+        return {}
+    return {decoded(k).lower(): decoded(v) for k, v in zip(fields[::2], fields[1::2])}
+
+
+@dataclass
+class MimeWalk:
+    nodes: int = 0
+    header_reads: int = 0
+    incomplete: bool = False
+
+
+def read_container_ids(client, uid, paths):
+    # Multipart containers have no Content-ID slot in BODYSTRUCTURE. Read just the MIME headers.
+    query = [f"BODY.PEEK[{path}.MIME]<0.{MIME_HEADER_BYTES}>" for path in paths]
+    try:
+        row = client.fetch([uid], query).get(uid, {})
+    except IMAPClientError:
+        return {}
+    found = {}
+    for path in paths:
+        section = f"BODY[{path}.MIME]".encode()
+        raw = row.get(section + b"<0>", row.get(section))
+        if not isinstance(raw, bytes) or len(raw) > MIME_HEADER_BYTES:
+            continue
+        if len(raw) == MIME_HEADER_BYTES and not re.search(rb"\r?\n\r?\n", raw):
+            continue
+        values = BytesHeaderParser(policy=email.policy.default).parsebytes(raw).get_all("Content-ID", [])
+        if values:
+            found[path] = content_id(str(values[0])) if len(values) == 1 else ""
+    return found
+
+
+def related_root(children, section, start, walk, resolve):
+    matches, containers, readable = [], {}, []
+    for index, child in enumerate(children, 1):
+        if not isinstance(child, (list, tuple)) or len(child) < 2:
+            continue
+        if isinstance(child[0], list):
+            disposition = child[3] if len(child) > 3 else None
+            if isinstance(disposition, (tuple, list)) and disposition and decoded(disposition[0]).lower() == "attachment":
+                continue
+            path = f"{section}.{index}" if section else str(index)
+            containers[path] = index
+            readable.append(index)
+        elif len(child) >= 7:
+            if content_id(child[3]) == start:
+                matches.append(index)
+            if decoded(child[0]).lower() == "text":
+                readable.append(index)
+    known = {}
+    if containers and resolve:
+        paths = list(containers)[:MIME_HEADER_READS - walk.header_reads]
+        if paths:
+            walk.header_reads += len(paths)
+            known = resolve(paths)
+            matches.extend(containers[p] for p, cid in known.items() if cid == start)
+    unknown = [index for path, index in containers.items() if path not in known]
+    if len(matches) == 1 and (not unknown or resolve is None):
+        return matches[0]
+    if not matches and len(unknown) == 1 and readable == unknown:
+        return unknown[0]  # One unreadable container is the only possible body among raster/resource siblings.
+    walk.incomplete = True
+    return None
+
+
+def section_tree(body, section="", *, related=(), alternatives=(), order=(), is_body=True, enclosed=False, walk=None, resolve=None):
     """Flatten IMAP BODYSTRUCTURE without downloading attachment payloads."""
+    if walk is None:
+        walk = MimeWalk()
+    if walk.nodes >= MIME_NODES:
+        walk.incomplete = True
+        return []
+    walk.nodes += 1
+    if len(order) >= MIME_DEPTH:
+        walk.incomplete = True
+        return []
     if not isinstance(body, (tuple, list)) or len(body) < 2:
         return []
     if isinstance(body[0], list):
+        if len(body[0]) > MIME_NODES - walk.nodes:
+            walk.incomplete = True
+            return []
+        subtype = decoded(body[1]).lower()
+        options = mime_options(body[2] if len(body) > 2 else None)
+        disposition = body[3] if len(body) > 3 else None
+        if isinstance(disposition, (list, tuple)) and disposition and decoded(disposition[0]).lower() == "attachment":
+            enclosed = True
+        root = 1
+        if subtype == "related":
+            related = (*related, section or "root")
+            start = content_id(options.get("start"))
+            if start and is_body and not enclosed:
+                root = related_root(body[0], section, start, walk, resolve)
         leaves = []
         for index, child in enumerate(body[0], 1):
-            leaves.extend(section_tree(child, f"{section}.{index}" if section else str(index)))
+            if walk.nodes >= MIME_NODES:
+                walk.incomplete = True
+                break
+            path = f"{section}.{index}" if section else str(index)
+            choice = subtype == "alternative"
+            leaves.extend(section_tree(child, path, related=related, alternatives=(*alternatives, path) if choice else alternatives,
+                                       order=(*order, -index if choice else index), enclosed=enclosed,
+                                       is_body=is_body and (subtype != "related" or root == index), walk=walk, resolve=resolve))
         return leaves
+    if len(body) < 7:
+        return []
+    # A message/rfc822 is one downloadable leaf. Its nested MIME structure belongs to the forwarded message.
     mime = f"{decoded(body[0])}/{decoded(body[1])}".lower()
-    params = body[2] or ()
-    params = {decoded(k).lower(): decoded(v) for k, v in zip(params[::2], params[1::2])}
+    params = mime_options(body[2])
     filename = params.get("name", "")
     attachment = False
+    inline = False
     for field in body[7:]:
         if not isinstance(field, (tuple, list)) or len(field) != 2 or not isinstance(field[0], bytes):
             continue
         if field[0].upper() not in (b"ATTACHMENT", b"INLINE"):
             continue
         attachment = field[0].upper() == b"ATTACHMENT"
+        inline = field[0].upper() == b"INLINE"
         opts = field[1] or ()
         for k, v in zip(opts[::2], opts[1::2]):
             if decoded(k).lower() == "filename":
                 filename = decoded(v)
-    return [dict(id=section or "1", mime=mime, filename=filename, attachment=bool(attachment or filename or mime not in {"text/plain", "text/html"}),
+    return [dict(id=section or "1", mime=mime, filename=filename, attachment=bool(enclosed or attachment or filename or mime not in {"text/plain", "text/html"}),
+                 cid=content_id(body[3]), related=related, alternatives=alternatives, order=order,
+                 is_body=is_body and not (enclosed or attachment) and (not filename or inline),
+                 enclosed=enclosed, explicit_attachment=attachment,
                  charset=params.get("charset") or "utf-8", encoding=decoded(body[5]).lower(), size=int(body[6] or 0))]
 
 
@@ -170,7 +306,7 @@ def addresses(value, seen=None):
     return result
 
 
-def message_summary(row, validity, address=""):
+def message_summary(row, validity, address="", parts=None):
     h = headers(row)
     date = row.get(b"INTERNALDATE")
     try:
@@ -188,6 +324,8 @@ def message_summary(row, validity, address=""):
     reply_all = [item for item in replies if item.casefold() != own]
     seen.update(item.casefold() for item in reply_all)
     reply_cc = addresses(h.get("To"), seen) + addresses(h.get("Cc"), seen)
+    if parts is None:
+        parts = section_tree(row.get(b"BODYSTRUCTURE"), is_body=False)
     return dict(id=f"{validity}.{row[b'UID']}", subject=str(h.get("Subject", "")), **{
         "from": str(h.get("From", "")), "to": str(h.get("To", "")), "cc": str(h.get("Cc", "")),
         "replyTo": str(h.get("Reply-To") or h.get("From") or ""),
@@ -196,7 +334,7 @@ def message_summary(row, validity, address=""):
         "labels": label_names(flags), "task": TASK in flags, "muted": MUTED in flags,
         "category": next((name for name, flag in CATEGORIES.items() if flag in flags), "primary"),
         "date": date.isoformat() if date else "", "unread": b"\\Seen" not in row.get(b"FLAGS", ()),
-        "snippet": preview[:220], "hasAttachments": any(p["attachment"] for p in section_tree(row.get(b"BODYSTRUCTURE"))),
+        "snippet": preview[:220], "hasAttachments": any(p["attachment"] for p in parts),
     })
 
 
@@ -349,16 +487,18 @@ def message_action(client, source, identifier, data, folders):
     return {"ok": True}
 
 
-def read_part(client, uid, part, max_bytes):
+def read_part(client, uid, part, max_bytes, *, complete=False):
     section = part["id"]
     rows = client.fetch([uid], [f"BODY.PEEK[{section}]<0.{max_bytes}>"])
     data = next((v for k, v in rows.get(uid, {}).items() if isinstance(k, bytes) and k.startswith(f"BODY[{section}]".encode())), None)
     if data is None:
         raise MailError("Meddelelsesdelen blev ikke fundet.", 404)
+    if complete and (not isinstance(data, bytes) or not 0 < len(data) == part["size"] <= max_bytes):
+        raise MailError("Meddelelsesdelen kunne ikke læses fuldstændigt.", 422)
     if part["encoding"] == "base64":
         data = re.sub(rb"\s+", b"", data)
         try:
-            data = base64.b64decode(data[:len(data) - len(data) % 4])
+            data = base64.b64decode(data, validate=True) if complete else base64.b64decode(data[:len(data) - len(data) % 4])
         except binascii.Error:
             raise MailError("Meddelelsesdelen kunne ikke læses.", 422) from None
     elif part["encoding"] == "quoted-printable":
@@ -383,26 +523,133 @@ def read_text_part(client, uid, part):
     return text, part["size"] > message_view.BODY_LIMIT
 
 
+def related_images(parts, body):
+    """Index CID references visible to this MIME alternative; ambiguous names have no target."""
+    if not body:
+        return {}
+    scopes = body.get("related", ())
+    branches = body.get("alternatives", ())
+    matches = {}
+    for part in parts:
+        cid = part.get("cid")
+        scope = part.get("related", ())
+        if not cid or part.get("enclosed") or (bool(scope) != bool(scopes)) or scopes[:len(scope)] != scope:
+            continue
+        if any(branch not in branches for branch in part.get("alternatives", ())):
+            continue
+        if cid in matches or part.get("explicit_attachment") or part["mime"] not in INLINE_FORMATS:
+            matches[cid] = None
+        elif 0 < part["size"] <= INLINE_WIRE_SIZE:
+            matches[cid] = part["id"]
+        else:
+            matches[cid] = None
+    return {cid: section for cid, section in matches.items() if section}
+
+
+@dataclass
+class PixelBudget:
+    remaining: int
+
+    def reserve(self, width, height):
+        pixels = width * height
+        if not 0 < width <= 4096 or not 0 < height <= 4096 or pixels > self.remaining:
+            return False
+        self.remaining -= pixels
+        return True
+
+
+def raster_pixels(data, mime, budget):
+    """Verify the claimed raster format and decode within a per-message pixel and frame budget."""
+    before = budget.remaining
+    try:
+        expected = (INLINE_FORMATS[mime],)
+        with Image.open(io.BytesIO(data), formats=expected) as image:
+            if not budget.reserve(*image.size):
+                return 0
+            image.verify()
+        # verify() checks container integrity for formats that support it. load() also validates pixel data.
+        with Image.open(io.BytesIO(data), formats=expected) as image:
+            for frame in range(129):
+                try:
+                    image.seek(frame)
+                except EOFError:
+                    return before - budget.remaining if frame else 0
+                if frame == 128 or (frame and not budget.reserve(*image.size)):
+                    return 0
+                image.load()
+            return 0
+    except (Image.DecompressionBombError, OSError, SyntaxError, ValueError, EOFError):
+        return 0
+
+
+def inline_content(client, uid, parts, allowed, requested):
+    if not IMAGE_DECODERS.acquire(blocking=False):
+        return {}, []
+    try:
+        return read_inline_images(client, uid, parts, allowed, requested)
+    finally:
+        IMAGE_DECODERS.release()
+
+
+def read_inline_images(client, uid, parts, allowed, requested):
+    sources, metadata = {}, []
+    indexed = {p["id"]: p for p in parts if p["id"] in allowed}
+    wire_left, bytes_left = INLINE_WIRE_TOTAL, INLINE_TOTAL
+    pixel_budget = PixelBudget(INLINE_PIXELS)
+    for section in requested[:INLINE_COUNT]:
+        if not bytes_left or not pixel_budget.remaining:
+            break
+        part = indexed.get(section)
+        if not part or part["size"] > wire_left:
+            continue
+        wire_left -= part["size"]
+        try:
+            data = read_part(client, uid, part, part["size"], complete=True)
+        except MailError as exc:
+            if exc.status not in (404, 422):
+                raise
+            continue
+        if not 0 < len(data) <= min(bytes_left, INLINE_SIZE):
+            continue
+        if not raster_pixels(data, part["mime"], pixel_budget):
+            continue
+        sources[section] = "data:" + part["mime"] + ";base64," + base64.b64encode(data).decode("ascii")
+        metadata.append(dict(id=section, mime=part["mime"], size=len(data)))
+        bytes_left -= len(data)
+    return sources, metadata
+
+
 def read_message(client, folder, identifier, *, mark_seen=True, address="", inspect_content=False, in_junk=False):
     validity, uid, row = lookup(client, folder, identifier, readonly=not mark_seen)
-    parts = section_tree(row[b"BODYSTRUCTURE"])
-    plain = next((p for p in parts if not p["attachment"] and p["mime"] == "text/plain"), None)
-    rich = next((p for p in parts if not p["attachment"] and p["mime"] == "text/html"), None)
+    walk = MimeWalk()
+    parts = section_tree(row[b"BODYSTRUCTURE"], walk=walk, resolve=lambda paths: read_container_ids(client, uid, paths))
+    bodies = sorted((p for p in parts if p.get("is_body", not p["attachment"])), key=lambda p: p.get("order", ()))
+    plain = next((p for p in bodies if p["mime"] == "text/plain"), None)
+    rich = next((p for p in bodies if p["mime"] == "text/html"), None)
     text, plain_incomplete = read_text_part(client, uid, plain)
     html, html_text, mismatch = None, "", False
     rich_incomplete = False
+    cid_parts = related_images(parts, rich) if inspect_content and not walk.incomplete else {}
     if rich and (inspect_content or not text):
         raw_html, rich_incomplete = read_text_part(client, uid, rich)
-        html, html_text, mismatch = message_view.html_view(raw_html)
+        html, html_text, mismatch = message_view.html_view(raw_html, cid_parts=cid_parts)
     incomplete = plain_incomplete if text else rich_incomplete
     text = text or html_text
-    if incomplete or (not text and (plain_incomplete or rich_incomplete)):
+    if walk.incomplete or incomplete or (not text and (plain_incomplete or rich_incomplete)):
         text += "\n\n[Mailens tekst kunne ikke vises fuldstændigt.]"
-    result = message_summary(row, validity, address)
+    result = message_summary(row, validity, address, parts=parts)
     if inspect_content:
         verdict = message_view.assess(client, uid, row.get(b"RFC822.SIZE"), parts, text, html_text,
-                                      mismatch, plain_incomplete or rich_incomplete, in_junk)
-        result.update(security=verdict, html=html if verdict["status"] != "dangerous" else None)
+                                      mismatch, plain_incomplete or rich_incomplete or walk.incomplete, in_junk)
+        inline, has_external = [], False
+        if verdict["status"] == "dangerous":
+            html = None
+        if html:
+            requested, has_external = message_view.image_references(html)
+            if requested:
+                sources, inline = inline_content(client, uid, parts, set(cid_parts.values()), requested)
+                html = message_view.hydrate_inline_images(html, sources)
+        result.update(security=verdict, html=html, inlineImages=inline, has_external_images=has_external)
     if mark_seen:
         client.add_flags([uid], [b"\\Seen"], silent=True)
         result["unread"] = False
@@ -412,7 +659,7 @@ def read_message(client, folder, identifier, *, mark_seen=True, address="", insp
 
 def attachment(client, folder, identifier, section):
     _, uid, row = lookup(client, folder, identifier)
-    part = next((p for p in section_tree(row[b"BODYSTRUCTURE"]) if p["attachment"] and p["id"] == section), None)
+    part = next((p for p in section_tree(row[b"BODYSTRUCTURE"], is_body=False) if p["attachment"] and p["id"] == section), None)
     if not part:
         raise MailError("Filen findes ikke.", 404)
     if part["size"] > MAX_ATTACHMENT:
@@ -469,7 +716,10 @@ def forwarded_parts(client, msg, data):
         name = attachment_name(headers(row).get("Subject"), "Originalmail") + ".eml"
         msg.add_attachment(raw, maintype="application", subtype="octet-stream", filename=name)
         return
-    parts = [p for p in section_tree(row[b"BODYSTRUCTURE"]) if p["attachment"]]
+    walk = MimeWalk()
+    parts = [p for p in section_tree(row[b"BODYSTRUCTURE"], is_body=False, walk=walk) if p["attachment"]]
+    if walk.incomplete:
+        raise MailError("Mailen har for mange MIME-dele til at videresende filerne samlet.", 413)
     if sum(p["size"] for p in parts) > MAX_FORWARD:
         raise MailError("De vedhæftede filer er for store til videresendelse (maks. 16 MB).", 413)
     for part in parts:
