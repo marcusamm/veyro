@@ -1,12 +1,22 @@
-import { describe, expect, it } from 'vitest';
-import { configureProof, configureWeb, routeExists, webRecordPlan } from '../scripts/aj-cloudflare.mjs';
+import { describe, expect, it, vi } from 'vitest';
+import { checkManualDns, configureProof, configureWeb, readAuthoritativeAnswer, routeExists, webRecordPlan } from '../scripts/aj-cloudflare.mjs';
 
 const domain = 'aj-auto-slagelse.dk';
 const www = 'www.' + domain;
-const zone = { id: 'a'.repeat(32), status: 'pending' };
+const zone = { id: 'a'.repeat(32), status: 'pending', name_servers: ['blair.ns.cloudflare.com', 'logan.ns.cloudflare.com'] };
 const parking = { id: 'b'.repeat(32), type: 'A', content: '46.30.211.38', proxied: false };
 const proofHost = '_veyro-mail.' + domain;
 const proof = 'veyro-mail-verification=' + 'a'.repeat(64);
+
+function authoritative(record, status = 'NOERROR') {
+  return `;; ->>HEADER<<- opcode: QUERY, status: ${status}, id: 1\n;; flags: qr aa; QUERY: 1\n${record}\n`;
+}
+const emptyDns = authoritative(domain + '. 300 IN SOA blair.ns.cloudflare.com. dns.cloudflare.com. 1 1 1 1 1');
+
+async function dnsForbidden(path, method = 'GET') {
+  expect(method).toBe('GET');
+  throw Object.assign(new Error('Forbidden'), { status: 403 });
+}
 
 function api(initialRecords = {}, initialRoutes = []) {
   const records = structuredClone(initialRecords);
@@ -38,6 +48,41 @@ function api(initialRecords = {}, initialRoutes = []) {
 }
 
 describe('AJ Auto Cloudflare provisioning', () => {
+  it('only stages missing routes with DNS 403, and can confirm them afterwards without a DNS token', async () => {
+    const cf = api({}, [{ pattern: domain + '/*', script: 'veyro' }]);
+    const publicCheck = vi.fn(async (currentZone, hosts) => {
+      expect(currentZone).toBe(zone);
+      expect(hosts).toEqual([www]);
+      await checkManualDns(currentZone, hosts, async (_command, [server, host, type]) => {
+        expect(zone.name_servers).toContain(server.slice(1));
+        return { stdout: host === www && type === 'AAAA' ? authoritative(www + '. 300 IN AAAA 100::') : emptyDns };
+      });
+    });
+    await configureWeb(cf.workerRequest, dnsForbidden, zone, 'account', publicCheck);
+    await configureWeb(cf.workerRequest, dnsForbidden, zone, 'account', publicCheck);
+    expect(publicCheck).toHaveBeenCalledTimes(1);
+    expect(cf.writes).toEqual([{ method: 'POST', body: { pattern: www + '/*', script: 'veyro' } }]);
+  });
+
+  it('refuses an unexpected origin on either authority before staging routes', async () => {
+    const cf = api();
+    const verify = (currentZone, hosts) => checkManualDns(currentZone, hosts, async (_command, [server, host, type]) => ({
+      stdout: server === '@logan.ns.cloudflare.com' && host === www && type === 'A' ?
+        authoritative(www + '. 300 IN A 203.0.113.7') : emptyDns,
+    }));
+    await expect(configureWeb(cf.workerRequest, dnsForbidden, zone, 'account', verify)).rejects.toThrow('Kan ikke bekræfte web-DNS');
+    expect(cf.writes).toEqual([]);
+  });
+
+  it('reads quoted proof data and distinguishes an authoritative empty answer from resolver failure', () => {
+    const txt = authoritative(proofHost + '. 300 IN TXT "' + proof + '"');
+    expect(readAuthoritativeAnswer(proofHost, 'TXT', txt)).toEqual([{ type: 'TXT', content: '"' + proof + '"' }]);
+    expect(readAuthoritativeAnswer(www, 'A', emptyDns.replace('NOERROR', 'NXDOMAIN'))).toEqual([]);
+    expect(() => readAuthoritativeAnswer(www, 'A', emptyDns.replace('qr aa;', 'qr;'))).toThrow();
+    expect(() => readAuthoritativeAnswer(www, 'A', emptyDns.replace('NOERROR', 'SERVFAIL'))).toThrow();
+    expect(() => readAuthoritativeAnswer(www, 'A', authoritative(''))).toThrow();
+  });
+
   it('stages both exact hosts in a pending zone and preserves the parking origin and mail records on retry', async () => {
     const mail = { name: domain, type: 'MX', content: 'mail.example.test' };
     const cf = api({ [domain]: [{ ...parking, name: domain }, mail] });

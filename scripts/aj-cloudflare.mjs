@@ -1,4 +1,6 @@
 import { resolveNs } from 'node:dns/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
@@ -8,6 +10,8 @@ const proofName = '_veyro-mail.' + domain;
 const worker = 'veyro';
 const parkingAddress = '46.30.211.38';
 const placeholder = '100::';
+const nameservers = ['blair.ns.cloudflare.com', 'logan.ns.cloudflare.com'];
+const dig = promisify(execFile);
 
 function cloudflare(token) {
   return async function request(path, method = 'GET', body) {
@@ -20,7 +24,9 @@ function cloudflare(token) {
     if (!response.ok || data.success !== true) {
       const codes = (data.errors ?? []).map(error => error.code).filter(Number.isInteger);
       const endpoint = path.split('?')[0].replace(/[0-9a-f]{32}/gi, '…');
-      throw new Error(`Cloudflare ${method} ${endpoint}: HTTP ${response.status}, kode ${codes.join(', ')}.`);
+      const error = new Error(`Cloudflare ${method} ${endpoint}: HTTP ${response.status}, kode ${codes.join(', ')}.`);
+      error.status = response.status;
+      throw error;
     }
     if (data.result_info?.total_pages > 1) throw new Error('Listen fra Cloudflare er ufuldstændig.');
     return data.result;
@@ -65,29 +71,75 @@ export function routeExists(host, routes) {
   return found;
 }
 
-export async function configureWeb(request, dnsRequest, zone, account) {
+export function readAuthoritativeAnswer(host, type, output) {
+  const flags = output.match(/^;; flags: ([^;]+);/m)?.[1].split(/\s+/) ?? [];
+  const status = output.match(/status: (\w+),/)?.[1];
+  if (!flags.includes('aa') || !['NOERROR', 'NXDOMAIN'].includes(status)) {
+    throw new Error(`Intet autoritativt svar for ${host} ${type}.`);
+  }
+  const records = output.split(/\r?\n/).filter(line => line && !line.startsWith(';')).map(line => line.trim().split(/\s+/));
+  const answers = records.filter(([name, , klass, rrtype]) => name === host + '.' && klass === 'IN' && rrtype !== 'SOA');
+  if (!answers.length && !records.some(([name, , klass, rrtype]) => name === domain + '.' && klass === 'IN' && rrtype === 'SOA')) {
+    throw new Error(`Manglende SOA ved tomt DNS-svar for ${host} ${type}.`);
+  }
+  return answers.map(([, , , rrtype, content]) => ({ type: rrtype, content }));
+}
+
+export async function checkManualDns(zone, hosts, runDig = dig) {
+  if ([...(zone.name_servers ?? [])].sort().join() !== nameservers.join()) throw new Error('Zonens navneservere har ændret sig.');
+  const names = hosts.includes(webHosts[1]) ? [...hosts, '*.' + domain] : hosts;
+  for (const server of nameservers) {
+    for (const host of names) {
+      const types = ['A', 'AAAA', 'CNAME', 'HTTPS', 'SVCB'];
+      if (host !== domain) types.push('NS');
+      const results = await Promise.all(types.map(async type => {
+        const { stdout } = await runDig('dig', ['@' + server, host, type, '+norecurse', '+time=4', '+tries=2',
+          '+noall', '+comments', '+answer', '+authority'], { timeout: 10_000 });
+        return readAuthoritativeAnswer(host, type, stdout);
+      }));
+      const records = results.flat();
+      if (!records.length) continue;
+      const [record] = records;
+      const known = (record.type === 'A' && record.content === parkingAddress) ||
+        (record.type === 'AAAA' && record.content === placeholder);
+      if (host.startsWith('*') || records.length !== 1 || !known) throw new Error(`Kan ikke bekræfte web-DNS på ${host} hos ${server}.`);
+    }
+  }
+}
+
+export async function configureWeb(request, dnsRequest, zone, account, verifyManualDns = checkManualDns) {
   const zonePath = '/zones/' + zone.id;
   const routesPath = zonePath + '/workers/routes';
   const [routes, customDomains] = await Promise.all([
     request(routesPath), request(`/accounts/${account}/workers/domains?zone_id=${zone.id}`),
   ]);
-  const plans = [];
-  // Inspect both names before making either address reachable.
-  for (const host of webHosts) {
+  const plans = webHosts.map(host => {
     if (customDomains.some(item => item.hostname === host)) {
       throw new Error(`Der er allerede et Worker Custom Domain på ${host}.`);
     }
-    const records = await dnsRecords(dnsRequest, zonePath, host);
-    if (host !== domain && !records.length) {
-      const wildcard = await dnsRecords(dnsRequest, zonePath, '*.' + domain);
-      if (wildcard.some(record => ['A', 'AAAA', 'CNAME', 'HTTPS', 'SVCB'].includes(record.type))) {
-        throw new Error(`${host} dækkes af en eksisterende wildcard-DNS-post.`);
+    return { host, routed: routeExists(host, routes) };
+  });
+  let manual = false;
+  try {
+    for (const plan of plans) {
+      const records = await dnsRecords(dnsRequest, zonePath, plan.host);
+      if (plan.host !== domain && !records.length) {
+        const wildcard = await dnsRecords(dnsRequest, zonePath, '*.' + domain);
+        if (wildcard.some(record => ['A', 'AAAA', 'CNAME', 'HTTPS', 'SVCB'].includes(record.type))) {
+          throw new Error(`${plan.host} dækkes af en eksisterende wildcard-DNS-post.`);
+        }
       }
+      plan.dns = webRecordPlan(plan.host, records);
     }
-    plans.push({ host, dns: webRecordPlan(host, records), routed: routeExists(host, routes) });
+  } catch (error) {
+    if (error.status !== 403) throw error;
+    manual = true;
+    const missing = plans.filter(plan => !plan.routed).map(plan => plan.host);
+    if (missing.length) await verifyManualDns(zone, missing);
   }
   for (const { host, dns, routed } of plans) {
     if (!routed) await request(routesPath, 'POST', { pattern: host + '/*', script: worker });
+    if (manual) continue;
     if (dns.action === 'create') {
       await dnsRequest(zonePath + '/dns_records', 'POST', {
         type: 'AAAA', name: host, content: placeholder, proxied: true, ttl: 1,
@@ -98,12 +150,14 @@ export async function configureWeb(request, dnsRequest, zone, account) {
   }
   const updatedRoutes = await request(routesPath);
   for (const host of webHosts) {
-    const records = await dnsRecords(dnsRequest, zonePath, host);
-    if (!routeExists(host, updatedRoutes) || webRecordPlan(host, records).action !== 'ready') {
-      throw new Error(`Rute eller proxy kunne ikke bekræftes for ${host}.`);
+    if (!routeExists(host, updatedRoutes)) throw new Error(`Worker-ruten mangler for ${host}.`);
+    if (!manual) {
+      const records = await dnsRecords(dnsRequest, zonePath, host);
+      if (webRecordPlan(host, records).action !== 'ready') throw new Error(`Proxy kunne ikke bekræftes for ${host}.`);
     }
   }
-  console.log(`Begge webadresser er konfigureret på Worker ${worker}. Zonestatus: ${zone.status}.`);
+  console.log(`Begge ruter er bekræftet på Worker ${worker}. Zonestatus: ${zone.status}.`);
+  if (manual) console.log('DNS styres manuelt. Browseradgang og HTTPS er ikke testet i dette trin.');
 }
 
 export async function configureProof(request, zoneId, value) {
@@ -141,8 +195,20 @@ async function main(mode) {
   console.log(`Cloudflare-zone ${domain}: ${zone.status}. Tildelte navneservere: ${zone.name_servers.join(', ')}.`);
   if (zone.paused || !['pending', 'active'].includes(zone.status)) throw new Error('Zonen er ikke klar til opsætning.');
   if (mode === 'proof') {
-    const proof = (await readFile(new URL('../ops/aj-auto-domain-proof.txt', import.meta.url), 'utf8')).trim();
-    await configureProof(dnsRequest, zone.id, proof);
+    const zoneFile = await readFile(new URL('../ops/aj-auto-domain-proof.txt', import.meta.url), 'utf8');
+    const record = zoneFile.match(/^_veyro-mail\.aj-auto-slagelse\.dk\.\s+\d+\s+IN\s+TXT\s+"(veyro-mail-verification=[a-f0-9]{64})"\s*$/m);
+    if (!record) throw new Error('Importfilen mangler AJ Autos TXT-bevis.');
+    const expected = record[1];
+    try {
+      await configureProof(dnsRequest, zone.id, expected);
+    } catch (error) {
+      if (error.status !== 403) throw error;
+      for (const server of nameservers) {
+        const { stdout } = await dig('dig', ['@' + server, proofName, 'TXT', '+norecurse', '+time=4', '+tries=2', '+noall', '+comments', '+answer', '+authority'], { timeout: 10_000 });
+        const answers = readAuthoritativeAnswer(proofName, 'TXT', stdout);
+        if (!answers.some(row => row.type === 'TXT' && row.content === JSON.stringify(expected))) throw error;
+      }
+    }
     console.log(`Ejerskabsbeviset er bekræftet i Cloudflare på ${proofName}.`);
   } else {
     await configureWeb(request, dnsRequest, zone, account);

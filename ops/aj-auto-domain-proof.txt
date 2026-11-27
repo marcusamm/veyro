@@ -1,1 +1,3 @@
-veyro-mail-verification=be2faf0f6afc4cc64a863d3a97f0eee629620f5b39ff41538c5c426054d2967b
+aj-auto-slagelse.dk. 300 IN AAAA 100:: ; cf_tags=cf-proxied:true
+www.aj-auto-slagelse.dk. 300 IN AAAA 100:: ; cf_tags=cf-proxied:true
+_veyro-mail.aj-auto-slagelse.dk. 300 IN TXT "veyro-mail-verification=c9c68222239e1cefb87bfff2628c5c89eabff2baddc4f60f49c4af96c0f843fa"
