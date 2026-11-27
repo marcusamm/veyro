@@ -327,6 +327,8 @@ form.onsubmit = async event => {
   byId('form-error').hidden = true;
   try {
     await request(target, data);
+    // Clear credentials before showing success; dialog's close event is queued.
+    form.reset();
     editor.close();
     const notices = {organization:'Organisationen er oprettet.', mailbox:'Postkassen er oprettet.'};
     if (kind === 'status') notices.status = mailbox.email + (mailbox.active ? ' er deaktiveret.' : ' er aktiveret.');

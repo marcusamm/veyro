@@ -63,13 +63,22 @@ for (const [engine, device] of [[chromium, 'Pixel 7'], [webkit, 'iPhone 13']]) {
         return json(200, {email:account.email, csrfToken:'fixture-csrf'});
       }
       if (path === '/api/folders') return json(200, {folders:[]});
+      if (path === '/api/logout') return json(200, {ok:true});
       return json(404, {});
     });
 
-    async function submitLogin() {
+    async function submitLogin(remember = false) {
       await page.goto(origin + '/?private-test-query=1');
       await page.getByLabel('E-mailadresse', {exact:true}).fill(account.email);
       await page.getByLabel('Adgangskode', {exact:true}).fill(account.password);
+      const choice = page.getByRole('checkbox', {name:'Forbliv logget ind'});
+      assert.equal(await choice.isChecked(), false, 'remembering the browser requires an explicit choice');
+      if (remember) {
+        await choice.focus();
+        await page.keyboard.press('Space');
+        assert.equal(await choice.isChecked(), true, 'the option works with the keyboard');
+      }
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'login fits the mobile viewport');
       await page.getByRole('button', {name:'Log ind', exact:true}).click();
     }
     await submitLogin();
@@ -77,15 +86,25 @@ for (const [engine, device] of [[chromium, 'Pixel 7'], [webkit, 'iPhone 13']]) {
     assert.equal(logins.length, 1);
     const [{headers, body}] = logins;
     assert.equal(headers.origin, origin, 'Origin received from ' + engine.name());
-    assert.deepEqual(body, account);
+    assert.deepEqual(body, {...account, rememberMe:false});
     assert.ok([undefined, origin, origin + '/'].includes(headers.referer), 'the page query stays private');
     assert.deepEqual(sessionReads, [undefined], 'GET uses the document’s no-referrer policy');
     assert.ok(await page.locator('#workspace').isVisible());
 
+    await submitLogin(true);
+    await page.locator('#workspace:not([hidden])').waitFor();
+    assert.deepEqual(logins[1].body, {...account, rememberMe:true});
+    assert.equal(await page.locator('#password').inputValue(), '', 'the password is cleared after login');
+    assert.deepEqual(await page.evaluate(() => [Object.keys(localStorage), Object.keys(sessionStorage)]), [[],[]], 'credentials are not stored in browser storage');
+    await page.locator('#account-toggle').click();
+    await page.getByRole('button', {name:'Log ud', exact:true}).click();
+    await page.locator('#login:not([hidden])').waitFor();
+    assert.equal(await page.getByRole('checkbox', {name:'Forbliv logget ind'}).isChecked(), false, 'logout resets the option for the next person');
+
     redirect = true;
     await submitLogin();
     await page.locator('#login-error').waitFor();
-    assert.equal(logins.length, 2);
+    assert.equal(logins.length, 3);
     assert.equal(await page.locator('#workspace').isVisible(), false);
     assert.deepEqual(forwarded, [], 'the second origin received no request');
   });

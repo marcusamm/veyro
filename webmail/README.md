@@ -11,6 +11,10 @@ På `mail.veyro.dk` udgiver Cloudflare Veyros brugerflade og formidler kald til 
 
 Kunder og medarbejdere bruger login til deres egen aktive Veyro Mail-postkasse. Browserens sessionscookie er markeret HttpOnly og Secure. Ændringer kræver den korrekte oprindelse og et CSRF-token efter login. Scripts i modtagne mails kan ikke køre. Eksterne billeder indlæses kun efter **Vis billeder** i den åbne mail; tilladelsen gemmes ikke til andre mails. Hentede vedhæftninger leveres som downloads.
 
+Vælg **Forbliv logget ind** ved login for at huske den aktuelle browser i 30 dage fra login. Valget er frivilligt og ikke markeret på forhånd. Det huskede login overlever browserlukning og genstart af mailens API. **Log ud**, ændring/nulstilling af adgangskoden eller fjernet postkasseadgang afslutter adgangen. Uden markeringen udløber login fortsat efter 30 minutters inaktivitet eller højst otte timer. Private browservinduer og sletning af cookies kan fjerne browserens login tidligere.
+
+Loginvisningen kan afprøves lokalt med `node webmail/preview.mjs --login`; den lokale visning tager ikke imod rigtige loginoplysninger.
+
 ## Mailens layout og billeder
 
 Mailens rensede HTML, layouttabeller, typografi og farver vises i `/message-frame`, en isoleret ramme uden adgang til mailappens dokument eller session. Rammen har en separat CSP; selve Veyro-appens CSP er fortsat streng. Kun det faste rammescript kan køre. Mailindhold overføres via en kilde- og tokenvalideret besked, aldrig i URL'en. Indlejrede CID-billeder kommer fra mailens egne validerede rastervedhæftninger. Eksterne HTTPS-billeder er skjult, indtil brugeren vælger **Vis billeder**. Billedserveren kan da registrere indlæsningen; der sendes ingen referrer. **Vis som tekst** er altid tilgængelig, og mails vurderet farlige vises som tekst med deaktiverede links.

@@ -292,6 +292,23 @@ describe('Veyro Mail gateway', () => {
     expect(upstream.mock.calls[0][1].headers.get('Idempotency-Key')).toBe(key);
   });
 
+  it('preserves an opted-in persistent cookie and its deletion through the gateway', async () => {
+    const {fetch} = setup();
+    const cookie = `__Host-veyro_session=${sessionValue}; Expires=Sun, 27 Dec 2026 12:00:00 GMT; Max-Age=2592000; Secure; HttpOnly; Path=/; SameSite=Lax`;
+    const upstream = mockBackend(Response.json({email:'user@example.test', csrfToken}, {headers:{'Set-Cookie':cookie}}));
+    const body = {email:'user@example.test', password:'fixture', rememberMe:true};
+    const headers = {Origin:publicOrigin, 'Content-Type':'application/json'};
+    const result = await fetch('/api/login', {method:'POST', headers, body:JSON.stringify(body)});
+    expect(result.headers.get('Set-Cookie')).toBe(cookie);
+    expect(result.headers.get('Cache-Control')).toContain('no-store');
+    const [url, init] = upstream.mock.calls[0];
+    expect(await new Request(url, {...init, duplex:'half'}).json()).toEqual(body);
+    const expired = '__Host-veyro_session=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Secure; HttpOnly; Path=/; SameSite=Lax';
+    mockBackend(Response.json({ok:true}, {headers:{'Set-Cookie':expired}}));
+    const logout = await fetch('/api/logout', {method:'POST', headers:{...headers, Cookie:'__Host-veyro_session=' + sessionValue, 'X-CSRF-Token':csrfToken}, body:'{}'});
+    expect(logout.headers.get('Set-Cookie')).toBe(expired);
+  });
+
   it('changes passwords only through a same-origin authenticated POST and clears the session cookie', async () => {
     const { fetch } = setup();
     const expired = '__Host-veyro_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax';

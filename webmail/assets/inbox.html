@@ -38,6 +38,8 @@
           <input id="email" type="email" placeholder="E-mailadresse" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required>
           <div class="password-label"><label for="password">Adgangskode</label><button id="forgot-password" type="button" class="inline-action">Glemt adgangskode?</button></div>
           <div class="password-field"><input id="password" type="password" placeholder="Adgangskode" autocomplete="current-password" required><button type="button" id="show-password" class="icon-button" aria-label="Vis adgangskode" title="Vis adgangskode" aria-pressed="false"><span class="glyph" data-icon="eye" aria-hidden="true"></span></button></div>
+          <label class="remember-login" for="remember-me"><input id="remember-me" name="rememberMe" type="checkbox" aria-describedby="remember-hint"><span>Forbliv logget ind</span></label>
+          <p id="remember-hint" class="remember-hint">Husk denne browser i 30 dage.</p>
           <p id="login-error" class="error" role="alert" hidden></p>
           <button id="login-submit" type="submit" class="primary">Log ind</button>
         </form>

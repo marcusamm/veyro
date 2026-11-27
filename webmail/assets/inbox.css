@@ -68,7 +68,10 @@ h1:focus, h2:focus { outline: none; }
 #login .password-field input { min-height: 2.9rem; border: 0; background: transparent; }
 .password-field:focus-within { outline: 2px solid #a03a12; outline-offset: 2px; }
 #login .password-field input:focus-visible { outline: none; }
-#login-submit { min-height: 2.95rem; margin-top: 1.95rem; border-radius: .65rem; background: #191916; font-size: 1rem; }
+#login .remember-login { display: flex; align-items: center; gap: .65rem; min-height: 2.75rem; margin: .8rem 0 0; cursor: pointer; }
+#login #remember-me { flex: none; width: 1.15rem; height: 1.15rem; min-height: 0; margin: 0; padding: 0; accent-color: #a03a12; cursor: pointer; }
+.remember-hint { margin: -.15rem 0 0 1.8rem; font-size: .8rem; line-height: 1.5; color: #68665e; }
+#login-submit { min-height: 2.95rem; margin-top: 1.35rem; border-radius: .65rem; background: #191916; font-size: 1rem; }
 .mail-art { position: relative; display: grid; place-items: center; aspect-ratio: 1.13; contain: paint; border-radius: 1.1rem; background: #ff662e; }
 .envelope { position: relative; width: 74%; aspect-ratio: 1.53; transform: rotate(-9deg); border: 1px solid #b43e17; border-radius: 5px; background: #ffab7f; box-shadow: 0 2px 0 #b34521,0 21px 26px -11px #8c2c1d70; }
 .envelope-flap,.envelope-flap::before { position: absolute; inset: 0; border-radius: 4px; clip-path: polygon(0 0,100% 0,52% 57%,48% 57%); background: #ad441e; }
