@@ -838,7 +838,22 @@
   window.addEventListener('message', event => {
     const current = activeMailFrame;
     if (!current || !current.frame.isConnected || event.source !== current.frame.contentWindow ||
-        event.data?.type !== 'veyro-mail-size' || event.data.token !== current.token) return;
+        event.data?.token !== current.token) return;
+    if (event.data.type === 'veyro-mail-contextmenu') {
+      const anchor = current.frame.closest('.letter')?.querySelector('.more-actions');
+      if (!readerItem || !anchor) return;
+      const {x, y} = event.data;
+      let point = null;
+      if (x !== null || y !== null) {
+        if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y) ||
+            x < 0 || y < 0 || x > current.frame.clientWidth || y > current.frame.clientHeight) return;
+        const rect = current.frame.getBoundingClientRect();
+        point = {x: rect.left + x, y: rect.top + y};
+      }
+      openMenu(readerItem, anchor, point);
+      return;
+    }
+    if (event.data.type !== 'veyro-mail-size') return;
     const height = event.data.height;
     if (typeof height !== 'number' || !Number.isFinite(height)) return;
     // Very long messages retain their own scroll area instead of making the app unusable.

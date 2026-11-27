@@ -15,6 +15,25 @@ let browser;
 before(async () => { browser = await chromium.launch({channel: process.env.WEBMAIL_BROWSER || undefined}); });
 after(async () => { await browser?.close(); });
 
+async function renderedFrame(page) {
+  const content = page.frameLocator('.mail-frame');
+  await content.locator('.newsletter-shell').waitFor();
+  await content.locator('body').evaluate(async () => {
+    await Promise.all(Array.from(document.images, image => image.decode()));
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+  await page.locator('.mail-frame:not([aria-busy])').waitFor();
+  // Let image-dependent ResizeObserver reports reach the parent before reading frame geometry.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  return content;
+}
+
+async function observeBlockedRequests(page) {
+  // A bounded observation window for absence assertions, after explicit render/image readiness.
+  // This does not depend on unrelated mailbox polling or document-wide network-idle bookkeeping.
+  await page.waitForTimeout(100);
+}
+
 async function mailbox(t, viewport, messages = [newsletter]) {
   const context = await browser.newContext({viewport, isMobile: viewport.width === 375, hasTouch: viewport.width === 375});
   t.after(() => context.close());
@@ -43,7 +62,7 @@ async function mailbox(t, viewport, messages = [newsletter]) {
         contentType: mime[name.split('.').pop()], headers: {
           'Content-Security-Policy': policy, 'Referrer-Policy': 'no-referrer',
           'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store',
-          ...(frame ? {} : {'X-Frame-Options': 'DENY'}),
+          'X-Frame-Options': frame ? 'SAMEORIGIN' : 'DENY',
         }});
     }
     let json;
@@ -66,9 +85,7 @@ async function mailbox(t, viewport, messages = [newsletter]) {
   async function open(id = newsletter.id) {
     if (await page.locator('#back').isVisible()) await page.locator('#back').click();
     await page.locator(`li[data-mail="${id}"] .message-row`).click();
-    await page.frameLocator('.mail-frame').locator('.newsletter-shell').waitFor();
-    await page.locator('.mail-frame:not([aria-busy])').waitFor();
-    return page.frameLocator('.mail-frame');
+    return renderedFrame(page);
   }
   return {page, open, requests, policies};
 }
@@ -78,8 +95,7 @@ for (const viewport of [{width: 1440, height: 1000}, {width: 375, height: 812}])
     const second = {...newsletter, id: '1.3', subject: 'Et andet nyhedsbrev'};
     const {page, open, requests, policies} = await mailbox(t, viewport, [newsletter, second]);
     let content = await open();
-    await content.locator('#newsletter-inline').evaluate(image => image.decode());
-    await content.locator('#newsletter-reused-inline').evaluate(image => image.decode());
+    await observeBlockedRequests(page);
     assert.equal(await content.locator('#newsletter-inline').evaluate(image => image.naturalWidth), 600);
     assert.equal(await content.locator('#newsletter-reused-inline').getAttribute('src'), await content.locator('#newsletter-inline').getAttribute('src'));
     assert.deepEqual(requests, []);
@@ -109,9 +125,7 @@ for (const viewport of [{width: 1440, height: 1000}, {width: 375, height: 812}])
     const preConsentFrame = await page.locator('.mail-frame').getAttribute('src');
     assert.equal(preConsentFrame, '/message-frame');
     await page.getByRole('button', {name: 'Vis billeder', exact: true}).click();
-    content = page.frameLocator('.mail-frame');
-    await content.locator('img#newsletter-hero').waitFor();
-    await content.locator('img#newsletter-hero').evaluate(image => image.decode());
+    content = await renderedFrame(page);
     assert.equal(await content.locator('#newsletter-hero').evaluate(image => image.naturalWidth), 600);
     assert.deepEqual(requests.map(request => request.url), [imageUrl]);
     assert.equal(requests[0].referer, undefined);
@@ -122,17 +136,19 @@ for (const viewport of [{width: 1440, height: 1000}, {width: 375, height: 812}])
     assert.equal(await page.locator('.mail-plain').textContent(), newsletter.text);
     assert.equal(await page.locator('.mail-frame').count(), 0);
     await page.getByRole('button', {name: 'Vis original opsætning', exact: true}).click();
-    await page.frameLocator('.mail-frame').locator('img#newsletter-hero').waitFor();
-    await page.waitForLoadState('networkidle');
+    content = await renderedFrame(page);
+    assert.equal(await content.locator('img#newsletter-hero').evaluate(image => image.naturalWidth), 600);
     const beforeSecond = requests.length;
     content = await open(second.id);
-    await page.waitForLoadState('networkidle');
+    await observeBlockedRequests(page);
     assert.equal(await content.locator('#newsletter-hero').evaluate(element => element.tagName), 'SPAN');
     assert.equal(await page.getByRole('button', {name: 'Vis billeder', exact: true}).isVisible(), true);
     assert.equal(requests.length, beforeSecond, 'Permission must not leak into another message');
     await open(newsletter.id);
+    await observeBlockedRequests(page);
     assert.equal(await page.getByRole('button', {name: 'Vis billeder', exact: true}).isVisible(), true);
     assert.equal(await page.locator('.mail-frame').getAttribute('src'), '/message-frame');
+    assert.equal(requests.length, beforeSecond, 'Reopening a message requires fresh permission');
   });
 }
 
@@ -154,7 +170,7 @@ test('sender content is sandboxed, cannot run scripts/forms or load remote CSS, 
     <p class="remote-background" onclick="window.__senderExecuted=true">Content remains readable</p>`};
   const {page, open, requests} = await mailbox(t, {width: 1440, height: 1000}, [hostile]);
   const content = await open();
-  await page.waitForLoadState('networkidle');
+  await observeBlockedRequests(page);
   assert.deepEqual(requests, []);
   assert.equal(await content.locator('body').locator('script,form,input,button,iframe,object,link,base,meta,[onclick],[onerror]').count(), 0);
   assert.equal(await content.locator('body').evaluate(() => window.__senderExecuted), undefined);
@@ -177,10 +193,7 @@ test('height messages require the current frame and its fresh token', async t =>
   await open();
   await page.evaluate(() => { window.__fixtureOldWindow = document.querySelector('.mail-frame').contentWindow; });
   await page.getByRole('button', {name: 'Vis billeder', exact: true}).click();
-  const content = page.frameLocator('.mail-frame');
-  await content.locator('#newsletter-hero').evaluate(image => image.decode());
-  await page.locator('.mail-frame:not([aria-busy])').waitFor();
-  await page.waitForLoadState('networkidle');
+  const content = await renderedFrame(page);
   const token = await content.locator('body').evaluate(() => window.__fixtureMailInit.token);
   const height = await page.locator('.mail-frame').evaluate(frame => frame.style.height);
   assert.match(token, /^[a-f0-9]{32}$/);

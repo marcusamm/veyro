@@ -213,6 +213,18 @@
     if (!scheduled) { scheduled = true; requestAnimationFrame(reportSize); }
   }
 
+  function contextMenu(event, keyboard = false) {
+    if (!initialized || event.defaultPrevented || event.target.closest?.('a[href]') || window.getSelection()?.toString()) return;
+    event.preventDefault();
+    parent.postMessage({type: 'veyro-mail-contextmenu', token,
+      x: keyboard ? null : event.clientX, y: keyboard ? null : event.clientY}, parentOrigin);
+  }
+
+  document.addEventListener('contextmenu', event => contextMenu(event));
+  document.addEventListener('keydown', event => {
+    if (event.key === 'ContextMenu' || event.shiftKey && event.key === 'F10') contextMenu(event, true);
+  });
+
   window.addEventListener('message', event => {
     const data = event.data;
     if (initialized || event.source !== parent || event.origin !== parentOrigin || !data || data.type !== 'veyro-mail-init' ||
