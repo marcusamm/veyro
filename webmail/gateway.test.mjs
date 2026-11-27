@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import gateway from './worker.ts';
+import gateway, {messageFramePolicy} from './worker.ts';
 
 const publicOrigin = 'https://mail.veyro.dk';
 const backendOrigin = 'https://post.veyro.dk';
@@ -29,6 +29,27 @@ function mockBackend(response) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Veyro Mail gateway', () => {
+  it('isolates the original mail layout with a separate CSP and per-message image choice', async () => {
+    const {fetch, assets} = setup();
+    const parent = await fetch('/');
+    expect(parent.headers.get('Content-Security-Policy')).toContain("frame-src 'self'");
+    expect(parent.headers.get('Content-Security-Policy')).not.toContain("'unsafe-inline'");
+    const frame = await fetch('/message-frame');
+    expect(frame.status).toBe(200);
+    expect(frame.headers.get('Content-Security-Policy')).toBe(messageFramePolicy(false));
+    expect(frame.headers.get('X-Frame-Options')).toBe('SAMEORIGIN');
+    expect(frame.headers.get('Cache-Control')).toBe('no-store');
+    expect(frame.headers.get('Content-Security-Policy')).toContain("img-src data:;");
+    expect(frame.headers.get('Content-Security-Policy')).not.toContain('allow-same-origin');
+    expect(frame.headers.get('Content-Security-Policy')).not.toContain('allow-forms');
+    const images = await fetch('/message-frame?images=1');
+    expect(images.headers.get('Content-Security-Policy')).toBe(messageFramePolicy(true));
+    expect((await fetch('/message-frame?images=true')).headers.get('Content-Security-Policy')).toBe(messageFramePolicy(false));
+    expect((await fetch('/message-frame.html')).status).toBe(404);
+    expect((await fetch('/message-frame.js')).status).toBe(200);
+    expect((await fetch('/message-frame', {method:'POST'})).status).toBe(405);
+    expect(assets.mock.calls.some(([req]) => new URL(req.url).pathname === '/message-frame.html')).toBe(true);
+  });
   it('serves the operator page only after the origin grants the browser session access', async () => {
     const {fetch, assets} = setup();
     const cookie = '__Host-veyro_session=' + sessionValue;

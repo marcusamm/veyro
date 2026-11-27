@@ -4,3 +4,5 @@ IMAPClient==4.3.0
 cryptography==50.0.2
 PyMySQL==1.2.4
 nh3==0.3.8
+tinycss2==1.5.1
+Pillow==13.0.0

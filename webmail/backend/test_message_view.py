@@ -38,7 +38,9 @@ class MessageReading(unittest.TestCase):
         self.assertIn("Book tid (https://example.test/book)", result["text"])
         self.assertIn('<a href="https://example.test/book"', result["html"])
         self.assertIn("<table>", result["html"])
-        for removed in ("img.invalid", "style=", "onclick=", "Private form", 'href="/relative"', "data:text", "other.invalid"):
+        self.assertIn('data-veyro-src="https://img.invalid/pixel"', result["html"])
+        self.assertIn('style="color:red"', result["html"])
+        for removed in (' src=', "onclick=", "Private form", 'href="/relative"', "data:text", "other.invalid"):
             self.assertNotIn(removed, result["html"])
 
     def test_plain_and_html_alternatives_preserve_plain_original(self):

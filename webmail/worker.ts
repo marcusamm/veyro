@@ -8,8 +8,12 @@ const staticFiles = new Map([
   ['/inbox.css', '/inbox.css'], ['/webmail.css', '/inbox.css'], ['/inbox.js', '/inbox.js'],
   ['/favicon.svg', '/favicon.svg'], ['/manrope.woff2', '/manrope.woff2'], ['/Manrope-OFL.txt', '/Manrope-OFL.txt'],
   ['/administration.css', '/administration.css'], ['/administration.js', '/administration.js'],
+  ['/message-frame.js', '/message-frame.js'],
 ]);
-const policy = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
+const policy = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
+export function messageFramePolicy(images = false, origin = webOrigin) {
+  return `default-src 'none'; script-src ${origin}/message-frame.js; style-src 'unsafe-inline'; img-src data:${images ? ' https:' : ''}; font-src 'none'; connect-src 'none'; frame-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox`;
+}
 const readApi = /^\/api\/(?:session|folders|messages(?:\/[0-9]{1,10}\.[0-9]{1,10}(?:\/attachments\/[1-9][0-9]*(?:\.[1-9][0-9]*)*)?)?)$/;
 const recoveryRequest = '/api/recovery/request';
 const adminReads = new Set(['/api/admin/organizations', '/api/admin/mailboxes', '/api/admin/dns']);
@@ -160,6 +164,12 @@ async function serveWebmail(req: Request, env: Env, url: URL, read: boolean): Pr
     return methodNotAllowed(req, isReadApi && isWriteApi ? 'GET, POST' : isWriteApi ? 'POST' : 'GET');
   }
   if (!read) return methodNotAllowed(req, 'GET, HEAD');
+  if (path === '/message-frame') {
+    const response = await asset(req, env, '/message-frame.html', true);
+    response.headers.set('Content-Security-Policy', messageFramePolicy(url.searchParams.get('images') === '1'));
+    response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+    return response;
+  }
   if (path === '/') return asset(req, env, '/inbox.html', true);
   if (path === '/administration') return administrationPage(req, env);
   if (bookmarks.has(path)) return redirect('/');

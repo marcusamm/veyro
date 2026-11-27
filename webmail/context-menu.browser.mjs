@@ -33,9 +33,9 @@ async function mailbox(t, options = {}, extraMails = [], canManageRecovery, canM
     assert.equal(url.origin, origin);
     const path = url.pathname;
     if (!path.startsWith('/api/')) {
-      const name = path === '/' ? 'inbox.html' : path.slice(1);
+      const name = path === '/' ? 'inbox.html' : path === '/message-frame' ? 'message-frame.html' : path.slice(1);
       assert.equal(request.method(), 'GET');
-      assert.ok(['inbox.html', 'inbox.css', 'inbox.js', 'favicon.svg', 'manrope.woff2'].includes(name));
+      assert.ok(['inbox.html', 'inbox.css', 'inbox.js', 'favicon.svg', 'manrope.woff2', 'message-frame.html', 'message-frame.js'].includes(name));
       if (liveAssets) {
         const response = await route.fetch({maxRedirects: 0});
         assert.equal(response.status(), 200);
@@ -43,7 +43,10 @@ async function mailbox(t, options = {}, extraMails = [], canManageRecovery, canM
       }
       const data = await readFile(new URL('./assets/' + name, import.meta.url));
       return route.fulfill({body: data, contentType: mime[name.split('.').pop()], headers: {
-        'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'",
+        'Content-Security-Policy': path === '/message-frame'
+          ? `default-src 'none'; script-src ${origin}/message-frame.js; style-src 'unsafe-inline'; img-src data:${url.searchParams.get('images') === '1' ? ' https:' : ''}; font-src 'none'; connect-src 'none'; frame-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox`
+          : "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'",
+        'X-Frame-Options': path === '/message-frame' ? 'SAMEORIGIN' : 'DENY',
       }});
     }
     let json;
@@ -90,18 +93,19 @@ test('opens mail links safely with formatted text, the real destination and no f
   const fetched = [];
   page.context().on('request', request => fetched.push(request.url()));
   await page.locator('li[data-mail="1.2"] .message-row').click();
-  const body = page.locator('.letter-rich');
-  await body.waitFor();
+  const body = page.frameLocator('.mail-frame').locator('body');
+  await body.getByText('Hjælp', {exact:true}).waitFor();
   await page.waitForLoadState('networkidle');
   assert.equal(fetched.some(url => /message-test|media\.example\.test|unexpected/.test(url)), false);
   assert.equal(await body.locator('strong').textContent(), 'Hjælp');
-  assert.equal(await body.locator('a').count(), 3);
-  assert.equal(await body.locator('img,iframe,script,[style],[ping],[id]').count(), 0);
+  assert.equal(await body.locator('a[href]').count(), 3);
+  assert.equal(await body.locator('iframe,[ping],[onclick]').count(), 0);
+  assert.equal(await body.locator('strong').evaluate(el => getComputedStyle(el).color), 'rgb(255, 0, 0)');
   assert.equal(await body.getByText('Datatekst', {exact: false}).first().isVisible(), true);
   const external = body.getByRole('link', {name: 'andet.example.test'});
   assert.equal(await external.getAttribute('rel'), 'noopener noreferrer');
   assert.equal(await external.getAttribute('referrerpolicy'), 'no-referrer');
-  assert.equal(await external.locator('xpath=following-sibling::*[1]').textContent(), ' (docs.example.test)');
+  assert.match(await external.getAttribute('title'), /docs\.example\.test/);
   assert.equal(await body.getByRole('link', {name: 'Skriv til os'}).getAttribute('href'), 'mailto:team@example.test');
   let referer;
   await page.context().route('https://docs.example.test/start', route => {
@@ -116,6 +120,36 @@ test('opens mail links safely with formatted text, the real destination and no f
   assert.equal(await destination.locator('body').textContent(), 'Testside');
   assert.equal(await destination.evaluate(() => window.opener === null), true);
   assert.equal(referer, undefined);
+});
+
+test('right-click and keyboard actions inside a rich mail target that mail while links retain their native menu', async t => {
+  const rich = {...mail, id: '1.2', subject: 'HTML-mail',
+    html: '<p id="context-text">Mailens originale tekst</p><a href="https://docs.example.test/">Åbn dokumentet</a>'};
+  const {page, writes} = await mailbox(t, {viewport: {width: 1440, height: 1000}}, [rich]);
+  await page.locator('li[data-mail="1.2"] .message-row').click();
+  const content = page.frameLocator('.mail-frame');
+  const paragraph = content.locator('#context-text');
+  await paragraph.waitFor();
+  await page.locator('.mail-frame:not([aria-busy])').waitFor();
+  const textBox = await paragraph.boundingBox();
+  await paragraph.click({button: 'right', position: {x: 12, y: 10}});
+  await page.getByRole('menu').waitFor();
+  const menuBox = await page.getByRole('menu').boundingBox();
+  assert.ok(Math.abs(menuBox.x - Math.max(6, Math.min(textBox.x + 12, 1440 - menuBox.width - 6))) < 2);
+  assert.ok(Math.abs(menuBox.y - Math.max(6, Math.min(textBox.y + 10, 1000 - menuBox.height - 6))) < 2);
+  await page.keyboard.press('Escape');
+  const nativeAllowed = await content.getByRole('link', {name: 'Åbn dokumentet'}).evaluate(link =>
+    link.dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: 10, clientY: 10})));
+  assert.equal(nativeAllowed, true, 'Link context menus must not be prevented');
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  assert.equal(await page.getByRole('menu').isVisible(), false);
+  await paragraph.click();
+  await page.keyboard.press('Shift+F10');
+  await Promise.all([
+    page.waitForResponse(response => response.url().endsWith('/api/messages/1.2/action?folder=inbox') && response.request().method() === 'POST'),
+    page.getByRole('menuitem', {name: 'Føj til huskeliste', exact: true}).click(),
+  ]);
+  assert.deepEqual(writes, [{path: '/api/messages/1.2/action', folder: 'inbox', body: {action: 'task'}}]);
 });
 
 test('shows legacy status, preserves punctuation and keeps suspect HTML links usable on mobile', async t => {
@@ -140,13 +174,13 @@ test('shows legacy status, preserves punctuation and keeps suspect HTML links us
     ['https://docs.example.test/kursus_(A)', 'mailto:anne@example.test', 'http://docs.example.test/a']);
   await open(suspect.id);
   assert.match(await page.locator('.mail-scan.suspicious').textContent(), /Linkteksten/);
-  assert.equal(await page.getByRole('link', {name:'Åbn demoen'}).getAttribute('href'), 'https://portal.example.test/');
-  assert.match(await page.locator('.link-destination').textContent(), /portal\.example\.test/);
+  assert.equal(await page.frameLocator('.mail-frame').getByRole('link', {name:'Åbn demoen'}).getAttribute('href'), 'https://portal.example.test/');
+  assert.match(await page.frameLocator('.mail-frame').getByRole('link', {name:'Åbn demoen'}).getAttribute('title'), /portal\.example\.test/);
   assert.equal(await page.locator('.attachments a').count(), 1);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await open(oldHtml.id);
   assert.equal(await page.locator('.mail-scan.unknown').isVisible(), true);
-  assert.equal(await page.locator('.letter-rich dd').getByRole('link', {name:'Åbn demoen'}).getAttribute('href'), 'https://portal.example.test/');
+  assert.equal(await page.frameLocator('.mail-frame').locator('dd').getByRole('link', {name:'Åbn demoen'}).getAttribute('href'), 'https://portal.example.test/');
   await open(dangerous.id);
   assert.equal(await page.locator('.mail-scan.dangerous').isVisible(), true);
   assert.equal(await page.locator('.letter-body a').count(), 0);

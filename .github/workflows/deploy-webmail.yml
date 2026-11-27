@@ -1,6 +1,10 @@
 name: Udgiv Veyro Mail
 
 on:
+  pull_request:
+    paths:
+      - 'webmail/**'
+      - '.github/workflows/deploy-webmail.yml'
   push:
     branches: [main]
     paths:
@@ -12,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-veyro-webmail
+  group: deploy-veyro-webmail-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
   cancel-in-progress: false
 
 jobs:
@@ -36,13 +40,15 @@ jobs:
           python -m unittest discover -s webmail/backend -p 'test_*.py'
       - run: |
           npx playwright install --with-deps chromium webkit
-          node --test webmail/context-menu.browser.mjs webmail/administration.browser.mjs webmail/mobile-login.browser.mjs
+          node --test webmail/context-menu.browser.mjs webmail/rich-layout.browser.mjs webmail/administration.browser.mjs webmail/mobile-login.browser.mjs
       - name: Udgiv webmail
+        if: github.event_name != 'pull_request'
         run: npx wrangler deploy --config webmail/wrangler.toml
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Kontrollér den offentlige webmail
+        if: github.event_name != 'pull_request'
         run: |
           base=https://mail.veyro.dk
           page="$RUNNER_TEMP/webmail.html"
@@ -99,6 +105,6 @@ jobs:
           for asset in forhaandsvisning.js forhaandsvisning.css; do
             [[ "$("${fetch[@]}" -o /dev/null -w '%{http_code}' "$base/$asset")" == 404 ]] || { echo "$asset er stadig offentligt"; exit 1; }
           done
-          for asset in inbox.js inbox.css webmail.css favicon.svg manrope.woff2; do
+          for asset in inbox.js inbox.css webmail.css favicon.svg manrope.woff2 message-frame.js; do
             [[ "$("${fetch[@]}" -o "$page" -w '%{http_code}' "$base/$asset")" == 200 && -s "$page" ]] || { echo "Mangler $asset"; exit 1; }
           done

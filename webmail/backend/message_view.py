@@ -10,7 +10,8 @@ import time
 from html.parser import HTMLParser
 from urllib.parse import parse_qsl, unquote, urlsplit
 
-import nh3
+import rich_email
+from rich_email import hydrate_inline_images, image_references
 
 
 def safe_attribute(tag, name, value):
@@ -42,12 +43,7 @@ def safe_attribute(tag, name, value):
     return None
 
 
-CLEANER = nh3.Cleaner(
-    tags=set("a b blockquote br caption code dd del div dl dt em h1 h2 h3 h4 h5 h6 hr i li ol p pre s small span strong sub sup table tbody td th thead tfoot tr u ul".split()),
-    clean_content_tags=set("audio button canvas embed form head iframe math noscript object script style svg template textarea video".split()),
-    attributes={"a": {"href"}, "td": {"colspan", "rowspan"}, "th": {"colspan", "rowspan"}},
-    attribute_filter=safe_attribute, url_relative="deny", url_schemes={"http", "https", "mailto"},
-)
+CLEANER = rich_email.make_cleaner(safe_attribute)
 
 LINK_MISMATCH = "En synlig webadresse i mailen peger på et andet domæne."
 RISKY_ATTACHMENT = "Mailen indeholder en programfil eller et script som vedhæftning."
@@ -75,9 +71,14 @@ class LinkText(HTMLParser):
         self.href = ""
         self.link_start = 0
         self.mismatch = False
+        self.in_style = False
 
     def handle_starttag(self, tag, attrs):
-        if tag in {"br", "p", "div", "tr", "li", "blockquote", "hr", "h1", "h2", "h3", "h4", "h5", "h6"}:
+        if tag == "style":
+            self.in_style = True
+        elif tag == "img":
+            self.chunks.append(dict(attrs).get("alt", ""))
+        elif tag in {"br", "p", "div", "tr", "li", "blockquote", "hr", "h1", "h2", "h3", "h4", "h5", "h6"}:
             self.chunks.append("\n")
         elif tag in {"td", "th"}:
             self.chunks.append("\t")
@@ -86,6 +87,8 @@ class LinkText(HTMLParser):
             self.link_start = len(self.chunks)
 
     def handle_endtag(self, tag):
+        if tag == "style":
+            self.in_style = False
         if tag in {"p", "div", "tr", "li", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6"}:
             self.chunks.append("\n")
         if tag != "a" or not self.href:
@@ -107,11 +110,12 @@ class LinkText(HTMLParser):
         self.href = ""
 
     def handle_data(self, data):
-        self.chunks.append(data)
+        if not self.in_style:
+            self.chunks.append(data)
 
 
-def html_view(source):
-    safe = CLEANER.clean(source)
+def html_view(source, cid_parts=None):
+    safe = rich_email.clean_fragment(CLEANER, source, cid_parts)
     parser = LinkText()
     parser.feed(safe)
     parser.close()
