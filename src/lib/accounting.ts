@@ -269,6 +269,23 @@ async function previewRows(db:D1Database,rows:BankImportRow[]):Promise<PreviewLi
     const ids=[...new Set((byId.length?byId:byBalance).map(x=>x.id))];
     out.push({...row,duplicate_status:conflicting?'conflict':ids.length===1?'duplicate':ids.length>1||candidates.length?'review':'new',existing_id:ids.length===1&&!conflicting?ids[0]!:null,candidate_ids:[...new Set([...candidates,...ids])]});
   }
+  // A balance can repeat after a refund. Across overlapping statements it must
+  // not silently map multiple incoming payments to one stored transaction.
+  const automaticMatches=new Map<number,PreviewLine[]>();
+  for(const row of out)if(row.duplicate_status==='duplicate'&&row.existing_id!==null){
+    const matches=automaticMatches.get(row.existing_id)??[];matches.push(row);automaticMatches.set(row.existing_id,matches);
+  }
+  for(const [existingId,matches] of automaticMatches){
+    if(matches.length<2)continue;
+    const externalKeys=matches.map(row=>row.identity_keys.find(key=>key.startsWith('id:'))??null);
+    if(externalKeys[0]&&externalKeys.every(key=>key===externalKeys[0]))continue;
+    const storedKeys=stored.find(row=>row.id===existingId)!.keys;
+    for(const row of matches){
+      const externalKey=row.identity_keys.find(key=>key.startsWith('id:'));
+      if(externalKey&&storedKeys.includes(externalKey))continue;
+      row.duplicate_status='review';row.existing_id=null;
+    }
+  }
   return out;
 }
 export async function getImport(db:D1Database,id:number):Promise<ImportPreview|null> {
@@ -283,6 +300,7 @@ export async function confirmImport(db:D1Database,actor:AccountingActor,id:numbe
   const at=nowSec(), statements:D1PreparedStatement[]=[guard(db,"EXISTS(SELECT 1 FROM accounting_imports WHERE id=? AND status='preview')",[id]),guard(db,"(SELECT COUNT(*) FROM accounting_imports WHERE status='confirmed')=?",[preview.bank_revision])];
   let imported=0,duplicates=0;
   const sameBatchKeys=new Map<string,{source:number;externalKey:string|null;semantic:string}[]>();
+  const matchedExisting=new Map<number,string|null>();
   for(const row of preview.rows){
     validateBankRow(row);
     if(row.duplicate_status==='conflict')throw new AccountingError('Transaktions-ID og saldo peger på forskellige banklinjer. Ret eller afklar filen før import.');
@@ -302,6 +320,8 @@ export async function confirmImport(db:D1Database,actor:AccountingActor,id:numbe
     const priorSource=sourceMatches[0];
     let lineSql:string, lineArgs:unknown[];
     if(match!==null){
+      if(matchedExisting.has(match)&&(!externalKey||matchedExisting.get(match)!==externalKey))throw new AccountingError(`Linje ${row.source_row}: flere betalinger kan ikke knyttes til samme eksisterende banklinje uden et fælles transaktions-ID. Vælg særskilt betaling for den anden linje.`);
+      matchedExisting.set(match,externalKey);
       duplicates++;lineSql='?';lineArgs=[match];
       // Semantic confirmation is checked again within the same transaction.
       if(row.duplicate_status==='review')statements.push(guard(db,'EXISTS(SELECT 1 FROM accounting_bank_lines WHERE id=? AND semantic_key=?)',[match,bankSemanticKey(row)]));

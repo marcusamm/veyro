@@ -97,6 +97,38 @@ describe('shared internal bookkeeping',()=>{
     await expect(confirmImport(db,actor,preview.id)).rejects.toThrow('Afklar mulig dublet');
     await confirmImport(db,actor,preview.id,{'2':preview.rows[0].candidate_ids[0],'1':preview.rows[0].candidate_ids[0]});expect(count('accounting_bank_lines')).toBe(2);
   });
+  it('requires one-to-one review when an overlapping statement repeats a balance after a refund',async()=>{
+    const rows=parseRevolutCsv('Date,Description,Amount,Currency,Balance,State\n2026-11-23,Apple,-125.00,DKK,875.00,COMPLETED\n2026-11-23,Apple,125.00,DKK,1000.00,COMPLETED\n2026-11-23,Apple,-125.00,DKK,875.00,COMPLETED',{account:'Revolut'}).rows;
+    await bank([rows[0]],'partial.csv');const existing=(await listBankLines(db))[0].id;
+    const preview=await createImportPreview(db,actor,{file_id:original(),file_name:'complete.csv',format:'csv',rows});
+    expect(preview.rows.map(row=>row.duplicate_status)).toEqual(['review','new','review']);
+    await expect(confirmImport(db,actor,preview.id)).rejects.toThrow('Afklar mulig dublet');
+    await expect(confirmImport(db,actor,preview.id,{[rows[0].source_row]:existing,[rows[2].source_row]:existing})).rejects.toThrow('fælles transaktions-ID');
+    expect(count('accounting_bank_lines')).toBe(1);expect((await getImport(db,preview.id)).status).toBe('preview');
+    expect(await confirmImport(db,actor,preview.id,{[rows[0].source_row]:existing,[rows[2].source_row]:'new'})).toMatchObject({imported:2,duplicates:1});
+    expect((await bankTotals(db))[0]).toMatchObject({count:3,movement_minor:-12500});
+  });
+  it('retains new purchases with repeated balances after a refund within one statement',async()=>{
+    const rows=parseRevolutCsv('Date,Description,Amount,Currency,Balance,State\n2026-11-23,Apple,-125.00,DKK,875.00,COMPLETED\n2026-11-23,Apple,125.00,DKK,1000.00,COMPLETED\n2026-11-23,Apple,-125.00,DKK,875.00,COMPLETED',{account:'Revolut'}).rows;
+    await bank(rows);expect((await bankTotals(db))[0]).toMatchObject({count:3,movement_minor:-12500});
+  });
+  it('resolves distinct incoming IDs separately when both match one prior ID-less balance',async()=>{
+    const rows=parseRevolutCsv('Date,Description,Amount,Currency,Balance,Transaction ID,State\n2026-11-23,Apple,-125.00,DKK,875.00,tx-a,COMPLETED\n2026-11-23,Apple,-125.00,DKK,875.00,tx-b,COMPLETED',{account:'Revolut'}).rows;
+    await bank([{...rows[0],external_id:null,identity_keys:rows[0].identity_keys.filter(key=>key.startsWith('balance:')),identity_strength:'balance'}],'partial.pdf','pdf');
+    const existing=(await listBankLines(db))[0].id,preview=await createImportPreview(db,actor,{file_id:original(),file_name:'complete.csv',format:'csv',rows});
+    expect(preview.rows.map(row=>row.duplicate_status)).toEqual(['review','review']);
+    await confirmImport(db,actor,preview.id,{[rows[0].source_row]:existing,[rows[1].source_row]:'new'});
+    expect((await bankTotals(db))[0]).toMatchObject({count:2,movement_minor:-25000});
+    expect(sqlite.prepare("SELECT COUNT(*) AS n FROM accounting_bank_keys WHERE identity_key LIKE 'id:%'").get().n).toBe(2);
+  });
+  it('allows repeated rows sharing one explicit ID to deduplicate against a prior balance match',async()=>{
+    const first=parseRevolutCsv('Date,Description,Amount,Currency,Balance,Transaction ID,State\n2026-11-23,Apple,-125.00,DKK,875.00,tx-a,COMPLETED',{account:'Revolut'}).rows[0];
+    await bank([{...first,external_id:null,identity_keys:first.identity_keys.filter(key=>key.startsWith('balance:')),identity_strength:'balance'}],'partial.pdf','pdf');
+    const preview=await createImportPreview(db,actor,{file_id:original(),file_name:'repeated.csv',format:'csv',rows:[first,{...first,source_row:first.source_row+1}]});
+    expect(preview.rows.map(row=>row.duplicate_status)).toEqual(['duplicate','duplicate']);
+    expect(await confirmImport(db,actor,preview.id)).toMatchObject({imported:0,duplicates:2});
+    expect((await bankTotals(db))[0]).toMatchObject({count:1,movement_minor:-12500});
+  });
   it('rejects an incoming ID and balance that point to separate stored transactions',async()=>{
     const parsed=parseRevolutCsv('Date,Description,Amount,Currency,Balance,Transaction ID,State\n2026-11-23,Apple,-125.00,DKK,875.00,tx-a,COMPLETED\n2026-11-23,Apple,-125.00,DKK,750.00,,COMPLETED',{account:'Revolut'}).rows;
     await bank(parsed);expect(count('accounting_bank_lines')).toBe(2);
