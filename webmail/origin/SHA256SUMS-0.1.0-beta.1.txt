@@ -1,0 +1,3 @@
+d0cabd73a30dd768d9912c51dc05a3c00485d68bad3979b8f8608199e95fbb3e  Veyro-Mail-0.1.0-beta.1-mac-arm64.dmg
+e7328dc6cad3bf753bce037d1b76349a0b729b954acafd840a958277fce648fe  Veyro-Mail-0.1.0-beta.1-mac-x64.dmg
+71c693e05f3acf915e1df86f52c9030c6f172a3a9dc4ba262afcb21afd36ca91  Veyro-Mail-0.1.0-beta.1-win-x64.exe
