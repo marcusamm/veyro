@@ -87,6 +87,18 @@ class SignedDelivery(unittest.TestCase):
         self.assertEqual(self.request("POST","begin",self.feed("0.1.0-beta.5"))[0],422)
         self.assertEqual(self.request("POST","begin",self.feed(data=b"replaced"))[0],422)
         self.assertEqual((self.public/"update.json").read_bytes(),feed)
+        installed = next((self.public/"0.1.0-beta.6").iterdir())
+        installed.write_bytes(b"damaged file")
+        self.assertEqual(self.request("POST","begin",feed)[0],422)
+
+    def test_newer_signed_staging_reclaims_superseded_partials(self):
+        older = self.feed("0.1.0-beta.6")
+        newer = self.feed("0.1.0-beta.7")
+        self.assertEqual(self.request("POST","begin",older),(200,"0"))
+        self.assertEqual(self.request("PUT","windows",self.data[:8],hashlib.sha256(older).hexdigest(),0)[0],204)
+        self.assertEqual(self.request("POST","begin",newer),(200,"0"))
+        self.assertFalse((self.stage/"0.1.0-beta.6").exists())
+        self.assertEqual(self.request("HEAD","windows",tag=hashlib.sha256(older).hexdigest())[0],409)
 
     def test_rejects_incomplete_or_corrupt_release_and_requires_bearer(self):
         feed = self.feed()

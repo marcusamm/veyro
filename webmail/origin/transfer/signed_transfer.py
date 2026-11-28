@@ -47,11 +47,18 @@ class Publisher:
             if current["version"] == version:
                 if current != manifest:
                     raise ValueError("Version collision")
+                releases.verify_directory(self.public / version, manifest)
+                # A restart may happen after the atomic feed replacement but
+                # before the private staging directory was removed.
+                leftover = self.staging / version
+                if leftover.exists():
+                    shutil.rmtree(leftover)
                 return True
         if self.envelope and self.envelope != envelope:
             other = releases.read_feed(self.envelope, self.key)
             if releases.rank(other["version"]) >= releases.rank(version):
                 raise ValueError("Conflicting release is in progress")
+        previous = self.stage.root if self.stage is not None else None
         files = {}
         for name, platform in PLATFORMS.items():
             asset = manifest["files"][platform]
@@ -61,6 +68,8 @@ class Publisher:
         temporary.write_bytes(envelope)
         os.replace(temporary, self.active)
         self.envelope = envelope
+        if previous is not None and previous != self.stage.root and previous.exists():
+            shutil.rmtree(previous)
         return False
 
     def commit(self):

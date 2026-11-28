@@ -79,6 +79,14 @@ def copy_verified(stream, asset, output=None):
         raise ValueError("Installer digest mismatch: " + asset["name"])
 
 
+def verify_directory(directory, manifest):
+    for asset in manifest["files"].values():
+        with (directory / asset["name"]).open("rb") as stream:
+            copy_verified(stream, asset)
+            if stream.read(1):
+                raise ValueError("Published file has unexpected length")
+
+
 def sync_dir(path):
     fd = os.open(path, os.O_RDONLY)
     try:
@@ -117,11 +125,7 @@ def publish(root, envelope, public_key, folder):
                     os.fsync(output.fileno())
                     os.fchmod(output.fileno(), 0o644)
             if destination.exists():
-                for asset in manifest["files"].values():
-                    with (destination / asset["name"]).open("rb") as stream:
-                        copy_verified(stream, asset)
-                        if stream.read(1):
-                            raise ValueError("Published file has unexpected length")
+                verify_directory(destination, manifest)
             else:
                 files.chmod(0o755)
                 sync_dir(files)
