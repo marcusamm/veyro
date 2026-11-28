@@ -98,13 +98,19 @@ class Receiver(BaseHTTPRequestHandler):
             self.send_header("Upload-Offset", str(offset))
         self.end_headers()
 
-    def receive(self):
+    def authorized(self):
         headers = self.headers.get_all("Authorization", [])
         token = re.fullmatch(r"Bearer ([0-9a-f]{64})", headers[0]) if len(headers) == 1 else None
-        if not token or not hmac.compare_digest(hashlib.sha256(token[1].encode("ascii")).hexdigest(), self.server.token_hash):
+        return bool(token and hmac.compare_digest(hashlib.sha256(token[1].encode("ascii")).hexdigest(), self.server.token_hash))
+
+    def receive(self):
+        if not self.authorized():
             return self.reply(403)
         stage = self.server.stage
         key = self.path[len(PREFIX):] if self.path.startswith(PREFIX) else ""
+        return self.receive_file(stage, key)
+
+    def receive_file(self, stage, key):
         if key not in stage.files:
             return self.reply(404)
         size = stage.files[key][1]
@@ -142,13 +148,15 @@ def serve(root, token_hash):
         while time.monotonic() < deadline:
             server.handle_request()
 
-def request(method, key, token, offset=None, data=None):
+def request(method, key, token, offset=None, data=None, *, prefix=PREFIX, extra=None, timeout=90):
     headers = {"Authorization": "Bearer " + token, "Cache-Control": "no-store"}
+    if extra:
+        headers.update(extra)
     if offset is not None:
         headers["Upload-Offset"] = str(offset)
-    connection = http.client.HTTPSConnection(HOST, timeout=90)
+    connection = http.client.HTTPSConnection(HOST, timeout=timeout)
     try:
-        connection.request(method, PREFIX + key, body=data, headers=headers)
+        connection.request(method, prefix + key, body=data, headers=headers)
         response = connection.getresponse()
         if response.status not in (200, 204):
             if response.status in (408, 409, 429, 500, 502, 503, 504):
@@ -158,17 +166,24 @@ def request(method, key, token, offset=None, data=None):
     finally:
         connection.close()
 
-def send(token_file, folder):
+def read_token(token_file):
     if not stat.S_ISREG(token_file.lstat().st_mode) or token_file.stat().st_mode & 0o077:
         raise ValueError("Expected a private token file (0600).")
     token = token_file.read_text().strip()
     if not re.fullmatch(r"[0-9a-f]{64}", token):
         raise ValueError("Token file is invalid")
-    for name, size, checksum in FILES.values():
+    return token
+
+
+def verify_files(folder, files):
+    for name, size, checksum in files.values():
         path = folder / name
         if path.stat().st_size != size or digest(path) != checksum:
             raise ValueError("Local installer differs from manifest: " + name)
-    for key, (name, size, _) in FILES.items():
+
+
+def upload_files(token, folder, files, request):
+    for key, (name, size, _) in files.items():
         failures = 0
         with (folder / name).open("rb") as stream:
             while True:
@@ -189,6 +204,12 @@ def send(token_file, folder):
                     if failures >= 5:
                         raise RuntimeError("Could not reach the release origin after 5 retries") from error
                     time.sleep(failures * 2)
+
+def send(token_file, folder):
+    token = read_token(token_file)
+    verify_files(folder, FILES)
+    upload_files(token, folder, FILES, request)
+
 
 def prepare(token_file):
     value = secrets.token_hex(32)

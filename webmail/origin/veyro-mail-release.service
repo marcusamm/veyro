@@ -1,0 +1,30 @@
+[Unit]
+Description=Veyro signed desktop release publisher
+After=network.target
+
+[Service]
+User=veyro-mail-release
+Group=veyro-mail-release
+ExecStart=/usr/bin/python3 /opt/veyro-mail-release/transfer/signed_transfer.py serve /etc/veyro-mail-release/token.sha256 /var/lib/veyro-mail-release /srv/veyro-mail-downloads /etc/veyro-mail-release/update-signing-key.pem
+Restart=on-failure
+StateDirectory=veyro-mail-release
+StateDirectoryMode=0700
+ReadWritePaths=/srv/veyro-mail-downloads
+ProtectSystem=strict
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET
+IPAddressDeny=any
+IPAddressAllow=localhost
+CapabilityBoundingSet=
+UMask=0077
+MemoryMax=240M
+TasksMax=32
+
+[Install]
+WantedBy=multi-user.target
