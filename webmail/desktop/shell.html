@@ -12,11 +12,22 @@
     <div class="account-divider"><span>Konti</span></div>
     <nav id="accounts" aria-label="Skift mailkonto"></nav>
     <button id="add" class="add" title="Tilføj konto" aria-label="Tilføj konto">+</button>
-    <button id="manage" class="manage" title="Administrer konto" aria-label="Administrer konto"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg></button>
-    <span class="rail-foot">Veyro Mail</span>
+    <button id="manage" class="manage" title="Indstillinger" aria-label="Indstillinger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg></button>
+    <span class="rail-foot" aria-hidden="true">Indstillinger</span>
   </aside>
   <main id="stage" class="stage">
     <div id="status" class="status" role="status" aria-live="polite"><span class="status-mark">v<span>·</span></span><h1 id="status-title">Din mail. Dit overblik.</h1><p id="status-copy">Forbinder til din konto…</p><button id="retry" class="primary" hidden>Prøv igen</button><button id="welcome-google" class="primary google-button" hidden><span class="google-mark" aria-hidden="true">G</span>Log ind med Google</button><button id="first-account" class="text-button" hidden>Andre mailkonti</button></div>
+    <dialog id="settings-dialog" aria-labelledby="settings-title">
+      <div class="settings-heading"><h1 id="settings-title">Indstillinger</h1><button type="button" id="close-settings" class="close" aria-label="Luk indstillinger">×</button></div>
+      <section class="update-settings" aria-labelledby="update-heading">
+        <h2 id="update-heading">Appopdateringer</h2>
+        <p id="installed-version"></p>
+        <p id="update-status" role="status" aria-live="polite"></p>
+        <progress id="update-progress" aria-label="Hentning af opdatering" max="100" hidden></progress>
+        <button id="update-action" type="button" class="primary">Søg efter opdateringer</button>
+      </section>
+      <button id="manage-account" type="button" class="settings-account" hidden>Administrer konto <span aria-hidden="true">›</span></button>
+    </dialog>
     <dialog id="account-dialog" aria-labelledby="dialog-title">
       <form id="account-form">
         <div class="dialog-top"><span class="eyebrow">Plads til alle dine konti</span><button type="button" id="close-dialog" class="close" aria-label="Luk">×</button></div>

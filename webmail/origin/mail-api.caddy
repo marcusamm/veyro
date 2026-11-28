@@ -1,9 +1,21 @@
 @downloadArea path /webmail-downloads /webmail-downloads/*
 @desktopInstaller {
 	method GET HEAD
-	path_regexp installer ^/webmail-downloads/Veyro-Mail-(0[.]1[.]0-beta[.][12])-(mac-(arm64|x64)[.]dmg|win-x64[.]exe)$
+	path_regexp installer ^/webmail-downloads/Veyro-Mail-([0-9]{1,6}[.][0-9]{1,6}[.][0-9]{1,6}(-beta[.][0-9]{1,6})?)-(mac-(arm64|x64)[.]dmg|win-x64[.]exe)$
+}
+@desktopUpdate {
+	method GET HEAD
+	path /webmail-downloads/update.json
 }
 handle @downloadArea {
+	handle @desktopUpdate {
+		root * /srv/veyro-mail-downloads
+		uri strip_prefix /webmail-downloads
+		header Content-Type application/json
+		header Cache-Control no-store
+		header X-Content-Type-Options nosniff
+		file_server
+	}
 	handle @desktopInstaller {
 		root * /srv/veyro-mail-downloads/{re.installer.1}
 		uri strip_prefix /webmail-downloads
@@ -13,6 +25,19 @@ handle @downloadArea {
 		file_server
 	}
 	respond 404
+}
+
+@signedDesktopRelease {
+	method HEAD POST PUT
+	path /webmail-release-upload/v1/begin /webmail-release-upload/v1/mac-apple /webmail-release-upload/v1/mac-intel /webmail-release-upload/v1/windows /webmail-release-upload/v1/publish
+}
+handle @signedDesktopRelease {
+	request_body {
+		max_size 8MiB
+	}
+	reverse_proxy 127.0.0.1:18147 {
+		header_up X-Veyro-Release-IP {remote_host}
+	}
 }
 
 @recoveryPage {

@@ -5,6 +5,11 @@ const path = require('node:path');
 const {randomUUID} = require('node:crypto');
 const policy = require('./security.cjs');
 const {createVault} = require('./vault.cjs');
+const {createUpdater, UpdateError} = require('./app-updates.cjs');
+const {confirmRestart} = require('./update-install.cjs');
+const {RecentMessages, onlyOtherReadAcknowledgements} = require('./recent-messages.cjs');
+const {MailReadAhead} = require('./mail-read-ahead.cjs');
+const {gmailWebViewUrl, isGmailHost} = require('./provider-views.cjs');
 const {createOAuth, providerAccount, verifiedGoogleProfile, googleAccountMatches} = require('./oauth.cjs');
 const {loadOAuthRegistration} = require('./oauth-registration.cjs');
 
@@ -32,6 +37,10 @@ async function bootstrap(options = {}) {
     openBrowser: openExternal,
   });
   const imapSessions = new Map();
+  const newImapSession = () => {
+    const {ImapSession} = require('./mail-connector.cjs');
+    return new ImapSession();
+  };
   const connectorFor = (account, imapSession) => (testing && options.createMailConnector ? options.createMailConnector : require('./mail-connector.cjs').createMailConnector)({account, imapSession});
   const views = new Map();
   const protectedSessions = new Map();
@@ -40,20 +49,41 @@ async function bootstrap(options = {}) {
   const removing = new Set();
   const oauthAttempts = new Map();
   const messageViews = new Map();
+  const recentMessages = new RecentMessages();
+  const readAhead = new MailReadAhead({makeSession: newImapSession, connectorFor, cache: recentMessages});
   let window, accounts = [], activeId, dialogOpen = false, promptOpen = false, toast = '', shuttingDown = false, googleAddition;
   let mutation = Promise.resolve();
+  let activeMailWrites = 0, updateLocked = false;
+  const updater = createUpdater({currentVersion:app.getVersion(), enabled:app.isPackaged, userData:app.getPath('userData'),
+    execPath:process.execPath, publish, readyToRestart, lockEditors:locked => { updateLocked = locked; layout(); }, quit:() => app.quit()});
+  async function readyToRestart() {
+    if (shuttingDown || googleAddition || activeMailWrites || promptOpen || [...downloads.values()].some(items => items.size))
+      throw new UpdateError('Vent på at den igangværende handling er afsluttet, og prøv igen.');
+    // The company editor also retains its draft when its dialog is closed. Only
+    // return a boolean from each trusted document, never its draft or mail text.
+    for (const {view,native} of views.values()) {
+      const wc = view.webContents;
+      if (wc.isDestroyed() || wc.isCrashed()) continue;
+      const trusted = native ? policy.trustedDocument(wc.getURL(),policy.CLIENT_URL) : policy.allowedRemote(wc.getURL(),origin);
+      if (!trusted) continue;
+      const dirty = await wc.executeJavaScript(native ? "Boolean(document.querySelector('#compose-dialog[open]'))" :
+        "Boolean(document.querySelector('#composer[open], #post-dialog[open]') || ['recipient','cc','subject','body','message-text'].some(id => document.getElementById(id)?.value))");
+      if (dirty) throw new UpdateError('Du har en åben kladde eller usendt tekst. Gem, send eller kassér den før genstart.');
+    }
+  }
 
   function sessionFor(id) {
     if (!window || window.isDestroyed() || shuttingDown || removing.has(id)) return;
-    if (!imapSessions.has(id)) {
-      const {ImapSession} = require('./mail-connector.cjs');
-      imapSessions.set(id, new ImapSession());
-    }
+    if (!imapSessions.has(id)) imapSessions.set(id, newImapSession());
     return imapSessions.get(id);
   }
   function retireSession(id) {
+    readAhead.cancel(id);
+    const entry = views.get(id);
+    if (entry) entry.listPage = null;
     imapSessions.get(id)?.close();
     imapSessions.delete(id);
+    recentMessages.clear(id);
   }
   function accountById(id) {
     const account = accounts.find((item) => item.id === id);
@@ -86,7 +116,7 @@ async function bootstrap(options = {}) {
   function state() {
     const entry = views.get(activeId);
     return {accounts, activeId, status: entry?.status || 'empty', section: entry?.section || 'mail', dialogOpen, toast,
-      oauth: oauth.availability(), googleConnecting: !!googleAddition, version: app.getVersion()};
+      oauth: oauth.availability(), googleConnecting: !!googleAddition, version: app.getVersion(), update:updater.snapshot()};
   }
   function publish() {
     if (window && !window.isDestroyed()) window.webContents.send('veyro:state', state());
@@ -96,7 +126,16 @@ async function bootstrap(options = {}) {
     const [width, height] = window.getContentSize();
     for (const [id, entry] of views) {
       entry.view.setBounds({x: 112, y: 0, width: Math.max(0, width - 112), height});
-      entry.view.setVisible(id === activeId && !dialogOpen && entry.status === 'ready');
+      const visible = id === activeId && !dialogOpen && !updateLocked && entry.status === 'ready';
+      entry.view.setVisible(visible);
+      if (entry.native) {
+        const listAvailable = visible && window.isVisible() && !window.isMinimized();
+        if (entry.listAvailable !== listAvailable) {
+          entry.listAvailable = listAvailable;
+          if (listAvailable) entry.view.webContents.send('veyro:measure-list');
+          else readAhead.cancel(id);
+        }
+      }
     }
   }
   function notify(message) { toast = message; publish(); }
@@ -123,9 +162,16 @@ async function bootstrap(options = {}) {
     }
     return state();
   }
-  function enqueueAccount(id, operation) {
-    const result = (accountQueues.get(id) || Promise.resolve()).then(operation);
-    accountQueues.set(id, result.catch(() => {}));
+  function enqueueAccount(id, operation, readAcknowledgement) {
+    const queue = accountQueues.get(id) || {tail: Promise.resolve(), pending: new Map()};
+    const result = queue.tail.then(operation);
+    queue.pending.set(result, readAcknowledgement);
+    const finished = () => {
+      queue.pending.delete(result);
+      if (!queue.pending.size) accountQueues.delete(id);
+    };
+    queue.tail = result.then(finished, finished);
+    accountQueues.set(id, queue);
     return result;
   }
   async function addGoogle(attempt) {
@@ -145,7 +191,7 @@ async function bootstrap(options = {}) {
       // New configuration IPC is blocked during this flow. Drain pre-existing
       // account work before choosing a duplicate, then serialize its vault write
       // with drafts and token refreshes so those cannot be overwritten.
-      await Promise.all([...accountQueues.values()]);
+      await Promise.all([...accountQueues.values()].map(queue => queue.tail));
       assertAttempt();
       let duplicate;
       for (const metadata of accounts.filter((item) => item.kind === 'external')) {
@@ -196,6 +242,17 @@ async function bootstrap(options = {}) {
   }
   function clearMessageViews(accountId) {
     for (const [url, record] of messageViews) if (record.accountId === accountId) messageViews.delete(url);
+  }
+  function openMessageView(id, result) {
+    clearMessageViews(id);
+    const {html, remoteImages, ...message} = result;
+    if (!html || typeof html !== 'string') return message;
+    const images = new Set((remoteImages || []).filter((value) => {
+      try { const u = new URL(value); return u.protocol === 'https:' && !u.username && !u.password; } catch { return false; }
+    }));
+    const htmlUrl = `veyro://message/${randomUUID()}`;
+    messageViews.set(htmlUrl, {accountId: id, html, images, enabled: false, createdAt: Date.now()});
+    return {...message, htmlUrl, hasRemoteImages: images.size > 0, richAvailable: true};
   }
   function messageImageAllowed(details, id) {
     const record = messageView(details.frame?.url, id);
@@ -332,12 +389,19 @@ async function bootstrap(options = {}) {
     const preferences = {...policy.secureWebPreferences, session: ses};
     if (native) preferences.preload = path.join(__dirname, 'mail-preload.cjs');
     const view = new WebContentsView({webPreferences: preferences});
-    const entry = {view, status: 'loading', section: 'mail', failed: false};
+    const entry = {view, native, status: 'loading', section: 'mail', failed: false};
     views.set(account.id, entry);
     window.contentView.addChildView(view);
     view.setBackgroundColor('#faf9f6');
     secureContents(view.webContents, {remote: !native, expected: policy.CLIENT_URL, accountId: account.id});
-    view.webContents.on('did-start-loading', () => { entry.failed = false; entry.status = 'loading'; layout(); publish(); });
+    // The loading spinner also runs for the sandboxed message iframe. Only a
+    // new top-level document replaces the account view.
+    view.webContents.on('did-start-navigation', (event) => {
+      if (!event.isMainFrame || event.isSameDocument) return;
+      entry.listPage = null;
+      readAhead.cancel(account.id);
+      entry.failed = false; entry.status = 'loading'; layout(); publish();
+    });
     view.webContents.on('did-finish-load', () => { if (!entry.failed) entry.status = 'ready'; layout(); publish(); });
     view.webContents.on('did-stop-loading', () => {
       // A download can stop navigation without finishing a new document.
@@ -360,6 +424,7 @@ async function bootstrap(options = {}) {
   }
   async function switchAccount(id) {
     const account = accountById(id);
+    if (activeId && activeId !== id) readAhead.cancel(activeId);
     activeId = id;
     if (!views.has(id)) await createView(account);
     await saveAccounts();
@@ -374,9 +439,10 @@ async function bootstrap(options = {}) {
     });
     if (result.response !== 1) return state();
     removing.add(id);
+    readAhead.cancel(id);
     invalidateOAuth(id);
     // Finish any in-flight account operation before deleting its credential vault.
-    await accountQueues.get(id)?.catch(() => {});
+    await accountQueues.get(id)?.tail;
     retireSession(id);
     for (const download of downloads.get(id) || []) download.cancel();
     downloads.delete(id);
@@ -405,6 +471,8 @@ async function bootstrap(options = {}) {
   async function shellAction(action, payload = {}, googleAttempt) {
     switch (action) {
       case 'state': return state();
+      case 'checkUpdate': await updater.check(); return state();
+      case 'installUpdate': await updater.apply(); return state();
       case 'dialog': dialogOpen = payload.open === true; layout(); publish(); return state();
       case 'addGoogle': return addGoogle(googleAttempt || beginGoogle());
       case 'cancelGoogle': return cancelGoogle();
@@ -451,9 +519,49 @@ async function bootstrap(options = {}) {
     return {email: account.email, name: account.name, saveSent: account.saveSent, authType: account.authType, oauthProvider: account.oauthProvider,
       imap: endpoint(account.imap), smtp: endpoint(account.smtp)};
   }
+  async function authenticatedAccount(id, saved) {
+    if (!saved.account) throw new Error('Forbind først din mailkonto.');
+    if (saved.account.authType !== 'oauth') return saved.account;
+    const tokens = await oauth.fresh(saved.oauth);
+    if (tokens !== saved.oauth) await vault.write(id, {...saved, oauth: tokens});
+    return {...saved.account, imap: {...saved.account.imap, accessToken: tokens.accessToken}, smtp: {...saved.account.smtp, accessToken: tokens.accessToken}};
+  }
+  function warmVisibleRows(id, payload) {
+    const entry = views.get(id);
+    const page = entry?.listPage;
+    if (id !== activeId || dialogOpen || !entry?.listAvailable || !page || page.pageToken !== payload?.pageToken ||
+        page.folder !== payload.folder || page.uidValidity !== payload.uidValidity) return;
+    if (!Array.isArray(payload.uids) || payload.uids.length > page.rows.size) return;
+    const messages = [...new Set(payload.uids)].map(uid => page.rows.get(uid)).filter(Boolean);
+    if (!messages.length) {
+      readAhead.cancel(id);
+      return;
+    }
+    // Only credential refresh joins the account queue. Background mail traffic
+    // uses its own connection and cannot delay a send or a click.
+    const getAccount = () => enqueueAccount(id, async () => {
+      if (id !== activeId || !entry.listAvailable || entry.listPage !== page || shuttingDown || removing.has(id)) throw new Error('Postkassen er lukket.');
+      return authenticatedAccount(id, await vault.read(id));
+    });
+    void readAhead.schedule(id, getAccount, page.folder, {uidValidity: page.uidValidity, messages});
+  }
   async function mailAction(id, action, payload = {}, oauthGeneration) {
     const metadata = accountById(id);
     if (metadata.kind !== 'external') throw new Error('Ikke en ekstern mailkonto.');
+    const requestWindow = window;
+    const requestIsOpen = () => requestWindow && requestWindow === window && !shuttingDown && !removing.has(id);
+    if (action === 'message') {
+      if (!requestIsOpen()) throw new Error('Postkassen er lukket.');
+      const recent = recentMessages.get(id, payload);
+      if (recent) return openMessageView(id, recent);
+      const pendingRead = readAhead.inFlight(id, payload);
+      if (pendingRead) {
+        await pendingRead;
+        if (!requestIsOpen()) throw new Error('Postkassen er lukket.');
+        const prepared = recentMessages.get(id, payload);
+        if (prepared) return openMessageView(id, prepared);
+      }
+    }
     const saved = await vault.read(id);
     const identity = (account = saved.account) => ({id, label: metadata.label, configured: !!account, account: publicAccount(account), oauth: oauth.availability()});
     if (action === 'bootstrap') return identity();
@@ -513,12 +621,21 @@ async function bootstrap(options = {}) {
       return {ok: true};
     }
     if (!saved.account) throw new Error('Forbind først din mailkonto.');
-    let authenticated = saved.account;
-    if (saved.account.authType === 'oauth') {
-      const tokens = await oauth.fresh(saved.oauth);
-      if (tokens !== saved.oauth) await vault.write(id, {...saved, oauth: tokens});
-      authenticated = {...saved.account, imap: {...saved.account.imap, accessToken: tokens.accessToken}, smtp: {...saved.account.smtp, accessToken: tokens.accessToken}};
+    if (action === 'message') {
+      if (!requestIsOpen()) throw new Error('Postkassen er lukket.');
+      const recent = recentMessages.get(id, payload);
+      if (recent) return openMessageView(id, recent);
+      readAhead.exclude(id, payload);
     }
+    if (action === 'openProviderView') {
+      if (!isGmailHost(saved.account.imap.host)) throw new Error('Denne visning kræver Gmail.');
+      const url = gmailWebViewUrl(payload.webView, saved.account.email);
+      if (!url) throw new Error('Ukendt Gmail-visning.');
+      await openExternal(url);
+      return {ok: true};
+    }
+    if (action === 'action') readAhead.exclude(id, payload);
+    const authenticated = await authenticatedAccount(id, saved);
     const connector = connectorFor(authenticated, sessionFor(id));
     if (action === 'saveAttachment') {
       const attachment = await connector.attachment(payload);
@@ -527,20 +644,48 @@ async function bootstrap(options = {}) {
       await fs.writeFile(result.filePath, attachment.data);
       return {saved: true};
     }
-    if (!['folders', 'messages', 'message', 'action', 'send'].includes(action)) throw new Error('Ukendt mailhandling.');
-    const result = await connector[action](payload);
-    if (action === 'message') {
-      clearMessageViews(id);
-      const {html, remoteImages, ...message} = result;
-      if (html && typeof html === 'string') {
-        const images = new Set((remoteImages || []).filter((value) => {
-          try { const u = new URL(value); return u.protocol === 'https:' && !u.username && !u.password; } catch { return false; }
-        }));
-        const htmlUrl = `veyro://message/${randomUUID()}`;
-        messageViews.set(htmlUrl, {accountId: id, html, images, enabled: false, createdAt: Date.now()});
-        return {...message, htmlUrl, hasRemoteImages: images.size > 0, richAvailable: true};
+    if (action === 'manageLabel' || action === 'messageLabel') {
+      // Each Gmail label can expose the same message with a different IMAP UID.
+      // A partial server write must also invalidate those alternate copies.
+      readAhead.cancel(id);
+      const view = views.get(id);
+      if (view) view.listPage = null;
+      try {
+        return await connector[action](payload);
+      } finally {
+        recentMessages.clear(id);
       }
-      return message;
+    }
+    if (action === 'action') {
+      try {
+        const result = await connector.action(payload);
+        recentMessages.applyAction(id, payload);
+        return result;
+      } catch (error) {
+        // The server may have committed a write before the connection dropped.
+        readAhead.cancel(id);
+        recentMessages.clear(id);
+        throw error;
+      }
+    }
+    if (!['folders', 'sidebar', 'messages', 'message', 'send'].includes(action)) throw new Error('Ukendt mailhandling.');
+    const result = await connector[action](payload);
+    if (action === 'messages' && requestIsOpen()) {
+      const folder = payload.folder ?? 'INBOX';
+      recentMessages.refreshFolder(id, folder, result);
+      const entry = views.get(id);
+      if (entry) {
+        const pageToken = randomUUID();
+        entry.listPage = {folder, pageToken, uidValidity: result.uidValidity,
+          rows: new Map(result.messages.map(({uid, size}) => [uid, {uid, size}]))};
+        readAhead.cancel(id);
+        return {...result, pageToken};
+      }
+    }
+    if (action === 'message') {
+      if (!requestIsOpen()) throw new Error('Postkassen er lukket.');
+      recentMessages.remember(id, payload, result);
+      return openMessageView(id, result);
     }
     return result;
   }
@@ -551,6 +696,7 @@ async function bootstrap(options = {}) {
   await installProtocol(session.defaultSession);
   ipcMain.handle('veyro:shell', (event, action, payload) => {
     assertSender(event, policy.SHELL_URL, window?.webContents);
+    if (updateLocked) return state();
     if (action === 'cancelGoogle') return cancelGoogle();
     // Pure UI state remains responsive while an OAuth/mail-server operation is
     // awaiting the network; account mutations still use the serialized queue.
@@ -564,12 +710,26 @@ async function bootstrap(options = {}) {
     const entry = [...views.entries()].find(([, candidate]) => candidate.view.webContents === event.sender);
     if (!entry) throw new Error('Ukendt konto.');
     assertSender(event, policy.CLIENT_URL, entry[1].view.webContents);
+    if (updateLocked) throw new Error('Appen genstarter for at installere opdateringen.');
     if (removing.has(entry[0])) throw new Error('Kontoen bliver fjernet.');
     if (action === 'oauthCancel') { invalidateOAuth(entry[0]); return {cancelled: true}; }
     if (googleAddition && ['configure', 'oauthConnect'].includes(action)) throw new Error('Afslut eller annuller først dit Google-login.');
     if (typeof action !== 'string' || payload === null || (typeof payload !== 'object' && payload !== undefined)) throw new Error('Ugyldig mailhandling.');
-    const generation = action === 'oauthConnect' ? invalidateOAuth(entry[0]) : undefined;
-    return enqueueAccount(entry[0], () => mailAction(entry[0], action, payload, generation));
+    const id = entry[0];
+    if (action === 'visibleMessages') return warmVisibleRows(id, payload);
+    const pending = accountQueues.get(id)?.pending;
+    if (action === 'message' && window && !shuttingDown && onlyOtherReadAcknowledgements(pending, payload)) {
+      // A read acknowledgement for a different message cannot change this body or its flags.
+      const recent = recentMessages.get(id, payload);
+      if (recent) return openMessageView(id, recent);
+    }
+    const acknowledgement = action === 'action' && payload?.action === 'read' ? {folder: payload.folder, uidValidity: payload.uidValidity, uid: payload.uid} : undefined;
+    const generation = action === 'oauthConnect' ? invalidateOAuth(id) : undefined;
+    const writes = ['configure','oauthConnect','saveDraft','deleteDraft','send','manageLabel','messageLabel','saveAttachment'].includes(action) ||
+      action === 'action' && !acknowledgement;
+    if (writes) activeMailWrites++;
+    const operation = enqueueAccount(id, () => mailAction(id, action, payload, generation), acknowledgement);
+    return writes ? operation.finally(() => { activeMailWrites--; }) : operation;
   });
   function currentContents() { return views.get(activeId)?.view.webContents; }
   function buildMenu() {
@@ -602,11 +762,13 @@ async function bootstrap(options = {}) {
     });
     secureContents(window.webContents, {expected: policy.SHELL_URL});
     window.on('resize', layout);
+    for (const event of ['hide', 'show', 'restore', 'minimize']) window.on(event, layout);
     window.on('closed', () => {
       cancelGoogle();
+      readAhead.clear();
       for (const id of imapSessions.keys()) retireSession(id);
       for (const entry of views.values()) if (!entry.view.webContents.isDestroyed()) entry.view.webContents.close();
-      views.clear(); messageViews.clear(); window = undefined;
+      views.clear(); messageViews.clear(); recentMessages.clear(); window = undefined;
     });
     await window.loadURL(policy.SHELL_URL);
     if (activeId) await switchAccount(activeId);
@@ -615,11 +777,16 @@ async function bootstrap(options = {}) {
     publish();
   }
   await createWindow();
+  if (app.isPackaged && process.platform === 'darwin')
+    await confirmRestart(app.getPath('userData'),app.getVersion(),process.argv).catch(() => {});
+  updater.start();
   app.on('second-instance', () => { if (window) { if (window.isMinimized()) window.restore(); window.show(); window.focus(); } });
   app.on('activate', () => { if (!window && !shuttingDown) void createWindow(); else window?.show(); });
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
   app.on('before-quit', () => {
     shuttingDown = true;
+    updater.stop();
+    readAhead.clear();
     oauth.cancelAll();
     for (const id of imapSessions.keys()) retireSession(id);
   });

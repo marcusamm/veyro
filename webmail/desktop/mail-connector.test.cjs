@@ -21,7 +21,15 @@ function fixture(overrides={}) {
     async list(opts){calls.push(['list',opts]);return overrides.folders || folders;}
     async search(query,opts){calls.push(['search',query,opts]);return overrides.search || [1,44,22,88,3];}
     async fetchAll(range,query,opts){calls.push(['fetchAll',range,query,opts]);return [{...meta,uid:4},{...meta,uid:9}];}
-    async fetchOne(uid,query,opts){calls.push(['fetchOne',uid,query,opts]);if(overrides.missing)return false;if(query.bodyParts && overrides.partsError)throw overrides.partsError;if(query.bodyParts && overrides.parts)return overrides.parts;if(query.source)return {source:overrides.source || raw};return {...meta,...overrides.meta};}
+    async fetchOne(uid,query,opts){
+      calls.push(['fetchOne',uid,query,opts]);
+      if(overrides.missing)return false;
+      if(query.bodyParts && overrides.partsError)throw overrides.partsError;
+      if(query.bodyParts && overrides.parts)return overrides.parts;
+      const result = {...meta,...overrides.meta};
+      if(query.source) result.source = (overrides.source || raw).subarray(0,query.source.maxLength);
+      return result;
+    }
     async messageFlagsAdd(...args){calls.push(['addFlags',...args]);return true;}
     async messageFlagsRemove(...args){calls.push(['removeFlags',...args]);if(overrides.removeFlags)return overrides.removeFlags();return true;}
     async messageMove(...args){calls.push(['move',...args]);return true;}
@@ -65,6 +73,113 @@ test('folders omit non-selectable containers and include counts',async()=>{
   const folders=await fixture().create().folders();assert.equal(folders[0].path,'INBOX');assert.equal(folders[0].unseen,3);assert.equal(folders.some(f=>f.path==='Container'),false);
 });
 
+test('Gmail sidebar uses one LIST, preserving custom labels and localized system folder paths',async()=>{
+  const folders = [
+    {path:'INBOX',status:{messages:22,unseen:9}},
+    {path:'[Gmail]/Alle meddelelser',specialUse:'\\All'},
+    {path:'[Gmail]/Vigtig',flags:new Set(['\\Important'])},
+    {path:'[Imap]/Drafts',specialUse:'\\Drafts',specialUseSource:'name'},
+  ];
+  const f = fixture({folders,connect:client=>client.capabilities.add('X-GM-EXT-1')});
+  const result = await f.create().sidebar();
+  assert.equal(f.calls.filter(c=>c[0]==='list').length,1);
+  assert.equal(result.gmail,true);
+  assert.equal(result.folders.find(folder=>folder.path==='[Imap]/Drafts').label,true);
+  const view = id=>result.views.find(item=>item.id===id);
+  assert.deepEqual(result.views.map(item=>item.id),['inbox','starred','snoozed','important','sent','drafts','purchases','social','updates','forums','promotions','scheduled','all','spam','trash','subscriptions']);
+  assert.equal(view('inbox').unseen,9);
+  assert.equal(view('important').folder,'[Gmail]/Vigtig');
+  for(const id of ['snoozed','purchases','social','updates','forums','promotions']){
+    assert.equal(view(id).folder,'[Gmail]/Alle meddelelser');
+    assert.equal(view(id).filter,id);
+    assert.equal(view(id).unseen,undefined);
+  }
+  assert.equal(view('scheduled').webView,'scheduled');
+  assert.equal(view('subscriptions').webView,'subscriptions');
+  assert.equal(view('drafts').webView,'drafts');
+});
+
+test('a hidden All Mail folder offers Gmail web views, while generic IMAP honestly scopes Starred',async()=>{
+  const folders=[{path:'INBOX'},{path:'Sent',specialUse:'\\Sent'}];
+  const generic=await fixture({folders}).create().sidebar();
+  assert.deepEqual(generic.views.map(item=>item.id),['inbox','starred','sent']);
+  assert.match(generic.views[1].name,/indbakken/i);
+  assert.equal(generic.views[1].folder,'INBOX');
+  const gmail=await fixture({folders,connect:client=>client.capabilities.add('X-GM-EXT-1')}).create().sidebar();
+  assert.equal(gmail.views.find(item=>item.id==='social').webView,'social');
+});
+
+test('category filters and text search share one IMAP UID search anchored to the selected real folder',async()=>{
+  const path='[Gmail]/Alle mails';
+  const f=fixture({connect:client=>client.capabilities.add('X-GM-EXT-1')});
+  const result=await f.create().messages({folder:path,filter:'purchases',query:'category:forums',page:2,pageSize:2});
+  assert.deepEqual(f.calls.find(c=>c[0]==='lock'),['lock',path]);
+  assert.deepEqual(f.calls.find(c=>c[0]==='search'),['search',{text:'category:forums',gmraw:'category:purchases'},{uid:true}]);
+  const fetch=f.calls.find(c=>c[0]==='fetchAll');
+  assert.deepEqual(fetch[1],[22,3]);
+  assert.equal(fetch[2].labels,true);
+  assert.equal(fetch[3].uid,true);
+  assert.equal(result.uidValidity,'42');
+  await assert.rejects(f.create().messages({folder:path,filter:'anything else'}),/visning/);
+  await assert.rejects(fixture().create().messages({filter:'social'}),/visning/);
+  const fallback=fixture();
+  await fallback.create().messages({filter:'starred'});
+  assert.deepEqual(fallback.calls.find(c=>c[0]==='search')[1],{flagged:true});
+});
+
+test('Gmail handoffs carry the account on a fixed origin and only accept recognized views',()=>{
+  const {gmailWebViewUrl,isGmailHost}=require('./provider-views.cjs');
+  const target=new URL(gmailWebViewUrl('subscriptions','someone+work@example.test'));
+  assert.equal(target.origin,'https://mail.google.com');
+  assert.equal(target.searchParams.get('authuser'),'someone+work@example.test');
+  assert.equal(target.hash,'#sub');
+  assert.equal(new URL(gmailWebViewUrl('purchases','a@example.test')).hash,'#search/category%3Apurchases');
+  assert.throws(()=>gmailWebViewUrl('https://example.test','a@example.test'));
+  assert.equal(isGmailHost('imap.gmail.com'),true);
+  assert.equal(isGmailHost('imap.gmail.com.example.test'),false);
+});
+
+test('changing importance and archiving a filtered Gmail message only changes its intended system label',async()=>{
+  const f=fixture({connect:client=>client.capabilities.add('X-GM-EXT-1')});
+  const selection={folder:'[Gmail]/Alle mails',uid:12,uidValidity:'42'};
+  await f.create().action({...selection,action:'important'});
+  await f.create().action({...selection,action:'unimportant'});
+  await f.create().action({...selection,action:'archive'});
+  assert.deepEqual(f.calls.filter(call=>['addFlags','removeFlags'].includes(call[0])),[
+    ['addFlags',12,['\\Important'],{uid:true,useLabels:true}],
+    ['removeFlags',12,['\\Important'],{uid:true,useLabels:true}],
+    ['removeFlags',12,['\\Inbox'],{uid:true,useLabels:true}],
+  ]);
+  await assert.rejects(f.create().action({...selection,action:'unimportant',uidValidity:'13'}),{code:'STALE_MAILBOX'});
+  await assert.rejects(f.create().action({uid:12,action:'important'}),{code:'STALE_MAILBOX'});
+  await assert.rejects(fixture().create().action({...selection,action:'important'}),/understøtter/);
+  assert.ok(!f.calls.some(call=>call[0]==='move'));
+});
+
+test('archive works in Inbox with hidden All Mail, and restoring a trashed Gmail message requires the real All Mail target',async()=>{
+  const inbox={path:'INBOX',specialUse:'\\Inbox'};
+  const all={path:'[Gmail]/Alle mails',specialUse:'\\All'};
+  function gmail(selected, folders) {
+    return fixture({folders, connect:client=>{
+      client.capabilities.add('X-GM-EXT-1');
+      client.mailbox.specialUse=selected;
+    }});
+  }
+  const request={uid:12,uidValidity:'42',action:'archive'};
+  const hidden=gmail('\\Inbox',[inbox]);
+  await hidden.create().action({...request,folder:'INBOX'});
+  assert.deepEqual(hidden.calls.find(c=>c[0]==='removeFlags'),['removeFlags',12,['\\Inbox'],{uid:true,useLabels:true}]);
+  assert.ok(!hidden.calls.some(c=>c[0]==='list'));
+  for(const selected of ['\\Trash','\\Junk']) {
+    const f=gmail(selected,[inbox,all]);
+    await f.create().action({...request,folder:'[Gmail]/Deleted'});
+    assert.deepEqual(f.calls.find(c=>c[0]==='move'),['move',12,all.path,{uid:true}]);
+  }
+  const noTarget=gmail('\\Trash',[inbox,{path:'All mail',name:'All mail',specialUse:'\\All',specialUseSource:'name'}]);
+  await assert.rejects(noTarget.create().action({...request,folder:'[Gmail]/Trash'}),{code:'FOLDER_MISSING'});
+  assert.ok(!noTarget.calls.some(c=>c[0]==='move'));
+});
+
 test('pagination fetches only a bounded reverse sequence window, newest first',async()=>{
   const f=fixture(),result=await f.create().messages({page:2,pageSize:40});
   assert.equal(f.calls.find(c=>c[0]==='fetchAll')[1],'3:42');assert.equal(result.total,82);assert.equal(result.hasNext,true);assert.deepEqual(result.messages.map(m=>m.uid),[9,4]);assert.equal(result.uidValidity,'42');
@@ -87,6 +202,31 @@ test('reads MIME as text plus sanitized private HTML for the isolated viewer',as
   assert.deepEqual(f.calls.find(c=>c[0]==='addFlags'),['addFlags',12,['\\Seen'],{uid:true}]);assert.equal(message.messageId,'<inbound@example.test>');
 });
 
+test('small inbox rows fetch complete source and metadata together without marking a preview read', async () => {
+  const f = fixture();
+  const message = await f.create().message({uid:12,uidValidity:'42',sizeHint:raw.length,markSeen:false});
+  const reads = f.calls.filter(c => c[0] === 'fetchOne');
+  assert.equal(reads.length, 1);
+  assert.equal(reads[0][1], 12);
+  assert.equal(reads[0][2].envelope, true);
+  assert.deepEqual(reads[0][2].source, {start:0,maxLength:raw.length + 1});
+  assert.deepEqual(reads[0][3], {uid:true});
+  assert.equal(message.seen, false);
+  assert.equal(f.calls.some(c => c[0] === 'addFlags'), false);
+  assert.match(message.text, /Hello from HTML/);
+  assert.equal(message.attachments[0].filename, 'note.txt');
+});
+
+test('an inaccurate size hint cannot expose a partial message or bypass the source size limit', async () => {
+  const f = fixture();
+  const message = await f.create().message({uid:12,sizeHint:8});
+  assert.match(message.text, /Hello from HTML/);
+  assert.deepEqual(f.calls.filter(c => c[0] === 'fetchOne').map(c => c[2].source.maxLength), [9, MAX_SOURCE + 1]);
+  const oversized = fixture({meta:{size:MAX_SOURCE + 1}});
+  await assert.rejects(oversized.create().message({uid:12,sizeHint:8}), {code:'MESSAGE_TOO_LARGE'});
+  assert.equal(oversized.calls.filter(c => c[0] === 'fetchOne').length, 1);
+});
+
 test('attachment uses UID and MIME index and strips path components',async()=>{
   const f=fixture(),file=await f.create().attachment({folder:'INBOX',uid:12,index:0,uidValidity:'42'});
   assert.equal(file.filename,'note.txt');assert.equal(file.data.toString(),'hello');assert.equal(f.calls.some(c=>c[0]==='addFlags'),false);
@@ -95,6 +235,7 @@ test('attachment uses UID and MIME index and strips path components',async()=>{
 
 test('UIDVALIDITY mismatch fails before fetching or changing a message',async()=>{
   const f=fixture();await assert.rejects(()=>f.create().action({uid:12,uidValidity:'41',action:'trash'}),{code:'STALE_MAILBOX'});
+  await assert.rejects(f.create().message({uid:12,uidValidity:'41',sizeHint:raw.length}),{code:'STALE_MAILBOX'});
   assert.equal(f.calls.some(c=>['fetchOne','move'].includes(c[0])),false);assert.ok(f.calls.some(c=>c[0]==='release'));assert.ok(f.calls.some(c=>c[0]==='close'));
 });
 
@@ -267,6 +408,22 @@ test('expires idle connections and flushes mailbox updates before computing a pa
     assert.equal(f.calls.filter(c => c[0] === 'close').length, 1);
     await mail.messages();
     assert.equal(f.calls.filter(c => c[0] === 'connect').length, 2);
+  } finally { session.close(); }
+});
+
+test('keeps a default connection through normal reading time and closes it after two idle minutes', async t => {
+  t.mock.timers.enable({apis:['setTimeout']});
+  const f = fixture(), session = new ImapSession(), mail = f.create({imapSession:session});
+  try {
+    await mail.messages();
+    assert.ok(f.options[0].socketTimeout > 120_000);
+    t.mock.timers.tick(45_000);
+    await mail.messages();
+    assert.equal(f.calls.filter(c => c[0] === 'connect').length, 1);
+    t.mock.timers.tick(119_999);
+    assert.equal(f.calls.filter(c => c[0] === 'close').length, 0);
+    t.mock.timers.tick(1);
+    assert.equal(f.calls.filter(c => c[0] === 'close').length, 1);
   } finally { session.close(); }
 });
 

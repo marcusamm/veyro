@@ -15,7 +15,7 @@ const assets = {
 function installBridge() {
   const state = {accounts: [], activeId: null, status: 'empty', section: 'mail', dialogOpen: false,
     oauth: {google: {available: !new URL(location.href).searchParams.has('unavailable')}, microsoft: {available: false}},
-    googleConnecting: false, version: 'fixture'};
+    googleConnecting: false, version: '0.1.0-beta.6', update:{status:'idle'}};
   const listeners = new Set(), addListeners = new Set(), attempts = new Map();
   let activeAttempt, sequence = 0, manualSequence = 0, holdDialogs = false, dialogGates = [];
   const copy = () => structuredClone(state);
@@ -23,6 +23,7 @@ function installBridge() {
   window.__calls = [];
   window.__fixture = {
     snapshot: copy,
+    changeUpdate(update) { state.update = update; publish(); },
     holdDialogs() { holdDialogs = true; },
     releaseDialogs() { holdDialogs = false; for (const resolve of dialogGates.splice(0)) resolve(); },
     rejectGoogle(id, message = 'Login blev annulleret.') {
@@ -46,6 +47,12 @@ function installBridge() {
     async invoke(action, payload) {
       window.__calls.push({action, payload: structuredClone(payload)});
       if (action === 'state') return copy();
+      if (action === 'checkUpdate') {
+        state.update = {status:'available', version:'0.1.0-beta.7'}; publish(); return copy();
+      }
+      if (action === 'installUpdate') {
+        state.update = {status:'downloading', progress:12}; publish(); return copy();
+      }
       if (action === 'dialog') {
         if (payload.open && holdDialogs) await new Promise(resolve => dialogGates.push(resolve));
         state.dialogOpen = payload.open; publish(); return copy();
@@ -110,6 +117,20 @@ async function main() {
       await page.screenshot({path: path.join(output, filename), animations: 'disabled'});
     }
 
+    const settings = await fresh();
+    await settings.getByRole('button', {name:'Indstillinger', exact:true}).click();
+    assert.equal(await settings.locator('#manage-account').isVisible(), false);
+    assert.match(await settings.locator('#installed-version').innerText(), /beta\.6/);
+    await settings.getByRole('button', {name:'Søg efter opdateringer'}).click();
+    await settings.getByRole('button', {name:'Opdater og genstart'}).click();
+    assert.equal(await settings.locator('#update-progress').getAttribute('value'), '12');
+    assert.equal(await settings.locator('#update-action').isDisabled(), true);
+    await settings.evaluate(() => window.__fixture.changeUpdate({status:'current'}));
+    assert.equal(await settings.locator('#update-status').innerText(), 'Du har den nyeste version.');
+    await settings.keyboard.press('Escape');
+    assert.equal(await settings.locator('#settings-dialog').isVisible(), false);
+    assert.equal(await count(settings, 'installUpdate'), 1);
+
     const google = await fresh();
     assert.equal(await google.locator('#welcome-google').isEnabled(), true);
     assert.equal(await google.locator('input:visible').count(), 0, 'Welcome must not request identity or a password.');
@@ -165,7 +186,7 @@ async function main() {
     assert.equal(await google.locator('#toast').isVisible(), false);
     assert.equal(await google.evaluate(() => window.__fixture.snapshot().accounts.length), 1);
 
-    await google.locator('#manage').click();
+    await google.locator('#manage').click(); await google.locator('#manage-account').click();
     assert.equal(await google.locator('#google-setup').isVisible(), false);
     assert.equal(await google.locator('#kind-field').isVisible(), false);
     assert.equal(await google.locator('#label').inputValue(), 'Test Google');

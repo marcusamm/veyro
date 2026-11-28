@@ -1,6 +1,6 @@
 # Veyro Mail desktop
 
-Veyro Mail `0.1.0-beta.2` is an Electron desktop app for macOS and Windows. It keeps the existing Veyro Mail interface and adds a compact account rail, independent account sessions, native attachment saving, and a native IMAP/SMTP client for other providers.
+Veyro Mail `0.1.0-beta.6` is an Electron desktop app for macOS and Windows. It keeps the existing Veyro Mail interface and adds a compact account rail, independent account sessions, native attachment saving, and a native IMAP/SMTP client for other providers.
 
 ## Account support
 
@@ -12,6 +12,14 @@ Veyro Mail `0.1.0-beta.2` is an Electron desktop app for macOS and Windows. It k
 This is not a promise that every mail service can connect: providers without supported IMAP/SMTP access, POP-only services, provider-specific bridges and tenant policies may need separate support. No provider credentials or OAuth registrations have been invented. On 2026-11-28, the configured macOS arm64 beta completed real Google consent, verified-profile creation/reuse, Gmail folder loading and the first inbox page. Quitting and reopening restored the saved connection without another Google login. No message body was opened and no mail was sent during this check; next-page navigation, access-token refresh/expiry and delivery were not live-tested.
 
 Native rich mail uses sanitized HTML in an opaque sandboxed frame, preserving supported passive typography, tables and inline raster images. Remote images require an explicit choice for each message. Only the sanitized message's exact HTTPS image URLs are admitted; redirects outside that list remain blocked. A plain-text view is available. Scripts, forms, embeds and external stylesheets/fonts never run. Attachments are saved through a native dialog and never opened automatically.
+
+The native reader prepares the message bodies for the rows visible in the message list. Scrolling updates the selection, including partially visible rows. Prepared bodies are held in bounded, account-scoped memory. A background read leaves the message unread and external images disabled. The current message stays on screen until the next one is ready.
+
+## Sidebar and message labels
+
+For a connected Gmail account, the sidebar opens the provider's folders and categories. Choose **Etiketter** on a message to apply or remove several labels. **Administrer etiketter** in the sidebar supports creating, renaming and deleting custom labels. Removing a label keeps the message and its other labels. **Planlagt** and **Administrer abonnementer** open the selected account in Gmail when those views are available only on the web. The arrow marks a browser link. Hidden Gmail system folders also have browser shortcuts when IMAP cannot supply their contents.
+
+For other IMAP providers, folders that advertise writable custom keywords support applying and removing labels on a message. The folder filter finds matching messages in the selected folder. The native client uses the same keyword encoding as Veyro's company webmail.
 
 ## Run and test
 
@@ -54,9 +62,9 @@ The default registration path is `oauth-config.local.json` in this directory; `V
 
 | Platform | Installer |
 | --- | --- |
-| Apple Silicon Mac | `dist/Veyro-Mail-0.1.0-beta.2-mac-arm64.dmg` |
-| Intel Mac | `dist/Veyro-Mail-0.1.0-beta.2-mac-x64.dmg` |
-| Windows x64 | `dist/Veyro-Mail-0.1.0-beta.2-win-x64.exe` |
+| Apple Silicon Mac | `dist/Veyro-Mail-0.1.0-beta.6-mac-arm64.dmg` |
+| Intel Mac | `dist/Veyro-Mail-0.1.0-beta.6-mac-x64.dmg` |
+| Windows x64 | `dist/Veyro-Mail-0.1.0-beta.6-win-x64.exe` |
 | Integrity checks | `dist/SHA256SUMS.txt` |
 
 Mac installers contain a drag-to-Applications app. The Windows installer uses NSIS, offers an installation directory, and installs per user. Uninstallation deliberately retains user data; use **Fjern fra computeren** in the app to remove a saved account and its local data.
@@ -71,7 +79,28 @@ These are beta artifacts. The Mac app has an **ad-hoc signature**, which is not 
 
 Before unrestricted public distribution, obtain the owner's Developer ID Application certificate and Apple notarization credentials, replace `build.mac.identity: "-"` and `notarize: false` with the real signed/notarized configuration, and configure Windows signing with the owner's certificate or trusted signing service. Keep signing secrets in a protected CI environment, never in this repository. Validate the signed app/installer and notarization ticket on clean target machines before publishing. See [macOS build options](https://www.electron.build/docs/mac/) and [code signing](https://www.electronjs.org/docs/latest/tutorial/code-signing).
 
-The application has no automatic updater in this prerelease. Users install a newer verified installer to update. Files in `dist/` are local build outputs and are ignored by Git; upload approved installers and the matching checksum file only after deciding on a release destination.
+The installed app checks Veyro’s HTTPS update feed. Under **Indstillinger → Appopdateringer**, users can check for a newer version and choose **Opdater**. The app verifies the Ed25519 signature on the manifest and the size and SHA-256 digest of its own platform installer. macOS and Windows keep their normal permissions and publisher checks. Versions before beta.6 need one installation of the updater-enabled build.
+
+### Publish an update
+
+From the release Mac, bump the version in this directory (including `package-lock.json`), review the diff and run the release command. For example, the version following beta.6 is:
+
+```sh
+npm version 0.1.0-beta.7 --no-git-tag-version --ignore-scripts
+npm run release:desktop
+```
+
+The command tests the app, builds all three configured installers, checks both Mac bundles, signs the release manifest, and publishes the complete set to `post.veyro.dk`. The origin keeps the old feed live until it has verified every file. The desktop app discovers the update on its next check. CI tests this protocol with disposable signing keys and synthetic files.
+
+The release Mac uses its private Ed25519 key at `~/Library/Application Support/Veyro Release/desktop-update-signing.pem` and a separate publisher credential alongside it at `desktop-publisher-token`. Keep a protected backup of the signing key. The public key ships in the app. A replacement publisher token can be installed without changing the signing key.
+
+If an upload stops, **reuse the same signed files** and resume from `webmail/desktop`:
+
+```sh
+python3 ../origin/transfer/signed_transfer.py publish "$HOME/Library/Application Support/Veyro Release/desktop-publisher-token" dist
+```
+
+To publish three existing, verified configured installers for the current package version, run `npm run release:sign` and then the upload command. Keep each published version immutable. Rebuilds with different bytes need a new version number. The [origin setup](../origin/transfer/README.md) describes first installation and recovery.
 
 ## Google and Microsoft OAuth registration
 

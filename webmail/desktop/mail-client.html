@@ -15,25 +15,34 @@
     <nav class="folders" aria-label="Mailmapper">
       <button id="compose" class="primary" type="button">＋ Skriv mail</button>
       <p class="eyebrow">Din postkasse</p><div id="folders"></div>
+      <button id="folder-disclosure" type="button" class="folder disclosure" aria-expanded="true" aria-controls="more-folders">Vis færre</button>
+      <div id="more-folders"></div>
+      <section id="labels-section" aria-labelledby="sidebar-label-title" hidden>
+        <div class="labels-head"><h2 id="sidebar-label-title">Etiketter</h2><button id="new-label" class="quiet" type="button" aria-label="Opret ny etiket" title="Opret ny etiket">＋</button></div>
+        <div id="label-folders"></div>
+        <button id="manage-labels" class="folder" type="button">Administrer etiketter</button>
+      </section>
       <button id="drafts" class="folder" type="button">Lokale kladder <span id="draft-count"></span></button>
       <p class="sidebar-note">Direkte forbindelse til<br>din mailudbyder.</p>
     </nav>
     <section class="mailbox" aria-labelledby="folder-title">
       <div class="list-head"><div class="row"><h1 id="folder-title">Indbakke</h1><button id="refresh" class="quiet" aria-label="Opdater" title="Opdater" type="button">↻</button></div>
         <form id="search-form" role="search"><label class="sr-only" for="search">Søg i mappen</label><input id="search" type="search" maxlength="250" placeholder="Søg i mappen …"><button class="quiet" type="submit">Søg</button></form>
+        <div id="keyword-filter" hidden><label for="keyword-select">Etiket i denne mappe</label><select id="keyword-select"></select></div>
       </div>
       <p id="list-state" role="status"></p><ul id="messages" aria-label="Mails"></ul>
       <div id="pagination" class="pagination"><button id="previous" class="quiet" type="button">← Nyere</button><span id="page-label"></span><button id="next" class="quiet" type="button">Ældre →</button></div>
     </section>
     <section id="reader" class="reader" aria-label="Læsevisning">
+      <div id="reader-pending" hidden><div class="read-status">
+        <p role="status">Åbner <strong id="pending-subject"></strong> …</p>
+        <button id="cancel-read" class="quiet" type="button">Annuller</button>
+      </div></div>
       <div id="reader-empty" class="empty"><span class="mail-symbol" aria-hidden="true">✉</span><h2>Plads til overblik.</h2><p>Vælg en mail, og læs den her.</p></div>
-      <div id="reader-pending" class="empty" hidden>
-        <h2 id="pending-subject"></h2><p role="status">Henter mailens indhold …</p>
-        <button id="cancel-read" class="quiet" type="button">← Tilbage</button>
-      </div>
       <article id="message" hidden>
-        <div class="reader-toolbar"><button id="back-list" class="quiet" type="button">← Tilbage</button><div class="message-actions"><button id="toggle-read" class="quiet" type="button">Markér ulæst</button><button id="toggle-star" class="quiet" type="button">☆ Stjernemarkér</button><button id="archive" class="quiet" type="button">Arkivér</button><button id="trash" class="quiet" type="button">Papirkurv</button></div></div>
+        <div class="reader-toolbar"><button id="back-list" class="quiet" type="button">← Tilbage</button><div class="message-actions"><button id="toggle-read" class="quiet" type="button">Markér ulæst</button><button id="toggle-star" class="quiet" type="button">☆ Stjernemarkér</button><button id="toggle-important" class="quiet" type="button" hidden>Markér vigtig</button><button id="edit-labels" class="quiet" type="button" hidden>Etiketter</button><button id="archive" class="quiet" type="button">Arkivér</button><button id="trash" class="quiet" type="button">Papirkurv</button></div></div>
         <h2 id="message-subject" tabindex="-1"></h2>
+        <div id="message-labels" class="message-labels" aria-label="Mailens etiketter" hidden></div>
         <div class="sender-line"><span id="sender-avatar" aria-hidden="true"></span><div><strong id="message-from"></strong><div id="message-date"></div></div></div>
         <p id="message-recipients" class="recipients"></p>
         <div id="rich-controls" class="rich-controls" hidden><button id="toggle-format" class="quiet" type="button">Vis som tekst</button><div id="remote-images" hidden><span id="images-note">Eksterne billeder er skjult. Afsenderen kan registrere, at du åbner dem.</span><button id="load-images" class="secondary" type="button">Vis billeder i denne mail</button></div></div>
@@ -77,6 +86,22 @@
       </div>
       <p id="settings-error" class="error" role="alert" hidden></p>
     </form>
+  </dialog>
+
+  <dialog id="labels-dialog" aria-labelledby="label-dialog-title">
+    <div class="dialog-head"><h2 id="label-dialog-title">Etiketter</h2><button id="close-labels" type="button" class="quiet" aria-label="Luk etiketter">✕</button></div>
+    <p id="label-dialog-context" class="label-context"></p>
+    <div id="label-options"></div>
+    <form id="label-name-form" hidden>
+      <label for="label-name">Etikettens navn</label>
+      <div class="label-name-controls"><input id="label-name" required maxlength="120" autocomplete="off"><button id="submit-label-name" type="submit" class="secondary">Opret</button><button id="cancel-label-name" type="button" class="quiet">Annuller</button></div>
+    </form>
+    <div id="label-confirm" hidden>
+      <p id="label-confirm-text"></p>
+      <button id="confirm-delete-label" type="button" class="secondary">Slet etiket</button><button id="cancel-delete-label" type="button" class="quiet">Annuller</button>
+    </div>
+    <p id="label-error" class="error" role="alert" hidden></p>
+    <div class="label-footer"><button id="add-label" type="button" class="quiet">＋ Opret ny etiket</button><button id="apply-labels" class="primary" type="button" hidden>Gem</button></div>
   </dialog>
 
   <dialog id="compose-dialog" aria-labelledby="compose-title">

@@ -82,12 +82,13 @@ class BodyLimits(unittest.TestCase):
         snippet = Path(__file__).with_name("mail-api.caddy").read_text()
         snippet = snippet.replace("127.0.0.1:18082", "127.0.0.1:" + str(cls.upstream.server_port))
         downloads = Path(cls.temp.name) / "downloads"
-        for version in ("0.1.0-beta.1", "0.1.0-beta.2"):
+        for version in ("0.1.0-beta.1", "0.1.0-beta.2", "0.1.0-beta.6", "1.2.0"):
             release = downloads / version
             release.mkdir(parents=True)
             for platform in ("win-x64.exe", "mac-arm64.dmg", "mac-x64.dmg"):
                 (release / f"Veyro-Mail-{version}-{platform}").write_text(f"{version} {platform}")
             (release / "private.txt").write_text("synthetic private file")
+        (downloads / "update.json").write_text("signed fixture")
         snippet = snippet.replace("/srv/veyro-mail-downloads", str(downloads))
         config = Path(cls.temp.name) / "Caddyfile"
         config.write_text("{\n admin off\n auto_https off\n}\nhttp://127.0.0.1:" + str(cls.port) + " {\n" + snippet + "\n}\n")
@@ -147,7 +148,7 @@ class BodyLimits(unittest.TestCase):
     def test_download_is_resumable_and_only_named_installers_are_served(self):
         connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=3)
         try:
-            for version in ("0.1.0-beta.1", "0.1.0-beta.2"):
+            for version in ("0.1.0-beta.1", "0.1.0-beta.2", "0.1.0-beta.6", "1.2.0"):
                 for platform in ("win-x64.exe", "mac-arm64.dmg", "mac-x64.dmg"):
                     with self.subTest(version=version, platform=platform):
                         filename = f"Veyro-Mail-{version}-{platform}"
@@ -164,6 +165,15 @@ class BodyLimits(unittest.TestCase):
                         self.assertEqual(response.status, 200)
                         self.assertEqual(int(response.getheader("Content-Length")), len(expected))
                         self.assertEqual(response.read(), b"")
+        finally:
+            connection.close()
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=3)
+        try:
+            connection.request("GET", "/webmail-downloads/update.json")
+            response = connection.getresponse()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.getheader("Cache-Control"), "no-store")
+            self.assertEqual(response.read(), b"signed fixture")
         finally:
             connection.close()
         for method, target in [("POST", path), ("GET", "/webmail-downloads/"),
