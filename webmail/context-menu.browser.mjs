@@ -19,14 +19,15 @@ const mail = {
   labels: [], text: 'Original mailtekst', hasAttachments: true,
   attachments: [{id: '2', name: 'projekt.pdf', size: 100}], date: '2026-11-25T12:00:00Z',
 };
-const folders = ['inbox', 'archive', 'trash'].map(role => ({ id: role, name: role, role, unread: 0 }));
+const folders = ['inbox', 'sent', 'drafts', 'archive', 'junk', 'trash'].map(role => ({ id: role, name: role, role, unread: 0 }));
 const mime = { html: 'text/html', js: 'text/javascript', css: 'text/css', svg: 'image/svg+xml', woff2: 'font/woff2' };
 
 async function mailbox(t, options = {}, extraMails = [], canManageRecovery, canManageOrganizations = false) {
   const context = await browser.newContext(options);
   t.after(() => context.close());
   const writes = [], lists = [], errors = [];
-  const fixtures = structuredClone([mail, ...extraMails]);
+  const fixtures = structuredClone([mail, ...extraMails]).map(item => ({folder:'inbox', ...item}));
+  const catalog = new Set(fixtures.flatMap(item => item.labels));
   context.on('page', page => page.on('pageerror', error => errors.push(String(error))));
   await context.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url());
@@ -35,7 +36,7 @@ async function mailbox(t, options = {}, extraMails = [], canManageRecovery, canM
     if (!path.startsWith('/api/')) {
       const name = path === '/' ? 'inbox.html' : path === '/message-frame' ? 'message-frame.html' : path.slice(1);
       assert.equal(request.method(), 'GET');
-      assert.ok(['inbox.html', 'inbox.css', 'inbox.js', 'favicon.svg', 'manrope.woff2', 'message-frame.html', 'message-frame.js'].includes(name));
+      assert.ok(['inbox.html', 'inbox.css', 'inbox.js', 'organizer.js', 'favicon.svg', 'manrope.woff2', 'message-frame.html', 'message-frame.js'].includes(name));
       if (liveAssets) {
         const response = await route.fetch({maxRedirects: 0});
         assert.equal(response.status(), 200);
@@ -54,18 +55,38 @@ async function mailbox(t, options = {}, extraMails = [], canManageRecovery, canM
       assert.equal(request.headers()['x-csrf-token'], csrf);
       const body = request.postDataJSON();
       writes.push({path, folder: url.searchParams.get('folder'), body});
-      const fixture = fixtures.find(item => path.split('/')[3] === item.id);
-      if (body.action === 'label') fixture.labels = [body.label];
+      const fixture = fixtures.find(item => item.folder === url.searchParams.get('folder') && path.split('/')[3] === item.id);
+      if (body.action === 'label') { fixture.labels = [...new Set([...fixture.labels,body.label])]; catalog.add(body.label); }
+      if (body.action === 'unlabel') fixture.labels = fixture.labels.filter(label => label !== body.label);
       if (body.action === 'read' || body.action === 'unread') fixture.unread = body.action === 'unread';
-      json = path === '/api/send' ? {sent: true} : {ok: true};
-    } else if (path === '/api/session') json = {email: 'you@example.test', csrfToken: csrf, canManageRecovery, canManageOrganizations};
+      if (body.action === 'star' || body.action === 'unstar') fixture.starred = body.action === 'star';
+      if (body.action === 'important' || body.action === 'unimportant') fixture.important = body.action === 'important';
+      if (path === '/api/labels') {
+        if (body.operation === 'create') catalog.add(body.name);
+        if (body.operation === 'rename' || body.operation === 'delete') {
+          catalog.delete(body.name);
+          if (body.operation === 'rename') catalog.add(body.newName);
+          for (const item of fixtures) item.labels = item.labels.flatMap(name =>
+            name !== body.name ? [name] : body.operation === 'rename' ? [body.newName] : []);
+        }
+        json = {labels:[...catalog], hidden:[], pending:[]};
+      } else json = path === '/api/send' ? {sent:true} : {ok:true};
+    } else if (path === '/api/session') json = {email: 'you@example.test', csrfToken: csrf, canManageRecovery, canManageOrganizations, canManageLabels:true};
     else if (path === '/api/folders') json = {folders};
+    else if (path === '/api/labels') json = {labels:[...catalog], hidden:[], pending:[]};
+    else if (path === '/api/scheduled' || path === '/api/subscriptions') json = {items:[],next:null};
     else if (path === '/api/messages') {
       lists.push(url.searchParams);
-      json = {messages: fixtures.map(({text, html, security, attachments, ...summary}) => summary),
-        nextCursor: null, availableLabels: fixtures.flatMap(item => item.labels)};
-    } else if (path.startsWith('/api/messages/') && fixtures.some(item => item.id === path.split('/')[3])) {
-      const fixture = fixtures.find(item => item.id === path.split('/')[3]);
+      const view = url.searchParams.get('view'), label = url.searchParams.get('label');
+      let matched = fixtures;
+      if (view === 'starred' || view === 'important') matched = matched.filter(item => item[view]);
+      else if (view !== 'all' && view !== 'labels') matched = matched.filter(item => item.folder === url.searchParams.get('folder'));
+      if (label) matched = matched.filter(item => item.labels.includes(label));
+      json = {messages: matched.map(({text, html, security, attachments, ...summary}) => summary),
+        nextCursor: null, availableLabels: [...catalog]};
+    } else if (path.startsWith('/api/messages/')) {
+      const fixture = fixtures.find(item => item.id === path.split('/')[3] && item.folder === url.searchParams.get('folder'));
+      assert.ok(fixture, 'Mail detail must use the original folder');
       fixture.unread = false; json = fixture;
     }
     else throw Error('Unexpected route ' + path);
@@ -308,4 +329,149 @@ test('shows the reader and organizer on a touch viewport, persists labels and se
     page.getByRole('menuitem', {name: 'Flyt tilbage til indbakken nu'}).tap(),
   ]);
   assert.equal(writes[2].body.until, null);
+});
+
+test('company views open and update the exact mail when an archive and inbox mail share a UID', async t => {
+  const archived = {...mail, folder:'archive', subject:'Projekt i arkivet', labels:['Projektleder']};
+  const {page, writes} = await mailbox(t, {}, [archived]);
+  const nav = id => page.locator('#folders button[data-id="view:' + id + '"]');
+  await nav('all').click();
+  const row = page.locator('.message-row[data-folder="archive"]');
+  await row.waitFor();
+  assert.equal(await page.locator('.message-row').count(), 2);
+  await row.click();
+  await page.getByRole('heading', {name:archived.subject}).waitFor();
+  assert.match(await page.locator('.attachments a').getAttribute('href'), /folder=archive$/);
+  const menu = page.locator('.letter .more-actions');
+  await menu.click();
+  await page.getByRole('menuitem', {name:'Stjernemarkér',exact:true}).click();
+  await row.getByRole('img',{name:'Stjernemarkeret'}).waitFor();
+  assert.equal(writes.at(-1).folder, 'archive');
+  await nav('starred').click();
+  await page.locator('li[data-mail] .message-row').waitFor();
+  assert.equal(await page.locator('.message-row').count(), 1);
+  assert.equal(await row.textContent().then(value => value.includes(archived.subject)), true);
+  await row.click({button:'right'});
+  await page.getByRole('menuitem', {name:'Markér som vigtig',exact:true}).click();
+  await row.getByRole('img',{name:'Vigtig'}).waitFor();
+  await nav('important').click();
+  await row.click({button:'right'});
+  await page.getByRole('menuitem', {name:'Fjern vigtigmarkering',exact:true}).click();
+  await page.locator('#list-state').getByText('Ingen mails i denne visning.').waitFor();
+  assert.deepEqual(writes.map(write => [write.folder,write.body.action]), [['archive','star'],['archive','important'],['archive','unimportant']]);
+});
+
+test('mobile company folders reach all five categories, scheduled mail, subscriptions and physical mailboxes', async t => {
+  const {page,lists} = await mailbox(t, {viewport:{width:375,height:700},isMobile:true,hasTouch:true});
+  const chooser = page.locator('#choose-mail-view'), nav = page.locator('#folders');
+  for (const [id,title] of [['purchases','Køb'],['social','Sociale medier'],['updates','Opdateringer'],['forums','Fora'],['promotions','Promoveringer']]) {
+    await chooser.tap();
+    await nav.locator('[data-id="view:'+id+'"]').tap();
+    await page.locator('#folder-title').getByText(title,{exact:true}).waitFor();
+    await page.locator('.message-row').first().waitFor();
+    assert.equal(lists.at(-1).get('category'), id);
+    assert.equal(lists.at(-1).get('folder'), 'inbox');
+    assert.equal(await chooser.getAttribute('aria-expanded'), 'false');
+  }
+  await chooser.tap();
+  await nav.locator('[data-id="view:scheduled"]').tap();
+  await page.getByText(/^Ingen planlagte mails/).waitFor();
+  assert.equal(await page.locator('#search').isVisible(), false);
+  await chooser.tap();
+  await nav.locator('[data-id="view:subscriptions"]').tap();
+  await page.getByText(/^Ingen mails i indbakken har angivet/).waitFor();
+  await chooser.tap();
+  await nav.locator('[data-id="trash"]').tap();
+  await page.getByText('Mappen er tom.',{exact:true}).waitFor();
+  assert.equal(lists.at(-1).get('folder'), 'trash');
+  assert.equal(await page.locator('#search').isVisible(), true);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+});
+
+test('company mailbox applies several labels, filters across folders and manages catalog entries', async t => {
+  const sent = {...mail, folder:'sent', id:'1.1', subject:'Opfølgning', labels:['Kunder','Fælles']};
+  const {page, writes} = await mailbox(t, {}, [sent]);
+  const shelf = page.locator('#sidebar-labels');
+  const exact = name => ({name, exact:true});
+  await shelf.getByRole('button', exact('Opret ny etiket')).click();
+  await page.locator('#catalog-name').fill('Projekt A');
+  await page.locator('#save-catalog').click();
+  await shelf.getByRole('button', exact('Projekt A')).waitFor();
+  await page.locator('.message-row').first().click();
+  await page.getByRole('button', exact('Etiketter')).click();
+  await page.getByRole('checkbox', exact('Projekt A')).check();
+  await page.getByRole('checkbox', exact('Kunder')).check();
+  await page.locator('#new-label').fill('Haster');
+  await page.locator('#save-label').click();
+  await page.locator('#paper .mail-label', {hasText:'Haster'}).waitFor();
+  assert.deepEqual(writes.filter(write => write.body.action === 'label').map(write => write.body.label).sort(), ['Haster','Kunder','Projekt A'].sort());
+  await shelf.getByRole('button', exact('Kunder')).click();
+  await page.locator('.message-row[data-folder="sent"]').click();
+  await page.getByRole('button', exact('Etiketter')).click();
+  await page.getByRole('checkbox', exact('Kunder')).uncheck();
+  await page.locator('#save-label').click();
+  await page.locator('.message-row[data-folder="sent"]').waitFor({state:'detached'});
+  assert.ok(writes.some(w => w.folder === 'sent' && w.body.action === 'unlabel'));
+  await shelf.getByRole('button', exact('Administrer etiketter')).click();
+  await page.getByRole('button', exact('Omdøb Projekt A')).click();
+  await page.locator('#catalog-name').fill('Arkiveret');
+  await page.locator('#save-catalog').click();
+  await page.getByRole('button', exact('Fjern Arkiveret')).click();
+  await page.locator('#save-catalog').click();
+  await page.getByRole('button', exact('Fjern Arkiveret')).waitFor({state:'detached'});
+  await page.locator('#close-catalog').click();
+  await page.reload();
+  await shelf.getByRole('button', exact('Haster')).click();
+  await page.locator('.message-row[data-folder="inbox"]').waitFor();
+  assert.equal(await shelf.getByRole('button', exact('Arkiveret')).count(), 0);
+});
+
+test('company mailbox schedules, cancels and opens a subscription cancellation draft', async t => {
+  const {page, writes} = await mailbox(t);
+  const id = '1c674c07-e351-49f0-b1c2-f2f0ca409d8e';
+  let scheduled = [];
+  await page.route('**/api/scheduled**', route => {
+    const request = route.request(), path = new URL(request.url()).pathname;
+    if (request.method() === 'POST') {
+      assert.equal(request.headers()['x-csrf-token'], csrf);
+      if (path.endsWith('/cancel')) {
+        assert.equal(path, '/api/scheduled/' + id + '/cancel');
+        scheduled = [];
+        return route.fulfill({json:{ok:true}});
+      }
+      const {at,message} = request.postDataJSON();
+      assert.match(request.headers()['idempotency-key'], /^[a-f0-9-]{36}$/);
+      assert.ok(at > Date.now() / 1000);
+      assert.deepEqual(message, {to:'anna@example.test',subject:'I morgen',text:'Vi ses.'});
+      scheduled = [{id,at,to:message.to,subject:message.subject,status:'pending'}];
+      return route.fulfill({json:{id,status:'pending'}});
+    }
+    return route.fulfill({json:{items:scheduled}});
+  });
+  await page.route('**/api/subscriptions**', route => route.fulfill({json:{items:[
+    {id:'weekly', name:'Ugebrev', sender:'uge@example.test', target:{kind:'web',value:'https://brev.example.test/afmeld'}},
+    {id:'daily', name:'Dagbrev', sender:'dag@example.test', target:{kind:'mail',value:'afmeld@example.test',subject:'Afmelding',body:'Afmeld mig.'}}
+  ],next:null}}));
+  await page.locator('#compose').click();
+  await page.locator('#recipient').fill('anna@example.test');
+  await page.locator('#subject').fill('I morgen');
+  await page.locator('#body').fill('Vi ses.');
+  await page.locator('#schedule-toggle').click();
+  await page.getByRole('button',{name:'Planlæg afsendelse'}).click();
+  await page.locator('#composer').waitFor({state:'hidden'});
+  await page.locator('#folders [data-id="view:scheduled"]').click();
+  await page.locator('#messages').getByText('I morgen',{exact:true}).waitFor();
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button',{name:'Annuller afsendelse'}).click();
+  await page.getByText('Ingen planlagte mails.',{exact:false}).waitFor();
+  assert.equal(scheduled.length,0);
+  await page.locator('#folders [data-id="view:subscriptions"]').click();
+  const link = page.getByRole('link',{name:'Afmeld hos brev.example.test'});
+  assert.equal(await link.getAttribute('href'),'https://brev.example.test/afmeld');
+  assert.equal(await link.getAttribute('rel'),'noopener noreferrer');
+  await page.getByRole('button',{name:'Skriv afmelding'}).click();
+  assert.equal(await page.locator('#recipient').inputValue(),'afmeld@example.test');
+  assert.equal(await page.locator('#subject').inputValue(),'Afmelding');
+  assert.equal(await page.locator('#body').inputValue(),'Afmeld mig.');
+  assert.ok(writes.every(write => write.path !== '/api/send'));
 });

@@ -29,6 +29,30 @@ function mockBackend(response) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Veyro Mail gateway', () => {
+  it('requires mailbox authentication for labels, schedules and subscriptions', async () => {
+    const { fetch } = setup();
+    const upstream = vi.fn(async () => Response.json({ok:true}));
+    vi.stubGlobal('fetch', upstream);
+    const headers = {Cookie:'__Host-veyro_session=' + sessionValue, Origin:publicOrigin,
+      'Content-Type':'application/json', 'X-CSRF-Token':csrfToken, 'Idempotency-Key':'repeatable-operation-1'};
+    const cancel = '/api/scheduled/01234567-0123-4567-89ab-0123456789ab/cancel';
+    for (const path of ['/api/labels', '/api/scheduled', '/api/subscriptions']) {
+      expect((await fetch(path)).status).toBe(401);
+      expect((await fetch(path, {headers})).status).toBe(200);
+    }
+    for (const path of ['/api/labels', '/api/scheduled', cancel]) {
+      const post = {method:'POST', body:'{}', headers};
+      for (const [invalid, status] of [[{Cookie:''}, 401], [{Origin:'https://other.invalid'}, 403], [{'X-CSRF-Token':''}, 403]]) {
+        expect((await fetch(path, {...post, headers:{...headers, ...invalid}})).status).toBe(status);
+      }
+      expect((await fetch(path + '?account=someone-else', post)).status).toBe(200);
+      expect(upstream.mock.lastCall[0]).toBe(backendOrigin + '/webmail-api' + path);
+      expect(upstream.mock.lastCall[1].headers.get('Idempotency-Key')).toBe(path === '/api/scheduled' ? 'repeatable-operation-1' : null);
+    }
+    expect((await fetch(cancel, {headers})).status).toBe(405);
+    expect((await fetch('/api/scheduled/bad/cancel', {headers})).status).toBe(404);
+    expect((await fetch('/organizer.js')).status).toBe(200);
+  });
   it('isolates the original mail layout with a separate CSP and per-message image choice', async () => {
     const {fetch, assets} = setup();
     const parent = await fetch('/');

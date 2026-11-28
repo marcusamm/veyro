@@ -24,10 +24,13 @@ from werkzeug.exceptions import HTTPException
 
 import account
 import ai_connector
+import company_organizer
 import mailstore
+import mail_views
 import org_admin_client
 import remembered_sessions
 import snooze
+import mail_labels
 import team
 from mailstore import MailError
 
@@ -44,6 +47,7 @@ RECOVERY_KEY = secrets.token_bytes(32)
 COOKIE = "__Host-veyro_session"
 KEY = Fernet(Fernet.generate_key())
 REMEMBERED = remembered_sessions.Store()
+SCHEDULED = company_organizer.Schedule()
 SESSIONS = {}
 LIMITS = {}
 DELIVERIES = {}
@@ -67,6 +71,7 @@ class Session:
         self.lock = threading.Lock()
         self.folders = None
         self.folder_time = 0
+        self.view_pages = {}
         self.generation = generation
         self.recovery = None
         self.admin_verified_at = None
@@ -331,7 +336,7 @@ def public_session(s):
     except MailError:
         # A provisioning outage must not prevent employees from using their mail.
         role, domain = "none", None
-    return dict(email=s.email, csrfToken=s.csrf, canManageRecovery=s.email in STAFF,
+    return dict(email=s.email, csrfToken=s.csrf, canManageLabels=True, canManageRecovery=s.email in STAFF,
                 canManageOrganizations=role != "none", administrationRole=role, administrationDomain=domain)
 
 
@@ -857,6 +862,20 @@ def folders():
     return jsonify(folders=operation(g.session.cached_folders))
 
 
+@app.route("/api/labels", methods=["GET", "POST"])
+def labels():
+    address = g.session.email
+    data = payload() if request.method == "POST" else None
+    with account_lock(address):
+        def run(client):
+            if data and data.get("operation") in ("rename", "delete"):
+                g.session.folder_time = 0
+            folders = g.session.cached_folders(client)
+            return (mail_labels.discover(address, client, folders) if data is None
+                    else mail_labels.manage(address, data, client, folders))
+        return jsonify(operation(run, retry=data is None))
+
+
 @app.get("/api/messages")
 def messages():
     q = request.args.get("q", "").strip()
@@ -864,6 +883,10 @@ def messages():
         raise MailError("Ugyldig søgning.")
     source = folder()
     view = request.args.get("view", "")
+    if view in mailstore.AGGREGATE_VIEWS:
+        return jsonify(operation(lambda c: mail_views.list_page(
+            c, g.session, view, request.args.get("cursor"), q, request.args.get("label", ""),
+            request.args.get("sender", ""))))
     return jsonify(operation(lambda c: mailstore.list_messages(
         c, source, request.args.get("cursor"), q, address=g.session.email,
         sender=request.args.get("sender", ""), label=request.args.get("label", ""),
@@ -893,8 +916,15 @@ def message_action(identifier):
         result = mailstore.message_action(c, folder(), identifier, data, folders)
         g.session.folder_time = 0
         return result
-    # If the server moved the UID but its reply was lost, retrying it could
-    # report a misleading not-found result instead of an uncertain outcome.
+    if data.get("action") in ("label", "unlabel"):
+        with account_lock(g.session.email):
+            return jsonify(mail_labels.record_message_label(
+                g.session.email, data.get("label"), lambda: operation(apply, retry=False)))
+    if data.get("action") in ("archive", "trash", "move"):
+        # A move into a folder already visited by a concurrent rename/delete
+        # could otherwise leave the old label on the moved message.
+        with account_lock(g.session.email):
+            return jsonify(operation(apply, retry=False))
     return jsonify(operation(apply, retry=False))
 
 
@@ -920,6 +950,73 @@ def snooze_message(identifier):
         snooze.save(g.session.email, validity, uid, wake_at)
     operation(update)
     return jsonify(ok=True)
+
+
+@app.get("/api/scheduled")
+def list_scheduled():
+    return jsonify(items=SCHEDULED.listing(g.session.email,g.session.generation))
+
+
+@app.post("/api/scheduled")
+def add_scheduled():
+    body = payload()
+    data = body.get("message")
+    throttle(("schedule", g.session.email), 40, 3600)
+    def add(client):
+        s = g.session
+        return SCHEDULED.add(s.email, s.generation, s.password(), request.headers.get("Idempotency-Key"),
+                             body.get("at"), data, lambda: mailstore.prepare_message(client, s.email, data))
+    return jsonify(operation(add, retry=False))
+
+
+@app.post("/api/scheduled/<uuid:identifier>/cancel")
+def cancel_scheduled(identifier):
+    SCHEDULED.cancel(g.session.email,g.session.generation,str(identifier))
+    return jsonify(cancelled=True)
+
+
+@app.get("/api/subscriptions")
+def list_subscriptions():
+    return jsonify(operation(lambda c: company_organizer.subscriptions(c, request.args.get("cursor"))))
+
+
+def submit_scheduled(head, raw):
+    address = head["address"]
+    with account_lock(address):
+        if credential_version(address) != head["generation"]:
+            return "access-changed"
+        client = mailstore.connect(address, head["password"])
+        try:
+            msg = mailstore.BytesParser(policy=mailstore.email.policy.SMTP).parsebytes(raw)
+            msg.replace_header("Date", mailstore.formatdate(localtime=False, usegmt=True))
+            folders = mailstore.folder_list(client)
+            try:
+                result = mailstore.submit_message(client, address, head["password"], msg, head["recipients"], folders)
+            except mailstore.DeliveryUncertain:
+                return "unknown"
+            if result.get("refused"):
+                return "partial"
+            return "sent" if result["savedCopy"] else "no-copy"
+        finally:
+            try:
+                client.shutdown()
+            except OSError:
+                pass
+
+
+def scheduled_dispatcher():
+    while True:
+        try:
+            if SCHEDULED.deliver_one(submit_scheduled):
+                continue
+        except Exception:
+            # The per-mail status is visible to its owner. Never log a MIME body,
+            # SMTP credentials, or unsubscribe tokens.
+            log.error("Scheduled mail processing unavailable")
+        time.sleep(10)
+
+
+threading.Thread(target=scheduled_dispatcher, daemon=True).start()
 
 
 @app.post("/api/send")

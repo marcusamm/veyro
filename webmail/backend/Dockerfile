@@ -3,7 +3,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY app.py mailstore.py message_view.py rich_email.py email_css.py account.py snooze.py remembered_sessions.py ai_connector.py org_admin_client.py org_broker.py org_admin.py team.py ./
+COPY app.py company_organizer.py mailstore.py mail_views.py message_view.py rich_email.py email_css.py account.py snooze.py mail_labels.py remembered_sessions.py ai_connector.py org_admin_client.py org_broker.py org_admin.py team.py ./
 RUN install -d -m 0700 -o 65532 -g 65532 /var/lib/veyro-webmail
 USER 65532:65532
 CMD ["gunicorn","--workers","1","--worker-class","gthread","--threads","8","--bind","127.0.0.1:18082","--timeout","60","--no-control-socket","--error-logfile","-","app:app"]

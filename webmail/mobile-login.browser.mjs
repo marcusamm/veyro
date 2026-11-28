@@ -8,6 +8,7 @@ import { chromium, devices, webkit } from 'playwright';
 const account = {email:'employee@example.test', password:'fixture-password'};
 const assets = new Map(await Promise.all(Object.entries({
   '/': ['inbox.html', 'text/html; charset=utf-8'],
+  '/organizer.js': ['organizer.js', 'text/javascript'],
   '/inbox.js': ['inbox.js', 'text/javascript'],
   '/inbox.css': ['inbox.css', 'text/css'],
   '/favicon.svg': ['favicon.svg', 'image/svg+xml'],
