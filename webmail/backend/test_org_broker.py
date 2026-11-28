@@ -175,6 +175,33 @@ class BrokerBoundaryTests(unittest.TestCase):
             self.assertEqual((method, path, body), ("POST", "/access", b"{}"))
             self.assertEqual(headers["X-Veyro-Actor"], self.employee)
 
+    def test_team_directory_is_live_minimal_and_actor_scoped_even_for_platform_owner(self):
+        result = self.post(self.employee, "/team/directory")
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json["domain"], self.tenant)
+        self.assertFalse(result.json["canManage"])
+        self.assertEqual({m["email"] for m in result.json["members"]}, {self.manager, self.colleague, self.employee})
+        self.assertTrue(all(set(m) == {"email", "name"} for m in result.json["members"]))
+        self.assertTrue(self.post(self.manager, "/team/directory").json["canManage"])
+        owner = self.post(self.owner, "/team/directory").json
+        self.assertEqual(owner["domain"], "veyro.dk")
+        self.assertEqual(owner["members"], [{"email": self.owner, "name": "Contact"}])
+        self.assertEqual(self.post(self.owner, "/team/directory", domain=self.tenant).status_code, 400)
+        self.box_rows[self.employee]["active_int"] = 0
+        self.assertEqual(self.post(self.employee, "/team/directory").status_code, 403)
+        self.assertNotIn(self.employee, {m["email"] for m in self.post(self.manager, "/team/directory").json["members"]})
+
+    def test_team_directory_rejects_disabled_domain_and_upstream_cross_domain_fallback(self):
+        self.org_rows[self.tenant]["active_int"] = 0
+        self.assertEqual(self.post(self.employee, "/team/directory").status_code, 403)
+        self.org_rows[self.tenant]["active_int"] = 1
+        self.box_rows[self.employee]["attributes"]["force_pw_update"] = "1"
+        self.assertEqual(self.post(self.employee, "/team/directory").status_code, 403)
+        self.box_rows[self.employee] = box(self.employee)
+        original = self.native_request
+        self.native.side_effect = lambda path, data=None: [box(self.outsider)] if path == "get/mailbox/reduced/" + self.tenant else original(path, data)
+        self.assertEqual(self.post(self.employee, "/team/directory").status_code, 503)
+
 
 if __name__ == "__main__":
     unittest.main()

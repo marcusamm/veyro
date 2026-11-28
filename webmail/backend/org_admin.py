@@ -403,6 +403,36 @@ def mailboxes(domain):
     return sorted((box for box in boxes if box["address"].lower() not in admins), key=lambda box: box["address"])
 
 
+def team_directory(actor):
+    """Restricted, live coworker directory; the authenticated actor selects its tenant.
+
+    Unlike management APIs, ordinary members may read this minimal directory.
+    Platform administrators get no cross-company override here.
+    """
+    scope = access(actor)  # Validates actor syntax and resolves current admin role.
+    domain = _domain(actor.split("@", 1)[1])
+    organization = _get_org(domain)
+    if not organization["active"]:
+        raise forbidden()
+    admins = _admin_addresses()
+    rows = _rows(_native("get/mailbox/reduced/" + domain))
+    members = []
+    for row in rows:
+        box = _mailbox(row, domain)  # Rejects upstream fallback to other domains.
+        if box is None or box["address"].lower() in admins:
+            continue
+        # The home owner is a normal team participant in the home tenant only.
+        eligible = _eligible_manager({**box, "protected": False}, row)
+        if eligible and (not box["protected"] or box["address"] == "marcus@" + HOME_DOMAIN):
+            members.append({"email": box["address"], "name": box["name"][:200]})
+    if actor not in {member["email"] for member in members}:
+        raise forbidden()
+    return {"email": actor, "domain": domain, "companyName": organization["name"],
+            "canManage": scope["role"] == "platform" or
+                         (scope["role"] == "organization" and scope["domain"] == domain),
+            "members": sorted(members, key=lambda member: member["email"])}
+
+
 def _get_mailbox(domain, address):
     row = _native("get/mailbox/" + quote(address, safe="@"))
     if not isinstance(row, dict):

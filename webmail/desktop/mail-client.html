@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-src veyro://message">
+  <title>Veyro Mail</title>
+  <link rel="stylesheet" href="mail-client.css">
+  <script src="mail-client.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><div class="wordmark">Veyro <span>Mail</span><i aria-hidden="true">.</i></div><span id="account-address"></span><button id="settings" class="quiet" type="button">Kontoindstillinger</button></header>
+  <div id="notice" role="status" hidden></div>
+  <main id="workspace" class="workspace" hidden>
+    <nav class="folders" aria-label="Mailmapper">
+      <button id="compose" class="primary" type="button">＋ Skriv mail</button>
+      <p class="eyebrow">Din postkasse</p><div id="folders"></div>
+      <button id="drafts" class="folder" type="button">Lokale kladder <span id="draft-count"></span></button>
+      <p class="sidebar-note">Direkte forbindelse til<br>din mailudbyder.</p>
+    </nav>
+    <section class="mailbox" aria-labelledby="folder-title">
+      <div class="list-head"><div class="row"><h1 id="folder-title">Indbakke</h1><button id="refresh" class="quiet" aria-label="Opdater" title="Opdater" type="button">↻</button></div>
+        <form id="search-form" role="search"><label class="sr-only" for="search">Søg i mappen</label><input id="search" type="search" maxlength="250" placeholder="Søg i mappen …"><button class="quiet" type="submit">Søg</button></form>
+      </div>
+      <p id="list-state" role="status"></p><ul id="messages" aria-label="Mails"></ul>
+      <div id="pagination" class="pagination"><button id="previous" class="quiet" type="button">← Nyere</button><span id="page-label"></span><button id="next" class="quiet" type="button">Ældre →</button></div>
+    </section>
+    <section id="reader" class="reader" aria-label="Læsevisning">
+      <div id="reader-empty" class="empty"><span class="mail-symbol" aria-hidden="true">✉</span><h2>Plads til overblik.</h2><p>Vælg en mail, og læs den her.</p></div>
+      <article id="message" hidden>
+        <div class="reader-toolbar"><button id="back-list" class="quiet" type="button">← Tilbage</button><div class="message-actions"><button id="toggle-read" class="quiet" type="button">Markér ulæst</button><button id="toggle-star" class="quiet" type="button">☆ Stjernemarkér</button><button id="archive" class="quiet" type="button">Arkivér</button><button id="trash" class="quiet" type="button">Papirkurv</button></div></div>
+        <h2 id="message-subject" tabindex="-1"></h2>
+        <div class="sender-line"><span id="sender-avatar" aria-hidden="true"></span><div><strong id="message-from"></strong><div id="message-date"></div></div></div>
+        <p id="message-recipients" class="recipients"></p>
+        <div id="rich-controls" class="rich-controls" hidden><button id="toggle-format" class="quiet" type="button">Vis som tekst</button><div id="remote-images" hidden><span id="images-note">Eksterne billeder er skjult. Afsenderen kan registrere, at du åbner dem.</span><button id="load-images" class="secondary" type="button">Vis billeder i denne mail</button></div></div>
+        <iframe id="message-frame" class="message-frame" title="Mailens indhold" sandbox="" referrerpolicy="no-referrer" hidden></iframe>
+        <pre id="message-body"></pre><p id="truncation-note" hidden>Resten af denne lange mail kan læses hos din mailudbyder.</p>
+        <div id="message-attachments" class="attachments"></div>
+        <div class="reply-actions"><button id="reply" class="secondary" type="button">Svar</button><button id="reply-all" class="secondary" type="button">Svar alle</button><button id="forward" class="quiet" type="button">Videresend →</button></div>
+        <p class="reader-note">Mailindhold vises isoleret. Eksterne billeder indlæses kun, når du vælger det i den enkelte mail.</p>
+      </article>
+    </section>
+  </main>
+  <div id="startup" class="empty"><h1>Et øjeblik.</h1><p>Åbner din postkasse …</p><button id="retry-start" class="secondary" type="button" hidden>Prøv igen</button></div>
+
+  <dialog id="settings-dialog" aria-labelledby="settings-title">
+    <form id="settings-form">
+      <div class="dialog-head"><div><p class="eyebrow">Din mail, samlet</p><h2 id="settings-title">Saml din mail her.</h2></div><button id="close-settings" class="quiet" type="button" aria-label="Luk indstillinger">✕</button></div>
+      <p class="lead">Vælg din mailtjeneste, så hjælper vi dig med at logge ind.</p>
+      <label for="provider">Din mailtjeneste</label>
+      <select id="provider" required><option value="">Vælg mailtjeneste</option><option value="gmail">Gmail / Google Workspace</option><option value="outlook">Outlook / Microsoft 365</option><option value="icloud">iCloud Mail</option><option value="yahoo">Yahoo Mail</option><option value="custom">Anden mailtjeneste</option></select>
+      <div id="provider-fields" hidden>
+        <div id="identity-fields" class="form-grid"><div><label for="account-email">E-mailadresse</label><input id="account-email" type="email" maxlength="320" autocomplete="username" placeholder="dig@eksempel.dk" required></div><div><label for="account-name">Dit navn <span class="optional">(valgfrit)</span></label><input id="account-name" maxlength="200" autocomplete="name" placeholder="Det navn, andre ser"></div></div>
+        <p id="connected-account" class="connected-account" hidden></p>
+        <p id="provider-note" class="provider-note" role="status"></p>
+        <div id="oauth-actions" class="oauth-actions" hidden><button id="oauth-google" class="primary" type="button" hidden>Log ind med Google</button><button id="oauth-microsoft" class="primary" type="button" hidden>Log ind med Microsoft</button><button id="oauth-cancel" class="quiet" type="button" hidden>Annuller login</button></div>
+        <p id="oauth-note" class="hint" hidden></p>
+        <button id="manual-alternative" class="quiet alternative" type="button" aria-expanded="false" aria-controls="manual-settings" hidden>Brug en app-adgangskode i stedet</button>
+        <div id="manual-settings" hidden>
+          <label id="password-label" for="imap-password">App-adgangskode</label><input id="imap-password" type="password" maxlength="4096" autocomplete="new-password" aria-describedby="password-hint">
+          <p id="password-hint" class="hint"></p>
+          <details id="advanced-settings"><summary>Avancerede indstillinger</summary>
+            <p class="hint">Brug oplysningerne fra din mailudbyder. Forbindelserne er altid krypterede.</p>
+            <div id="advanced-fields">
+              <fieldset><legend>Indgående mail · IMAP</legend><div class="server-grid"><div><label for="imap-host">Server</label><input id="imap-host" placeholder="imap.dinudbyder.dk" required maxlength="253" spellcheck="false"></div><div><label for="imap-port">Port</label><input id="imap-port" type="number" min="1" max="65535" value="993" required></div><div><label for="imap-secure">Kryptering</label><select id="imap-secure"><option value="true">TLS</option><option value="false">STARTTLS</option></select></div></div><label for="imap-user">Brugernavn, hvis det er anderledes</label><input id="imap-user" placeholder="Som e-mailadressen" maxlength="320" autocomplete="off"></fieldset>
+              <fieldset><legend>Udgående mail · SMTP</legend><div class="server-grid"><div><label for="smtp-host">Server</label><input id="smtp-host" placeholder="smtp.dinudbyder.dk" required maxlength="253" spellcheck="false"></div><div><label for="smtp-port">Port</label><input id="smtp-port" type="number" min="1" max="65535" value="587" required></div><div><label for="smtp-secure">Kryptering</label><select id="smtp-secure"><option value="false">STARTTLS</option><option value="true">TLS</option></select></div></div><div class="form-grid"><div><label for="smtp-user">Brugernavn, hvis det er anderledes</label><input id="smtp-user" placeholder="Som e-mailadressen" maxlength="320" autocomplete="off"></div><div><label for="smtp-password">Særskilt adgangskode, hvis nødvendigt</label><input id="smtp-password" type="password" maxlength="4096" placeholder="Som adgangskoden ovenfor" autocomplete="new-password"></div></div></fieldset>
+              <label class="checkbox"><input id="save-sent" type="checkbox" checked><span>Gem en kopi i Sendt (Gmail gemmer selv)</span></label>
+            </div>
+          </details>
+          <button id="save-settings" class="primary" type="submit">Forbind konto</button>
+        </div>
+        <p class="setup-security">Dine loginoplysninger gemmes sikkert på denne computer.</p>
+      </div>
+      <p id="settings-error" class="error" role="alert" hidden></p>
+    </form>
+  </dialog>
+
+  <dialog id="compose-dialog" aria-labelledby="compose-title">
+    <form id="compose-form">
+      <div class="dialog-head"><h2 id="compose-title">Ny mail</h2><button id="close-compose" class="quiet" type="button" aria-label="Gem kladde og luk">✕</button></div>
+      <p id="compose-from" class="hint"></p>
+      <div class="recipient-field"><label for="to">Til</label><input id="to" maxlength="10000" placeholder="navn@eksempel.dk, anden@eksempel.dk" autocomplete="off"></div>
+      <div class="recipient-field"><label for="cc">Cc</label><input id="cc" maxlength="10000" autocomplete="off"></div>
+      <div class="recipient-field"><label for="bcc">Bcc</label><input id="bcc" maxlength="10000" autocomplete="off"></div>
+      <label class="sr-only" for="subject">Emne</label><input id="subject" maxlength="998" placeholder="Emne">
+      <label class="sr-only" for="body">Besked</label><textarea id="body" placeholder="Skriv din besked …" rows="12" maxlength="1048576"></textarea>
+      <div id="compose-attachments" class="attachments"></div><input id="attachment-input" type="file" multiple hidden>
+      <p id="compose-error" class="error" role="alert" hidden></p><p id="draft-status" class="hint" role="status"></p>
+      <div class="compose-footer"><button id="send" class="primary" type="submit">Send mail ↗</button><button id="attach" class="quiet" type="button">Vedhæft</button><button id="save-draft" class="quiet" type="button">Gem kladde</button><button id="discard-draft" class="quiet discard" type="button">Kassér</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

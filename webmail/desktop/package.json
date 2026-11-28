@@ -1,0 +1,87 @@
+{
+  "name": "veyro-mail-desktop",
+  "version": "0.1.0-beta.1",
+  "description": "Veyro Mail — mail, teamchat og intranet på dit skrivebord",
+  "author": "Veyro",
+  "private": true,
+  "license": "UNLICENSED",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs mail-connector.test.cjs",
+    "test:smoke": "node scripts/smoke.cjs",
+    "build:mac": "electron-builder --mac dmg --arm64 --x64 --publish never",
+    "build:win": "electron-builder --win nsis --x64 --publish never",
+    "build:configured": "node scripts/build-configured.cjs",
+    "checksums": "node scripts/checksums.cjs"
+  },
+  "dependencies": {
+    "imapflow": "2.12.2",
+    "mailparser": "3.15.0",
+    "nodemailer": "10.6.1",
+    "postcss": "8.5.34",
+    "sanitize-html": "2.18.2"
+  },
+  "devDependencies": {
+    "electron": "45.5.0",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "dk.veyro.mail",
+    "productName": "Veyro Mail",
+    "copyright": "Copyright © 2026 Veyro",
+    "asar": true,
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "*.cjs",
+      "*.html",
+      "*.js",
+      "*.css",
+      "assets/**",
+      "package.json",
+      "oauth-config.json",
+      "!*.test.cjs",
+      "!scripts/**",
+      "!tests/**",
+      "!dist/**"
+    ],
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "artifactName": "Veyro-Mail-${version}-mac-${arch}.${ext}",
+      "icon": "assets/icon.icns",
+      "identity": "-",
+      "notarize": false,
+      "hardenedRuntime": true
+    },
+    "dmg": {
+      "title": "Veyro Mail",
+      "sign": false,
+      "backgroundColor": "#f4f2ec"
+    },
+    "win": {
+      "artifactName": "Veyro-Mail-${version}-win-${arch}.${ext}",
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": null
+  }
+}

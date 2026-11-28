@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#faf9f6">
+  <title>Dit team · Veyro Mail</title>
+  <link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/team.css">
+  <script src="/team.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/"><img src="/favicon.svg" width="34" height="34" alt="">Veyro <span>Mail</span></a><span id="identity"></span><a class="back-mail" href="/">Åbn mail ↗</a></header>
+  <main id="loading" class="loading"><h1>Plads til samarbejde.</h1><p id="loading-text" role="status">Henter din virksomhed …</p><button id="retry" class="button" hidden>Prøv igen</button><a id="login-link" href="/" hidden>Log ind i Veyro Mail</a></main>
+  <div id="team" class="team" hidden>
+    <aside class="sidebar"><p class="eyebrow">Jeres arbejdsplads</p><h2 id="company"></h2>
+      <nav aria-label="Virksomhed"><a href="#chat" data-tab="chat">Chat <span id="unread" class="badge" hidden></span></a><a href="#intranet" data-tab="intranet">Intranet</a><a href="#files" data-tab="files">Dokumenter</a><a href="#people" data-tab="people">Kollegaer</a></nav>
+      <div id="channel-sidebar"><div class="section-label"><h3>Kanaler</h3><button id="new-channel" class="icon-button" aria-label="Opret kanal" hidden>+</button></div><div id="channels"></div><h3 class="dm-label">Direkte beskeder</h3><div id="directs"></div><a class="quiet-link" href="#people">Start en samtale →</a></div>
+      <footer><span class="connection-dot" aria-hidden="true"></span><span id="sync-status" role="status">Forbundet</span></footer>
+    </aside>
+    <main class="content">
+      <div id="notice" class="notice" role="status" hidden></div>
+      <section id="panel-chat" class="chat-panel" aria-labelledby="chat-title">
+        <header class="panel-head"><div><p class="eyebrow">Samtaler, der bliver i virksomheden</p><h1 id="chat-title">Generelt</h1><p id="chat-subtitle" class="muted"></p></div><label class="search"><span class="visually-hidden">Søg i samtalen</span><input id="chat-search" type="search" placeholder="Søg i samtalen" maxlength="120"></label></header>
+        <div id="conversation" class="conversation" tabindex="0" aria-label="Samtalens beskeder"><button id="older-messages" class="quiet-button" hidden>Vis tidligere beskeder</button><div id="messages" role="log" aria-live="polite" aria-relevant="additions"></div><p id="chat-empty" class="empty" hidden>Her begynder samtalen. Skriv den første besked.</p></div>
+        <form id="message-form" class="message-composer"><label class="visually-hidden" for="message-text">Besked</label><textarea id="message-text" rows="2" maxlength="8000" placeholder="Skriv til teamet …" required></textarea><div><span>Enter sender · Shift + Enter giver ny linje</span><button class="button" id="send-message">Send besked ↑</button></div><p id="message-error" class="error" role="alert" hidden></p></form>
+      </section>
+      <section id="panel-intranet" class="page-panel" aria-labelledby="intranet-title" hidden>
+        <header class="panel-head"><div><p class="eyebrow">Fælles viden. Ét sted.</p><h1 id="intranet-title">Godt at vide.</h1><p class="muted">Nyheder, aftaler og information fra jeres hverdag.</p></div><button id="new-post" class="button">Skriv et opslag +</button></header>
+        <label class="search wide-search"><span class="visually-hidden">Søg i opslag</span><input id="post-search" type="search" placeholder="Find et opslag …" maxlength="120"></label>
+        <div id="posts" class="posts"></div><p id="posts-empty" class="empty" hidden>Ingen opslag endnu. Del noget med dine kollegaer.</p><button id="older-posts" class="quiet-button" hidden>Vis flere opslag</button>
+      </section>
+      <section id="panel-files" class="page-panel" aria-labelledby="files-title" hidden>
+        <header class="panel-head"><div><p class="eyebrow">Virksomhedens bibliotek</p><h1 id="files-title">Fælles dokumenter.</h1><p class="muted">PDF, billeder, tekst og Office-filer · op til 5 MB pr. fil.</p></div><label class="button upload-button">Upload dokument +<input id="file-upload" type="file" accept=".pdf,.png,.jpg,.jpeg,.txt,.docx,.xlsx" aria-label="Upload dokument"></label></header>
+        <p class="file-disclosure">Dokumenter her kan læses af alle aktive kollegaer i virksomheden.</p><label class="search wide-search"><span class="visually-hidden">Søg i dokumenter</span><input id="file-search" type="search" placeholder="Find et dokument …" maxlength="120"></label>
+        <div id="files" class="file-list"></div><p id="files-empty" class="empty" hidden>Jeres dokumenter får plads her.</p><button id="older-files" class="quiet-button" hidden>Vis flere dokumenter</button>
+      </section>
+      <section id="panel-people" class="page-panel" aria-labelledby="people-title" hidden>
+        <header class="panel-head"><div><p class="eyebrow">Menneskene bag virksomheden</p><h1 id="people-title">Dine kollegaer.</h1><p class="muted">Start en direkte samtale med en kollega.</p></div><button class="button" id="new-conversation">Ny samtale +</button></header><label class="search wide-search"><span class="visually-hidden">Søg efter kollega</span><input id="people-search" type="search" placeholder="Søg på navn eller mail …" maxlength="120"></label><div id="people" class="people-list"></div>
+      </section>
+    </main>
+  </div>
+  <dialog id="channel-dialog"><form id="channel-form"><h2>En ny kanal</h2><p class="muted">Alle aktive kollegaer i virksomheden kan deltage.</p><label for="channel-name">Kanalens navn</label><input id="channel-name" maxlength="60" required><p id="channel-error" class="error" role="alert" hidden></p><div class="dialog-actions"><button class="quiet-button" type="button" data-close="channel-dialog">Annuller</button><button class="button">Opret kanal</button></div></form></dialog>
+  <dialog id="conversation-dialog"><form id="conversation-form"><h2>En privat samtale</h2><p class="muted">Kun de valgte kollegaer kan læse beskederne. Vælg op til 11.</p><div id="conversation-members" class="member-choice"></div><p id="conversation-error" class="error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="quiet-button" data-close="conversation-dialog">Annuller</button><button class="button">Start samtale</button></div></form></dialog>
+  <dialog id="post-dialog"><form id="post-form"><h2 id="post-dialog-title">Skriv et opslag</h2><input id="post-id" type="hidden"><input id="post-version" type="hidden"><label for="post-title">Overskrift</label><input id="post-title" maxlength="180" required><label for="post-body">Indhold</label><textarea id="post-body" rows="10" maxlength="30000" required></textarea><fieldset class="attachment-choice"><legend>Vedhæft fælles dokumenter</legend><p class="muted">Vælg op til 10 dokumenter. Nye filer uploades under Dokumenter.</p><div id="post-files"></div></fieldset><label class="check-label" id="pin-label"><input id="post-pinned" type="checkbox">Fastgør øverst på intranettet</label><p id="post-error" class="error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="quiet-button" data-close="post-dialog">Annuller</button><button class="button">Gem opslag</button></div></form></dialog>
+</body>
+</html>

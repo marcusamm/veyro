@@ -16,14 +16,44 @@ handle @recoveryPage {
 		header_down Cache-Control "no-store, private"
 	}
 }
-handle /webmail-api/api/* {
-	uri strip_prefix /webmail-api
-	request_body {
-		max_size 256KiB
+
+@teamUpload {
+	method POST
+	path /webmail-api/api/team/files
+}
+@ordinaryMailBody not {
+	method POST
+	path /webmail-api/api/team/files
+}
+@oversizedTeamUpload {
+	method POST
+	path /webmail-api/api/team/files
+	expression `{http.request.header.Content-Length} != '' && int({http.request.header.Content-Length}) > 7340032`
+}
+@oversizedOrdinaryMailBody {
+	not {
+		method POST
+		path /webmail-api/api/team/files
 	}
-	reverse_proxy 127.0.0.1:18082 {
-		header_up -Authorization
-		header_up -X-Original-URL
-		header_up -X-Rewrite-URL
+	expression `{http.request.header.Content-Length} != '' && int({http.request.header.Content-Length}) > 262144`
+}
+handle /webmail-api/api/* {
+	route {
+		# Caddy 2.6 reports a proxy read failure as 502. Reject declared
+		# oversize bodies before proxying so clients receive an explicit 413.
+		respond @oversizedTeamUpload "Request body too large." 413
+		respond @oversizedOrdinaryMailBody "Request body too large." 413
+		request_body @teamUpload {
+			max_size 7MiB
+		}
+		request_body @ordinaryMailBody {
+			max_size 256KiB
+		}
+		uri strip_prefix /webmail-api
+		reverse_proxy 127.0.0.1:18082 {
+			header_up -Authorization
+			header_up -X-Original-URL
+			header_up -X-Rewrite-URL
+		}
 	}
 }

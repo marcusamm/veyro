@@ -72,6 +72,13 @@ def access():
     return jsonify(org_admin.access(request.headers.get("X-Veyro-Actor")))
 
 
+@app.post("/team/directory")
+def team_directory():
+    payload()  # No tenant or actor field can be supplied by the caller.
+    with org_admin.WRITE_LOCK:
+        return jsonify(org_admin.team_directory(request.headers.get("X-Veyro-Actor")))
+
+
 @app.post("/organizations/list")
 @operator()
 def list_organizations(scope, data):

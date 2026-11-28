@@ -38,9 +38,29 @@ jobs:
       - run: |
           python -m pip install -r webmail/backend/requirements.txt
           python -m unittest discover -s webmail/backend -p 'test_*.py'
+      - name: Kontrollér dokumentgrænser gennem Caddy
+        shell: bash
+        run: |
+          testdir="$RUNNER_TEMP/veyro-caddy-test"
+          mkdir -p "$testdir"
+          cd "$testdir"
+          for version in 2.6.2 2.10.2; do
+            base="https://github.com/caddyserver/caddy/releases/download/v$version"
+            archive="caddy_${version}_linux_amd64.tar.gz"
+            curl --fail --silent --show-error --location "$base/$archive" -o "$archive"
+            curl --fail --silent --show-error --location "$base/caddy_${version}_checksums.txt" -o checksums.txt
+            grep " $archive\$" checksums.txt | sha512sum --check -
+            tar -xzf "$archive" caddy
+            CADDY_BIN="$testdir/caddy" python "$GITHUB_WORKSPACE/webmail/origin/test_body_limits.py"
+          done
       - run: |
           npx playwright install --with-deps chromium webkit
-          node --test webmail/context-menu.browser.mjs webmail/rich-layout.browser.mjs webmail/administration.browser.mjs webmail/mobile-login.browser.mjs
+          node --test webmail/context-menu.browser.mjs webmail/rich-layout.browser.mjs webmail/administration.browser.mjs webmail/mobile-login.browser.mjs webmail/team.browser.mjs
+      - name: Kontrollér desktopkontoernes brugerflade
+        run: |
+          npm ci --prefix webmail/desktop --ignore-scripts --no-audit --no-fund
+          node webmail/desktop/fixtures/mail-client.browser.cjs
+          node webmail/desktop/fixtures/shell.browser.cjs
       - name: Udgiv webmail
         if: github.event_name != 'pull_request'
         run: npx wrangler deploy --config webmail/wrangler.toml
@@ -68,6 +88,10 @@ jobs:
             [[ "$result" == 200 ]] && grep -Fq '<title>Veyro Mail</title>' "$page" && grep -Fq 'src="/inbox.js"' "$page" || return 1
             grep -Fq 'id="password-form"' "$page" || return 1
             grep -Fq 'id="mail-menu"' "$page" || return 1
+            result=$("${fetch[@]}" -o "$page.team" -w '%{http_code}' "$base/team") || return 1
+            [[ "$result" == 200 ]] && grep -Fq 'src="/team.js"' "$page.team" || return 1
+            result=$("${fetch[@]}" -o "$page.team-session" -w '%{http_code}' "$base/api/team/bootstrap") || return 1
+            [[ "$result" == 401 ]] || return 1
             result=$("${fetch[@]}" -o "$page.about" -w '%{http_code}' "$base/ai/om") || return 1
             [[ "$result" == 200 ]] && grep -Fq 'Veyro Mail til ChatGPT' "$page.about" || return 1
             result=$("${fetch[@]}" -o /dev/null -w '%{http_code}' "$base/api/messages/1.1/action?folder=SU5CT1g") || return 1
@@ -105,6 +129,6 @@ jobs:
           for asset in forhaandsvisning.js forhaandsvisning.css; do
             [[ "$("${fetch[@]}" -o /dev/null -w '%{http_code}' "$base/$asset")" == 404 ]] || { echo "$asset er stadig offentligt"; exit 1; }
           done
-          for asset in inbox.js inbox.css webmail.css favicon.svg manrope.woff2 message-frame.js; do
+          for asset in inbox.js inbox.css webmail.css favicon.svg manrope.woff2 message-frame.js team.js team.css; do
             [[ "$("${fetch[@]}" -o "$page" -w '%{http_code}' "$base/$asset")" == 200 && -s "$page" ]] || { echo "Mangler $asset"; exit 1; }
           done

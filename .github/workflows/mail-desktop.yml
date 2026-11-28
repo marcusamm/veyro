@@ -1,0 +1,94 @@
+name: Veyro Mail desktop installers
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'webmail/desktop/**'
+      - '.github/workflows/mail-desktop.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  installers:
+    name: ${{ matrix.platform }} ${{ matrix.arch }} prerelease
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            platform: mac
+            arch: arm64
+            target: dmg
+          - os: macos-15-intel
+            platform: mac
+            arch: x64
+            target: dmg
+          - os: windows-2022
+            platform: win
+            arch: x64
+            target: nsis
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: webmail/desktop
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: webmail/desktop/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run test:smoke
+      - name: Build installer without publishing
+        env:
+          # PR builds still need the configured ad-hoc Mac signature after the
+          # Electron fuses/ASAR are changed. No publisher credentials are used.
+          CSC_FOR_PULL_REQUEST: ${{ runner.os == 'macOS' && 'true' || 'false' }}
+        run: npx electron-builder --${{ matrix.platform }} ${{ matrix.target }} --${{ matrix.arch }} --publish never
+      - name: Install and launch Windows artifact on the runner
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist/Veyro-Mail-*-win-x64.exe | Select-Object -First 1
+          $installRoot = Join-Path $env:RUNNER_TEMP 'VeyroMailSmoke'
+          $installed = Start-Process -FilePath $installer.FullName -ArgumentList '/S', "/D=$installRoot" -Wait -PassThru
+          if ($installed.ExitCode -ne 0) { throw "Installer failed: $($installed.ExitCode)" }
+          $executable = Join-Path $installRoot 'Veyro Mail.exe'
+          if (!(Test-Path $executable)) { throw 'Installed executable is missing' }
+          $mailProcess = Get-Process -Name 'Veyro Mail' -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $executable } | Select-Object -First 1
+          if (!$mailProcess) { $mailProcess = Start-Process -FilePath $executable -PassThru }
+          Start-Sleep -Seconds 6
+          if ($mailProcess.HasExited) { throw "Installed app exited: $($mailProcess.ExitCode)" }
+          taskkill /PID $mailProcess.Id /T /F
+      - name: Verify Mac bundle signature
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          if [ '${{ matrix.arch }}' = arm64 ]; then
+            codesign --verify --deep --strict 'dist/mac-arm64/Veyro Mail.app'
+          else
+            codesign --verify --deep --strict 'dist/mac/Veyro Mail.app'
+          fi
+      - run: npm run checksums
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Veyro-Mail-${{ matrix.platform }}-${{ matrix.arch }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            webmail/desktop/dist/*.dmg
+            webmail/desktop/dist/*.exe
+            webmail/desktop/dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: desktop-smoke-${{ matrix.platform }}-${{ matrix.arch }}
+          if-no-files-found: ignore
+          path: webmail/desktop/.test-output/

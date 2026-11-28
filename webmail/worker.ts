@@ -9,6 +9,7 @@ const staticFiles = new Map([
   ['/favicon.svg', '/favicon.svg'], ['/manrope.woff2', '/manrope.woff2'], ['/Manrope-OFL.txt', '/Manrope-OFL.txt'],
   ['/administration.css', '/administration.css'], ['/administration.js', '/administration.js'],
   ['/message-frame.js', '/message-frame.js'],
+  ['/team.css', '/team.css'], ['/team.js', '/team.js'],
 ]);
 const policy = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
 export function messageFramePolicy(images = false, origin = webOrigin) {
@@ -22,6 +23,10 @@ const accountWrites = new Set(['/api/password', '/api/recovery/enroll/start', '/
   '/api/admin/mailboxes/password', '/api/admin/mailboxes/role']);
 const writeApi = new Set(['/api/login', '/api/logout', '/api/send', recoveryRequest, ...accountWrites]);
 const messageWrite = /^\/api\/messages\/[0-9]{1,10}\.[0-9]{1,10}\/(?:action|snooze)$/;
+const teamId = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const teamDownload = new RegExp('^/api/team/files/' + teamId + '(?:/download)?$');
+const teamRead = new RegExp('^/api/team/(?:bootstrap|messages|posts|files|files/' + teamId + '(?:/download)?)$');
+const teamWrite = new RegExp('^/api/team/(?:channels|messages|read|posts|files|messages/' + teamId + '/delete|posts/' + teamId + '/(?:update|delete)|files/' + teamId + '/delete)$');
 const sessionName = '__Host-veyro_session';
 const maxBody = 256 * 1024;
 
@@ -76,12 +81,13 @@ async function proxy(req: Request, env: Env, url: URL, write: boolean) {
   if (ip && /^[0-9a-f:.]{2,45}$/i.test(ip)) headers.set('X-Veyro-Client-IP', ip);
   const session = (req.headers.get('Cookie') || '').split(';').map(c => c.trim()).find(c => c.startsWith(sessionName + '='));
   if (url.pathname !== recoveryRequest && session && /^[A-Za-z0-9_-]{1,256}$/.test(session.slice(sessionName.length + 1))) headers.set('Cookie', session);
-  if (url.pathname.startsWith('/api/admin/') && !headers.has('Cookie')) return apiError(req, 'Log ind igen.', 401);
+  if ((url.pathname.startsWith('/api/admin/') || url.pathname.startsWith('/api/team/')) && !headers.has('Cookie')) return apiError(req, 'Log ind igen.', 401);
 
   if (write) {
     if (req.headers.get('Origin') !== webOrigin) return apiError(req, 'Ugyldig oprindelse.', 403);
     if (req.headers.get('Content-Type')?.split(';')[0]?.trim().toLowerCase() !== 'application/json') return apiError(req, 'Send data som JSON.', 415);
-    if (Number(req.headers.get('Content-Length')) > maxBody) return apiError(req, 'Beskeden er for stor.', 413);
+    const bodyLimit = url.pathname === '/api/team/files' ? 7 * 1024 * 1024 : maxBody;
+    if (Number(req.headers.get('Content-Length')) > bodyLimit) return apiError(req, 'Beskeden er for stor.', 413);
     if ((accountWrites.has(url.pathname) || messageWrite.test(url.pathname)) && !headers.has('Cookie')) return apiError(req, 'Log ind igen.', 401);
     if (url.pathname !== '/api/login' && url.pathname !== recoveryRequest) {
       const csrf = req.headers.get('X-CSRF-Token');
@@ -115,7 +121,7 @@ async function proxy(req: Request, env: Env, url: URL, write: boolean) {
       method: req.method, headers, body: write ? req.body : null, redirect: 'manual', cache: 'no-store',
     });
     if (upstream.status >= 300 && upstream.status < 400) return apiError(req, 'Mailserveren svarede uventet.', 502);
-    const download = url.pathname.includes('/attachments/') && upstream.ok;
+    const download = (url.pathname.includes('/attachments/') || teamDownload.test(url.pathname)) && upstream.ok;
     const out = responseHeaders(download ? 'application/octet-stream' : 'application/json; charset=utf-8');
     if (!download && !upstream.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) {
       if (upstream.status === 413) return apiError(req, 'Beskeden er for stor.', 413);
@@ -151,9 +157,9 @@ async function serveWebmail(req: Request, env: Env, url: URL, read: boolean): Pr
   const path = url.pathname;
   const assistant = await aiRoute(req, env, url);
   if (assistant) return assistant;
-  const isReadApi = readApi.test(path) || adminReads.has(path);
-  const isWriteApi = writeApi.has(path) || messageWrite.test(path);
-  if (env.WEBMAIL_ENABLED !== '1' && (path === '/' || path === '/administration' || bookmarks.has(path) || path === '/SOGo/connect' || isReadApi || isWriteApi)) {
+  const isReadApi = readApi.test(path) || adminReads.has(path) || teamRead.test(path);
+  const isWriteApi = writeApi.has(path) || messageWrite.test(path) || teamWrite.test(path);
+  if (env.WEBMAIL_ENABLED !== '1' && (path === '/' || path === '/team' || path === '/administration' || bookmarks.has(path) || path === '/SOGo/connect' || isReadApi || isWriteApi)) {
     if (isReadApi || isWriteApi) return apiError(req, 'Webmail er midlertidigt lukket.', 503);
     const page = read && req.headers.get('Accept')?.includes('text/html');
     return localResponse(req, page ? unavailablePage : 'Webmail er midlertidigt lukket.', 503, page ? 'text/html; charset=utf-8' : undefined);
@@ -171,6 +177,7 @@ async function serveWebmail(req: Request, env: Env, url: URL, read: boolean): Pr
     return response;
   }
   if (path === '/') return asset(req, env, '/inbox.html', true);
+  if (path === '/team') return asset(req, env, '/team.html', true);
   if (path === '/administration') return administrationPage(req, env);
   if (bookmarks.has(path)) return redirect('/');
   if (path === '/robots.txt') return localResponse(req, 'User-agent: *\nDisallow: /\n', 200);

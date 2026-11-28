@@ -5,6 +5,8 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {pathToFileURL, fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
+import {createTeamFixture} from './fixtures/team.mjs';
+const teamFixture = createTeamFixture();
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const temporary = await mkdtemp(join(tmpdir(), 'veyro-mail-preview-'));
@@ -30,6 +32,12 @@ const server = createServer(async (request, response) => {
         response.writeHead(401, {'Content-Type':'application/json', 'Cache-Control':'no-store'});
         response.end(JSON.stringify({error:'Kun lokal loginvisning.'}));
         return;
+      }
+      if (url.pathname.startsWith('/api/team/') || url.pathname === '/api/session') {
+        const chunks = []; for await (const chunk of request) chunks.push(chunk);
+        const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : {};
+        const teamResponse = await teamFixture.handle(url,request.method,body,request.headers);
+        response.writeHead(teamResponse.status,Object.fromEntries(teamResponse.headers)); response.end(Buffer.from(await teamResponse.arrayBuffer())); return;
       }
       const {newsletter} = await import('./fixtures/rich-newsletter.mjs');
       const item = {id:'1.2',from:'Nord Studio <nyheder@example.test>',to:'test@veyro.dk',subject:'Nyt fra studiet',date:'2026-11-27T12:00:00Z',unread:false,labels:[],attachments:[],...newsletter};
