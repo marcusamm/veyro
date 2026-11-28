@@ -30,6 +30,10 @@ det er ikke et løfte om adgang til lukkede udbydere, alle virksomheds-politikke
 eller alle funktioner fra samtlige konkurrerende mailprodukter. Kalender,
 kontaktsynkronisering, tale/video og fuld offline-mailarkivering indgår ikke i
 denne version. Ingen test har sendt rigtig mail eller beskeder til kollegaer.
+Google-login er også afprøvet med ejerens samtykke på Apple Silicon: kontoen
+blev hentet automatisk, den eksisterende profil blev genbrugt, mapper og
+indbakkens første side blev vist, og login blev bevaret ved fuld genstart.
+Afsendelse og fornyelse efter tokenudløb er ikke afprøvet med den rigtige konto.
 
 Gmail er registreret som en Google Desktop-app i External/Testing. Kun navngivne
 testbrugere kan forbinde, og Google kræver normalt nyt samtykke efter syv dage i
