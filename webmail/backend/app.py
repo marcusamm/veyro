@@ -28,6 +28,7 @@ import mailstore
 import org_admin_client
 import remembered_sessions
 import snooze
+import team
 from mailstore import MailError
 
 app = Flask(__name__)
@@ -186,6 +187,10 @@ def credential_version(address):
 
 @app.before_request
 def gateway():
+    # Only the authenticated document endpoint accepts base64-encoded 5 MiB files.
+    # All other endpoints retain the default 256 KiB limit.
+    if request.path == "/api/team/files" and request.method == "POST":
+        request.max_content_length = team.UPLOAD_LIMIT
     token = Path("/run/veyro/origin-token").read_text().strip()
     if len(token) < 48 or not safe_equal(request.headers.get("X-Veyro-Origin-Token"), token):
         raise MailError("Adgang afvist.", 403)
@@ -266,6 +271,7 @@ def authenticated_session(sid):
 
 
 revoke_ai_for_mailbox = ai_connector.install(app, credential_version, throttle, KEY)
+team.install(app, throttle)
 
 
 @app.after_request

@@ -38,9 +38,21 @@ jobs:
       - run: |
           python -m pip install -r webmail/backend/requirements.txt
           python -m unittest discover -s webmail/backend -p 'test_*.py'
+      - name: Kontrollér dokumentgrænser gennem Caddy
+        shell: bash
+        run: |
+          testdir="$RUNNER_TEMP/veyro-caddy-test"
+          mkdir -p "$testdir"
+          cd "$testdir"
+          base=https://github.com/caddyserver/caddy/releases/download/v2.10.2
+          curl --fail --silent --show-error --location "$base/caddy_2.10.2_linux_amd64.tar.gz" -o caddy_2.10.2_linux_amd64.tar.gz
+          curl --fail --silent --show-error --location "$base/caddy_2.10.2_checksums.txt" -o checksums.txt
+          grep ' caddy_2.10.2_linux_amd64.tar.gz$' checksums.txt | sha512sum --check -
+          tar -xzf caddy_2.10.2_linux_amd64.tar.gz caddy
+          CADDY_BIN="$testdir/caddy" python "$GITHUB_WORKSPACE/webmail/origin/test_body_limits.py"
       - run: |
           npx playwright install --with-deps chromium webkit
-          node --test webmail/context-menu.browser.mjs webmail/rich-layout.browser.mjs webmail/administration.browser.mjs webmail/mobile-login.browser.mjs
+          node --test webmail/context-menu.browser.mjs webmail/rich-layout.browser.mjs webmail/administration.browser.mjs webmail/mobile-login.browser.mjs webmail/team.browser.mjs
       - name: Udgiv webmail
         if: github.event_name != 'pull_request'
         run: npx wrangler deploy --config webmail/wrangler.toml
