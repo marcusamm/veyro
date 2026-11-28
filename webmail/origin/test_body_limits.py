@@ -16,6 +16,7 @@ import tempfile
 import threading
 import time
 import unittest
+import uuid
 
 
 class BodyLimits(unittest.TestCase):
@@ -136,12 +137,19 @@ class BodyLimits(unittest.TestCase):
             connection.close()
 
     def test_upload_accepts_exact_7mib_and_strips_proxy_path_and_untrusted_headers(self):
-        status, body = self.request("POST", "/webmail-api/api/team/files", 7 * 1024 * 1024)
-        self.assertEqual(status, 200)
-        self.assertEqual(json.loads(body), {"path": "/api/team/files", "bytes": 7 * 1024 * 1024})
-        headers = {key.lower(): value for key, value in self.calls[-1][3].items()}
-        for name in ("authorization", "x-original-url", "x-rewrite-url"):
-            self.assertNotIn(name, headers)
+        # The exact path matcher must keep its upload allowance when a query
+        # marker is present, and stripping the proxy prefix must retain it.
+        for query in ("", "?body-limit-probe=" + uuid.uuid4().hex):
+            with self.subTest(query=query):
+                path = "/webmail-api/api/team/files" + query
+                upstream_path = path.removeprefix("/webmail-api")
+                status, body = self.request("POST", path, 7 * 1024 * 1024)
+                self.assertEqual(status, 200)
+                self.assertEqual(json.loads(body), {"path": upstream_path, "bytes": 7 * 1024 * 1024})
+                call = next(item for item in reversed(self.calls) if item[:2] == ("POST", upstream_path))
+                headers = {key.lower(): value for key, value in call[3].items()}
+                for name in ("authorization", "x-original-url", "x-rewrite-url"):
+                    self.assertNotIn(name, headers)
 
     def test_oversize_content_length_is_rejected_before_reading_or_contacting_upstream(self):
         # Send headers only: this must not wait for a body or open an upstream
@@ -149,17 +157,21 @@ class BodyLimits(unittest.TestCase):
         for path, limit in [("/webmail-api/api/team/files", 7 * 1024 * 1024),
                             ("/webmail-api/api/team/posts", 256 * 1024)]:
             with self.subTest(path=path):
-                started = len(self.started)
+                # Other tests can leave an aborted upload reaching the upstream
+                # asynchronously. Assert against this unique request, not the
+                # global count of all requests handled by the shared server.
+                target = path + "?body-limit-probe=" + uuid.uuid4().hex
+                upstream_request = ("POST", target.removeprefix("/webmail-api"))
                 connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=2)
                 try:
-                    connection.putrequest("POST", path)
+                    connection.putrequest("POST", target)
                     connection.putheader("Content-Type", "application/json")
                     connection.putheader("Content-Length", str(limit + 1))
                     connection.endheaders()
                     response = connection.getresponse()
                     self.assertEqual(response.status, 413)
                     response.read()
-                    self.assertEqual(len(self.started), started)
+                    self.assertNotIn(upstream_request, self.started)
                 finally:
                     connection.close()
 
