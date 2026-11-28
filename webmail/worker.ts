@@ -8,7 +8,7 @@ const staticFiles = new Map([
   ['/inbox.css', '/inbox.css'], ['/webmail.css', '/inbox.css'], ['/inbox.js', '/inbox.js'],
   ['/favicon.svg', '/favicon.svg'], ['/manrope.woff2', '/manrope.woff2'], ['/Manrope-OFL.txt', '/Manrope-OFL.txt'],
   ['/administration.css', '/administration.css'], ['/administration.js', '/administration.js'],
-  ['/message-frame.js', '/message-frame.js'],
+  ['/message-frame.js', '/message-frame.js'], ['/organizer.js', '/organizer.js'],
   ['/team.css', '/team.css'], ['/team.js', '/team.js'],
 ]);
 const installers = new Map([
@@ -29,6 +29,9 @@ const accountWrites = new Set(['/api/password', '/api/recovery/enroll/start', '/
 const writeApi = new Set(['/api/login', '/api/logout', '/api/send', recoveryRequest, ...accountWrites]);
 const messageWrite = /^\/api\/messages\/[0-9]{1,10}\.[0-9]{1,10}\/(?:action|snooze)$/;
 const teamId = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const organizerReads = new Set(['/api/labels', '/api/scheduled', '/api/subscriptions']);
+const organizerWrites = new Set(['/api/labels', '/api/scheduled']);
+const cancelScheduled = new RegExp('^/api/scheduled/' + teamId + '/cancel$');
 const teamDownload = new RegExp('^/api/team/files/' + teamId + '(?:/download)?$');
 const teamRead = new RegExp('^/api/team/(?:bootstrap|messages|posts|files|files/' + teamId + '(?:/download)?)$');
 const teamWrite = new RegExp('^/api/team/(?:channels|messages|read|posts|files|messages/' + teamId + '/delete|posts/' + teamId + '/(?:update|delete)|files/' + teamId + '/delete)$');
@@ -86,7 +89,7 @@ async function proxy(req: Request, env: Env, url: URL, write: boolean) {
   if (ip && /^[0-9a-f:.]{2,45}$/i.test(ip)) headers.set('X-Veyro-Client-IP', ip);
   const session = (req.headers.get('Cookie') || '').split(';').map(c => c.trim()).find(c => c.startsWith(sessionName + '='));
   if (url.pathname !== recoveryRequest && session && /^[A-Za-z0-9_-]{1,256}$/.test(session.slice(sessionName.length + 1))) headers.set('Cookie', session);
-  if ((url.pathname.startsWith('/api/admin/') || url.pathname.startsWith('/api/team/')) && !headers.has('Cookie')) return apiError(req, 'Log ind igen.', 401);
+  if ((url.pathname.startsWith('/api/admin/') || url.pathname.startsWith('/api/team/') || organizerReads.has(url.pathname) || cancelScheduled.test(url.pathname)) && !headers.has('Cookie')) return apiError(req, 'Log ind igen.', 401);
 
   if (write) {
     if (req.headers.get('Origin') !== webOrigin) return apiError(req, 'Ugyldig oprindelse.', 403);
@@ -99,7 +102,7 @@ async function proxy(req: Request, env: Env, url: URL, write: boolean) {
       if (!csrf || csrf.length > 256) return apiError(req, 'Log ind igen.', 403);
       headers.set('X-CSRF-Token', csrf);
     }
-    if (url.pathname === '/api/send') {
+    if (url.pathname === '/api/send' || url.pathname === '/api/scheduled') {
       const operationId = req.headers.get('Idempotency-Key');
       if (operationId !== null) {
         if (!/^[A-Za-z0-9_-]{16,100}$/.test(operationId)) return apiError(req, 'Ugyldig afsendelsesnøgle.', 400);
@@ -162,8 +165,8 @@ async function serveWebmail(req: Request, env: Env, url: URL, read: boolean): Pr
   const path = url.pathname;
   const assistant = await aiRoute(req, env, url);
   if (assistant) return assistant;
-  const isReadApi = readApi.test(path) || adminReads.has(path) || teamRead.test(path);
-  const isWriteApi = writeApi.has(path) || messageWrite.test(path) || teamWrite.test(path);
+  const isReadApi = readApi.test(path) || organizerReads.has(path) || adminReads.has(path) || teamRead.test(path);
+  const isWriteApi = writeApi.has(path) || organizerWrites.has(path) || cancelScheduled.test(path) || messageWrite.test(path) || teamWrite.test(path);
   if (env.WEBMAIL_ENABLED !== '1' && (path === '/' || path === '/team' || path === '/administration' || bookmarks.has(path) || path === '/SOGo/connect' || isReadApi || isWriteApi)) {
     if (isReadApi || isWriteApi) return apiError(req, 'Webmail er midlertidigt lukket.', 503);
     const page = read && req.headers.get('Accept')?.includes('text/html');

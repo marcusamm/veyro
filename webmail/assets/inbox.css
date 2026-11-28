@@ -260,3 +260,39 @@ dialog::backdrop { background: rgb(37 32 23 / 37%); }
   .mail-art { max-height: 14rem; }
 }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Company mail navigation in the browser and the desktop company's mail tab. */
+.mobile-folders { display: none; }
+.folder-disclosure { color: var(--muted); font-size: .8rem; }
+.folder-disclosure[aria-expanded=true] .glyph { transform: rotate(180deg); }
+@media (max-width: 46rem) {
+  .mobile-folders { display: inline-flex; justify-content: center; align-items: center; margin-left: auto; }
+  .folders { flex-wrap: wrap; overflow: auto; max-height: 55dvh; }
+  .folders:not([data-expanded=true]) > :is(#folders,#sidebar-labels) { display: none; }
+  .folders[data-expanded=true] > #folders { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); width: 100%; }
+  .folder-extra:not([hidden]) { display: contents; }
+  .folders .folder { min-width: 0; justify-content: flex-start; }
+  .folders .folder-label { position: static; width: auto; height: auto; clip-path: none; }
+}
+
+.organizer-row,.organizer-info{padding:15px 17px;border-bottom:1px solid var(--line,#dedbd2);font-size:13px}
+.organizer-row{display:grid;justify-items:start;gap:5px;overflow-wrap:anywhere}
+.organizer-row small{color:var(--muted,#67635c)}
+.organizer-row .secondary,.organizer-link{margin-top:5px}
+#sidebar-labels { border-top: 1px solid var(--line); margin-top: .75rem; padding-top: .9rem; }
+#sidebar-labels .folder-label { min-width: 0; }
+.letter-tools { display: flex; gap: .25rem; align-items: center; }
+.reader-labels { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap; }
+.label-choices { display: grid; max-height: 14rem; overflow-y: auto; }
+.label-choices label { display: flex; gap: .65rem; align-items: center; min-height: 2.25rem; overflow-wrap: anywhere; cursor: pointer; }
+.account-form .label-choices input { width: 1.1rem; height: 1.1rem; min-height: 0; accent-color: var(--accent); }
+.label-input-row, .managed-label { display: flex; align-items: center; gap: .5rem; }
+.label-input-row input { min-width: 0; flex: 1; }
+#managed-labels { max-height: 13rem; overflow-y: auto; margin: .7rem 0 1rem; }
+.managed-label { border-bottom: 1px solid var(--line); padding: .35rem 0; }
+.managed-label strong { flex: 1; overflow-wrap: anywhere; }
+.managed-label button { min-height: 2rem; text-decoration: underline; }
+@media (max-width: 46rem) {
+  #sidebar-labels { width: 100%; margin: 0; padding: .4rem 0; }
+  .letter-head { flex-wrap: wrap; }
+}

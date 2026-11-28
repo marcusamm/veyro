@@ -8,6 +8,7 @@
   <title>Veyro Mail</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/inbox.css">
+  <script src="/organizer.js" defer></script>
   <script src="/inbox.js" defer></script>
 </head>
 <body class="entry">
@@ -55,15 +56,17 @@
   <main id="workspace" class="workspace" data-reader="false" hidden>
     <nav class="folders" aria-label="Mailmapper">
       <button type="button" id="compose" class="primary compose"><span class="glyph" data-icon="write" aria-hidden="true"></span><span>Skriv mail</span></button>
+      <button id="choose-mail-view" class="secondary mobile-folders" type="button" aria-expanded="false">Mapper og etiketter</button>
       <h2>Postkasse</h2>
       <div id="folders"></div>
+      <section id="sidebar-labels" aria-label="Etiketter" hidden></section>
     </nav>
     <section class="mailbox" aria-labelledby="folder-title">
       <div class="list-head">
         <div class="folder-summary"><h1 id="folder-title" tabindex="-1">Indbakke</h1><span id="mail-count"></span><button id="refresh" type="button" class="icon-button" title="Opdater mappen" aria-label="Opdater mappen"><span class="glyph" data-icon="refresh" aria-hidden="true"></span></button></div>
         <label class="search"><span class="glyph" data-icon="search" aria-hidden="true"></span><input id="search" type="search" placeholder="Søg i mappen" aria-label="Søg i mappen" autocomplete="off" maxlength="180"></label>
         <div class="list-filters">
-          <label><span class="visually-hidden">Visning i mappen</span><select id="folder-view"><option value="">Alle mails</option><optgroup id="category-filters" label="Faner"><option value="primary">Primær</option><option value="updates">Opdateringer</option><option value="social">Sociale medier</option><option value="promotions">Promoveringer</option></optgroup><optgroup label="Organisering"><option value="tasks">Huskeliste</option><option value="muted">Skjulte mails</option><option value="snoozed" id="snoozed-option">Udsatte mails</option></optgroup></select></label>
+          <label><span class="visually-hidden">Visning i mappen</span><select id="folder-view"><option value="">Alle mails</option><optgroup id="category-filters" label="Faner"><option value="primary">Primær</option><option value="purchases">Køb</option><option value="updates">Opdateringer</option><option value="social">Sociale medier</option><option value="forums">Fora</option><option value="promotions">Promoveringer</option></optgroup><optgroup label="Organisering"><option value="tasks">Huskeliste</option><option value="muted">Skjulte mails</option><option value="snoozed" id="snoozed-option">Udsatte mails</option></optgroup></select></label>
           <label id="label-filter-wrap" hidden><span class="visually-hidden">Filtrér efter etiket</span><select id="label-filter"></select></label>
           <button id="sender-filter" class="filter-chip" type="button" hidden></button>
         </div>
@@ -92,11 +95,22 @@
   </dialog>
   <dialog id="label-dialog" class="account-dialog" aria-labelledby="label-title">
     <form id="label-form" class="account-form">
-      <h2 id="label-title">Tilføj etiket</h2>
-      <label for="new-label">Etikettens navn</label>
-      <input id="new-label" type="text" autocomplete="off" maxlength="40" required>
+      <h2 id="label-title">Etiketter på mailen</h2>
+      <div id="label-choices" class="label-choices"></div>
+      <label for="new-label">Ny etiket</label>
+      <div class="label-input-row"><input id="new-label" type="text" autocomplete="off" maxlength="40"><button id="stage-label" type="button" class="secondary">Tilføj</button></div>
       <p id="label-error" class="error" role="alert" hidden></p>
-      <div class="compose-foot"><button type="button" id="cancel-label" class="secondary">Annuller</button><button id="save-label" type="submit" class="primary">Tilføj</button></div>
+      <div class="compose-foot"><button type="button" id="cancel-label" class="secondary">Annuller</button><button id="save-label" type="submit" class="primary">Gem</button></div>
+    </form>
+  </dialog>
+  <dialog id="label-manager" class="account-dialog" aria-labelledby="label-manager-title">
+    <h2 id="label-manager-title">Administrer etiketter</h2>
+    <div id="managed-labels"></div>
+    <form id="catalog-form" class="account-form">
+      <label id="catalog-prompt" for="catalog-name">Ny etiket</label>
+      <input id="catalog-name" type="text" autocomplete="off" maxlength="40" required>
+      <p id="catalog-error" class="error" role="alert" hidden></p>
+      <div class="compose-foot"><button type="button" id="close-catalog" class="secondary">Luk</button><button id="save-catalog" type="submit" class="primary">Opret</button></div>
     </form>
   </dialog>
   <dialog id="forgot-dialog" class="account-dialog" aria-labelledby="forgot-title" aria-describedby="forgot-hint">
@@ -158,7 +172,8 @@
       <label for="body">Besked</label><textarea id="body" rows="8" maxlength="500000" required></textarea>
       <p id="forward-files" class="file-note" hidden></p>
       <p class="error" id="send-error" role="alert" hidden></p>
-      <div class="compose-foot"><button type="button" id="discard" class="text-button">Kassér kladde</button><button id="send" type="submit" class="primary"><span class="glyph" data-icon="sent" aria-hidden="true"></span>Send mail</button></div>
+      <div id="schedule-controls" hidden><label for="schedule-at">Send på dette tidspunkt</label><input id="schedule-at" type="datetime-local"></div>
+      <div class="compose-foot"><button type="button" id="discard" class="text-button">Kassér kladde</button><button id="schedule-toggle" type="button" class="secondary" aria-expanded="false" aria-controls="schedule-controls">Planlæg</button><button id="send" type="submit" class="primary"><span class="glyph" data-icon="sent" aria-hidden="true"></span><span id="send-label">Send mail</span></button></div>
     </form>
   </dialog>
   <div id="notice" class="notice" role="status" hidden></div>

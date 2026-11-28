@@ -34,6 +34,15 @@
     plus: '<path d="M12 4v16M4 12h16"/>',
     clip: '<path d="m9 13 6-6a2 2 0 0 1 3 3l-8 8a4 4 0 1 1-6-6l9-9"/>',
     eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+    starred: '<path d="m12 3 2.8 5.8 6.4.9-4.6 4.6 1.1 6.4-5.7-3-5.7 3 1.1-6.4-4.6-4.6 6.4-.9z"/>',
+    important: '<path d="M3 6h12l6 6-6 6H3l5-6z"/>',
+    purchases: '<path d="M4 8h16l-1 13H5zM8 8V6a4 4 0 0 1 8 0v2"/>',
+    social: '<circle cx="10" cy="7" r="3"/><path d="M3 20v-2a7 7 0 0 1 14 0v2zM17 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 5"/>',
+    updates: '<circle cx="12" cy="12" r="9"/><path d="M12 10v6m0-9v.3"/>',
+    forums: '<path d="M3 4h14v10H7l-4 4zM9 17h8l4 4V9h-2"/>',
+    promotions: '<path d="M3 11V4h7l11 11-7 7z"/><circle cx="7" cy="8" r="1"/>',
+    all: '<path d="M3 8h18v12H3zM5 5h14m-13 7 6 4 6-4"/>',
+    subscriptions: '<path d="M3 5h18v13H3zM3 6l9 7 9-7M16 21h6"/>',
     down: '<path d="m6 9 6 6 6-6"/>',
   };
   function icon(name) {
@@ -47,6 +56,21 @@
   document.querySelectorAll('[data-icon]').forEach(el => el.replaceWith(icon(el.dataset.icon)));
 
   const folderNames = {inbox: 'Indbakke', sent: 'Sendt', drafts: 'Kladder', archive: 'Arkiv', junk: 'Spam', trash: 'Papirkurv'};
+  const companyViews = {
+    starred: ['Stjernemarkerede', 'starred'], snoozed: ['Udsatte', 'clock'], important: ['Vigtige', 'important'],
+    purchases: ['Køb', 'purchases'], social: ['Sociale medier', 'social'], updates: ['Opdateringer', 'updates'],
+    forums: ['Fora', 'forums'], promotions: ['Promoveringer', 'promotions'], scheduled: ['Planlagt', 'clock'],
+    all: ['Alle mails', 'all'], subscriptions: ['Abonnementer', 'subscriptions']
+  };
+  const primaryNav = ['inbox', 'starred', 'snoozed', 'important', 'sent', 'drafts', 'purchases', 'social', 'updates', 'forums', 'promotions'];
+  const extraNav = ['scheduled', 'all', 'archive', 'junk', 'trash', 'subscriptions'];
+  let sidebarView = '', sidebarLabel = '', extraExpanded = true;
+  const folderNav = byId('folders').closest('nav');
+  function showMobileFolders(show) {
+    folderNav.dataset.expanded = String(show);
+    byId('choose-mail-view').setAttribute('aria-expanded', String(show));
+  }
+  byId('choose-mail-view').onclick = () => showMobileFolders(folderNav.dataset.expanded !== 'true');
   const shortDate = new Intl.DateTimeFormat('da-DK', {day: 'numeric', month: 'short'});
   const dateTime = new Intl.DateTimeFormat('da-DK', {dateStyle: 'long', timeStyle: 'short'});
   const clock = new Intl.DateTimeFormat('da-DK', {timeStyle: 'short'});
@@ -56,6 +80,7 @@
   let listRequest, detailRequest, folderRequest, retryList, searchTimer, noticeTimer;
   let sending = false;
   let sendAttempt = null;
+  let catalog = {labels:[], hidden:[], pending:[]};
   let readerItem = null, senderFilter = '', availableLabels = [];
   let pendingLink = new URLSearchParams(location.hash.slice(1));
 
@@ -101,6 +126,7 @@
   }
   function resetDraft() {
     byId('draft').reset();
+    toggleSchedule(false);
     reply = null; sendAttempt = null;
     byId('forward-files').hidden = true;
     byId('body').required = true;
@@ -114,10 +140,13 @@
   byId('show-password').onclick = () => revealPassword(byId('password').type === 'password');
   function loggedOut(reason = '') {
     session = null;
+    sidebarView = sidebarLabel = ''; extraExpanded = true; showMobileFolders(false);
     closeMenu(false);
     if (byId('label-dialog').open) byId('label-dialog').close();
     if (byId('snooze-dialog').open) byId('snooze-dialog').close();
     labelTarget = snoozeTarget = null;
+    if (byId('label-manager').open) byId('label-manager').close();
+    catalog = {labels:[], hidden:[], pending:[]};
     readerItem = null; senderFilter = ''; availableLabels = [];
     byId('account').open = false;
     if (recoveryDialog.open) recoveryDialog.close();
@@ -144,7 +173,7 @@
   }
   function loggedIn(data) {
     if (!data.email || !data.csrfToken) throw new ApiError('Postkassen returnerede en ugyldig session.', 502);
-    session = {email: data.email, csrfToken: data.csrfToken};
+    session = {email: data.email, csrfToken: data.csrfToken, canManageLabels: data.canManageLabels === true};
     byId('open-recovery-settings').hidden = data.canManageRecovery === false;
     byId('open-administration').hidden = data.canManageOrganizations !== true;
     if (forgotDialog.open) forgotDialog.close();
@@ -155,6 +184,7 @@
     byId('account').hidden = byId('workspace').hidden = false;
     clearReader();
     loadFolders();
+    refreshLabelCatalog().catch(error => notify(message(error)));
   }
   async function connect() {
     byId('connect-again').hidden = true;
@@ -344,21 +374,57 @@
     } finally { controls.forEach(el => { el.disabled = false; }); }
   };
   function nameOf(f) { return Object.hasOwn(folderNames, f.role) ? folderNames[f.role] : f.name; }
+  function selectedCompanyLabel() { return sidebarView === 'labels' ? sidebarLabel : ''; }
+  function sourceOf(item) { return item?.folder ? folders.find(f => f.id === item.folder) : folder; }
+  function mailKey(item) { return JSON.stringify([item.folder || folder?.id, item.id]); }
+  function selectCompanyLabel(label) {
+    const inbox = folders.find(f => f.role === 'inbox');
+    if (inbox) chooseFolder(inbox, 'labels', label);
+  }
+  function folderButton(id, title, glyph, current, click, unread) {
+    const button = node('button', 'folder');
+    button.type = 'button'; button.dataset.id = id; button.title = title;
+    button.setAttribute('aria-current', String(current));
+    button.setAttribute('aria-label', title + (unread ? ', ' + count.format(unread) + ' ulæste' : ''));
+    button.append(icon(glyph), node('span', 'folder-label', title));
+    if (unread > 0) button.append(node('span', 'folder-count', count.format(unread)));
+    button.onclick = click;
+    return button;
+  }
   function drawFolders() {
-    const focused = document.activeElement?.closest('#folders .folder')?.dataset.id;
-    byId('folders').replaceChildren(...folders.map(f => {
-      const button = node('button', 'folder');
-      button.type = 'button';
-      button.dataset.id = f.id;
-      button.title = nameOf(f);
-      button.setAttribute('aria-current', String(f.id === folder?.id));
-      button.setAttribute('aria-label', nameOf(f) + (f.unread ? ', ' + count.format(f.unread) + ' ulæste' : ''));
-      button.append(icon(f.role), node('span', 'folder-label', nameOf(f)));
-      if (f.unread > 0) button.append(node('span', 'folder-count', count.format(f.unread)));
-      button.onclick = () => chooseFolder(f);
-      return button;
-    }));
-    if (focused) Array.from(byId('folders').children).find(b => b.dataset.id === focused)?.focus({preventScroll: true});
+    const nav = byId('folders');
+    const focused = nav.contains(document.activeElement) ? document.activeElement.dataset.id : null;
+    const inbox = folders.find(f => f.role === 'inbox');
+    const physical = f => folderButton(f.id, nameOf(f), f.role,
+      !sidebarView && folder?.id === f.id, () => chooseFolder(f), f.unread);
+    const used = new Set();
+    const fragment = document.createDocumentFragment();
+    function addView(id, parent) {
+      if (Object.hasOwn(companyViews, id)) {
+        if (!inbox) return;
+        const [name, glyph] = companyViews[id];
+        parent.append(folderButton('view:' + id, name, glyph, sidebarView === id, () => chooseFolder(inbox, id)));
+      } else {
+        const mailbox = folders.find(f => f.role === id);
+        if (mailbox) { used.add(mailbox.id); parent.append(physical(mailbox)); }
+      }
+    }
+    primaryNav.forEach(id => addView(id, fragment));
+    const extra = node('div', 'folder-extra'); extra.id = 'company-more-views';
+    extraNav.forEach(id => addView(id, extra));
+    folders.filter(f => !used.has(f.id)).forEach(f => extra.append(physical(f)));
+    if (extra.childElementCount) {
+      const more = folderButton('more', extraExpanded ? 'Vis færre' : 'Vis flere', 'down', false, () => {
+        extraExpanded = !extraExpanded; drawFolders();
+      });
+      more.removeAttribute('aria-current'); more.classList.add('folder-disclosure');
+      more.setAttribute('aria-expanded', String(extraExpanded)); more.setAttribute('aria-controls', extra.id);
+      extra.hidden = !extraExpanded;
+      fragment.append(more, extra);
+    }
+    nav.replaceChildren(fragment);
+    if (focused) Array.from(nav.querySelectorAll('button')).find(b => b.dataset.id === focused)?.focus({preventScroll:true});
+    drawCompanyLabels();
   }
   function listState(text, retry = null) {
     byId('list-state').textContent = text;
@@ -382,7 +448,7 @@
         const target = linkedOwner === session.email && folders.find(f => f.id === linkedFolder);
         if (target) {
           chooseFolder(target);
-          openMail(linkedMessage);
+          openMail(linkedMessage, target);
           return;
         }
         notify('Mailen i linket tilhører en anden eller utilgængelig postkasse.');
@@ -400,14 +466,18 @@
       if (!request.signal.aborted && !countsOnly) listState(message(error), loadFolders);
     }
   }
-  function chooseFolder(f) {
+  function chooseFolder(f, view = '', label = '') {
     clearTimeout(searchTimer);
+    sidebarView = view; sidebarLabel = label;
+    showMobileFolders(false);
     senderFilter = ''; availableLabels = [];
     folder = f; byId('search').value = ''; byId('folder-view').value = '';
-    byId('label-filter').replaceChildren(); drawFilters();
-    byId('folder-title').textContent = nameOf(f);
-    byId('back-folder').textContent = 'Tilbage til ' + nameOf(f);
-    document.title = nameOf(f) + ' · Veyro Mail';
+    if (Object.hasOwn(categories,view) || view === 'snoozed') byId('folder-view').value = view;
+    byId('label-filter').replaceChildren(); drawFilters(label);
+    const title = view === 'labels' ? companyLabelName(label) : companyViews[view]?.[0] || nameOf(f);
+    byId('folder-title').textContent = title;
+    byId('back-folder').textContent = 'Tilbage til ' + title;
+    document.title = title + ' · Veyro Mail';
     drawFolders();
     loadList();
   }
@@ -423,14 +493,17 @@
     const match = /^\s*(.*?)\s*<([^<>]+)>\s*$/.exec(text);
     return match ? {name: match[1].replace(/^"|"$/g, '') || match[2], address: match[2]} : {name: text, address: text};
   }
-  const categories = {primary: 'Primær', updates: 'Opdateringer', social: 'Sociale medier', promotions: 'Promoveringer'};
+  const categories = {primary: 'Primær', purchases: 'Køb', forums: 'Fora', updates: 'Opdateringer', social: 'Sociale medier', promotions: 'Promoveringer'};
   function drawFilters(label = '') {
     const select = byId('label-filter');
-    const values = [...new Set([...availableLabels, ...(label ? [label] : [])])];
+    const values = visibleLabels(label ? [label] : []);
     select.replaceChildren(new Option('Alle etiketter', ''), ...values.map(value => new Option(value, value)));
     select.value = label;
     byId('label-filter-wrap').hidden = !values.length;
     const inbox = folder?.role === 'inbox';
+    byId('folder-view').parentElement.hidden = !!sidebarView;
+    if (sidebarView === 'labels') byId('label-filter-wrap').hidden = true;
+    drawCompanyLabels();
     byId('category-filters').disabled = byId('category-filters').hidden = !inbox;
     byId('snoozed-option').disabled = byId('snoozed-option').hidden = !inbox;
     const chip = byId('sender-filter');
@@ -450,16 +523,21 @@
   }
   function messageRow(item) {
     const li = node('li');
-    li.dataset.mail = item.id;
+    li.dataset.mail = item.id; li.dataset.key = mailKey(item);
     const b = node('button', 'message-row' + (item.unread ? ' unread' : ''));
-    b.type = 'button'; b.dataset.id = item.id;
-    b.setAttribute('aria-pressed', String(item.id === selected));
+    b.type = 'button'; b.dataset.id = item.id; b.dataset.key = mailKey(item); b.dataset.folder = item.folder;
+    b.setAttribute('aria-pressed', String(mailKey(item) === selected));
     b.setAttribute('aria-controls', 'paper');
-    const sent = folder.role === 'sent' || folder.role === 'drafts';
+    const sent = ['sent', 'drafts'].includes(sourceOf(item)?.role);
     const author = person(sent ? item.to : item.from).name;
     b.append(node('span', 'row-sender', (sent ? 'Til ' : '') + (author || 'Ukendt')));
     const stamp = node('span', 'row-time');
-    if (item.hasAttachments) { const clip = icon('clip'); clip.removeAttribute('aria-hidden'); clip.setAttribute('role','img'); clip.setAttribute('aria-label','Vedhæftede filer'); stamp.append(clip); }
+    for (const [visible, glyph, description] of [[item.starred, 'starred', 'Stjernemarkeret'], [item.important, 'important', 'Vigtig'], [item.hasAttachments, 'clip', 'Vedhæftede filer']]) {
+      if (!visible) continue;
+      const mark = icon(glyph);
+      mark.removeAttribute('aria-hidden'); mark.setAttribute('role', 'img'); mark.setAttribute('aria-label', description);
+      mark.title = description; stamp.append(mark);
+    }
     stamp.append(node('time', '', dateValue(item.date)));
     b.append(stamp, node('strong', 'row-title', item.subject || '(Intet emne)'));
     if (item.snippet) b.append(node('span', 'row-snippet', item.snippet));
@@ -482,13 +560,30 @@
     if (!folder || (more && !cursor)) return;
     listRequest?.abort();
     const request = listRequest = new AbortController();
+    const special = sidebarView === 'scheduled' || sidebarView === 'subscriptions';
+    byId('search').closest('label').hidden = special;
+    byId('folder-view').closest('.list-filters').hidden = special;
+    if (special) {
+      clearReader(); messages = []; cursor = null; listExtended = false;
+      byId('mail-count').textContent = ''; byId('older').hidden = true;
+      byId('messages').replaceChildren(); listState('');
+      try {
+        await window.VeyroMailOrganizer.render(sidebarView, {api, list:byId('messages'), notice:notify, signal:request.signal});
+      } catch (error) {
+        if (!request.signal.aborted) {
+          byId('messages').replaceChildren();
+          listState(message(error), () => loadList());
+        }
+      }
+      return;
+    }
     const params = new URLSearchParams({folder: folder.id});
     const query = byId('search').value.trim();
     if (query) params.set('q', query);
     if (senderFilter) params.set('sender', senderFilter);
-    const label = byId('label-filter').value;
+    const label = selectedCompanyLabel() || byId('label-filter').value;
     if (label) params.set('label', label);
-    const view = byId('folder-view').value;
+    const view = sidebarView || byId('folder-view').value;
     if (view) params.set(Object.hasOwn(categories, view) ? 'category' : 'view', view);
     if (more) params.set('cursor', cursor);
     else if (!quietly) {
@@ -507,11 +602,16 @@
       availableLabels = result.availableLabels || [];
       drawFilters(label);
       if (quietly) { messages = []; byId('messages').replaceChildren(); }
-      const seen = new Set(messages.map(item => item.id));
+      const seen = new Set(messages.map(mailKey));
       const rows = [];
       for (const item of result.messages || []) {
-        if (seen.has(item.id)) continue;
-        seen.add(item.id); messages.push(item); rows.push(messageRow(item));
+        if (['all','important','starred','labels'].includes(view) && (!item.folder || !sourceOf(item))) {
+          throw new ApiError('Mailens oprindelige mappe mangler. Opdater visningen.', 409);
+        }
+        item.folder ||= folder.id;
+        const key = mailKey(item);
+        if (seen.has(key)) continue;
+        seen.add(key); messages.push(item); rows.push(messageRow(item));
       }
       byId('messages').append(...rows);
       cursor = result.nextCursor || null;
@@ -522,6 +622,7 @@
       if (!request.signal.aborted && !quietly) listState(message(error), () => loadList(more));
     } finally { if (listRequest === request) listRequest = null; }
   }
+  document.addEventListener('veyro:schedule-changed', () => { if (sidebarView === 'scheduled') loadList(); });
   byId('older').onclick = () => loadList(true);
   byId('refresh').onclick = () => loadFolders();
   byId('search').oninput = () => {
@@ -532,10 +633,10 @@
   };
   byId('messages').onclick = event => {
     const row = event.target.closest('button[data-id]');
-    if (row && (row.dataset.id !== selected || (!detailRequest && !readerItem))) openMail(row.dataset.id);
+    if (row && (row.dataset.key !== selected || (!detailRequest && !readerItem))) openMail(row.dataset.id, folders.find(f => f.id === row.dataset.folder));
   };
-  function rowFor(id) {
-    return Array.from(byId('messages').querySelectorAll('.message-row')).find(row => row.dataset.id === String(id));
+  function rowFor(key) {
+    return Array.from(byId('messages').querySelectorAll('.message-row')).find(row => row.dataset.key === key);
   }
   const menu = byId('mail-menu');
   let menuTarget = null, menuAnchor = null, menuPoint = null, submenu = false;
@@ -570,8 +671,10 @@
   }
   function openMenu(item, button, point = null) {
     closeMenu(false);
-    if (!folder || !session) return;
-    menuTarget = {item, source: folder, owner: session};
+    const source = sourceOf(item);
+    if (!session) return;
+    if (!source) return notify('Mailens mappe er ikke længere tilgængelig. Opdater postkassen.');
+    menuTarget = {item, source, owner: session};
     menuAnchor = button; menuPoint = point;
     button.setAttribute('aria-expanded', 'true');
     menu.hidden = false; mainMenu();
@@ -622,6 +725,10 @@
       option('Slet', 'trash', target => changeMail(target, {action: 'trash'}, 'Mailen er flyttet til papirkurven.'));
     option(item.unread ? 'Markér som læst' : 'Markér som ulæst', 'mail', target => changeMail(target,
       {action: item.unread ? 'read' : 'unread'}, item.unread ? 'Markeret som læst.' : 'Markeret som ulæst.'));
+    option(item.starred ? 'Fjern stjerne' : 'Stjernemarkér', 'starred', target => changeMail(target,
+      {action:item.starred ? 'unstar' : 'star'}, item.starred ? 'Stjernen er fjernet.' : 'Mailen er stjernemarkeret.'));
+    option(item.important ? 'Fjern vigtigmarkering' : 'Markér som vigtig', 'important', target => changeMail(target,
+      {action:item.important ? 'unimportant' : 'important'}, item.important ? 'Vigtigmarkeringen er fjernet.' : 'Mailen er markeret som vigtig.'));
     if (source.role === 'inbox') {
       if (byId('folder-view').value === 'snoozed' || item.snoozedUntil) option('Flyt tilbage til indbakken nu', 'inbox',
         target => updateMessage(target, 'snooze', {until: null}, 'Mailen er tilbage i indbakken.'));
@@ -640,7 +747,7 @@
     }), true);
     option('Etiketter', 'tag', () => choices('Etiketter', () => {
       option('Ny etiket', 'plus', openLabel);
-      for (const label of new Set([...availableLabels, ...(item.labels || [])])) {
+      for (const label of visibleLabels(item.labels || [])) {
         const present = item.labels?.includes(label);
         option((present ? 'Fjern ' : 'Tilføj ') + label, present ? 'check' : 'tag', target => changeMail(target,
           {action: present ? 'unlabel' : 'label', label}, present ? 'Etiketten er fjernet.' : 'Etiketten er tilføjet.'));
@@ -678,7 +785,7 @@
     const row = event.target.closest('li[data-mail]');
     const article = event.target.closest('#reader')?.querySelector('.letter');
     if (!row && !article || event.target.closest('a,input,textarea') || window.getSelection()?.toString()) return;
-    const item = row ? messages.find(m => String(m.id) === row.dataset.mail) : readerItem;
+    const item = row ? messages.find(m => mailKey(m) === row.dataset.key) : readerItem;
     if (!item) return;
     event.preventDefault();
     const point = event.type === 'contextmenu' && (event.clientX || event.clientY) ? {x: event.clientX, y: event.clientY} : null;
@@ -698,12 +805,15 @@
   function changeMail(target, body, notice) { return updateMessage(target, 'action', body, notice); }
   function reflectChange(item, body, endpoint) {
     const {action, label} = body;
-    const view = byId('folder-view').value;
-    const stored = messages.find(m => m.id === item.id) || item;
+    const view = sidebarView || byId('folder-view').value;
+    const key = mailKey(item);
+    const stored = messages.find(m => mailKey(m) === key) || item;
     const changes = {};
     if (action === 'read' || action === 'unread') changes.unread = action === 'unread';
     if (action === 'task' || action === 'untask') changes.task = action === 'task';
     if (action === 'mute' || action === 'unmute') changes.muted = action === 'mute';
+    if (action === 'star' || action === 'unstar') changes.starred = action === 'star';
+    if (action === 'important' || action === 'unimportant') changes.important = action === 'important';
     if (action === 'category') changes.category = body.category;
     if (action === 'label' || action === 'unlabel') {
       const labels = new Set(stored.labels);
@@ -714,18 +824,19 @@
     Object.assign(stored, changes);
     const remove = endpoint === 'snooze' || ['archive', 'trash', 'move'].includes(action) ||
       action === 'category' && Object.hasOwn(categories, view) && body.category !== view ||
+      action === 'unstar' && view === 'starred' || action === 'unimportant' && view === 'important' ||
       action === 'untask' && view === 'tasks' || action === 'unmute' && view === 'muted' ||
       action === 'mute' && (!view || Object.hasOwn(categories, view)) && folder.role === 'inbox' ||
       action === 'unlabel' && byId('label-filter').value === label;
-    const row = rowFor(item.id)?.closest('li');
+    const row = rowFor(key)?.closest('li');
     const focusInRow = row?.contains(document.activeElement);
-    if (selected === item.id) {
+    if (selected === key) {
       if (remove || action === 'unread') clearReader();
       else if (readerItem) { Object.assign(readerItem, changes); renderMail(readerItem, false); }
     }
     if (remove) {
       const next = row?.nextElementSibling || row?.previousElementSibling;
-      messages = messages.filter(m => m.id !== item.id);
+      messages = messages.filter(m => mailKey(m) !== key);
       row?.remove();
       if (focusInRow) (next?.querySelector('.message-row') || byId('folder-title')).focus({preventScroll: true});
       if (!messages.length && cursor) { loadList(true); return; }
@@ -740,22 +851,168 @@
   async function updateMessage(target, endpoint, body, notice) {
     const {source, item, owner} = target;
     const key = JSON.stringify([owner.csrfToken, source.id, item.id]);
-    if (session !== owner || changing.has(key)) return;
+    if (session !== owner) return;
+    if (changing.has(key)) {
+      if (body.action === 'label' || body.action === 'unlabel') throw new ApiError('Mailen opdateres. Prøv igen.', 409);
+      return;
+    }
     changing.add(key);
     try {
       await api('messages/' + encodeURIComponent(item.id) + '/' + endpoint + '?' + new URLSearchParams({folder: source.id}), {method: 'POST', body});
       if (session !== owner) return;
       notify(notice);
-      if (folder?.id === source.id) {
+      if (messages.some(m => mailKey(m) === mailKey(item)) || selected === mailKey(item)) {
         reflectChange(item, body, endpoint);
+        if (['all','labels','starred','important'].includes(sidebarView) && ['archive','trash','move'].includes(body.action)) loadList(false,true);
         if (['read', 'unread', 'archive', 'trash', 'move'].includes(body.action)) loadFolders(true);
       }
     } finally { changing.delete(key); }
   }
-  function openLabel(target) {
-    labelTarget = target; byId('label-form').reset(); setError('label-error');
-    byId('label-dialog').showModal(); byId('new-label').focus();
+  function visibleLabels(extra = []) {
+    const hidden = new Set([...catalog.hidden, ...catalog.pending.map(p => p.newName).filter(Boolean)]);
+    return [...new Set([...catalog.labels, ...availableLabels, ...extra])]
+      .filter(name => !hidden.has(name)).sort((a, b) => a.localeCompare(b, 'da'));
   }
+  function companyLabelName(name) { return name; }
+  function drawCompanyLabels() {
+    const panel = byId('sidebar-labels');
+    const names = visibleLabels();
+    panel.hidden = !session || !session.canManageLabels;
+    if (panel.hidden) { panel.replaceChildren(); return; }
+    const focused = panel.contains(document.activeElement) ? document.activeElement.dataset.id : null;
+    const title = node('h2', '', 'Etiketter');
+    const fragment = document.createDocumentFragment();
+    fragment.append(title);
+    for (const name of names)
+      fragment.append(folderButton('label:' + name, name, 'tag', selectedCompanyLabel() === name, () => selectCompanyLabel(name)));
+    fragment.append(folderButton('create-label', 'Opret ny etiket', 'plus', false, () => openManager(true)),
+      folderButton('manage-labels', 'Administrer etiketter', 'tag', false, () => openManager(false)));
+    panel.replaceChildren(fragment);
+    if (focused) [...panel.querySelectorAll('button')].find(el => el.dataset.id === focused)?.focus({preventScroll:true});
+  }
+  let catalogVersion = 0;
+  async function refreshLabelCatalog() {
+    const owner = session;
+    if (!owner?.canManageLabels) return;
+    const version = ++catalogVersion;
+    const data = await api('labels');
+    if (session === owner && version === catalogVersion) {
+      catalog = data; drawFilters(byId('label-filter').value);
+    }
+  }
+  let selectedLabels = new Set(), originalLabels = new Set();
+  function renderChoices() {
+    const area = byId('label-choices');
+    area.replaceChildren();
+    for (const name of visibleLabels([...originalLabels, ...selectedLabels])) {
+      const row = node('label'), check = node('input');
+      check.type = 'checkbox'; check.checked = selectedLabels.has(name);
+      check.onchange = () => check.checked ? selectedLabels.add(name) : selectedLabels.delete(name);
+      row.append(check, node('span', '', name)); area.append(row);
+    }
+  }
+  function openLabel(target) {
+    labelTarget = target;
+    originalLabels = new Set(target.item.labels || []); selectedLabels = new Set(originalLabels);
+    byId('label-form').reset(); setError('label-error'); renderChoices();
+    byId('label-dialog').showModal();
+    (byId('label-choices').querySelector('input') || byId('new-label')).focus();
+  }
+  function stageLabel() {
+    const input = byId('new-label');
+    const name = input.value.trim().normalize('NFC');
+    if (!name) { input.focus(); return; }
+    selectedLabels.add(name); input.value = '';
+    if (catalog.hidden.includes(name)) {
+      // A previously deleted name can be recreated explicitly in the catalog.
+      selectedLabels.delete(name);
+      setError('label-error', 'Opret først etiketten igen under Opret ny etiket.');
+      return;
+    }
+    setError('label-error'); renderChoices();
+  }
+  byId('stage-label').onclick = stageLabel;
+  let editCatalog = {operation:'create'}, savingCatalog = false;
+  function catalogMode(operation = 'create', name = '') {
+    editCatalog = {operation, name};
+    const input = byId('catalog-name');
+    input.hidden = operation === 'delete'; input.required = !input.hidden;
+    input.value = operation === 'rename' ? name : '';
+    byId('catalog-prompt').textContent = operation === 'delete' ? 'Fjern etiketten «' + name + '» fra alle mails?' :
+      operation === 'rename' ? 'Nyt navn til «' + name + '»' : 'Ny etiket';
+    byId('save-catalog').textContent = operation === 'delete' ? 'Fjern etiket' : operation === 'rename' ? 'Gem navn' : 'Opret';
+    setError('catalog-error');
+  }
+  function drawManager() {
+    const rows = byId('managed-labels');
+    rows.replaceChildren();
+    for (const name of visibleLabels()) {
+      const row = node('div', 'managed-label'), text = node('strong', '', name);
+      const pending = catalog.pending.find(p => p.name === name);
+      row.append(text);
+      if (pending) {
+        const resume = node('button', 'text-button', 'Fortsæt');
+        resume.type = 'button'; resume.onclick = () => saveCatalog(pending); row.append(resume);
+      } else {
+        for (const [op, caption] of [['rename', 'Omdøb'], ['delete', 'Fjern']]) {
+          const button = node('button', 'text-button', caption);
+          button.type = 'button'; button.setAttribute('aria-label', caption + ' ' + name);
+          button.onclick = () => {
+            catalogMode(op, name);
+            byId(op === 'delete' ? 'save-catalog' : 'catalog-name').focus();
+          };
+          row.append(button);
+        }
+      }
+      rows.append(row);
+    }
+  }
+  function openManager(create) {
+    byId('label-manager-title').textContent = create ? 'Opret ny etiket' : 'Administrer etiketter';
+    byId('managed-labels').hidden = create;
+    catalogMode(); drawManager(); byId('label-manager').showModal();
+    if (create) byId('catalog-name').focus();
+    refreshLabelCatalog().then(() => { if (byId('label-manager').open) drawManager(); })
+      .catch(error => { if (byId('label-manager').open) setError('catalog-error', message(error)); });
+  }
+  async function saveCatalog(data) {
+    if (savingCatalog) return;
+    const owner = session;
+    savingCatalog = true; byId('save-catalog').disabled = true; setError('catalog-error');
+    ++catalogVersion;
+    try {
+      const result = await api('labels', {method:'POST', body:data});
+      if (session !== owner) return;
+      ++catalogVersion; catalog = result;
+      const activeLabel = selectedCompanyLabel();
+      const oldFilter = byId('label-filter').value;
+      const changed = data.operation !== 'create';
+      availableLabels = availableLabels.filter(name => !catalog.hidden.includes(name) && !(changed && name === data.name));
+      drawFilters(changed && oldFilter === data.name ? data.newName || '' : oldFilter);
+      if (changed) {
+        if (activeLabel === data.name && data.newName) selectCompanyLabel(data.newName);
+        else if (activeLabel === data.name) chooseFolder(folders.find(f => f.role === 'inbox') || folder);
+        else if (folder) loadList();
+      }
+      catalogMode(); drawManager();
+      if (byId('managed-labels').hidden && byId('label-manager').open) byId('label-manager').close();
+      notify(data.operation === 'create' ? 'Etiketten er oprettet.' : data.operation === 'rename' ? 'Etiketten er omdøbt.' : 'Etiketten er fjernet.');
+    } catch (error) {
+      if (session === owner) {
+        setError('catalog-error', message(error));
+        try { await refreshLabelCatalog(); drawManager(); } catch { /* Retrying the action remains possible. */ }
+      }
+    } finally { savingCatalog = false; byId('save-catalog').disabled = false; }
+  }
+  byId('catalog-form').onsubmit = event => {
+    event.preventDefault();
+    const data = {...editCatalog};
+    const name = byId('catalog-name').value.trim().normalize('NFC');
+    if (data.operation === 'create') data.name = name;
+    if (data.operation === 'rename') data.newName = name;
+    return saveCatalog(data);
+  };
+  byId('close-catalog').onclick = () => byId('label-manager').close();
   function openSnooze(target) {
     snoozeTarget = target; setError('snooze-error');
     const tomorrow = new Date();
@@ -776,10 +1033,20 @@
       finally { submit.disabled = false; }
     };
   }
-  setupActionForm('label', () => {
-    const label = byId('new-label').value.trim();
-    if (!label) throw new ApiError('Skriv et navn på etiketten.', 400);
-    return changeMail(labelTarget, {action: 'label', label}, 'Etiketten er tilføjet.');
+  setupActionForm('label', async () => {
+    if (byId('new-label').value.trim()) stageLabel();
+    if (!byId('label-error').hidden) throw new ApiError(byId('label-error').textContent, 400);
+    const target = labelTarget;
+    for (const name of new Set([...selectedLabels, ...originalLabels])) {
+      const add = selectedLabels.has(name);
+      if (add === originalLabels.has(name)) continue;
+      if (session !== target.owner) return;
+      await changeMail(target, {action:add ? 'label' : 'unlabel', label:name}, 'Etiketter opdateret.');
+      if (session !== target.owner) return;
+      if (add) originalLabels.add(name); else originalLabels.delete(name);
+    }
+    if (session === target.owner && session.canManageLabels)
+      refreshLabelCatalog().catch(error => notify(message(error)));
   });
   setupActionForm('snooze', () => {
     const until = new Date(byId('snooze-until').value);
@@ -787,7 +1054,7 @@
     return updateMessage(snoozeTarget, 'snooze', {until: until.toISOString()}, 'Udsat til ' + dateTime.format(until) + '.');
   });
   function refreshInbox() {
-    if (document.hidden || !session || folder?.role !== 'inbox' || listExtended || listRequest || !menu.hidden ||
+    if (document.hidden || !session || folder?.role !== 'inbox' || sidebarView || listExtended || listRequest || !menu.hidden ||
         document.querySelector('dialog[open]') || byId('messages').contains(document.activeElement)) return;
     loadList(false, true);
   }
@@ -991,6 +1258,8 @@
   }
 
   function renderMail(item, focus = true) {
+    const source = sourceOf(item);
+    if (!source) { clearReader(); notify('Mailens mappe er ikke længere tilgængelig. Opdater postkassen.'); return; }
     const article = node('article', 'letter');
     const title = node('h2', '', item.subject || '(Intet emne)');
     title.tabIndex = -1;
@@ -1003,7 +1272,11 @@
     if (item.to) detail.append(node('span', '', 'Til ' + item.to));
     if (item.cc) detail.append(node('span', '', 'Cc ' + item.cc));
     const head = node('div', 'letter-head');
-    head.append(title, menuTrigger(item));
+    const tools = node('div', 'letter-tools'), editLabels = node('button', 'secondary reader-labels');
+    editLabels.type = 'button'; editLabels.append(icon('tag'), document.createTextNode('Etiketter'));
+    editLabels.onclick = () => openLabel({item, source:sourceOf(item), owner:session});
+    tools.append(editLabels, menuTrigger(item));
+    head.append(title, tools);
     area.append(avatar, detail); article.append(head, area);
     if (item.labels?.length) article.append(labelChips(item.labels));
     const stamp = dateValue(item.date, true);
@@ -1017,7 +1290,7 @@
         const link = node('a'), li = node('li');
         const size = sizeText(file.size);
         const name = file.name || 'Vedhæftet fil';
-        link.href = '/api/messages/' + encodeURIComponent(item.id) + '/attachments/' + encodeURIComponent(file.id) + '?' + new URLSearchParams({folder: folder.id});
+        link.href = '/api/messages/' + encodeURIComponent(item.id) + '/attachments/' + encodeURIComponent(file.id) + '?' + new URLSearchParams({folder: source.id});
         link.onclick = event => { event.preventDefault(); downloadFile(link, name, status); };
         link.append(icon('clip'), node('span', '', name + (size ? ' (' + size + ')' : '')));
         li.append(link); files.append(li);
@@ -1025,8 +1298,8 @@
       article.append(files, status);
     }
     const actions = node('div', 'letter-actions');
-    const target = {item, source: folder, owner: session};
-    const quick = folder.role === 'drafts' ? [['copy', 'write', 'Rediger som ny mail']] :
+    const target = {item, source, owner: session};
+    const quick = source.role === 'drafts' ? [['copy', 'write', 'Rediger som ny mail']] :
       [['reply', 'reply', 'Svar'], ['forward', 'forward', 'Videresend']];
     for (const [kind, glyph, text] of quick) {
       const button = node('button', 'secondary');
@@ -1038,28 +1311,31 @@
     byId('paper').replaceChildren(article);
     if (focus) title.focus({preventScroll: true});
   }
-  async function openMail(id) {
+  async function openMail(id, source) {
+    if (!source) return notify('Mailens mappe er ikke længere tilgængelig. Opdater postkassen.');
+    const key = mailKey({id,folder:source.id});
     detailRequest?.abort();
     const request = detailRequest = new AbortController();
     readerItem = null;
     rowFor(selected)?.setAttribute('aria-pressed', 'false');
-    selected = id; byId('workspace').dataset.reader = 'true';
-    rowFor(id)?.setAttribute('aria-pressed', 'true');
+    selected = key; byId('workspace').dataset.reader = 'true';
+    rowFor(key)?.setAttribute('aria-pressed', 'true');
     const waiting = node('p', '', 'Åbner mail …'); waiting.setAttribute('role', 'status');
     byId('paper').replaceChildren(waiting); byId('reader').scrollTop = 0;
     try {
-      const item = await api('messages/' + encodeURIComponent(id) + '?' + new URLSearchParams({folder: folder.id}), {signal: request.signal});
+      const item = await api('messages/' + encodeURIComponent(id) + '?' + new URLSearchParams({folder:source.id}), {signal:request.signal});
       if (request.signal.aborted) return;
-      const existing = messages.find(m => String(m.id) === id);
+      item.folder = source.id;
+      const existing = messages.find(m => mailKey(m) === key);
       if (existing?.unread && item.unread === false) {
-        existing.unread = false; folder.unread = Math.max(0, folder.unread - 1);
-        rowFor(id)?.closest('li')?.replaceWith(messageRow(existing)); drawFolders();
+        existing.unread = false; source.unread = Math.max(0, (source.unread || 0) - 1);
+        rowFor(key)?.closest('li')?.replaceWith(messageRow(existing)); drawFolders();
       }
       readerItem = item; renderMail(item);
     } catch (error) {
       if (request.signal.aborted) return;
       const text = node('p', 'reader-error', message(error)); text.setAttribute('role', 'alert');
-      const retry = node('button', 'secondary', 'Prøv igen'); retry.type = 'button'; retry.onclick = () => openMail(id);
+      const retry = node('button', 'secondary', 'Prøv igen'); retry.type = 'button'; retry.onclick = () => openMail(id, source);
       byId('paper').replaceChildren(text, retry);
     } finally {
       if (detailRequest === request) detailRequest = null;
@@ -1073,8 +1349,8 @@
     let {item} = target;
     if (kind === 'forward' || kind === 'copy') {
       if (typeof item.text !== 'string') {
-        await openMail(item.id);
-        if (session !== owner || folder?.id !== source.id || readerItem?.id !== item.id) return;
+        await openMail(item.id, source);
+        if (session !== owner || readerItem?.folder !== source.id || readerItem?.id !== item.id) return;
         item = readerItem;
       }
     }
@@ -1117,6 +1393,24 @@
     byId('composer').showModal();
     (byId('recipient').value ? byId('body') : byId('recipient')).focus();
   }
+  function toggleSchedule(active) {
+    byId('schedule-controls').hidden = !active;
+    byId('schedule-at').required = active;
+    byId('schedule-toggle').setAttribute('aria-expanded', String(active));
+    byId('schedule-toggle').textContent = active ? 'Annuller planlægning' : 'Planlæg';
+    byId('send-label').textContent = active ? 'Planlæg afsendelse' : 'Send mail';
+    if (active) {
+      const date = new Date(Date.now() + 3600000);
+      if (!byId('schedule-at').value) byId('schedule-at').value = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0,16);
+      byId('schedule-at').focus();
+    }
+  }
+  byId('schedule-toggle').onclick = () => toggleSchedule(byId('schedule-controls').hidden);
+  document.addEventListener('veyro:unsubscribe-draft', event => {
+    if (!session) return;
+    const target = event.detail;
+    openCompose({kind:'copy', id:target.id, folder:'subscriptions', to:target.value, cc:'', subject:target.subject, text:target.body});
+  });
   byId('compose').onclick = () => openCompose();
   byId('close-compose').onclick = () => byId('composer').close();
   byId('composer').oncancel = event => { if (sending) event.preventDefault(); };
@@ -1134,13 +1428,24 @@
     if (reply?.kind === 'attachment') input.forwardAttachment = {id: reply.id, folder: reply.folder};
     if (reply?.files) input.forwardFiles = {id: reply.id, folder: reply.folder};
     if (!input.to || !input.text.trim() && !input.forwardAttachment) return setError('send-error', 'Udfyld modtager og besked.');
-    const payload = JSON.stringify(input);
+    const schedule = !byId('schedule-controls').hidden;
+    const at = schedule ? Math.floor(new Date(byId('schedule-at').value).getTime()/1000) : null;
+    if (schedule && !(at > Date.now()/1000 && at <= Date.now()/1000 + 30*86400)) return setError('send-error', 'Vælg et tidspunkt inden for de næste 30 dage.');
+    const body = schedule ? {at, message:input} : input;
+    const payload = JSON.stringify(body);
     if (sendAttempt?.payload !== payload) sendAttempt = {payload, key: crypto.randomUUID()};
     sending = true; setError('send-error');
     const controls = Array.from(byId('draft').elements);
     controls.forEach(el => { el.disabled = true; });
     try {
-      const result = await api('send', {method: 'POST', body: input, idempotencyKey: sendAttempt.key});
+      const result = await api(schedule ? 'scheduled' : 'send', {method: 'POST', body, idempotencyKey: sendAttempt.key});
+      if (schedule) {
+        if (!result.id) throw new ApiError('Planlægningen kunne ikke bekræftes. Kontrollér listen Planlagt.',502);
+        resetDraft(); byId('composer').close();
+        notify(result.status === 'pending' ? 'Mailen er planlagt.' : 'Se afsendelsens status i Planlagt eller Sendt.');
+        document.dispatchEvent(new Event('veyro:schedule-changed'));
+        return;
+      }
       if (!result.sent) throw new ApiError('Afsendelsen kunne ikke bekræftes. Kontrollér Sendt.', 502);
       resetDraft(); byId('composer').close();
       const notices = [result.warning || 'Mailen er sendt.'];

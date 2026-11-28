@@ -27,11 +27,13 @@ TRUST_FILE = Path("/run/veyro/mailcow-public.pem")
 PAGE = 30
 MAX_ATTACHMENT = 32 * 1024 * 1024
 HEADERS = "BODY.PEEK[HEADER.FIELDS (SUBJECT FROM TO CC REPLY-TO DATE MESSAGE-ID REFERENCES CONTENT-TYPE CONTENT-TRANSFER-ENCODING)]"
-FLAGS = {"inbox", "sent", "drafts", "trash", "junk", "archive"}
+FLAGS = {"inbox", "sent", "drafts", "trash", "junk", "archive", "all"}
 LABEL_PREFIX = b"veyro-label-"
 TASK = b"veyro-task"
 MUTED = b"veyro-muted"
-CATEGORIES = {value: f"veyro-category-{value}".encode() for value in ("updates", "social", "promotions")}
+IMPORTANT = b"veyro-important"
+AGGREGATE_VIEWS = {"all", "starred", "important", "labels"}
+CATEGORIES = {value: f"veyro-category-{value}".encode() for value in ("updates", "social", "promotions", "purchases", "forums")}
 MAX_FORWARD = 16 * 1024 * 1024
 INLINE_FORMATS = {"image/png": "PNG", "image/jpeg": "JPEG", "image/gif": "GIF", "image/webp": "WEBP"}
 INLINE_COUNT = 16
@@ -331,9 +333,10 @@ def message_summary(row, validity, address="", parts=None):
         "replyTo": str(h.get("Reply-To") or h.get("From") or ""),
         "senderAddress": next(iter(senders), ""), "replyAddresses": replies,
         "replyAllTo": reply_all or reply_cc[:1], "replyAllCc": reply_cc if reply_all else reply_cc[1:],
+        "starred": b"\\flagged" in flags, "important": IMPORTANT in flags,
         "labels": label_names(flags), "task": TASK in flags, "muted": MUTED in flags,
         "category": next((name for name, flag in CATEGORIES.items() if flag in flags), "primary"),
-        "date": date.isoformat() if date else "", "unread": b"\\Seen" not in row.get(b"FLAGS", ()),
+        "date": date.isoformat() if date else "", "unread": b"\\seen" not in flags,
         "snippet": preview[:220], "hasAttachments": any(p["attachment"] for p in parts),
     })
 
@@ -346,11 +349,11 @@ def numeric_parts(value, count):
 
 
 def list_messages(client, folder, cursor, query, *, sender="", label="", category="", view="",
-                  address="", snoozed=None, only_snoozed=False):
+                  address="", snoozed=None, only_snoozed=False, positions=False):
     meta = client.select_folder(folder, readonly=True)
     validity, size = meta[b"UIDVALIDITY"], meta[b"EXISTS"]
     result = dict(messages=[], nextCursor=None, availableLabels=label_names(meta.get(b"FLAGS", ())))
-    if view not in {"", "tasks", "muted", "snoozed"}:
+    if view not in {"", "tasks", "muted", "snoozed", *AGGREGATE_VIEWS}:
         raise MailError("Ukendt visning.")
     if sender and (len(sender) > 254 or addresses(sender) != [sender] or not sender.isprintable()):
         raise MailError("Ugyldig afsender.")
@@ -368,6 +371,12 @@ def list_messages(client, folder, cursor, query, *, sender="", label="", categor
         criteria.extend(["KEYWORD", CATEGORIES[category]])
     if view in {"tasks", "muted"}:
         criteria.extend(["KEYWORD", TASK if view == "tasks" else MUTED])
+    if view == "starred":
+        criteria.append("FLAGGED")
+    if view == "important":
+        criteria.extend(["KEYWORD", IMPORTANT])
+    if view == "labels" and not label:
+        raise MailError("Vælg en etiket.")
     if query:
         criteria.extend(["OR", "OR", "SUBJECT", query, "FROM", query, "TO", query])
     hidden = set(snoozed(validity)) if snoozed else set()
@@ -423,7 +432,13 @@ def list_messages(client, folder, cursor, query, *, sender="", label="", categor
     if len(ordered) > PAGE:
         last = page[-1]
         next_cursor = f"{validity}.{max(0, last[b'SEQ'] - 1)}.{last[b'UID']}"
-    result.update(messages=[message_summary(row, validity, address) for row in page], nextCursor=next_cursor)
+    messages = [message_summary(row, validity, address) for row in page]
+    if positions:
+        for row, item in zip(page, messages):
+            item["_after"] = f"{validity}.{max(0, row[b'SEQ'] - 1)}.{row[b'UID']}"
+            date = row.get(b"INTERNALDATE")
+            item["_arrival"] = date.timestamp() if date else 0
+    result.update(messages=messages, nextCursor=next_cursor)
     return result
 
 
@@ -480,10 +495,11 @@ def message_action(client, source, identifier, data, folders):
     elif action in ("label", "unlabel"):
         set_flags_checked(client, uid, [label_flag(data.get("label"))], action == "label")
     else:
-        flags = {"read": b"\\Seen", "unread": b"\\Seen", "task": TASK, "untask": TASK, "mute": MUTED, "unmute": MUTED}
+        flags = {"read": b"\\Seen", "unread": b"\\Seen", "task": TASK, "untask": TASK, "mute": MUTED, "unmute": MUTED,
+                 "star": b"\\Flagged", "unstar": b"\\Flagged", "important": IMPORTANT, "unimportant": IMPORTANT}
         if not isinstance(action, str) or action not in flags:
             raise MailError("Ukendt handling.")
-        set_flags_checked(client, uid, [flags[action]], action in {"read", "task", "mute"})
+        set_flags_checked(client, uid, [flags[action]], action in {"read", "task", "mute", "star", "important"})
     return {"ok": True}
 
 
@@ -733,7 +749,7 @@ def forwarded_parts(client, msg, data):
             msg.add_attachment(raw, maintype=maintype, subtype=subtype, filename=name)
 
 
-def send_message(client, email_address, password, data, folders):
+def prepare_message(client, email_address, data):
     to, cc, subject, text = (data.get(k, "") for k in ("to", "cc", "subject", "text"))
     if not all(isinstance(v, str) for v in (to, cc, subject, text)) or any(c in to+cc+subject for c in "\r\n\0"):
         raise MailError("Ugyldig modtager eller emne.")
@@ -756,6 +772,15 @@ def send_message(client, email_address, password, data, folders):
             msg["References"] = " ".join((re.findall(r"<[^\s<>]+>", str(h.get("References") or "")) + [ids[-1]])[-15:])
     msg.set_content(text)
     forwarded_parts(client, msg, data)
+    return msg, list(dict.fromkeys(recipients))
+
+
+def send_message(client, email_address, password, data, folders):
+    msg, recipients = prepare_message(client, email_address, data)
+    return submit_message(client, email_address, password, msg, recipients, folders)
+
+
+def submit_message(client, email_address, password, msg, recipients, folders):
     sent = next((folder_name(f["id"]) for f in folders if f["role"] == "sent"), None)
     refused = {}
     smtp = smtplib.SMTP_SSL(HOST, port=465, context=verified_tls(), timeout=18)

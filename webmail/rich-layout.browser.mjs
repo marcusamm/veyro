@@ -55,7 +55,7 @@ async function mailbox(t, viewport, messages = [newsletter]) {
     if (!url.pathname.startsWith('/api/')) {
       const frame = url.pathname === '/message-frame';
       const name = url.pathname === '/' ? 'inbox.html' : frame ? 'message-frame.html' : url.pathname.slice(1);
-      assert.ok(['inbox.html', 'inbox.js', 'inbox.css', 'message-frame.html', 'message-frame.js', 'manrope.woff2', 'favicon.svg'].includes(name), name);
+      assert.ok(['inbox.html', 'inbox.js', 'organizer.js', 'inbox.css', 'message-frame.html', 'message-frame.js', 'manrope.woff2', 'favicon.svg'].includes(name), name);
       const policy = frame ? framePolicy(url.searchParams.get('images') === '1') : parentPolicy;
       policies.push({path: url.pathname + url.search, policy});
       return route.fulfill({body: await readFile(new URL('./assets/' + name, import.meta.url)),
