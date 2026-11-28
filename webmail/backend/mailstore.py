@@ -20,20 +20,22 @@ from imapclient import IMAPClient
 from imapclient.exceptions import IMAPClientError
 from PIL import Image
 
+import mail_categories
 import message_view
 
 HOST = "post.veyro.dk"
 TRUST_FILE = Path("/run/veyro/mailcow-public.pem")
 PAGE = 30
 MAX_ATTACHMENT = 32 * 1024 * 1024
-HEADERS = "BODY.PEEK[HEADER.FIELDS (SUBJECT FROM TO CC REPLY-TO DATE MESSAGE-ID REFERENCES CONTENT-TYPE CONTENT-TRANSFER-ENCODING)]"
+HEADERS = ("BODY.PEEK[HEADER.FIELDS (SUBJECT FROM TO CC REPLY-TO DATE MESSAGE-ID REFERENCES CONTENT-TYPE "
+           "CONTENT-TRANSFER-ENCODING " + " ".join(mail_categories.LIST_FIELDS) + ")]")
 FLAGS = {"inbox", "sent", "drafts", "trash", "junk", "archive", "all"}
 LABEL_PREFIX = b"veyro-label-"
 TASK = b"veyro-task"
 MUTED = b"veyro-muted"
 IMPORTANT = b"veyro-important"
 AGGREGATE_VIEWS = {"all", "starred", "important", "labels"}
-CATEGORIES = {value: f"veyro-category-{value}".encode() for value in ("updates", "social", "promotions", "purchases", "forums")}
+CATEGORIES = mail_categories.FLAGS
 MAX_FORWARD = 16 * 1024 * 1024
 INLINE_FORMATS = {"image/png": "PNG", "image/jpeg": "JPEG", "image/gif": "GIF", "image/webp": "WEBP"}
 INLINE_COUNT = 16
@@ -308,7 +310,7 @@ def addresses(value, seen=None):
     return result
 
 
-def message_summary(row, validity, address="", parts=None):
+def message_summary(row, validity, address="", parts=None, *, inbox=False):
     h = headers(row)
     date = row.get(b"INTERNALDATE")
     try:
@@ -335,7 +337,7 @@ def message_summary(row, validity, address="", parts=None):
         "replyAllTo": reply_all or reply_cc[:1], "replyAllCc": reply_cc if reply_all else reply_cc[1:],
         "starred": b"\\flagged" in flags, "important": IMPORTANT in flags,
         "labels": label_names(flags), "task": TASK in flags, "muted": MUTED in flags,
-        "category": next((name for name, flag in CATEGORIES.items() if flag in flags), "primary"),
+        "category": mail_categories.effective(h, flags, address, inbox),
         "date": date.isoformat() if date else "", "unread": b"\\seen" not in flags,
         "snippet": preview[:220], "hasAttachments": any(p["attachment"] for p in parts),
     })
@@ -362,13 +364,11 @@ def list_messages(client, folder, cursor, query, *, sender="", label="", categor
         criteria.extend(["FROM", sender])
     if label:
         criteria.extend(["KEYWORD", label_flag(label)])
-    if category == "primary":
-        for flag in CATEGORIES.values():
-            criteria.extend(["UNKEYWORD", flag])
-    elif category:
+    inbox = folder.upper() == "INBOX"
+    if category:
         if category not in CATEGORIES:
             raise MailError("Vælg en gyldig fane.")
-        criteria.extend(["KEYWORD", CATEGORIES[category]])
+        criteria.extend(mail_categories.candidates(category, inbox))
     if view in {"tasks", "muted"}:
         criteria.extend(["KEYWORD", TASK if view == "tasks" else MUTED])
     if view == "starred":
@@ -395,26 +395,42 @@ def list_messages(client, folder, cursor, query, *, sender="", label="", categor
         uid = row[b"UID"]
         if uid >= upper_uid or ((uid in hidden) != only_snoozed):
             return False
-        if folder.upper() == "INBOX" and not view and MUTED in {flag.lower() for flag in row.get(b"FLAGS", ())}:
+        flags = {flag.lower() for flag in row.get(b"FLAGS", ())}
+        if inbox and not view and MUTED in flags:
             return False
-        return not sender or sender.casefold() in {a.casefold() for a in addresses(headers(row).get("From"))}
+        if sender or category:
+            h = headers(row)
+            if category and mail_categories.effective(h, flags, address, inbox) != category:
+                return False
+            if sender and sender.casefold() not in {a.casefold() for a in addresses(h.get("From"))}:
+                return False
+        return True
 
     ordered = []
-    if criteria or only_snoozed:
+    if criteria or only_snoozed or category:
         if cursor and upper_uid <= 1:
             return result
         if cursor:
             criteria[0:0] = ["UID", f"1:{upper_uid-1}"]
-        matches = client.search(criteria, charset="UTF-8") if criteria else hidden
+        matches = hidden if only_snoozed and not criteria else client.search(criteria or ["ALL"], charset="UTF-8")
         candidates = sorted((uid for uid in matches if uid < upper_uid and (uid in hidden) == only_snoozed), reverse=True)
-        for start in range(0, len(candidates), PAGE + 1):
-            batch = candidates[start:start + PAGE + 1]
-            rows = client.fetch(batch, fields)
-            for uid in batch:
-                if uid in rows:
-                    rows[uid][b"UID"] = uid
-                    if visible(rows[uid]):
-                        ordered.append(rows[uid])
+        batch_size = 128 if category else PAGE + 1
+        for start in range(0, len(candidates), batch_size):
+            batch = candidates[start:start + batch_size]
+            if category:
+                # A search can match several tabs. Check their precedence and
+                # manual overrides before fetching previews or MIME structures.
+                overview = client.fetch(batch, ["FLAGS", mail_categories.FILTER_HEADERS])
+                batch = [uid for uid in batch if uid in overview and visible({**overview[uid], b"UID": uid})]
+            while batch and len(ordered) <= PAGE:
+                fetch_now = batch[:PAGE + 1 - len(ordered)]
+                batch = batch[len(fetch_now):]
+                rows = client.fetch(fetch_now, fields)
+                for uid in fetch_now:
+                    if uid in rows:
+                        rows[uid][b"UID"] = uid
+                        if visible(rows[uid]):
+                            ordered.append(rows[uid])
             if len(ordered) > PAGE:
                 break
     else:
@@ -432,7 +448,7 @@ def list_messages(client, folder, cursor, query, *, sender="", label="", categor
     if len(ordered) > PAGE:
         last = page[-1]
         next_cursor = f"{validity}.{max(0, last[b'SEQ'] - 1)}.{last[b'UID']}"
-    messages = [message_summary(row, validity, address) for row in page]
+    messages = [message_summary(row, validity, address, inbox=inbox) for row in page]
     if positions:
         for row, item in zip(page, messages):
             item["_after"] = f"{validity}.{max(0, row[b'SEQ'] - 1)}.{row[b'UID']}"
@@ -483,11 +499,11 @@ def message_action(client, source, identifier, data, folders):
             client.move([uid], target)
     elif action == "category":
         category = data.get("category")
-        if not isinstance(category, str) or category not in {"primary", *CATEGORIES}:
+        if not isinstance(category, str) or category not in CATEGORIES:
             raise MailError("Vælg en gyldig fane.")
         current = {flag.lower() for flag in row.get(b"FLAGS", ())}
-        new = CATEGORIES.get(category)
-        if new and new not in current:
+        new = CATEGORIES[category]
+        if new not in current:
             set_flags_checked(client, uid, [new], True)
         old = [flag for flag in CATEGORIES.values() if flag != new and flag in current]
         if old:
@@ -653,7 +669,7 @@ def read_message(client, folder, identifier, *, mark_seen=True, address="", insp
     text = text or html_text
     if walk.incomplete or incomplete or (not text and (plain_incomplete or rich_incomplete)):
         text += "\n\n[Mailens tekst kunne ikke vises fuldstændigt.]"
-    result = message_summary(row, validity, address, parts=parts)
+    result = message_summary(row, validity, address, parts=parts, inbox=folder.upper() == "INBOX")
     if inspect_content:
         verdict = message_view.assess(client, uid, row.get(b"RFC822.SIZE"), parts, text, html_text,
                                       mismatch, plain_incomplete or rich_incomplete or walk.incomplete, in_junk)

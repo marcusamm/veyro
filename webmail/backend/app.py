@@ -920,7 +920,8 @@ def message_action(identifier):
         with account_lock(g.session.email):
             return jsonify(mail_labels.record_message_label(
                 g.session.email, data.get("label"), lambda: operation(apply, retry=False)))
-    if data.get("action") in ("archive", "trash", "move"):
+    if data.get("action") in ("archive", "trash", "move", "category"):
+        # Concurrent category changes must replace each other's flags in order.
         # A move into a folder already visited by a concurrent rename/delete
         # could otherwise leave the old label on the moved message.
         with account_lock(g.session.email):
