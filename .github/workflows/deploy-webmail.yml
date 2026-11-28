@@ -56,6 +56,11 @@ jobs:
       - run: |
           npx playwright install --with-deps chromium webkit
           node --test webmail/context-menu.browser.mjs webmail/rich-layout.browser.mjs webmail/administration.browser.mjs webmail/mobile-login.browser.mjs webmail/team.browser.mjs
+      - name: Kontrollér desktopkontoernes brugerflade
+        run: |
+          npm ci --prefix webmail/desktop --ignore-scripts --no-audit --no-fund
+          node webmail/desktop/fixtures/mail-client.browser.cjs
+          node webmail/desktop/fixtures/shell.browser.cjs
       - name: Udgiv webmail
         if: github.event_name != 'pull_request'
         run: npx wrangler deploy --config webmail/wrangler.toml

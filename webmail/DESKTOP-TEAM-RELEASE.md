@@ -7,7 +7,11 @@ Veyro-konto; en ekstern mailkonto giver ikke adgang til en virksomheds data.
 
 ## Det kan prøves
 
+- **Log ind med Google** opretter automatisk en lokal Veyro Mail-profil med den
+  eksisterende Gmail-adresse og navnet fra Google. Ingen tekniske felter.
+  Afbrudt login efterlader ingen tom profil; gentaget login genbruger kontoen.
 - Separate Veyro- og eksterne mailkonti, kontoskift og fjernelse fra computeren.
+  Andre udbydere har en enkel opsætning med særskilte avancerede indstillinger.
 - Den eksisterende Veyro-webmail med mapper, søgning, organisering, links,
   original mailopsætning, vedhæftninger og den valgte loginperiode.
 - Eksterne konti med TLS, mapper, søgning, læsning, svar/svar alle,

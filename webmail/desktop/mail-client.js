@@ -3,11 +3,14 @@
   const $=id=>document.getElementById(id);
   const invoke=(action,payload={})=>window.veyroMail.invoke(action,payload);
   const state={identity:null,folders:[],folder:'INBOX',page:1,query:'',uidValidity:null,messages:[],current:null,drafts:[],draft:null,view:'mail',listEpoch:0,readEpoch:0,draftEpoch:0,uploading:false,sending:false};
-  let draftTimer,draftChain=Promise.resolve(),oauthBusy=false;
+  let draftTimer,draftChain=Promise.resolve(),oauthBusy=false,configureBusy=false,gmailManual=false;
   const providers={
-    custom:{note:'Find IMAP- og SMTP-indstillingerne hos din udbyder. Kontoen skal tillade login med adgangskode eller app-adgangskode.'},
-    gmail:{imap:'imap.gmail.com',smtp:'smtp.gmail.com',note:'Brug en app-adgangskode fra din Google-konto med totrinsbekræftelse. Din almindelige Google-adgangskode virker ikke. Nogle arbejds- og skolekonti tillader ikke app-adgangskoder og kræver OAuth.'},
-    outlook:{imap:'outlook.office365.com',smtp:'smtp.office365.com',note:'Outlook og Microsoft 365 kræver OAuth-login. Denne version har endnu ingen registreret Microsoft OAuth-app og kan derfor ikke forbinde disse konti. En almindelig adgangskode eller app-adgangskode løser ikke dette. Du kan stadig bruge andre IMAP/SMTP-udbydere.'}
+    gmail:{imap:'imap.gmail.com',smtp:'smtp.gmail.com',oauth:'google',note:'Vælg din Google-konto i browseren. Du bruger din eksisterende Gmail-adresse.'},
+    outlook:{imap:'outlook.office365.com',smtp:'smtp.office365.com',oauth:'microsoft',note:'Du logger ind hos Microsoft i din browser.'},
+    // Provider settings: support.apple.com/102525 and help.yahoo.com/kb/SLN4075.html.
+    icloud:{imap:'imap.mail.me.com',smtp:'smtp.mail.me.com',note:'Brug en app-adgangskode fra din Apple-konto. Du opretter den under Login og sikkerhed → App-specifikke adgangskoder.'},
+    yahoo:{imap:'imap.mail.yahoo.com',smtp:'smtp.mail.yahoo.com',note:'Brug en app-adgangskode, som du opretter under Kontosikkerhed på din Yahoo-konto.'},
+    custom:{note:'Din mailudbyder har sine egne serveroplysninger. Tilføj dem under Avancerede indstillinger. Du finder dem hos udbyderen eller din it-ansvarlige.'}
   };
   const names={'\\Inbox':'Indbakke','\\Sent':'Sendt','\\Drafts':'Kladder hos udbyderen','\\Trash':'Papirkurv','\\Junk':'Spam','\\Archive':'Arkiv','\\All':'Alle mails'};
   function text(node,value){node.textContent=value || '';}
@@ -32,60 +35,100 @@
       $('workspace').hidden=false;await refreshFolders();await loadMessages();await refreshDrafts();
     }catch(error){notice(errorText(error));$('retry-start').hidden=false;}
   }
+  function currentProvider(){return providers[$('provider').value];}
+  function manualMode(){const choice=$('provider').value;return !!choice&&choice!=='outlook'&&(choice!=='gmail'||gmailManual)&&state.identity?.account?.authType!=='oauth';}
+  function defaultUser(protocol){const email=$('account-email').value.trim();return protocol==='imap'&&$('provider').value==='icloud'?email.split('@')[0]:email;}
+  function canKeepPassword(){
+    const account=state.identity?.account;
+    return !!account&&account.authType!=='oauth'&&account.email===$('account-email').value.trim()&&account.imap?.host===$('imap-host').value.trim()&&account.imap?.user===($('imap-user').value.trim()||defaultUser('imap'));
+  }
+  function updatePasswordRequirement(){
+    const keep=canKeepPassword();$('imap-password').required=manualMode()&&!keep;
+    text($('password-hint'),keep?'Lad feltet være tomt for at beholde den gemte adgangskode.':$('provider').value==='custom'?'Brug den adgangskode eller app-adgangskode, din udbyder kræver.':'En app-adgangskode er lavet til mailapps. Brug ikke din almindelige kontoadgangskode.');
+  }
   function openSettings(){
     const account=state.identity?.account || {};
-    $('provider').value='custom';providerChanged(false);
     $('account-email').value=account.email || '';$('account-name').value=account.name || '';
+    const choice=account.oauthProvider==='google'?'gmail':account.oauthProvider==='microsoft'?'outlook':Object.keys(providers).find(key=>providers[key].imap&&providers[key].imap===account.imap?.host&&providers[key].smtp===account.smtp?.host);
+    $('provider').value=choice||(state.identity?.configured?'custom':'');
     for(const protocol of ['imap','smtp']){
       const server=account[protocol] || {};
       $(`${protocol}-host`).value=server.host || '';$(`${protocol}-port`).value=server.port || (protocol==='imap'?993:587);
       $(`${protocol}-secure`).value=String(server.secure??protocol==='imap');$(`${protocol}-user`).value=server.user || '';
-      $(`${protocol}-password`).value='';$(`${protocol}-password`).placeholder=state.identity?.configured?'Gemte oplysninger beholdes':protocol==='smtp'?'Som IMAP-adgangskoden':'';
+      $(`${protocol}-password`).value='';
     }
-    $('save-sent').checked=account.saveSent!==false;
-    $('imap-password').required=!state.identity?.configured;
-    $('manual-settings').hidden=account.authType==='oauth';
-    renderOAuth();
-    $('password-hint').hidden=!state.identity?.configured;$('close-settings').hidden=!state.identity?.configured;
-    text($('save-settings'),state.identity?.configured?'Kontrollér og gem':'Forbind konto');errorAt('settings-error',null);
+    gmailManual=$('provider').value==='gmail'&&state.identity?.configured&&account.authType!=='oauth';
+    $('advanced-settings').open=false;$('save-sent').checked=account.saveSent!==false;
+    $('close-settings').hidden=!state.identity?.configured;text($('settings-title'),state.identity?.configured?'Din konto.':'Saml din mail her.');
+    errorAt('settings-error',null);renderSetup();
     if(!$('settings-dialog').open)$('settings-dialog').showModal();
   }
-  function providerChanged(fill=true){
-    const selected=providers[$('provider').value];text($('provider-note'),selected.note);
-    if($('provider').value==='outlook'&&state.identity?.oauth?.microsoft?.available)text($('provider-note'),'Microsoft kræver OAuth. Skriv din e-mailadresse, og vælg “Forbind Microsoft” ovenfor for at logge ind i din browser.');
-    $('save-settings').disabled=$('provider').value==='outlook';
-    if(fill&&selected.imap){$('imap-host').value=selected.imap;$('smtp-host').value=selected.smtp;$('imap-port').value='993';$('smtp-port').value='587';$('imap-secure').value='true';$('smtp-secure').value='false';}
+  function providerChanged(){
+    gmailManual=false;$('advanced-settings').open=false;errorAt('settings-error',null);
+    const selected=currentProvider();
+    for(const protocol of ['imap','smtp']){
+      $(`${protocol}-host`).value=selected?.[protocol]||'';$(`${protocol}-port`).value=protocol==='imap'?'993':'587';
+      $(`${protocol}-secure`).value=String(protocol==='imap');$(`${protocol}-user`).value='';$(`${protocol}-password`).value='';
+    }
+    $('save-sent').checked=$('provider').value!=='gmail';renderSetup();
   }
-  function renderOAuth(){
-    const oauth=state.identity?.oauth || {};
-    for(const provider of ['google','microsoft'])$(`oauth-${provider}`).disabled=oauthBusy||!oauth[provider]?.available;
-    const providersReady=['google','microsoft'].filter(provider=>oauth[provider]?.available);
-    const active=state.identity?.account?.authType==='oauth';
-    text($('oauth-note'),oauthBusy?'Fuldfør login i din browser. Du kan annullere her.':active?`Kontoen er forbundet med ${state.identity.account.oauthProvider==='google'?'Google':'Microsoft'}. Brug knappen for at forbinde kontoen igen.`:providersReady.length?'Skriv din e-mailadresse, og fortsæt sikkert i din browser. Loginmuligheder uden en konfigureret OAuth-app er deaktiverede.':'Google- og Microsoft-login er ikke aktiveret i denne udgave. De kræver registrerede OAuth-app-id’er. Gmail kan bruge en app-adgangskode, hvis kontoen tillader det.');
-    $('oauth-cancel').hidden=!oauthBusy;$('save-settings').disabled=oauthBusy||$('provider').value==='outlook';
-    $('close-settings').disabled=oauthBusy;
-    $('account-email').disabled=oauthBusy;$('account-name').disabled=oauthBusy;
+  function renderSetup(){
+    const choice=$('provider').value,selected=currentProvider(),manual=manualMode(),busy=oauthBusy||configureBusy;
+    const active=state.identity?.account?.authType==='oauth',provider=selected?.oauth,available=!!state.identity?.oauth?.[provider]?.available;
+    $('provider-fields').hidden=!selected;$('provider').disabled=busy||active;
+    const googleLogin=provider==='google'&&!manual;
+    $('identity-fields').hidden=googleLogin;
+    $('account-email').disabled=!selected||busy||googleLogin;$('account-name').disabled=!selected||busy||googleLogin;
+    $('connected-account').hidden=!googleLogin||!state.identity?.configured;text($('connected-account'),state.identity?.account?.email);
+    $('manual-settings').hidden=!manual;$('imap-password').disabled=!manual||busy;
+    $('advanced-settings').querySelector('summary').setAttribute('aria-disabled',String(busy));
+    for(const input of $('advanced-fields').querySelectorAll('input,select'))input.disabled=!manual||!$('advanced-settings').open||busy;
+    $('manual-alternative').hidden=choice!=='gmail'||active;$('manual-alternative').disabled=busy;
+    $('manual-alternative').setAttribute('aria-expanded',String(gmailManual));text($('manual-alternative'),gmailManual?'Tilbage til Google-login':'Brug en app-adgangskode i stedet');
+    $('oauth-actions').hidden=!provider||manual;
+    for(const service of ['google','microsoft']){
+      $(`oauth-${service}`).hidden=service!==provider||manual;
+      $(`oauth-${service}`).disabled=busy||!available;
+      text($(`oauth-${service}`),oauthBusy?'Åbner login …':`${active?'Log ind igen med':'Log ind med'} ${service==='google'?'Google':'Microsoft'}`);
+    }
+    let note=selected?.note||'';
+    if(choice==='gmail'&&manual)note='Brug kun denne mulighed, hvis din Google-konto tillader app-adgangskoder. Opret en på din Google-konto med totrinsbekræftelse.';
+    else if(provider&&!available)note=`${provider==='google'?'Google':'Microsoft'}-login er ikke tilgængeligt i denne udgave. ${provider==='google'?'Brug en udgave med Google-login, eller vælg alternativet nedenfor.':'Outlook- og Microsoft 365-konti kan derfor ikke forbindes endnu.'}`;
+    text($('provider-note'),note);
+    $('oauth-note').hidden=!provider||manual;text($('oauth-note'),oauthBusy?'Fuldfør login i din browser. Du kan annullere her.':active?'Kontoen er forbundet. Log ind igen, hvis forbindelsen skal fornys.':available?'Din browser åbner, når du fortsætter.':'');
+    $('oauth-cancel').hidden=!oauthBusy;$('close-settings').disabled=busy;
+    $('save-settings').disabled=!manual||busy;text($('save-settings'),configureBusy?'Forbinder …':state.identity?.configured?'Gem forbindelse':'Forbind konto');
+    text($('password-label'),choice==='custom'?'Adgangskode':'App-adgangskode');
+    updatePasswordRequirement();
   }
   async function connectOAuth(provider){
-    if(oauthBusy||!$('account-email').reportValidity())return;
-    oauthBusy=true;renderOAuth();errorAt('settings-error',null);
+    if(oauthBusy||configureBusy||!state.identity?.oauth?.[provider]?.available||(provider!=='google'&&!$('account-email').reportValidity()))return;
+    const payload=provider==='google'?{provider}:{provider,email:$('account-email').value.trim(),name:$('account-name').value.trim()};
+    oauthBusy=true;renderSetup();errorAt('settings-error',null);
     try{
-      state.identity=await invoke('oauthConnect',{provider,email:$('account-email').value.trim(),name:$('account-name').value.trim()});
+      state.identity=await invoke('oauthConnect',payload);
       $('imap-password').value='';$('smtp-password').value='';$('settings-dialog').close();text($('account-address'),state.identity.account.email);
       state.folder='INBOX';state.view='mail';state.page=1;state.query='';$('search').value='';setReader(null);$('workspace').hidden=false;notice('Kontoen er forbundet.');await refreshFolders();await loadMessages();await refreshDrafts();
-    }catch(error){errorAt('settings-error',error);}finally{oauthBusy=false;renderOAuth();}
+    }catch(error){errorAt('settings-error',error);}finally{oauthBusy=false;renderSetup();}
   }
   async function configure(event){
-    event.preventDefault();if(oauthBusy||state.identity?.account?.authType==='oauth'||$('provider').value==='outlook')return;
-    errorAt('settings-error',null);$('save-settings').disabled=true;text($('save-settings'),'Kontrollerer forbindelsen …');
+    event.preventDefault();if(oauthBusy||configureBusy)return;
+    if(currentProvider()?.oauth&&!manualMode()){await connectOAuth(currentProvider().oauth);return;}
+    if(!manualMode())return;
+    // Collapsed server controls must not obstruct provider login. Validate them before manual configuration.
+    for(const input of $('advanced-fields').querySelectorAll('input,select'))input.disabled=false;
+    if(!$('settings-form').checkValidity()){
+      $('advanced-settings').open=true;renderSetup();$('settings-form').reportValidity();return;
+    }
     const account={email:$('account-email').value.trim(),name:$('account-name').value.trim(),saveSent:$('save-sent').checked};
-    for(const protocol of ['imap','smtp'])account[protocol]={host:$(`${protocol}-host`).value.trim(),port:Number($(`${protocol}-port`).value),secure:$(`${protocol}-secure`).value==='true',user:$(`${protocol}-user`).value.trim() || account.email,password:$(`${protocol}-password`).value || (protocol==='smtp'?$('imap-password').value:'')};
+    for(const protocol of ['imap','smtp'])account[protocol]={host:$(`${protocol}-host`).value.trim(),port:Number($(`${protocol}-port`).value),secure:$(`${protocol}-secure`).value==='true',user:$(`${protocol}-user`).value.trim()||defaultUser(protocol),password:$(`${protocol}-password`).value || (protocol==='smtp'?$('imap-password').value:'')};
+    configureBusy=true;renderSetup();errorAt('settings-error',null);
     try{
       state.identity=await invoke('configure',account);
       $('imap-password').value='';$('smtp-password').value='';$('settings-dialog').close();notice('Kontoen er forbundet.');
       text($('account-address'),state.identity.account?.email || account.email);state.folder='INBOX';state.page=1;state.query='';state.view='mail';$('search').value='';setReader(null);$('workspace').hidden=false;await refreshFolders();await loadMessages();await refreshDrafts();
     }catch(error){errorAt('settings-error',error);}
-    finally{$('save-settings').disabled=false;text($('save-settings'),'Kontrollér og gem');}
+    finally{configureBusy=false;renderSetup();}
   }
   function renderFolders(){
     $('folders').replaceChildren();
@@ -252,8 +295,12 @@
     }catch(error){errorAt('compose-error',errorText(error)+(deliveryStarted?'\nHvis forbindelsen blev afbrudt under afsendelsen, kan mailen være leveret. Kontrollér Sendt, inden du prøver igen.':''));}
     finally{state.sending=false;document.querySelectorAll('#compose-form button,#compose-form input,#compose-form textarea').forEach(el=>el.disabled=false);text($('send'),'Send mail ↗');if(state.draft)await saveDraft().catch(error=>errorAt('compose-error',error));}
   }
-  $('settings').addEventListener('click',openSettings);$('provider').addEventListener('change',()=>providerChanged());$('settings-form').addEventListener('submit',configure);$('close-settings').addEventListener('click',()=>$('settings-dialog').close());
-  $('settings-dialog').addEventListener('cancel',event=>{if(!state.identity?.configured||oauthBusy)event.preventDefault();});
+  $('settings').addEventListener('click',openSettings);$('provider').addEventListener('change',providerChanged);$('settings-form').addEventListener('submit',configure);$('close-settings').addEventListener('click',()=>$('settings-dialog').close());
+  $('settings-dialog').addEventListener('cancel',event=>{if(!state.identity?.configured||oauthBusy||configureBusy)event.preventDefault();});
+  $('manual-alternative').addEventListener('click',()=>{gmailManual=!gmailManual;errorAt('settings-error',null);renderSetup();});
+  $('advanced-settings').addEventListener('toggle',renderSetup);
+  $('advanced-settings').querySelector('summary').addEventListener('click',event=>{if(oauthBusy||configureBusy)event.preventDefault();});
+  $('account-email').addEventListener('input',updatePasswordRequirement);$('advanced-fields').addEventListener('input',updatePasswordRequirement);
   for(const provider of ['google','microsoft'])$(`oauth-${provider}`).addEventListener('click',()=>connectOAuth(provider));
   $('oauth-cancel').addEventListener('click',()=>invoke('oauthCancel').catch(error=>errorAt('settings-error',error)));
   $('retry-start').addEventListener('click',start);$('compose').addEventListener('click',()=>openCompose());$('drafts').addEventListener('click',showDrafts);

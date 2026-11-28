@@ -45,19 +45,31 @@
 
   <dialog id="settings-dialog" aria-labelledby="settings-title">
     <form id="settings-form">
-      <div class="dialog-head"><div><p class="eyebrow">Forbind din mail</p><h2 id="settings-title">Din adresse. Dit sted.</h2></div><button id="close-settings" class="quiet" type="button" aria-label="Luk indstillinger">✕</button></div>
-      <p class="lead">Tilføj en konto med IMAP og SMTP. Forbindelsen er krypteret, og loginoplysninger gemmes i computerens sikre lager.</p>
-      <div class="form-grid"><div><label for="account-email">E-mailadresse</label><input id="account-email" type="email" maxlength="320" autocomplete="username" required></div><div><label for="account-name">Dit navn</label><input id="account-name" maxlength="200" autocomplete="name"></div></div>
-      <div class="oauth-actions"><button id="oauth-google" class="secondary" type="button" disabled>Forbind Google</button><button id="oauth-microsoft" class="secondary" type="button" disabled>Forbind Microsoft</button><button id="oauth-cancel" class="quiet" type="button" hidden>Annuller login</button></div>
-      <p id="oauth-note" class="hint">Google- og Microsoft-login kræver, at Veyros OAuth-app er konfigureret i denne udgave.</p>
-      <div id="manual-settings">
-      <label for="provider">Eller forbind med adgangskode</label><select id="provider"><option value="custom">Anden udbyder / egen mailserver</option><option value="gmail">Gmail / Google Workspace</option><option value="outlook">Outlook / Microsoft 365 — OAuth kræves</option></select>
-      <p id="provider-note" class="provider-note">Find IMAP- og SMTP-indstillingerne hos din udbyder. Kontoen skal tillade login med adgangskode eller app-adgangskode.</p>
-      <fieldset><legend>Indgående mail · IMAP</legend><div class="server-grid"><div><label for="imap-host">Server</label><input id="imap-host" placeholder="imap.dinudbyder.dk" required maxlength="253" spellcheck="false"></div><div><label for="imap-port">Port</label><input id="imap-port" type="number" min="1" max="65535" value="993" required></div><div><label for="imap-secure">Kryptering</label><select id="imap-secure"><option value="true">TLS</option><option value="false">STARTTLS</option></select></div></div><div class="form-grid"><div><label for="imap-user">Brugernavn</label><input id="imap-user" placeholder="Som e-mailadressen" maxlength="320" autocomplete="off"></div><div><label for="imap-password">Adgangskode / app-adgangskode</label><input id="imap-password" type="password" maxlength="4096" autocomplete="new-password"></div></div></fieldset>
-      <fieldset><legend>Udgående mail · SMTP</legend><div class="server-grid"><div><label for="smtp-host">Server</label><input id="smtp-host" placeholder="smtp.dinudbyder.dk" required maxlength="253" spellcheck="false"></div><div><label for="smtp-port">Port</label><input id="smtp-port" type="number" min="1" max="65535" value="587" required></div><div><label for="smtp-secure">Kryptering</label><select id="smtp-secure"><option value="false">STARTTLS</option><option value="true">TLS</option></select></div></div><div class="form-grid"><div><label for="smtp-user">Brugernavn</label><input id="smtp-user" placeholder="Som e-mailadressen" maxlength="320" autocomplete="off"></div><div><label for="smtp-password">Adgangskode</label><input id="smtp-password" type="password" maxlength="4096" placeholder="Som IMAP-adgangskoden" autocomplete="new-password"></div></div></fieldset>
-      <label class="checkbox"><input id="save-sent" type="checkbox" checked><span>Gem en kopi i Sendt (Gmail gemmer selv)</span></label>
-      <p id="password-hint" class="hint" hidden>Lad adgangskoderne være tomme for at beholde de gemte.</p>
-      <button id="save-settings" class="primary" type="submit">Forbind konto</button>
+      <div class="dialog-head"><div><p class="eyebrow">Din mail, samlet</p><h2 id="settings-title">Saml din mail her.</h2></div><button id="close-settings" class="quiet" type="button" aria-label="Luk indstillinger">✕</button></div>
+      <p class="lead">Vælg din mailtjeneste, så hjælper vi dig med at logge ind.</p>
+      <label for="provider">Din mailtjeneste</label>
+      <select id="provider" required><option value="">Vælg mailtjeneste</option><option value="gmail">Gmail / Google Workspace</option><option value="outlook">Outlook / Microsoft 365</option><option value="icloud">iCloud Mail</option><option value="yahoo">Yahoo Mail</option><option value="custom">Anden mailtjeneste</option></select>
+      <div id="provider-fields" hidden>
+        <div id="identity-fields" class="form-grid"><div><label for="account-email">E-mailadresse</label><input id="account-email" type="email" maxlength="320" autocomplete="username" placeholder="dig@eksempel.dk" required></div><div><label for="account-name">Dit navn <span class="optional">(valgfrit)</span></label><input id="account-name" maxlength="200" autocomplete="name" placeholder="Det navn, andre ser"></div></div>
+        <p id="connected-account" class="connected-account" hidden></p>
+        <p id="provider-note" class="provider-note" role="status"></p>
+        <div id="oauth-actions" class="oauth-actions" hidden><button id="oauth-google" class="primary" type="button" hidden>Log ind med Google</button><button id="oauth-microsoft" class="primary" type="button" hidden>Log ind med Microsoft</button><button id="oauth-cancel" class="quiet" type="button" hidden>Annuller login</button></div>
+        <p id="oauth-note" class="hint" hidden></p>
+        <button id="manual-alternative" class="quiet alternative" type="button" aria-expanded="false" aria-controls="manual-settings" hidden>Brug en app-adgangskode i stedet</button>
+        <div id="manual-settings" hidden>
+          <label id="password-label" for="imap-password">App-adgangskode</label><input id="imap-password" type="password" maxlength="4096" autocomplete="new-password" aria-describedby="password-hint">
+          <p id="password-hint" class="hint"></p>
+          <details id="advanced-settings"><summary>Avancerede indstillinger</summary>
+            <p class="hint">Brug oplysningerne fra din mailudbyder. Forbindelserne er altid krypterede.</p>
+            <div id="advanced-fields">
+              <fieldset><legend>Indgående mail · IMAP</legend><div class="server-grid"><div><label for="imap-host">Server</label><input id="imap-host" placeholder="imap.dinudbyder.dk" required maxlength="253" spellcheck="false"></div><div><label for="imap-port">Port</label><input id="imap-port" type="number" min="1" max="65535" value="993" required></div><div><label for="imap-secure">Kryptering</label><select id="imap-secure"><option value="true">TLS</option><option value="false">STARTTLS</option></select></div></div><label for="imap-user">Brugernavn, hvis det er anderledes</label><input id="imap-user" placeholder="Som e-mailadressen" maxlength="320" autocomplete="off"></fieldset>
+              <fieldset><legend>Udgående mail · SMTP</legend><div class="server-grid"><div><label for="smtp-host">Server</label><input id="smtp-host" placeholder="smtp.dinudbyder.dk" required maxlength="253" spellcheck="false"></div><div><label for="smtp-port">Port</label><input id="smtp-port" type="number" min="1" max="65535" value="587" required></div><div><label for="smtp-secure">Kryptering</label><select id="smtp-secure"><option value="false">STARTTLS</option><option value="true">TLS</option></select></div></div><div class="form-grid"><div><label for="smtp-user">Brugernavn, hvis det er anderledes</label><input id="smtp-user" placeholder="Som e-mailadressen" maxlength="320" autocomplete="off"></div><div><label for="smtp-password">Særskilt adgangskode, hvis nødvendigt</label><input id="smtp-password" type="password" maxlength="4096" placeholder="Som adgangskoden ovenfor" autocomplete="new-password"></div></div></fieldset>
+              <label class="checkbox"><input id="save-sent" type="checkbox" checked><span>Gem en kopi i Sendt (Gmail gemmer selv)</span></label>
+            </div>
+          </details>
+          <button id="save-settings" class="primary" type="submit">Forbind konto</button>
+        </div>
+        <p class="setup-security">Dine loginoplysninger gemmes sikkert på denne computer.</p>
       </div>
       <p id="settings-error" class="error" role="alert" hidden></p>
     </form>

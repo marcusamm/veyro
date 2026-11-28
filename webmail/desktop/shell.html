@@ -16,16 +16,24 @@
     <span class="rail-foot">Veyro Mail</span>
   </aside>
   <main id="stage" class="stage">
-    <div id="status" class="status" role="status" aria-live="polite"><span class="status-mark">v<span>·</span></span><h1 id="status-title">Din mail. Dit overblik.</h1><p id="status-copy">Forbinder til din konto…</p><button id="retry" class="primary" hidden>Prøv igen</button><button id="first-account" class="primary" hidden>Tilføj en konto</button></div>
+    <div id="status" class="status" role="status" aria-live="polite"><span class="status-mark">v<span>·</span></span><h1 id="status-title">Din mail. Dit overblik.</h1><p id="status-copy">Forbinder til din konto…</p><button id="retry" class="primary" hidden>Prøv igen</button><button id="welcome-google" class="primary google-button" hidden><span class="google-mark" aria-hidden="true">G</span>Log ind med Google</button><button id="first-account" class="text-button" hidden>Andre mailkonti</button></div>
     <dialog id="account-dialog" aria-labelledby="dialog-title">
       <form id="account-form">
         <div class="dialog-top"><span class="eyebrow">Plads til alle dine konti</span><button type="button" id="close-dialog" class="close" aria-label="Luk">×</button></div>
         <h1 id="dialog-title">Tilføj en konto.</h1>
-        <p id="dialog-copy">Skift mellem dine mailkonti med et enkelt klik.</p>
-        <label for="label">Kontonavn</label><input id="label" name="label" maxlength="64" required placeholder="Fx arbejde eller privat" autocomplete="off">
-        <fieldset id="kind-field"><legend>Mailtjeneste</legend><label class="choice"><input type="radio" name="kind" value="veyro" checked><span><strong>Veyro</strong><small>Mail, teamchat og intranet</small></span></label><label class="choice"><input type="radio" name="kind" value="external"><span><strong>En anden mailtjeneste</strong><small>Forbind med IMAP og SMTP</small></span></label></fieldset>
+        <p id="dialog-copy">Brug din Gmail i Veyro Mail. Vi henter dit navn og din mailadresse, når du logger ind.</p>
+        <div id="google-setup" class="google-setup">
+          <button type="button" id="google-login" class="primary google-button"><span class="google-mark" aria-hidden="true">G</span><span id="google-label">Log ind med Google</span></button>
+          <p id="google-copy" class="setup-hint">Vælg din konto hos Google, og godkend forbindelsen. Så er din konto klar her.</p>
+          <button type="button" id="google-cancel" class="text-button" hidden>Annuller login</button>
+          <button type="button" id="other-services" class="text-button" aria-expanded="false" aria-controls="manual-account">Brug en anden mailkonto</button>
+        </div>
+        <div id="manual-account" hidden>
+          <fieldset id="kind-field"><legend>Hvilken mailkonto vil du tilføje?</legend><label class="choice"><input type="radio" name="kind" value="veyro" checked><span><strong>Veyro-firmakonto</strong><small>Log ind på virksomhedens mail, chat og intranet</small></span></label><label class="choice"><input type="radio" name="kind" value="external"><span><strong>En anden mailtjeneste</strong><small>Fx iCloud, Outlook eller din egen udbyder</small></span></label></fieldset>
+          <div id="label-field"><label for="label">Kontonavn <span id="label-optional">(valgfrit)</span></label><input id="label" name="label" maxlength="64" placeholder="Fx arbejde eller privat" autocomplete="off"></div>
+        </div>
         <p id="form-error" class="error" role="alert"></p>
-        <div class="dialog-actions"><button type="button" id="remove" class="danger" hidden>Fjern fra computeren</button><button type="submit" id="save" class="primary">Tilføj konto</button></div>
+        <div id="dialog-actions" class="dialog-actions" hidden><button type="button" id="remove" class="danger" hidden>Fjern fra computeren</button><button type="submit" id="save" class="primary">Fortsæt</button></div>
       </form>
     </dialog>
   </main>

@@ -5,7 +5,8 @@ const {randomBytes, createHash, timingSafeEqual} = require('node:crypto');
 const PROVIDERS = Object.freeze({
   google: {
     authorize: 'https://accounts.google.com/o/oauth2/v2/auth', token: 'https://oauth2.googleapis.com/token',
-    scope: 'https://mail.google.com/', redirectHost: '127.0.0.1', imap: 'imap.gmail.com', smtp: 'smtp.gmail.com',
+    scope: 'openid email profile https://mail.google.com/', userinfo: 'https://openidconnect.googleapis.com/v1/userinfo',
+    redirectHost: '127.0.0.1', imap: 'imap.gmail.com', smtp: 'smtp.gmail.com',
   },
   microsoft: {
     authorize: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize', token: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
@@ -42,6 +43,24 @@ function providerAccount(provider, email, name = '') {
     smtp: {host: p.smtp, port: 587, secure: false, user: email},
   };
 }
+function verifiedGoogleProfile(data) {
+  if (!data || data.email_verified !== true || typeof data.sub !== 'string' || !/^[\x21-\x7e]{1,255}$/.test(data.sub)) {
+    throw new Error('Google kunne ikke bekræfte din profil og mailadresse. Prøv at logge ind igen.');
+  }
+  const account = providerAccount('google', data.email, typeof data.name === 'string' ? data.name.replace(/[\u0000-\u001f\u007f]/g, '').trim() : '');
+  return {sub: data.sub, email: account.email, name: account.name};
+}
+function googleAccountMatches(account, profile) {
+  if (!account) return false;
+  if (account.oauthProvider === 'google' && account.oauthSubject) return account.oauthSubject === profile.sub;
+  // Migrate an earlier Google connection only when its exact mailbox and fixed
+  // Gmail servers agree. An unrelated account with the same display email is
+  // not sufficient evidence of identity.
+  return account.email?.toLowerCase() === profile.email.toLowerCase()
+    && account.imap?.host === PROVIDERS.google.imap && account.smtp?.host === PROVIDERS.google.smtp
+    && account.imap?.user?.toLowerCase() === profile.email.toLowerCase()
+    && account.smtp?.user?.toLowerCase() === profile.email.toLowerCase();
+}
 function createOAuth({config = {}, openBrowser, fetchImpl = fetch, timeoutMs = 180000}) {
   const settings = normalizeConfig(config);
   const pending = new Map();
@@ -64,6 +83,17 @@ function createOAuth({config = {}, openBrowser, fetchImpl = fetch, timeoutMs = 1
     const seconds = Math.max(30, Math.min(Number(data.expires_in) || 3600, 86400));
     return {provider, clientId: registration.clientId, accessToken: data.access_token,
       refreshToken: typeof data.refresh_token === 'string' ? data.refresh_token : undefined, expiresAt: Date.now() + seconds * 1000};
+  }
+  async function googleIdentity(tokens, signal) {
+    let response, data;
+    try {
+      response = await fetchImpl(PROVIDERS.google.userinfo, {method: 'GET', redirect: 'error', signal,
+        headers: {Authorization: `Bearer ${tokens.accessToken}`, Accept: 'application/json'}});
+      const body = await response.text();
+      if (!response.ok || body.length > 65536) throw new Error();
+      data = JSON.parse(body);
+    } catch { throw new Error('Din Google-profil kunne ikke hentes sikkert. Prøv at logge ind igen.'); }
+    return verifiedGoogleProfile(data);
   }
   async function connect(id, provider, email) {
     const p = PROVIDERS[provider], registration = settings[provider];
@@ -102,15 +132,19 @@ function createOAuth({config = {}, openBrowser, fetchImpl = fetch, timeoutMs = 1
       const redirect = `http://${p.redirectHost}:${server.address().port}/oauth/callback`;
       const authorization = new URL(p.authorize);
       const params = {client_id: registration.clientId, redirect_uri: redirect, response_type: 'code', scope: p.scope,
-        state, code_challenge: challenge, code_challenge_method: 'S256', login_hint: email};
-      if (provider === 'google') { params.access_type = 'offline'; params.prompt = 'consent'; }
+        state, code_challenge: challenge, code_challenge_method: 'S256'};
+      if (email) params.login_hint = email;
+      if (provider === 'google') { params.access_type = 'offline'; params.prompt = 'select_account consent'; }
       else { params.response_mode = 'query'; params.prompt = 'select_account'; }
       authorization.search = new URLSearchParams(params).toString();
       timer = setTimeout(() => controller.abort(), timeoutMs);
+      if (controller.signal.aborted) throw new Error('Login blev annulleret.');
       await openBrowser(authorization.href);
       const code = await callback;
       const tokens = await tokenRequest(provider, {grant_type: 'authorization_code', code, redirect_uri: redirect, code_verifier: verifier}, controller.signal);
       if (!tokens.refreshToken) throw new Error('Udbyderen gav ikke vedvarende adgang. Tillad offlineadgang, og forbind kontoen igen.');
+      if (provider === 'google') tokens.identity = await googleIdentity(tokens, controller.signal);
+      if (controller.signal.aborted) throw new Error('Login blev annulleret.');
       return tokens;
     } finally {
       clearTimeout(timer);
@@ -127,4 +161,4 @@ function createOAuth({config = {}, openBrowser, fetchImpl = fetch, timeoutMs = 1
   }
   return {availability, connect, fresh, cancel, cancelAll: () => { for (const id of pending.keys()) cancel(id); }};
 }
-module.exports = {createOAuth, providerAccount, pkce, sameState, normalizeConfig};
+module.exports = {createOAuth, providerAccount, verifiedGoogleProfile, googleAccountMatches, pkce, sameState, normalizeConfig};

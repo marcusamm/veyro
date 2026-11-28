@@ -5,7 +5,7 @@ const path = require('node:path');
 const {randomUUID} = require('node:crypto');
 const policy = require('./security.cjs');
 const {createVault} = require('./vault.cjs');
-const {createOAuth, providerAccount} = require('./oauth.cjs');
+const {createOAuth, providerAccount, verifiedGoogleProfile, googleAccountMatches} = require('./oauth.cjs');
 const {loadOAuthRegistration} = require('./oauth-registration.cjs');
 
 app.enableSandbox();
@@ -23,7 +23,7 @@ async function bootstrap(options = {}) {
   const vault = createVault({safeStorage, directory: path.join(app.getPath('userData'), 'vault')});
   const oauthConfig = loadOAuthRegistration({isPackaged: app.isPackaged, resourcesPath: process.resourcesPath,
     explicitFile: process.env.VEYRO_OAUTH_CONFIG_FILE, template: require('./oauth-config.json')});
-  const oauth = createOAuth({
+  const oauth = testing && options.oauth ? options.oauth : createOAuth({
     config: {
       google: {clientId: process.env.VEYRO_GOOGLE_CLIENT_ID || oauthConfig.google?.clientId, clientSecret: process.env.VEYRO_GOOGLE_CLIENT_SECRET || oauthConfig.google?.clientSecret},
       microsoft: {clientId: process.env.VEYRO_MICROSOFT_CLIENT_ID || oauthConfig.microsoft?.clientId},
@@ -31,6 +31,7 @@ async function bootstrap(options = {}) {
     // OAuth destinations are fixed in oauth.cjs and opened only by the explicit Connect action.
     openBrowser: openExternal,
   });
+  const connectorFor = (account) => (testing && options.createMailConnector ? options.createMailConnector : require('./mail-connector.cjs').createMailConnector)({account});
   const views = new Map();
   const protectedSessions = new Map();
   const downloads = new Map();
@@ -38,7 +39,7 @@ async function bootstrap(options = {}) {
   const removing = new Set();
   const oauthAttempts = new Map();
   const messageViews = new Map();
-  let window, accounts = [], activeId, dialogOpen = false, promptOpen = false, toast = '', shuttingDown = false;
+  let window, accounts = [], activeId, dialogOpen = false, promptOpen = false, toast = '', shuttingDown = false, googleAddition;
   let mutation = Promise.resolve();
 
   function accountById(id) {
@@ -64,14 +65,15 @@ async function bootstrap(options = {}) {
       activeId = accounts.some((item) => item.id === data.activeId) ? data.activeId : accounts[0]?.id;
     } catch (error) {
       if (error.code !== 'ENOENT') throw new Error('Kontolisten kunne ikke læses. Dine gemte kontodata er bevaret.');
-      accounts = [{id: randomUUID(), label: 'Min Veyro', kind: 'veyro'}];
-      activeId = accounts[0].id;
+      accounts = [];
+      activeId = undefined;
       await saveAccounts();
     }
   }
   function state() {
     const entry = views.get(activeId);
-    return {accounts, activeId, status: entry?.status || 'empty', section: entry?.section || 'mail', dialogOpen, toast, version: app.getVersion()};
+    return {accounts, activeId, status: entry?.status || 'empty', section: entry?.section || 'mail', dialogOpen, toast,
+      oauth: oauth.availability(), googleConnecting: !!googleAddition, version: app.getVersion()};
   }
   function publish() {
     if (window && !window.isDestroyed()) window.webContents.send('veyro:state', state());
@@ -90,6 +92,87 @@ async function bootstrap(options = {}) {
     oauthAttempts.set(id, generation);
     oauth.cancel(id);
     return generation;
+  }
+  function beginGoogle() {
+    if (googleAddition) throw new Error('Et Google-login er allerede i gang.');
+    if (!oauth.availability().google.available) throw new Error('Google-login er ikke aktiveret i denne version.');
+    const attempt = {id: randomUUID(), cancelled: false, committed: false};
+    googleAddition = attempt;
+    publish();
+    return attempt;
+  }
+  function cancelGoogle() {
+    if (googleAddition && !googleAddition.committed) {
+      googleAddition.cancelled = true;
+      oauth.cancel(googleAddition.id);
+      googleAddition = undefined;
+      publish();
+    }
+    return state();
+  }
+  function enqueueAccount(id, operation) {
+    const result = (accountQueues.get(id) || Promise.resolve()).then(operation);
+    accountQueues.set(id, result.catch(() => {}));
+    return result;
+  }
+  async function addGoogle(attempt) {
+    const assertAttempt = () => {
+      if (attempt.cancelled || shuttingDown || googleAddition !== attempt) throw new Error('Login blev annulleret.');
+    };
+    try {
+      assertAttempt();
+      if (!(await vault.available())) throw new Error('Operativsystemets sikre nøglering er ikke tilgængelig.');
+      assertAttempt();
+      const tokens = await oauth.connect(attempt.id, 'google');
+      assertAttempt();
+      const profile = verifiedGoogleProfile({...tokens.identity, email_verified: true});
+      const account = {...providerAccount('google', profile.email, profile.name), oauthSubject: profile.sub};
+      await connectorFor({...account, id: attempt.id, imap: {...account.imap, accessToken: tokens.accessToken}, smtp: {...account.smtp, accessToken: tokens.accessToken}}).verify();
+      assertAttempt();
+      // New configuration IPC is blocked during this flow. Drain pre-existing
+      // account work before choosing a duplicate, then serialize its vault write
+      // with drafts and token refreshes so those cannot be overwritten.
+      await Promise.all([...accountQueues.values()]);
+      assertAttempt();
+      let duplicate;
+      for (const metadata of accounts.filter((item) => item.kind === 'external')) {
+        const saved = await vault.read(metadata.id);
+        if (googleAccountMatches(saved.account, profile)) { duplicate = metadata; break; }
+      }
+      assertAttempt();
+      if (!duplicate && accounts.length >= 30) throw new Error('Du kan have op til 30 konti.');
+      const id = duplicate?.id || randomUUID();
+      await enqueueAccount(id, async () => {
+        assertAttempt();
+        const saved = duplicate ? await vault.read(id) : {drafts: []};
+        if (duplicate && !googleAccountMatches(saved.account, profile)) throw new Error('Kontoen blev ændret. Prøv at logge ind igen.');
+        const previousActive = activeId;
+        let listed = false;
+        try {
+          await vault.write(id, {...saved, account: {...account, id}, oauth: tokens});
+          assertAttempt();
+          if (!duplicate) {
+            accounts.push({id, label: policy.normalizeLabel((profile.name || profile.email).slice(0, 64)), kind: 'external'});
+            listed = true;
+            await saveAccounts();
+            assertAttempt();
+          }
+          attempt.committed = true;
+        } catch (error) {
+          if (duplicate) await vault.write(id, saved); else await vault.remove(id);
+          if (listed) { accounts = accounts.filter((item) => item.id !== id); activeId = previousActive; await saveAccounts(); }
+          throw error;
+        }
+        clearMessageViews(id);
+      });
+      await switchAccount(id);
+      // Existing native renderers retain a public identity snapshot until reload.
+      if (duplicate) views.get(id)?.view.webContents.reload();
+      if (googleAddition === attempt) { googleAddition = undefined; publish(); }
+      return state();
+    } finally {
+      if (googleAddition === attempt) { googleAddition = undefined; publish(); }
+    }
   }
   function messageView(url, accountId) {
     if (typeof url !== 'string' || !/^veyro:\/\/message\/[a-f0-9-]{36}$/.test(url)) return undefined;
@@ -304,10 +387,12 @@ async function bootstrap(options = {}) {
       throw new Error('Denne side har ikke adgang til desktop-funktioner.');
     }
   }
-  async function shellAction(action, payload = {}) {
+  async function shellAction(action, payload = {}, googleAttempt) {
     switch (action) {
       case 'state': return state();
       case 'dialog': dialogOpen = payload.open === true; layout(); publish(); return state();
+      case 'addGoogle': return addGoogle(googleAttempt || beginGoogle());
+      case 'cancelGoogle': return cancelGoogle();
       case 'add': {
         if (accounts.length >= 30) throw new Error('Du kan have op til 30 konti.');
         if (!['veyro', 'external'].includes(payload.kind)) throw new Error('Vælg en kontotype.');
@@ -321,7 +406,7 @@ async function bootstrap(options = {}) {
       case 'remove': return removeAccount(payload.id);
       case 'section': {
         const account = accountById(activeId);
-        if (account.kind !== 'veyro' && payload.section !== 'mail') throw new Error('Chat og intranet kræver en Veyro-konto. Skift til eller tilføj en Veyro-konto.');
+        if (account.kind !== 'veyro' && payload.section !== 'mail') throw new Error('Chat og intranet kræver adgang til en Veyro-firmakonto.');
         const routes = {mail: '/', chat: '/team#chat', intranet: '/team#intranet'};
         if (!(payload.section in routes)) throw new Error('Ukendt område.');
         const entry = views.get(activeId);
@@ -365,19 +450,24 @@ async function bootstrap(options = {}) {
       messageViews.set(htmlUrl, {...previous, enabled: payload.enabled === true, createdAt: Date.now()});
       return {htmlUrl, hasRemoteImages: previous.images.size > 0, richAvailable: true};
     }
-    const {createMailConnector} = require('./mail-connector.cjs');
     if (action === 'oauthConnect') {
       const assertAttempt = () => {
         if (removing.has(id) || shuttingDown || (oauthGeneration !== undefined && oauthAttempts.get(id) !== oauthGeneration)) throw new Error('Login blev annulleret.');
       };
       assertAttempt();
-      const account = {...providerAccount(payload.provider, payload.email, payload.name), id};
-      const tokens = await oauth.connect(id, payload.provider, account.email);
+      const tokens = await oauth.connect(id, payload.provider, payload.provider === 'google' ? undefined : payload.email);
       assertAttempt();
+      const profile = payload.provider === 'google' ? verifiedGoogleProfile({...tokens.identity, email_verified: true}) : undefined;
+      if (profile && saved.account && !googleAccountMatches(saved.account, profile)) throw new Error('Du valgte en anden Google-konto. Brug Tilføj konto for at beholde kontiene hver for sig.');
+      const account = {...providerAccount(payload.provider, profile?.email || payload.email, profile?.name || payload.name), id,
+        ...(profile ? {oauthSubject: profile.sub} : {})};
       const authenticated = {...account, imap: {...account.imap, accessToken: tokens.accessToken}, smtp: {...account.smtp, accessToken: tokens.accessToken}};
-      await createMailConnector({account: authenticated}).verify();
+      await connectorFor(authenticated).verify();
       assertAttempt();
-      await vault.write(id, {...saved, account, oauth: tokens});
+      try {
+        await vault.write(id, {...saved, account, oauth: tokens});
+        assertAttempt();
+      } catch (error) { await vault.write(id, saved); throw error; }
       clearMessageViews(id);
       return identity(account);
     }
@@ -386,7 +476,7 @@ async function bootstrap(options = {}) {
         imap: policy.accountEndpoint(payload.imap, saved.account?.imap, payload.email, saved.account?.email),
         smtp: policy.accountEndpoint(payload.smtp, saved.account?.smtp, payload.email, saved.account?.email),
       };
-      const connector = createMailConnector({account});
+      const connector = connectorFor(account);
       await connector.verify();
       await vault.write(id, {...saved, account, oauth: undefined});
       clearMessageViews(id);
@@ -412,7 +502,7 @@ async function bootstrap(options = {}) {
       if (tokens !== saved.oauth) await vault.write(id, {...saved, oauth: tokens});
       authenticated = {...saved.account, imap: {...saved.account.imap, accessToken: tokens.accessToken}, smtp: {...saved.account.smtp, accessToken: tokens.accessToken}};
     }
-    const connector = createMailConnector({account: authenticated});
+    const connector = connectorFor(authenticated);
     if (action === 'saveAttachment') {
       const attachment = await connector.attachment(payload);
       const result = await prompt.showSaveDialog(window, {title: 'Gem vedhæftning', defaultPath: path.join(app.getPath('downloads'), policy.safeFilename(attachment.filename)), properties: ['showOverwriteConfirmation', 'createDirectory']});
@@ -444,7 +534,12 @@ async function bootstrap(options = {}) {
   await installProtocol(session.defaultSession);
   ipcMain.handle('veyro:shell', (event, action, payload) => {
     assertSender(event, policy.SHELL_URL, window?.webContents);
-    const result = mutation.then(() => shellAction(action, payload));
+    if (action === 'cancelGoogle') return cancelGoogle();
+    // Pure UI state remains responsive while an OAuth/mail-server operation is
+    // awaiting the network; account mutations still use the serialized queue.
+    if (action === 'state' || action === 'dialog') return shellAction(action, payload);
+    const googleAttempt = action === 'addGoogle' ? beginGoogle() : undefined;
+    const result = mutation.then(() => shellAction(action, payload, googleAttempt));
     mutation = result.catch(() => {});
     return result;
   });
@@ -454,12 +549,10 @@ async function bootstrap(options = {}) {
     assertSender(event, policy.CLIENT_URL, entry[1].view.webContents);
     if (removing.has(entry[0])) throw new Error('Kontoen bliver fjernet.');
     if (action === 'oauthCancel') { invalidateOAuth(entry[0]); return {cancelled: true}; }
+    if (googleAddition && ['configure', 'oauthConnect'].includes(action)) throw new Error('Afslut eller annuller først dit Google-login.');
     if (typeof action !== 'string' || payload === null || (typeof payload !== 'object' && payload !== undefined)) throw new Error('Ugyldig mailhandling.');
-    const previous = accountQueues.get(entry[0]) || Promise.resolve();
     const generation = action === 'oauthConnect' ? invalidateOAuth(entry[0]) : undefined;
-    const result = previous.then(() => mailAction(entry[0], action, payload, generation));
-    accountQueues.set(entry[0], result.catch(() => {}));
-    return result;
+    return enqueueAccount(entry[0], () => mailAction(entry[0], action, payload, generation));
   });
   function currentContents() { return views.get(activeId)?.view.webContents; }
   function buildMenu() {
@@ -493,6 +586,7 @@ async function bootstrap(options = {}) {
     secureContents(window.webContents, {expected: policy.SHELL_URL});
     window.on('resize', layout);
     window.on('closed', () => {
+      cancelGoogle();
       for (const entry of views.values()) if (!entry.view.webContents.isDestroyed()) entry.view.webContents.close();
       views.clear(); messageViews.clear(); window = undefined;
     });

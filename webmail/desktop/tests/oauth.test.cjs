@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const {createHash} = require('node:crypto');
 const http = require('node:http');
 const net = require('node:net');
-const {createOAuth, providerAccount, pkce, sameState, normalizeConfig} = require('../oauth.cjs');
+const {createOAuth, providerAccount, verifiedGoogleProfile, googleAccountMatches, pkce, sameState, normalizeConfig} = require('../oauth.cjs');
 
 test('PKCE uses independent high-entropy S256 values and malformed state cannot crash callback', () => {
   const first = pkce(), second = pkce();
@@ -30,6 +30,8 @@ test('loopback validates path, host and state, uses PKCE, then exchanges only at
       assert.equal(authorization.origin, 'https://accounts.google.com');
       assert.equal(authorization.searchParams.get('code_challenge_method'), 'S256');
       assert.equal(authorization.searchParams.get('access_type'), 'offline');
+      assert.equal(authorization.searchParams.has('login_hint'), false);
+      assert.equal(authorization.searchParams.get('scope'), 'openid email profile https://mail.google.com/');
       const callback = new URL(authorization.searchParams.get('redirect_uri'));
       assert.equal(callback.hostname, '127.0.0.1');
       callback.search = new URLSearchParams({code: 'good-code', state: 'é'.repeat(43)});
@@ -50,17 +52,46 @@ test('loopback validates path, host and state, uses PKCE, then exchanges only at
       assert.equal((await fetch(callback)).status, 200);
     },
     fetchImpl: async (url, options) => {
+      if (url === 'https://openidconnect.googleapis.com/v1/userinfo') {
+        assert.equal(options.headers.Authorization, 'Bearer access');
+        assert.equal(options.redirect, 'error');
+        return new Response(JSON.stringify({sub: 'google-stable-id', email: 'verified@example.com', email_verified: true, name: 'Verified Name'}));
+      }
       request = {url, options};
       return new Response(JSON.stringify({access_token: 'access', refresh_token: 'refresh', expires_in: 3600, token_type: 'Bearer'}));
     },
   });
-  const tokens = await oauth.connect('account', 'google', 'a@example.com');
+  const tokens = await oauth.connect('account', 'google');
   assert.equal(tokens.refreshToken, 'refresh');
+  assert.deepEqual(tokens.identity, {sub: 'google-stable-id', email: 'verified@example.com', name: 'Verified Name'});
   assert.equal(request.url, 'https://oauth2.googleapis.com/token');
   assert.equal(request.options.redirect, 'error');
   assert.equal(request.options.body.get('code'), 'good-code');
   assert.equal(createHash('sha256').update(request.options.body.get('code_verifier')).digest('base64url'), authorization.searchParams.get('code_challenge'));
   await assert.rejects(fetch(authorization.searchParams.get('redirect_uri')));
+});
+test('Google identity requires verified email and stable subject, and never trusts profile URLs', () => {
+  const good = {sub: 'google-id', email: 'test@example.com', email_verified: true, name: 'Test\n Name', picture: 'file:///private'};
+  assert.deepEqual(verifiedGoogleProfile(good), {sub: 'google-id', email: 'test@example.com', name: 'Test Name'});
+  for (const change of [{email_verified: false}, {email_verified: 'true'}, {sub: ''}, {sub: '\n'}, {email: 'a@example.com\nBcc:evil@example.com'}]) assert.throws(() => verifiedGoogleProfile({...good, ...change}));
+});
+test('Google duplicate identity uses subject, with exact fixed-server mailbox migration only', () => {
+  const profile = {sub: 'google-id', email: 'test@example.com'};
+  const account = providerAccount('google', profile.email);
+  assert.equal(googleAccountMatches({...account, oauthSubject: 'google-id', email: 'renamed@example.com'}, profile), true);
+  assert.equal(googleAccountMatches({...account, oauthSubject: 'different-id'}, profile), false);
+  assert.equal(googleAccountMatches(account, profile), true);
+  assert.equal(googleAccountMatches({...account, imap: {...account.imap, host: 'evil.example'}}, profile), false);
+  assert.equal(googleAccountMatches({...account, smtp: {...account.smtp, user: 'someone@example.com'}}, profile), false);
+});
+test('Google refuses unverified userinfo without surfacing its private response', async () => {
+  const oauth = createOAuth({config: {google: {clientId: 'registered-id'}},
+    openBrowser: async (value) => { const auth = new URL(value), callback = new URL(auth.searchParams.get('redirect_uri')); callback.search = new URLSearchParams({state: auth.searchParams.get('state'), code: 'ok'}); await fetch(callback); },
+    fetchImpl: async (url) => new Response(JSON.stringify(url.endsWith('/userinfo')
+      ? {sub: 'subject', email: 'PRIVATE-IDENTITY@example.com', email_verified: false}
+      : {access_token: 'access', refresh_token: 'refresh'})),
+  });
+  await assert.rejects(oauth.connect('account', 'google'), error => /bekræfte/.test(error.message) && !error.message.includes('PRIVATE-IDENTITY'));
 });
 test('Microsoft uses its fixed public-client scopes and localhost redirect', async () => {
   const oauth = createOAuth({config: {microsoft: {clientId: 'microsoft-client-id'}},

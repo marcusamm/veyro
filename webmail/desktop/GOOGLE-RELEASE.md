@@ -5,7 +5,7 @@ Reviewed 2026-11-28. Developer checklist; this is not a published privacy policy
 ## Current beta status
 
 - Project `carbon-mediator-516101-q2` has a Google Auth Platform profile and **Desktop app** OAuth client. The owner accepted Google Cloud terms and the User Data Policy. Audience is **External / Testing**, with a test user added. Keep tester identities out of the repository.
-- The exact requested scope is `https://mail.google.com/`. Microsoft registration is deferred and its sign-in remains disabled.
+- The requested scopes are `https://mail.google.com/ openid email profile`. Google Auth Platform includes the corresponding non-sensitive `openid`, `userinfo.email` and `userinfo.profile` entries alongside the restricted mail scope. The fixed Google UserInfo endpoint supplies a verified email, stable subject and display name; renderer input and unverified ID-token claims are not accepted as identity. Microsoft registration is deferred and its sign-in remains disabled.
 - Registration values live in ignored `oauth-config.local.json`; committed `oauth-config.json` is an empty template. For development, use `VEYRO_OAUTH_CONFIG_FILE=./oauth-config.local.json npm start` from this directory. See [README](README.md) for configured builds. Ordinary CI builds have no registration and disable Google sign-in.
 - A configured installer intentionally contains the Desktop client's registration values, including its issued public-client credential. Desktop clients cannot keep that credential confidential. User passwords and OAuth access/refresh tokens must never enter source, build artifacts or logs. Preserve GitHub's credential protection; do not bypass it or commit the local configuration.
 - Real Google authentication, token refresh and delivery still need explicit beta validation; mocked tests do not establish provider approval or successful live mail delivery.
@@ -24,7 +24,7 @@ This connector makes no Gmail REST API calls. Google documents full-mail OAuth a
 
 External Testing permits up to 100 listed testers and shows an unverified-app warning. Gmail authorization and offline refresh tokens expire **seven days after consent**; reconnect when prompted. Workspace administrator policy or Advanced Protection may block authorization. [Testing audience rules](https://support.google.com/cloud/answer/15549945?hl=en) · [Token expiration](https://developers.google.com/identity/protocols/oauth2#expiration)
 
-1. Start the configured build. Choose **Tilføj konto → En anden mailtjeneste**, use a neutral local label, enter the allowlisted Google mailbox address, and choose **Forbind Google**.
+1. Start the configured build. On the welcome screen, choose **Log ind med Google**; existing users choose **Tilføj konto → Log ind med Google**. No name, email, password or mail-server settings are required. Choose an allowlisted account at Google. The app creates its local profile only after verified identity and mail connection checks succeed; cancellation must leave no empty profile.
 2. In the system browser, check the account, Veyro app identity and requested permission before consenting. Return to the app after the loopback confirmation. Stop and record a sanitized error if authorization or either mail-protocol login fails; do not weaken provider settings to force success.
 3. Confirm folders and search/pagination load. Open an **already-read, harmless message**: opening a message marks it read. Check text/HTML and any embedded images; keep external images blocked for this first check. Optionally save a harmless attachment using the native save dialog.
 4. Create a local draft with a benign subject/body and **no recipients**. Close its window, restart the app, and confirm the draft persists. Do not click Send, Archive, Trash or remove the account during this check.
@@ -39,6 +39,8 @@ Use a relevant, unauthenticated Veyro Mail homepage, verified ownership of `veyr
 ### Privacy wording draft — owner/legal review required
 
 > Veyro Mail's desktop Google connection accesses your mailbox to display, search and organize messages and attachments, and to send messages when you choose Send. The desktop app connects directly to Google's mail and authorization servers; this connector does not route Gmail message content through Veyro's servers or into Veyro Chat, Intranet or an AI service.
+>
+> Google account identity (verified email, stable account identifier and display name) is used to configure your local profile automatically and prevent duplicate or mismatched connections. It does not grant access to a Veyro company chat or intranet.
 >
 > OAuth tokens, account configuration and local drafts are stored on your computer using operating-system-backed encryption. The account list separately stores account identifiers and display labels. The app has no offline inbox database. Attachments you choose to download are saved to your selected location and are not encrypted by Veyro Mail. External message images are blocked until you enable them for the message; enabling them contacts the image host, which can observe that request. Sending mail shares its contents with the recipients you select through Google's mail service.
 >
