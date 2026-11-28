@@ -1,4 +1,18 @@
-# Veyro Mail beta installer transfer
+# Signed desktop update distribution
+
+The release Mac publishes each complete, signed set through HTTPS at `post.veyro.dk`. The app checks `/webmail-downloads/update.json` and downloads its versioned installer from the same origin. After the initial setup, the release operator runs `npm run release:desktop` on the Mac. To resume an interrupted upload, use the existing signed output as described in the [desktop release instructions](../../desktop/README.md#publish-an-update).
+
+## Install the publisher on the mail origin
+
+Use a verified checkout containing both `webmail/origin` and `webmail/desktop/assets/update-signing-key.pem`. Confirm the public key fingerprint against the release Mac. The origin requires Python 3.9+, OpenSSL 3, Caddy and systemd. Back up existing Caddy routes before activating the new handler.
+
+1. Supply the SHA-256 digest of the dedicated publisher token to the origin operator. Run `sh webmail/origin/install-signed-publisher.sh TOKEN_SHA256` there. This enables the dedicated unprivileged systemd service, installs the public verification key and reuses the existing public downloads directory. Existing installer files keep their paths and ownership.
+2. Apply the `@signedDesktopRelease` and download handlers from `webmail/origin/mail-api.caddy` to the existing Veyro mail Caddy site. Preserve other site-specific configuration. Validate the amended Caddyfile before reload. Requests for release uploads go only to loopback port 18147. Keep Authorization redacted in access logs.
+3. Confirm an uncredentialed POST to `/webmail-release-upload/v1/begin` returns 403. Publish the signed release from the Mac. Fetch the public manifest and all three installers and verify the published hashes.
+
+The publisher verifies the manifest signature before accepting file metadata, stores partial files in its private 0700 state directory, bounds each chunk to 8 MiB and each installer to 512 MiB, and checks every digest. Promotion writes complete versioned files first and switches the public manifest atomically. Concurrent uploaders and retries share the verified offset. A restart resumes the last signed transfer. Old manifests cannot roll the feed back. A faulty application release is corrected by publishing a higher version. Disabling the publisher service stops new uploads while existing public downloads remain available.
+
+## Legacy beta.2 transfer
 
 This temporary tool copies the three **configured** 0.1.0-beta.2 installers
 from the release Mac directly to the Veyro mail origin. It needs Python 3.8+

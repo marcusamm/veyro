@@ -16,6 +16,7 @@ async function run() {
   let googleAvailable = false, googleMode = 'pending', verifyFailure = false, verifyGate, googleConnectCalls = 0;
   let googleIdentity = {sub: 'synthetic-google-id', email: 'google-smoke@example.test', name: 'Google Test'};
   const pendingGoogle = new Map();
+  const labelWrites = [];
   const syntheticTokens = () => ({provider: 'google', clientId: 'synthetic-client', accessToken: 'SYNTHETIC-ACCESS', refreshToken: 'SYNTHETIC-REFRESH', expiresAt: Date.now() + 3600000, identity: {...googleIdentity}});
   const testOAuth = {
     availability: () => ({google: {available: googleAvailable}, microsoft: {available: false}}),
@@ -43,7 +44,10 @@ async function run() {
     oauth: testOAuth,
     createMailConnector: ({account}) => ({
       verify: async () => { assert.equal(account.email, googleIdentity.email); if (verifyFailure) throw new Error('Synthetic mailbox verification failed.'); if (verifyGate) await verifyGate(); },
+      sidebar: async () => ({folders: [], views: [{id:'inbox', name:'Indbakke', folder:'INBOX'}], gmail:true}),
       folders: async () => [{path: 'INBOX', name: 'Indbakke', specialUse: '\\Inbox', total: 0, unseen: 0}],
+      manageLabel: async payload => { labelWrites.push(['manage',payload]); return {ok:true}; },
+      messageLabel: async payload => { labelWrites.push(['message',payload]); return {ok:true}; },
       messages: async () => ({messages: [], total: 0, page: 1, pageSize: 40, hasNext: false, uidValidity: '1'}),
     }),
     dialog: {
@@ -138,6 +142,21 @@ async function run() {
   assert.equal((await runtime.vault.read(googleId)).drafts[0].subject, 'Preserved duplicate draft');
   await until(() => runtime.state().status === 'ready', 'existing Google account reload');
   const googleContents = runtime.views.get(googleId).view.webContents;
+  const nativeInvoke = (action, payload) => googleContents.executeJavaScript(
+    'veyroMail.invoke(' + JSON.stringify(action) + ',' + JSON.stringify(payload) + ')'
+  );
+  assert.equal((await nativeInvoke('sidebar', {})).gmail, true);
+  const newLabel = {operation:'create', name:'Testetiket'};
+  const assign = {folder:'INBOX', uid:7, uidValidity:'1', add:['Testetiket'], remove:[]};
+  await nativeInvoke('manageLabel', newLabel);
+  await nativeInvoke('messageLabel', assign);
+  assert.deepEqual(labelWrites, [['manage', newLabel], ['message', assign]]);
+  await nativeInvoke('openProviderView', {webView:'subscriptions'});
+  const subscriptionUrl = new URL(opened.pop());
+  assert.equal(subscriptionUrl.origin, 'https://mail.google.com');
+  assert.equal(subscriptionUrl.hash, '#sub');
+  assert.equal(subscriptionUrl.searchParams.get('authuser'), googleIdentity.email);
+  await assert.rejects(nativeInvoke('openProviderView', {webView:'https://example.test'}), /Ukendt Gmail-visning/);
   googleIdentity = {...googleIdentity, sub: 'another-google-id', email: 'another@example.test'};
   await assert.rejects(googleContents.executeJavaScript('veyroMail.invoke("oauthConnect",{provider:"google"})'), /anden Google-konto/);
   googleIdentity = {...googleIdentity, sub: 'synthetic-google-id', email: 'google-smoke@example.test'};
@@ -256,8 +275,15 @@ async function run() {
     const htmlUrl = `veyro://message/${randomUUID()}`;
     runtime.messageViews.set(htmlUrl, {accountId: nativeId, createdAt: Date.now(), enabled: false,
       images: new Set(['https://example.org/image.png']), html: '<!doctype html><html><body><h1 id="safe">Rich mail</h1><script>window.emailScriptRan=true</script></body></html>'});
+    let mailboxHiddenDuringRead = false;
+    const checkReader = () => {
+      if (!runtime.views.get(nativeId).view.getVisible() || runtime.state().status !== 'ready') mailboxHiddenDuringRead = true;
+    };
+    native.on('did-start-loading', checkReader);
     await native.executeJavaScript(`(()=>{const f=document.createElement('iframe');f.sandbox='';f.src=${JSON.stringify(htmlUrl)};document.body.append(f);})()`);
     await until(() => native.mainFrame.frames.some((frame) => frame.url === htmlUrl), 'isolated email frame');
+    native.off('did-start-loading', checkReader);
+    assert.equal(mailboxHiddenDuringRead, false, 'opening a message keeps the rest of the mailbox visible');
     const frame = native.mainFrame.frames.find((candidate) => candidate.url === htmlUrl);
     await assert.rejects(frame.executeJavaScript('window.emailScriptRan'), 'Email frame must refuse script execution');
     assert.throws(() => runtime.assertSender({sender: native, senderFrame: frame}, 'veyro://mail/index.html', native), /ikke adgang/);

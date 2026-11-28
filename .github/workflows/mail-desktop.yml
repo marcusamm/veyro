@@ -5,12 +5,22 @@ on:
   pull_request:
     paths:
       - 'webmail/desktop/**'
+      - 'webmail/origin/transfer/**'
+      - 'webmail/origin/desktop_release.py'
       - '.github/workflows/mail-desktop.yml'
 
 permissions:
   contents: read
 
 jobs:
+  publication-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python3 -m unittest discover -s webmail/origin/transfer
   installers:
     name: ${{ matrix.platform }} ${{ matrix.arch }} prerelease
     strategy:
@@ -67,6 +77,10 @@ jobs:
           Start-Sleep -Seconds 6
           if ($mailProcess.HasExited) { throw "Installed app exited: $($mailProcess.ExitCode)" }
           taskkill /PID $mailProcess.Id /T /F
+      - name: Verify Settings updater upgrades the running Windows fixture
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./tests/windows-upgrade.ps1
       - name: Verify Mac bundle signature
         if: runner.os == 'macOS'
         shell: bash

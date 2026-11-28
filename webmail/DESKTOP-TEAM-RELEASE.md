@@ -70,8 +70,7 @@ Filnavne i `webmail/desktop/dist`:
 macOS-bygningen bruger lokal ad hoc-signering, ikke et Apple Developer ID eller
 notarisering. Windows-bygningen har ikke et udgivercertifikat. Før en almindelig
 offentlig udgivelse skal Veyros udgiveridentitet, signering/notarisering og en
-HTTPS-downloadplacering være på plads. Automatiske opdateringer er ikke aktiveret;
-der hentes eller installeres ikke ukontrollerede opdateringer.
+HTTPS-downloadplacering være på plads. Fra beta.6 kan brugeren hente en signeret opdatering under Indstillinger i desktopappen. Se [udgivelsesvejledningen](desktop/README.md#publish-an-update).
 
 ## Serverudrulning
 

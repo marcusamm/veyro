@@ -24,7 +24,8 @@ function render(state) {
     button.setAttribute('aria-current', button.dataset.section === state.section ? 'page' : 'false');
     button.disabled = !state.activeId;
   }
-  $('manage').disabled = !state.activeId;
+  $('manage-account').hidden = !state.activeId;
+  renderUpdate(state);
   $('status').hidden = state.status === 'ready';
   $('retry').hidden = state.status !== 'offline';
   $('first-account').hidden = state.status !== 'empty';
@@ -113,7 +114,68 @@ $('google-cancel').addEventListener('click', async () => {
   try { const state = await invoke('cancelGoogle'); googlePending = false; render(state); $('google-login').focus(); }
   catch (error) { $('form-error').textContent = error.message; }
 });
-$('manage').addEventListener('click', () => openDialog('edit').catch(showError));
+let updateBusy = false;
+function renderUpdate(state) {
+  const update = state.update || {status: 'idle'};
+  const version = update.currentVersion || state.version;
+  $('installed-version').textContent = version ? 'Installeret version ' + version : '';
+  const note = {
+    idle: 'Veyro søger automatisk efter nye versioner.',
+    checking: 'Søger efter opdateringer…',
+    current: 'Du har den nyeste version.',
+    available: 'Version ' + update.version + ' er klar. Gem åbne kladder, før du genstarter.',
+    downloading: 'Henter og kontrollerer opdateringen…',
+    installing: 'Opdaterer Veyro Mail…',
+    error: update.error || 'Opdateringen kunne ikke gennemføres. Prøv igen.',
+    unsupported: update.error || 'Denne udgave understøtter ikke opdatering fra appen.'
+  };
+  const installing = update.status === 'available';
+  $('update-status').textContent = note[update.status] || note.idle;
+  $('update-action').textContent = installing ? 'Opdater og genstart' : 'Søg efter opdateringer';
+  $('update-action').disabled = updateBusy || ['checking','downloading','installing','unsupported'].includes(update.status);
+  const progress = $('update-progress');
+  progress.hidden = update.status !== 'downloading';
+  if (Number.isFinite(update.progress)) progress.value = Math.max(0, Math.min(100, update.progress));
+  else progress.removeAttribute('value');
+  $('manage').classList.toggle('update-available', installing);
+  $('manage').title = installing ? 'Indstillinger · Opdatering klar' : 'Indstillinger';
+  $('manage').setAttribute('aria-label', $('manage').title);
+}
+async function openSettings() {
+  if ($('account-dialog').open || $('settings-dialog').open) return;
+  previousFocus = document.activeElement;
+  await invoke('dialog', {open:true});
+  if (!$('settings-dialog').open) $('settings-dialog').showModal();
+  $('close-settings').focus();
+}
+async function closeSettings() {
+  $('settings-dialog').close();
+  await invoke('dialog', {open:false});
+  previousFocus?.focus();
+}
+$('manage').addEventListener('click', () => openSettings().catch(showError));
+$('close-settings').addEventListener('click', () => closeSettings().catch(showError));
+$('settings-dialog').addEventListener('cancel', event => { event.preventDefault(); closeSettings().catch(showError); });
+$('manage-account').addEventListener('click', () => {
+  $('settings-dialog').close();
+  $('manage').focus();
+  openDialog('edit').catch(showError);
+});
+$('update-action').addEventListener('click', async () => {
+  if (updateBusy || $('update-action').disabled) return;
+  const action = current.update?.status === 'available' ? 'installUpdate' : 'checkUpdate';
+  updateBusy = true; renderUpdate(current);
+  let errorText;
+  try {
+    const result = await invoke(action);
+    if (result?.accounts) render(result);
+  } catch (error) { errorText = error.message; }
+  finally {
+    updateBusy = false;
+    renderUpdate(current);
+    if (errorText) $('update-status').textContent = errorText;
+  }
+});
 $('close-dialog').addEventListener('click', () => closeDialog().catch(showError));
 $('account-dialog').addEventListener('cancel', (event) => { event.preventDefault(); void closeDialog(); });
 $('account-form').addEventListener('submit', async (event) => {
@@ -138,5 +200,8 @@ for (const button of document.querySelectorAll('[data-section]')) button.addEven
 $('retry').addEventListener('click', () => invoke('retry').catch(showError));
 $('dismiss-toast').addEventListener('click', () => { $('toast').hidden = true; void invoke('dismiss'); });
 api.onState(render);
-api.onAdd(() => void openDialog('add'));
+api.onAdd(() => {
+  if ($('settings-dialog').open) $('settings-dialog').close();
+  void openDialog('add').catch(showError);
+});
 void invoke('state').then(render).catch(showError);

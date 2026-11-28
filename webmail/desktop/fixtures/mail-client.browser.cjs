@@ -29,12 +29,19 @@ async function main(){
       window.veyroMail={invoke:async(action,payload={})=>{
         window.__calls.push({action,payload:structuredClone(payload)});
         if(action==='bootstrap')return structuredClone(identity);
-        if(action==='folders')return [{path:'INBOX',name:'INBOX',unseen:2},{path:'Sent',name:'Sent',specialUse:'\\Sent'},{path:'Archive',name:'Archive',specialUse:'\\Archive'},{path:'Trash',name:'Trash',specialUse:'\\Trash'}];
+        if(action==='sidebar')return {gmail:false,folders:[{path:'INBOX',name:'INBOX',unseen:2},{path:'Sent',name:'Sent',specialUse:'\\Sent'},{path:'Archive',name:'Archive',specialUse:'\\Archive'},{path:'Trash',name:'Trash',specialUse:'\\Trash'}],views:[{id:'inbox',folder:'INBOX',name:'Indbakke',unseen:2}]};
+        if(action==='messages' && window.__holdList)await new Promise(resolve=>{window.__finishList=resolve;});
         if(action==='messages')return {messages:payload.query==='nothing'?[]:[{...sample},{...sample,uid:11,from:[{name:'Veyro',address:'hello@example.test'}],subject:'Dit næste projekt starter her',flagged:false,seen:true},...(query.has('readerTest')?[{...sample,uid:10,subject:'Et tredje brev'}]:[])],total:82,page:payload.page,pageSize:40,hasNext:payload.page<3,uidValidity:'42'};
         if(action==='message' && window.__holdReads){
           await new Promise(resolve=>{window.__finishRead=()=>{delete window.__finishRead;resolve();};});
         }
-        if(action==='message')return {...sample,uid:payload.uid,subject:payload.uid===10?'Et tredje brev':payload.uid===11?'Dit næste projekt starter her':sample.subject,seen:true,text:'Hej Test Owner,\n\nTak for en rigtig god samtale i går. Jeg har samlet vores tanker om det nye projekt, så vi kan finde den rigtige retning sammen.\n\nLad os mødes på torsdag og se på de første skitser.\n\nBedste hilsner\nSofie\n\n<img src=x onerror="window.injected=true">',replyTo:[],messageId:'<test@example.test>',references:[],attachments:[{index:0,filename:'Projektbeskrivelse.pdf',contentType:'application/pdf',size:42800},...(query.has('readerTest')?[{index:1,filename:'Original.zip',contentType:'application/zip',size:null}]:[])]};
+        if(action==='message')return {...sample,uid:payload.uid,subject:payload.uid===10?'Et tredje brev':payload.uid===11?'Dit næste projekt starter her':sample.subject,seen:!query.has('deferSeen'),text:'Hej Test Owner,\n\nTak for en rigtig god samtale i går. Jeg har samlet vores tanker om det nye projekt, så vi kan finde den rigtige retning sammen.\n\nLad os mødes på torsdag og se på de første skitser.\n\nBedste hilsner\nSofie\n\n<img src=x onerror="window.injected=true">',replyTo:[],messageId:'<test@example.test>',references:[],attachments:[{index:0,filename:'Projektbeskrivelse.pdf',contentType:'application/pdf',size:42800},...(query.has('readerTest')?[{index:1,filename:'Original.zip',contentType:'application/zip',size:null}]:[])]};
+        if(action==='action' && payload.action==='read' && query.has('deferSeen')){
+          await new Promise((resolve,reject)=>{window.__finishSeen=ok=>{
+            delete window.__finishSeen;
+            if(ok)resolve();else reject(new Error('Mock flag update failed'));
+          };});
+        }
         if(action==='action'||action==='saveAttachment')return {ok:true};
         if(action==='drafts')return structuredClone(drafts);
         if(action==='saveDraft'){if(window.__draftDelay)await new Promise(resolve=>setTimeout(resolve,window.__draftDelay));const draft={...payload,id:payload.id || 'fixture-draft'};drafts=drafts.filter(d=>d.id!==draft.id).concat(draft);return structuredClone(draft);}
@@ -77,19 +84,36 @@ async function main(){
     const third=readerTest.getByRole('button',{name:/Et tredje brev/});
     const reads=()=>readerTest.evaluate(()=>window.__calls.filter(c=>c.action==='message').map(c=>c.payload.uid));
     const finishRead=()=>readerTest.evaluate(()=>window.__finishRead());
+    await first.waitFor();
+    await readerTest.evaluate(()=>{
+      window.firstRow=document.querySelector('.message-row');
+      window.pendingPaints=0;
+      new MutationObserver(()=>{
+        if(!document.getElementById('reader-pending').hidden)window.pendingPaints++;
+      }).observe(document.getElementById('reader-pending'),{attributes:true,attributeFilter:['hidden']});
+    });
     await first.click();
     await readerTest.locator('#message-body').waitFor();
+    assert.equal(await readerTest.evaluate(()=>window.pendingPaints),0,'A fast read must never display the loading indicator.');
+    assert.equal(await first.evaluate(button=>button===window.firstRow && button===document.activeElement),true,'Selection must preserve the focused row.');
     assert.equal(await readerTest.locator('#message-attachments button').nth(1).innerText(),'↓ Original.zip');
     await readerTest.locator('#forward').click();
     assert.equal(await readerTest.locator('#compose-attachments button').nth(1).innerText(),'Original.zip · videresendes ×');
     await readerTest.locator('#discard-draft').click();
     await first.click();
     assert.deepEqual(await reads(),[12],'Clicking the already open, read message reuses its body.');
+    await readerTest.evaluate(()=>{window.__holdList=true;});
+    await readerTest.locator('#refresh').click();
+    await readerTest.waitForFunction(()=>!!window.__finishList);
+    assert.equal(await first.evaluate(button=>button===window.firstRow),true,'Refreshing must keep the existing list on screen.');
+    await readerTest.evaluate(()=>{window.__holdList=false;window.__finishList();});
     await readerTest.evaluate(()=>{window.__holdReads=true;});
     await second.click();
-    await readerTest.locator('#reader-pending').waitFor();
+    await readerTest.locator('#cancel-read').waitFor();
     assert.match(await readerTest.locator('#pending-subject').innerText(),/Dit næste projekt/);
-    assert.equal(await readerTest.locator('#reply').isVisible(),false,'Old message actions must disappear immediately.');
+    assert.equal(await readerTest.locator('#message-body').isVisible(),true,'Keep the displayed article while the next mail loads.');
+    assert.equal(await readerTest.locator('#reply').evaluate(button=>!!button.closest('[inert]')),true,'Old message actions must be unavailable immediately.');
+    assert.equal(await first.evaluate(button=>button===window.firstRow),true,'Refreshing and selection must retain the mail row.');
     await second.click();await third.click();await first.click();
     assert.match(await readerTest.locator('#pending-subject').innerText(),/En god begyndelse/);
     assert.deepEqual(await reads(),[12,11],'Only the active fetch may reach IMAP while it is pending.');
@@ -105,6 +129,37 @@ async function main(){
     await third.waitFor();
     assert.equal(await readerTest.locator('#message').isVisible(),false,'Finishing an abandoned read must not reopen it on mobile.');
     await readerTest.close();
+    const flagsTest=await browser.newPage();
+    flagsTest.on('pageerror',error=>errors.push(error.message));
+    await flagsTest.addInitScript(installFixture);
+    await flagsTest.goto(`http://127.0.0.1:${server.address().port}/?readerTest=1&deferSeen=1`);
+    await flagsTest.getByRole('button',{name:/En god begyndelse/}).click();
+    await flagsTest.waitForFunction(()=>typeof window.__finishSeen==='function');
+    assert.equal(await flagsTest.locator('#message-body').isVisible(),true,'The mail must be visible while its read flag is pending.');
+    assert.deepEqual(await flagsTest.evaluate(()=>window.__calls.find(c=>c.action==='message').payload),
+      {folder:'INBOX',uid:12,uidValidity:'42',sizeHint:1200,markSeen:false});
+    const readToggle=flagsTest.locator('#toggle-read');
+    assert.equal(await readToggle.innerText(),'Markér ulæst');
+    await readToggle.click();
+    await flagsTest.waitForFunction(()=>document.getElementById('toggle-read').innerText==='Markér læst');
+    await flagsTest.evaluate(()=>window.__finishSeen(true));
+    assert.equal(await readToggle.innerText(),'Markér læst','Completing the automatic update must preserve a subsequent explicit unread action.');
+    assert.deepEqual(await flagsTest.evaluate(()=>window.__calls.filter(c=>c.action==='action').map(c=>c.payload.action)),['read','unread']);
+    await flagsTest.getByRole('button',{name:/Et tredje brev/}).click();
+    await flagsTest.waitForFunction(()=>typeof window.__finishSeen==='function');
+    await flagsTest.evaluate(()=>window.__finishSeen(false));
+    await flagsTest.locator('#notice').waitFor();
+    assert.equal(await flagsTest.locator('#message-body').isVisible(),true,'A flag update failure must preserve the open mail.');
+    assert.equal(await readToggle.innerText(),'Markér læst');
+    assert.equal(await flagsTest.locator('.message-row[aria-current=true].unread').count(),1);
+    await flagsTest.evaluate(()=>{window.__holdReads=true;});
+    await flagsTest.getByRole('button',{name:/Dit næste projekt/}).click();
+    await flagsTest.waitForFunction(()=>typeof window.__finishRead==='function');
+    await flagsTest.locator('#cancel-read').click();
+    await flagsTest.evaluate(()=>window.__finishRead());
+    assert.equal(await flagsTest.evaluate(()=>window.__calls.some(c=>c.action==='action' && c.payload.uid===11)),false,
+      'A mail left before the body appeared must remain unread.');
+    await flagsTest.close();
     const freshSetup=async(suffix='')=>{
       const setup=await browser.newPage({viewport:{width:1024,height:820}});setup.on('pageerror',error=>errors.push(error.message));
       await setup.addInitScript(installFixture);await setup.goto(`http://127.0.0.1:${server.address().port}/?setup=1${suffix}`);await setup.locator('#settings-dialog').waitFor();return setup;

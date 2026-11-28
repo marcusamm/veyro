@@ -1,6 +1,6 @@
 {
   "name": "veyro-mail-desktop",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0-beta.6",
   "description": "Veyro Mail — mail, teamchat og intranet på dit skrivebord",
   "author": "Veyro",
   "private": true,
@@ -13,7 +13,9 @@
     "build:mac": "electron-builder --mac dmg --arm64 --x64 --publish never",
     "build:win": "electron-builder --win nsis --x64 --publish never",
     "build:configured": "node scripts/build-configured.cjs",
-    "checksums": "node scripts/checksums.cjs"
+    "checksums": "node scripts/checksums.cjs",
+    "release:sign": "node scripts/sign-update.cjs",
+    "release:desktop": "sh scripts/release-desktop.sh"
   },
   "dependencies": {
     "imapflow": "2.12.2",

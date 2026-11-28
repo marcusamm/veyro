@@ -1,7 +1,10 @@
 'use strict';
 
+const {sidebarViews, searchCriteria} = require('./provider-views.cjs');
+
 // This module never reads local files or receives a renderer-selected account ID.
 // The Electron shell supplies one decrypted account and owns all disk access.
+const mailLabels = require('./mail-labels.cjs');
 const MAX_SOURCE = 30 * 1024 * 1024;
 const MAX_ATTACHMENTS = 20 * 1024 * 1024;
 const MAX_TEXT = 1024 * 1024;
@@ -44,9 +47,9 @@ function addresses(value) {
   return list.flatMap(item => item.group ? addresses(item.group) : item.address ? [{name:String(item.name || '').slice(0,200), address:String(item.address).slice(0,320)}] : []);
 }
 function dateString(value) { const date = new Date(value); return Number.isNaN(date.valueOf()) ? null : date.toISOString(); }
-function summary(message) {
+function summary(message, gmail) {
   const env = message.envelope || {};
-  return {uid:message.uid, subject:String(env.subject || '').slice(0,1000), from:addresses(env.from), to:addresses(env.to), date:dateString(env.date || message.internalDate), seen:message.flags?.has('\\Seen') || false, flagged:message.flags?.has('\\Flagged') || false, size:message.size || 0};
+  return {...mailLabels.messageLabels(message, gmail), uid:message.uid, subject:String(env.subject || '').slice(0,1000), from:addresses(env.from), to:addresses(env.to), date:dateString(env.date || message.internalDate), seen:message.flags?.has('\\Seen') || false, flagged:message.flags?.has('\\Flagged') || false, size:message.size || 0};
 }
 function filename(value) { return String(value || 'attachment').split(/[\\/]/).pop().replace(/[\x00-\x1f\x7f]/g,'').slice(0,200) || 'attachment'; }
 function timeout(promise, cleanup, timeoutMs = OPERATION_TIMEOUT, message = 'The mail server took too long to respond. Try again.') {
@@ -155,7 +158,7 @@ function richMessage(source,attachments=[]) {
 // Owned by one account in the Electron main process. A client is checked out
 // exclusively; a second simultaneous operation can never switch its mailbox.
 class ImapSession {
-  constructor(idleMs = 20000) {
+  constructor(idleMs = 120_000) {
     this.idleMs = idleMs;
     this.clients = new Set();
   }
@@ -211,7 +214,10 @@ function createMailConnector({account, dependencies = {}, timeoutMs = OPERATION_
   const tls = {rejectUnauthorized:true,minVersion:'TLSv1.2'};
   function imap() {
     const s=config.imap;
-    const client = new ImapFlow({host:s.host,port:s.port,secure:s.secure,...(!s.secure ? {doSTARTTLS:true} : {}),auth:s.accessToken?{user:s.user,accessToken:s.accessToken}:{user:s.user,pass:s.password},tls:{...tls,servername:s.host},logger:false,disableAutoIdle:true,connectionTimeout:15000,greetingTimeout:10000,socketTimeout:30000,maxLineLength:1024*1024,maxLiteralSize:MAX_SOURCE+1,maxResponseSize:MAX_SOURCE+2*1024*1024});
+    // The session owns idle expiry. In-flight requests still have their
+    // separate, shorter operation timeout in withImap().
+    const socketTimeout = imapSession ? imapSession.idleMs + OPERATION_TIMEOUT : 30_000;
+    const client = new ImapFlow({host:s.host,port:s.port,secure:s.secure,...(!s.secure ? {doSTARTTLS:true} : {}),auth:s.accessToken?{user:s.user,accessToken:s.accessToken}:{user:s.user,pass:s.password},tls:{...tls,servername:s.host},logger:false,disableAutoIdle:true,connectionTimeout:15000,greetingTimeout:10000,socketTimeout,maxLineLength:1024*1024,maxLiteralSize:MAX_SOURCE+1,maxResponseSize:MAX_SOURCE+2*1024*1024});
     // Network failures must reject the operation rather than crash the process.
     client.on('error', () => {});
     return client;
@@ -248,6 +254,7 @@ function createMailConnector({account, dependencies = {}, timeoutMs = OPERATION_
           client = imapSession ? imapSession.track(imap()) : imap();
           await client.connect();
         }
+        if (expired || imapSession?.closed) fail('The account session was closed.', 'SESSION_CLOSED');
         if (folder !== null) {
           lock=await client.getMailboxLock(checkedFolder(folder));
           if (expectedValidity !== undefined && String(client.mailbox.uidValidity) !== String(expectedValidity)) fail('This folder has changed on the server. Refresh it before opening or changing this message.', 'STALE_MAILBOX');
@@ -264,23 +271,51 @@ function createMailConnector({account, dependencies = {}, timeoutMs = OPERATION_
     })();
     return timeout(work, () => { expired = true; discard(); }, timeoutMs);
   }
-  async function read(client, uid, preview = false) {
-    const meta=await client.fetchOne(uid,{uid:true,envelope:true,flags:true,size:true,internalDate:true,...(preview ? {bodyStructure:true} : {})},{uid:true});
+  const parseOptions = {skipHtmlToText:false,skipTextToHtml:true,skipImageLinks:true,maxHtmlLengthToParse:MAX_TEXT};
+  async function parseSource(source) {
+    if (source.length > MAX_SOURCE) fail('This message exceeds the 30 MB reading limit.', 'MESSAGE_TOO_LARGE');
+    const mail = await parse(source,parseOptions);
+    // MailParser may omit the text version of HTML nested in multipart/mixed.
+    if (!mail.text && typeof mail.html === 'string' && Buffer.byteLength(mail.html) <= MAX_TEXT) {
+      const htmlPart = Buffer.from(`Content-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n${mail.html}`);
+      const fallback = await parse(htmlPart,parseOptions);
+      mail.text = fallback.text || '';
+    }
+    return mail;
+  }
+  function parsedMessage(meta, mail, uidValidity, gmail) {
+    const text = String(mail.text || '');
+    return {
+      ...summary(meta, gmail), mailboxKey, uidValidity:String(uidValidity),
+      text:text.slice(0,MAX_TEXT), textTruncated:text.length > MAX_TEXT,
+      ...richMessage(mail.html,mail.attachments),
+      from:addresses(mail.from), to:addresses(mail.to), cc:addresses(mail.cc),
+      bcc:addresses(mail.bcc), replyTo:addresses(mail.replyTo), messageId:mail.messageId || '',
+      references:Array.isArray(mail.references) ? mail.references : mail.references ? [mail.references] : [],
+      attachments:(mail.attachments || []).map((file,index) => ({
+        index, filename:filename(file.filename), contentType:file.contentType,
+        size:file.deferred ? null : file.size || file.content.length,
+      })),
+    };
+  }
+  async function read(client, uid, preview = false, sizeHint) {
+    // A row's size is only a hint. Ask for one extra byte so a truncated
+    // response cannot be mistaken for a complete message, even on a bad hint.
+    const readAhead = preview && Number.isSafeInteger(sizeHint) && sizeHint > 0 && sizeHint < 512 * 1024;
+    const query = {uid:true,envelope:true,flags:true,labels:true,size:true,internalDate:true};
+    if (preview) query.bodyStructure = true;
+    if (readAhead) query.source = {start:0,maxLength:sizeHint + 1};
+    const meta = await client.fetchOne(uid, query, {uid:true});
     if (!meta) fail('This message is no longer in this folder. Refresh the folder.', 'NOT_FOUND');
-    if (meta.size > MAX_SOURCE) fail('This message exceeds the 30 MB reading limit. Open it in your provider’s webmail.', 'MESSAGE_TOO_LARGE');
-    const parseOptions={skipHtmlToText:false,skipTextToHtml:true,skipImageLinks:true,maxHtmlLengthToParse:MAX_TEXT};
-    let mail=preview ? await require('./message-preview.cjs').messagePreview(client,uid,meta,parse,parseOptions) : null;
+    if (meta.size > MAX_SOURCE || meta.source?.length > MAX_SOURCE) fail('This message exceeds the 30 MB reading limit. Open it in your provider’s webmail.', 'MESSAGE_TOO_LARGE');
+    const complete = readAhead && Buffer.isBuffer(meta.source) && meta.source.length === meta.size && meta.size <= sizeHint;
+    let mail;
+    if (complete) mail = await parseSource(meta.source);
+    else if (preview) mail = await require('./message-preview.cjs').messagePreview(client,uid,meta,parseSource,parseOptions);
     if (!mail) {
       const fetched=await client.fetchOne(uid,{source:{start:0,maxLength:MAX_SOURCE+1}},{uid:true});
       if (!fetched?.source) fail('The server did not return this message.', 'NOT_FOUND');
-      if (fetched.source.length > MAX_SOURCE) fail('This message exceeds the 30 MB reading limit.', 'MESSAGE_TOO_LARGE');
-      mail=await parse(fetched.source,parseOptions);
-    }
-    // HTML-only messages nested in multipart/mixed are not always converted by
-    // MailParser. Reparse just that bounded HTML as a root text part to get text.
-    if (!mail.text && typeof mail.html==='string' && Buffer.byteLength(mail.html)<=MAX_TEXT) {
-      const fallback=await parse(Buffer.from(`Content-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n${mail.html}`),{skipHtmlToText:false,skipTextToHtml:true,skipImageLinks:true,maxHtmlLengthToParse:MAX_TEXT});
-      mail.text=fallback.text || '';
+      mail=await parseSource(fetched.source);
     }
     return {meta,mail};
   }
@@ -312,7 +347,25 @@ function createMailConnector({account, dependencies = {}, timeoutMs = OPERATION_
   }
   async function specialFolder(client, specialUse, names) {
     const folders=await client.list();
+    if (client.capabilities?.has('X-GM-EXT-1')) {
+      return folders.find(f=>!f.flags?.has('\\Noselect') && !mailLabels.isGmailUserLabel(f) &&
+        (f.specialUse===specialUse || f.flags?.has(specialUse)))?.path;
+    }
     return folders.find(f=>f.specialUse===specialUse)?.path || folders.find(f=>names.includes(String(f.name || f.path).toLowerCase()))?.path;
+  }
+  async function listMailboxSidebar(client) {
+    const gmail = client.capabilities?.has('X-GM-EXT-1') || false;
+    const listed = await client.list({statusQuery:{messages:true,unseen:true}});
+    const folders = listed.filter(f => !f.flags?.has('\\Noselect') && !f.flags?.has('\\NonExistent')).map(f => {
+      // ImapFlow recognizes the standard roles, but leaves Gmail's Important
+      // role (and newer optional server roles) in the original LIST flags.
+      const flags = new Set(Array.from(f.flags || [], flag => flag.toLowerCase()));
+      const role = ['\\Important', '\\Snoozed', '\\Scheduled'].find(flag => flags.has(flag.toLowerCase())) || f.specialUse || '';
+      const label = gmail && mailLabels.isGmailUserLabel(f);
+      return {path:f.path, name:f.name || f.path, specialUse:label ? '' : role,
+        total:f.status?.messages || 0, unseen:f.status?.unseen || 0, gmailLabels:gmail, label};
+    }).sort((a,b) => a.path==='INBOX' ? -1 : b.path==='INBOX' ? 1 : a.path.localeCompare(b.path));
+    return {folders, gmail, views:sidebarViews(folders, {gmail})};
   }
   return Object.freeze({
     async verify() {
@@ -322,15 +375,63 @@ function createMailConnector({account, dependencies = {}, timeoutMs = OPERATION_
       finally { transport.close(); }
     },
     async folders() {
-      return withImap(null,async client => (await client.list({statusQuery:{messages:true,unseen:true}})).filter(f=>!f.flags?.has('\\Noselect')).map(f=>({path:f.path,name:f.name || f.path,specialUse:f.specialUse || '',total:f.status?.messages || 0,unseen:f.status?.unseen || 0})).sort((a,b)=>(a.path==='INBOX'?-1:b.path==='INBOX'?1:a.path.localeCompare(b.path))));
+      return withImap(null, async client => (await listMailboxSidebar(client)).folders);
     },
-    async messages({folder='INBOX',query='',page=1,pageSize=40}={}) {
+    async sidebar() {
+      return withImap(null, listMailboxSidebar);
+    },
+    async manageLabel(payload = {}) {
+      return withImap(null, client => mailLabels.manageLabel(client, payload));
+    },
+    async messageLabel({folder='INBOX',uid,uidValidity,add,remove,name,enabled}={}) {
+      uid=checkedUid(uid);
+      if (typeof uidValidity !== 'string' || !/^[1-9]\d{0,9}$/.test(uidValidity)) fail('Opdater mappen, og prøv igen.', 'STALE_MAILBOX');
+      if (name !== undefined || enabled !== undefined) {
+        if (typeof enabled !== 'boolean' || add !== undefined || remove !== undefined) fail('Ugyldig etiketændring.');
+        if (enabled) add = [name];
+        else remove = [name];
+      }
+      return withImap(folder, client => mailLabels.messageLabel(client,uid,{add,remove}),uidValidity);
+    },
+    async warmMessages({folder, uidValidity, messages}) {
+      const wanted = require('./mail-read-ahead.cjs').smallMessages(messages);
+      if (!wanted.size) return [];
+      return withImap(folder, async client => {
+        const maxLength = Math.max(...wanted.values()) + 1;
+        // ImapFlow uses BODY.PEEK for source, including a bounded partial.
+        const fetched = await client.fetchAll([...wanted.keys()], {
+          uid:true, envelope:true, flags:true, labels:true, size:true, internalDate:true,
+          source:{start:0, maxLength},
+        }, {uid:true});
+        const results = [];
+        for (const meta of fetched) {
+          if (imapSession?.closed) break;
+          if (!wanted.has(meta.uid) || meta.size !== wanted.get(meta.uid) ||
+              !Buffer.isBuffer(meta.source) || meta.source.length !== meta.size) continue;
+          wanted.delete(meta.uid);
+          try {
+            const mail = await parseSource(meta.source);
+            results.push(parsedMessage(meta, mail, String(client.mailbox.uidValidity), !!client.capabilities?.has('X-GM-EXT-1')));
+          } catch {
+            // A malformed body in this batch must not hold up its neighbours.
+          }
+        }
+        return results;
+      }, uidValidity);
+    },
+    async messages({folder='INBOX',filter,keywordLabel,query='',page=1,pageSize=40}={}) {
       if (!Number.isInteger(page) || page<1 || page>100000 || !Number.isInteger(pageSize) || pageSize<1 || pageSize>100) fail('Invalid message page.');
       query=string(query,'search',250,true);
       return withImap(folder,async client => {
         let total=client.mailbox.exists || 0,range,byUid=false;
-        if (query) {
-          const matches=await client.search({text:query},{uid:true});
+        const gmail = !!client.capabilities?.has('X-GM-EXT-1');
+        let criteria = searchCriteria(filter, query, gmail);
+        if (keywordLabel !== undefined) {
+          if (gmail) fail('Denne mappe bruger Gmail-etiketter.');
+          criteria = {...criteria, keyword:mailLabels.labelKeyword(keywordLabel)};
+        }
+        if (criteria) {
+          const matches=await client.search(criteria,{uid:true});
           if (!Array.isArray(matches)) fail('The server could not complete this search.');
           if (matches.length>250000) fail('Too many matches. Use a more specific search.');
           matches.sort((a,b)=>b-a); total=matches.length;
@@ -339,16 +440,25 @@ function createMailConnector({account, dependencies = {}, timeoutMs = OPERATION_
           const end=total-(page-1)*pageSize;
           range=end>0 ? `${Math.max(1,end-pageSize+1)}:${end}` : [];
         }
-        const result=Array.isArray(range)&&range.length===0 ? [] : await client.fetchAll(range,{uid:true,envelope:true,flags:true,size:true,internalDate:true},{uid:byUid});
-        return {messages:result.sort((a,b)=>b.uid-a.uid).map(summary),total,page,pageSize,hasNext:page*pageSize<total,uidValidity:String(client.mailbox.uidValidity)};
+        const result=Array.isArray(range)&&range.length===0 ? [] : await client.fetchAll(range,{uid:true,envelope:true,flags:true,labels:true,size:true,internalDate:true},{uid:byUid});
+        const messages = result.sort((a,b)=>b.uid-a.uid).map(message => summary(message, gmail));
+        const availableLabels = gmail ? [] : [...new Set([
+          ...mailLabels.keywordNames(client.mailbox.flags), ...messages.flatMap(message => message.labels),
+        ])].sort((a,b) => a.localeCompare(b, 'da'));
+        return {messages,total,page,pageSize,hasNext:page*pageSize<total,uidValidity:String(client.mailbox.uidValidity),
+          keywordLabels:!gmail && mailLabels.supportsKeywordLabels(client.mailbox), availableLabels};
       });
     },
-    async message({folder='INBOX',uid,uidValidity}={}) {
+    async message({folder='INBOX',uid,uidValidity,sizeHint,markSeen=true}={}) {
       uid=checkedUid(uid);
       return withImap(folder,async client => {
-        const {meta,mail}=await read(client,uid,true);
-        if (!meta.flags?.has('\\Seen')) await client.messageFlagsAdd(uid,['\\Seen'],{uid:true});
-        return {...summary(meta),seen:true,mailboxKey,uidValidity:String(client.mailbox.uidValidity),text:String(mail.text || '').slice(0,MAX_TEXT),textTruncated:String(mail.text || '').length>MAX_TEXT,...richMessage(mail.html,mail.attachments),from:addresses(mail.from),to:addresses(mail.to),cc:addresses(mail.cc),bcc:addresses(mail.bcc),replyTo:addresses(mail.replyTo),messageId:mail.messageId || '',references:Array.isArray(mail.references)?mail.references:mail.references?[mail.references]:[],attachments:(mail.attachments || []).map((file,index)=>({index,filename:filename(file.filename),contentType:file.contentType,size:file.deferred ? null : file.size || file.content.length}))};
+        const {meta,mail}=await read(client,uid,true,sizeHint);
+        const message = parsedMessage(meta,mail,client.mailbox.uidValidity,!!client.capabilities?.has('X-GM-EXT-1'));
+        if (!message.seen && markSeen !== false) {
+          await client.messageFlagsAdd(uid,['\\Seen'],{uid:true});
+          message.seen = true;
+        }
+        return message;
       },uidValidity);
     },
     async attachment({folder='INBOX',uid,index,uidValidity}={}) {
@@ -362,16 +472,32 @@ function createMailConnector({account, dependencies = {}, timeoutMs = OPERATION_
     },
     async action({folder='INBOX',uid,action,uidValidity}={}) {
       uid=checkedUid(uid);
-      if (!['read','unread','star','unstar','archive','trash'].includes(action)) fail('Unknown message action.');
+      if (!['read','unread','star','unstar','important','unimportant','archive','trash'].includes(action)) fail('Unknown message action.');
+      const changeImportant = action==='important' || action==='unimportant';
+      if (changeImportant && !/^\d+$/.test(String(uidValidity))) fail('Opdater listen, og vælg mailen igen.', 'STALE_MAILBOX');
       return withImap(folder,async client => {
         if (!await client.fetchOne(uid,{uid:true},{uid:true})) fail('This message is no longer in this folder.', 'NOT_FOUND');
-        if (['archive','trash'].includes(action)) {
-          let target=action==='archive' ? await specialFolder(client,'\\Archive',['archive','archives']) : await specialFolder(client,'\\Trash',['trash','deleted items','deleted messages','bin']);
-          if(!target&&action==='archive'&&/(^|\.)(?:gmail|googlemail)\.com$/i.test(config.imap.host))target=await specialFolder(client,'\\All',['all mail']);
+        const gmail = client.capabilities.has('X-GM-EXT-1');
+        const restoreToArchive = gmail && action==='archive' && ['\\Junk','\\Trash'].includes(client.mailbox.specialUse);
+        if (action==='archive' && gmail && !restoreToArchive) {
+          // A category row belongs to All Mail. Moving it into its own folder
+          // would do nothing, and moving from a label could remove that label.
+          if (!await client.messageFlagsRemove(uid,['\\Inbox'],{uid:true,useLabels:true})) fail('Mailen kunne ikke arkiveres.');
+        } else if (['archive','trash'].includes(action)) {
+          let target;
+          if (restoreToArchive) target=await specialFolder(client,'\\All',[]);
+          else if (action==='archive') target=await specialFolder(client,'\\Archive',['archive','archives']);
+          else target=await specialFolder(client,'\\Trash',['trash','deleted items','deleted messages','bin']);
+          if(!target&&!gmail&&action==='archive'&&/(^|\.)(?:gmail|googlemail)\.com$/i.test(config.imap.host))target=await specialFolder(client,'\\All',['all mail']);
+          if(!target&&restoreToArchive) fail('Aktivér Alle mails i Gmails IMAP-indstillinger, eller flyt mailen i Gmail.','FOLDER_MISSING');
           if (!target) fail(`Your server has no ${action==='archive'?'Archive':'Trash'} folder. Create one in your provider’s webmail, then refresh.`,'FOLDER_MISSING');
           if (target===folder) return {ok:true};
           if (!client.capabilities.has('MOVE')&&!client.capabilities.has('UIDPLUS')) fail('This server cannot move one message safely. Use your provider’s webmail for this action.','MOVE_UNSUPPORTED');
           if (!await client.messageMove(uid,target,{uid:true})) fail('The server did not move this message.');
+        } else if (changeImportant) {
+          if (!client.capabilities?.has('X-GM-EXT-1')) fail('Denne konto understøtter ikke markering som vigtig.');
+          const method = action==='important' ? 'messageFlagsAdd' : 'messageFlagsRemove';
+          if (!await client[method](uid,['\\Important'],{uid:true,useLabels:true})) fail('Markeringen kunne ikke gemmes.');
         } else {
           const flag=['read','unread'].includes(action)?'\\Seen':'\\Flagged';
           const method=['read','star'].includes(action)?'messageFlagsAdd':'messageFlagsRemove';
