@@ -1,4 +1,8 @@
 {
-  "google": {"clientId": ""},
-  "microsoft": {"clientId": ""}
+  "google": {
+    "clientId": ""
+  },
+  "microsoft": {
+    "clientId": ""
+  }
 }

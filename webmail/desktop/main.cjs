@@ -6,6 +6,7 @@ const {randomUUID} = require('node:crypto');
 const policy = require('./security.cjs');
 const {createVault} = require('./vault.cjs');
 const {createOAuth, providerAccount} = require('./oauth.cjs');
+const {loadOAuthRegistration} = require('./oauth-registration.cjs');
 
 app.enableSandbox();
 protocol.registerSchemesAsPrivileged([{scheme: 'veyro', privileges: {standard: true, secure: true, supportFetchAPI: true}}]);
@@ -20,7 +21,8 @@ async function bootstrap(options = {}) {
   const openExternal = testing && options.openExternal ? options.openExternal : (url) => shell.openExternal(url);
   const accountsFile = path.join(app.getPath('userData'), 'accounts.json');
   const vault = createVault({safeStorage, directory: path.join(app.getPath('userData'), 'vault')});
-  const oauthConfig = require('./oauth-config.json');
+  const oauthConfig = loadOAuthRegistration({isPackaged: app.isPackaged, resourcesPath: process.resourcesPath,
+    explicitFile: process.env.VEYRO_OAUTH_CONFIG_FILE, template: require('./oauth-config.json')});
   const oauth = createOAuth({
     config: {
       google: {clientId: process.env.VEYRO_GOOGLE_CLIENT_ID || oauthConfig.google?.clientId, clientSecret: process.env.VEYRO_GOOGLE_CLIENT_SECRET || oauthConfig.google?.clientSecret},

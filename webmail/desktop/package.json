@@ -12,6 +12,7 @@
     "test:smoke": "node scripts/smoke.cjs",
     "build:mac": "electron-builder --mac dmg --arm64 --x64 --publish never",
     "build:win": "electron-builder --win nsis --x64 --publish never",
+    "build:configured": "node scripts/build-configured.cjs",
     "checksums": "node scripts/checksums.cjs"
   },
   "dependencies": {

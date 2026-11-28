@@ -27,6 +27,12 @@ eller alle funktioner fra samtlige konkurrerende mailprodukter. Kalender,
 kontaktsynkronisering, tale/video og fuld offline-mailarkivering indgår ikke i
 denne version. Ingen test har sendt rigtig mail eller beskeder til kollegaer.
 
+Gmail er registreret som en Google Desktop-app i External/Testing. Kun navngivne
+testbrugere kan forbinde, og Google kræver normalt nyt samtykke efter syv dage i
+denne tilstand. Offentlig Google-verifikation er ikke gennemført. Outlook/Microsoft
+er fortsat deaktiveret, indtil Veyro har en Microsoft-appregistrering. Se
+`desktop/GOOGLE-RELEASE.md` og desktop-README for den konkrete udgivelsesstatus.
+
 ## Lokale installationsfiler
 
 Fra `webmail/desktop`:
@@ -43,6 +49,9 @@ npm run checksums
 Byg på én platform ad gangen, hvis disken har begrænset plads. CI-workflowet
 `.github/workflows/mail-desktop.yml` bygger på native Windows/macOS runners og
 gemmer testinstallationsfiler som Actions-artifacts; det offentliggør dem ikke.
+CI bruger den tomme OAuth-skabelon. De lokalt konfigurerede beta-installationsfiler
+bygges med desktop-README'ens særskilte konfigurerede buildkommando; de faktiske
+Google-registreringsværdier ligger i en ignoreret lokal fil og gemmes ikke i Git.
 Filnavne i `webmail/desktop/dist`:
 
 - `Veyro-Mail-0.1.0-beta.1-mac-arm64.dmg` (Apple Silicon)
@@ -121,9 +130,12 @@ Browsertest omfatter Chromium og WebKit, desktop/mobil, scripts som tekst,
 gentaget afsendelse efter tabt svar, historik under polling, opslag med filer,
 dokumentupload og rydning af privat indhold ved sessionsudløb. Caddy-testen
 kontrollerer faktiske HTTP-kald, også chunked payloads over grænsen.
+De fem Caddy-tests køres på både produktionsversionen 2.6.2 og version 2.10.2.
 
 Den lokale native Electron-smoketest verificerer blandt andet konto- og
 cookieisolering, IPC-afsenderkontrol, blokering af uønsket navigation,
 download-dialog og oprydning ved kontofjernelse. Rigtige udbyderkonti,
 Windows-installation på en fysisk maskine og offentlig udgiver-signering
 kræver separat slutkontrol; mockede protokoltests erstatter ikke disse.
+CI har desuden installeret og startet Windows-EXE'en på en Windows-runner og
+bygget samt kontrolleret ad hoc-signaturen på både Intel- og Apple Silicon-Mac.
