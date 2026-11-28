@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const {EventEmitter}=require('node:events');
 const realNodemailer=require('nodemailer');
 const {simpleParser}=require('mailparser');
-const {createMailConnector,normalizeAccount,richMessage,sanitizeCSS,safeImageURL,MAX_SOURCE,MAX_ATTACHMENTS}=require('./mail-connector.cjs');
+const {createMailConnector,ImapSession,normalizeAccount,richMessage,sanitizeCSS,safeImageURL,MAX_SOURCE,MAX_ATTACHMENTS}=require('./mail-connector.cjs');
 
 const account={email:'owner@example.test',name:'Account Owner',imap:{host:'imap.example.test',port:993,secure:true,user:'owner@example.test',password:'unit-test-password'},smtp:{host:'smtp.example.test',port:587,secure:false,user:'owner@example.test',password:'unit-test-password'}};
 const raw=Buffer.from('From: Sender <sender@example.test>\r\nTo: Account Owner <owner@example.test>\r\nCc: Other <other@example.test>\r\nSubject: Test message\r\nMessage-ID: <inbound@example.test>\r\nDate: Fri, 27 Nov 2026 12:00:00 +0000\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary="test-boundary"\r\n\r\n--test-boundary\r\nContent-Type: text/html; charset=utf-8\r\n\r\n<p>Hello from HTML</p><img src="https://tracker.example.test/pixel"><script>window.pwned=true</script>\r\n--test-boundary\r\nContent-Type: text/plain\r\nContent-Disposition: attachment; filename="../../note.txt"\r\nContent-Transfer-Encoding: base64\r\n\r\naGVsbG8=\r\n--test-boundary--\r\n');
@@ -14,15 +14,16 @@ function fixture(overrides={}) {
   const meta={uid:12,size:raw.length,envelope:{subject:'Test message',from:[{name:'Sender',address:'sender@example.test'}],to:[{address:account.email}],date:new Date('2026-11-27T12:00:00Z')},flags:new Set(['\\Flagged'])};
   class FakeImap extends EventEmitter {
     constructor(opts){super();options.push(opts);this.mailbox={exists:82,uidValidity:42n};this.capabilities=new Set(['MOVE','UIDPLUS']);this.closed=false;}
-    async connect(){calls.push(['connect']);if(overrides.connect)return overrides.connect(this);}
-    close(){this.closed=true;calls.push(['close']);}
+    async connect(){calls.push(['connect']);this.usable=true;if(overrides.connect)return overrides.connect(this);}
+    async noop(){calls.push(['noop']);if(overrides.noop)return overrides.noop(this);}
+    close(){this.closed=true;this.usable=false;calls.push(['close']);}
     async getMailboxLock(folder){calls.push(['lock',folder]);return {release:()=>calls.push(['release'])};}
     async list(opts){calls.push(['list',opts]);return overrides.folders || folders;}
     async search(query,opts){calls.push(['search',query,opts]);return overrides.search || [1,44,22,88,3];}
     async fetchAll(range,query,opts){calls.push(['fetchAll',range,query,opts]);return [{...meta,uid:4},{...meta,uid:9}];}
-    async fetchOne(uid,query,opts){calls.push(['fetchOne',uid,query,opts]);if(overrides.missing)return false;if(query.source)return {source:overrides.source || raw};return {...meta,...overrides.meta};}
+    async fetchOne(uid,query,opts){calls.push(['fetchOne',uid,query,opts]);if(overrides.missing)return false;if(query.bodyParts && overrides.partsError)throw overrides.partsError;if(query.bodyParts && overrides.parts)return overrides.parts;if(query.source)return {source:overrides.source || raw};return {...meta,...overrides.meta};}
     async messageFlagsAdd(...args){calls.push(['addFlags',...args]);return true;}
-    async messageFlagsRemove(...args){calls.push(['removeFlags',...args]);return true;}
+    async messageFlagsRemove(...args){calls.push(['removeFlags',...args]);if(overrides.removeFlags)return overrides.removeFlags();return true;}
     async messageMove(...args){calls.push(['move',...args]);return true;}
     async append(...args){calls.push(['append',...args]);if(overrides.appendError)throw new Error('offline');return {uid:100};}
   }
@@ -212,4 +213,106 @@ test('operation timeout closes the transport and reports bounded failure',async(
 
 test('SMTP timeout warns that delivery is unknown and does not append or retry',async()=>{
   const f=fixture({send:()=>new Promise(()=>{})});await assert.rejects(()=>f.create({timeoutMs:20}).send(outbound),/Delivery status is unknown/);assert.equal(f.calls.filter(c=>c[0]==='send').length,1);assert.equal(f.calls.some(c=>c[0]==='append'),false);assert.ok(f.calls.some(c=>c[0]==='closeSMTP'));
+});
+
+test('reuses one authenticated IMAP session across separate inbox and message IPC connectors', async () => {
+  const f = fixture();
+  const session = new ImapSession();
+  try {
+    await f.create({imapSession:session}).folders();
+    await f.create({imapSession:session}).messages();
+    await f.create({imapSession:session}).message({uid:12,uidValidity:'42'});
+    assert.equal(f.calls.filter(c => c[0] === 'connect').length, 1);
+    assert.equal(f.calls.filter(c => c[0] === 'noop').length, 2);
+    assert.equal(f.calls.filter(c => c[0] === 'release').length, 2);
+  } finally { session.close(); }
+  assert.equal(f.calls.filter(c => c[0] === 'close').length, 1);
+});
+
+test('never borrows a session authenticated with previous credentials', async () => {
+  const f = fixture(), session = new ImapSession();
+  try {
+    for (const token of ['fixture-one','fixture-two']) {
+      const authenticated = {...account, imap:{...account.imap,accessToken:token}};
+      await f.create({account:authenticated, imapSession:session}).messages();
+    }
+    assert.deepEqual(f.options.map(opts => opts.auth.accessToken), ['fixture-one','fixture-two']);
+    assert.equal(f.calls.filter(c => c[0] === 'noop').length, 0);
+    assert.equal(f.calls.filter(c => c[0] === 'close').length, 1);
+  } finally { session.close(); }
+});
+
+test('recovers an idle disconnect before work and never replays a failed mutation', async () => {
+  const f = fixture({noop(client){client.usable=false;}, removeFlags(){throw Error('uncertain result');}});
+  const session = new ImapSession();
+  try {
+    const mail = f.create({imapSession:session});
+    await mail.messages();
+    await assert.rejects(mail.action({uid:12,uidValidity:'42',action:'unread'}), /uncertain result/);
+    assert.equal(f.calls.filter(c => c[0] === 'connect').length, 2);
+    assert.equal(f.calls.filter(c => c[0] === 'removeFlags').length, 1);
+    assert.equal(f.calls.filter(c => c[0] === 'close').length, 2);
+  } finally { session.close(); }
+});
+
+test('expires idle connections and flushes mailbox updates before computing a page', async () => {
+  const f = fixture({noop(client){client.mailbox.exists=83;}});
+  const session = new ImapSession(15);
+  try {
+    const mail = f.create({imapSession:session});
+    await mail.messages();
+    assert.equal((await mail.messages()).total, 83);
+    assert.equal(f.calls.filter(c => c[0] === 'fetchAll').at(-1)[1], '44:83');
+    await new Promise(resolve => setTimeout(resolve, 40));
+    assert.equal(f.calls.filter(c => c[0] === 'close').length, 1);
+    await mail.messages();
+    assert.equal(f.calls.filter(c => c[0] === 'connect').length, 2);
+  } finally { session.close(); }
+});
+
+test('a connection that finishes after cancellation cannot mutate or become reusable', async () => {
+  let finishConnect;
+  const f = fixture({connect: () => new Promise(resolve => {finishConnect = resolve;})});
+  const session = new ImapSession();
+  const mail = f.create({imapSession:session, timeoutMs:15});
+  await assert.rejects(mail.action({uid:12,action:'unread'}), {code:'MAIL_TIMEOUT'});
+  finishConnect();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.calls.some(c => c[0] === 'removeFlags'), false);
+  assert.equal(f.calls.filter(c => c[0] === 'close').length, 1);
+  session.close();
+});
+
+test('opens a PDF mail without fetching the attachment bytes, and saves the original on demand', async () => {
+  const attachment = Buffer.alloc(2 * 1024 * 1024, 0x35);
+  const headers = Buffer.from('From: Alice <alice@example.test>\r\nReferences: <old@example.test>\r\n\r\n');
+  const htmlHeader = Buffer.from('Content-Type: text/html; charset=utf-8\r\n\r\n');
+  const fileHeader = Buffer.from('Content-Type: application/pdf\r\nContent-Disposition: attachment; filename="invoice.pdf"\r\nContent-Transfer-Encoding: base64\r\n\r\n');
+  const html = Buffer.from('<b>Se fakturaen</b>');
+  const source = Buffer.from(headers.toString().trimEnd() + '\r\nContent-Type: multipart/mixed; boundary="test"\r\n\r\n--test\r\n' +
+    htmlHeader + html + '\r\n--test\r\n' + fileHeader + attachment.toString('base64') + '\r\n--test--\r\n');
+  const meta = {size:source.length, flags:new Set(['\\Seen']), bodyStructure:{type:'multipart/mixed',childNodes:[
+    {part:'1',type:'text/html'}, {part:'2',type:'application/pdf',disposition:'attachment',dispositionParameters:{filename:'invoice.pdf'}},
+  ]}};
+  const parts = {headers,bodyParts:new Map([['1',html],['1.mime',htmlHeader],['2.mime',fileHeader]])};
+  const fake=fixture({source,meta,parts}), connector=fake.create();
+  const mail=await connector.message({uid:12,uidValidity:'42'});
+  assert.match(mail.text,/Se fakturaen/);
+  assert.equal(mail.from[0].address,'alice@example.test');
+  assert.deepEqual(mail.references,['<old@example.test>']);
+  assert.deepEqual(mail.attachments,[{index:0,filename:'invoice.pdf',contentType:'application/pdf',size:null}]);
+  assert.ok(fake.calls.some(c=>c[0]==='fetchOne' && c[2].bodyParts));
+  assert.ok(!fake.calls.some(c=>c[0]==='fetchOne' && c[2].source || c[0]==='addFlags'));
+  const query=fake.calls.find(c=>c[0]==='fetchOne' && c[2].bodyParts)[2];
+  assert.deepEqual(query.bodyParts.map(x=>x.key),['1.mime','2.mime','1']);
+  const original=await connector.attachment({uid:12,index:0,uidValidity:'42'});
+  assert.ok(original.data.equals(attachment));
+  const missingPart=fixture({source,meta,parts:{headers,bodyParts:new Map()}});
+  assert.match((await missingPart.create().message({uid:12})).text,/Se fakturaen/);
+  assert.ok(missingPart.calls.some(c=>c[0]==='fetchOne' && c[2].source));
+  const rejectedSections=fixture({source,meta,partsError:Object.assign(new Error('section unavailable'),{responseStatus:'NO'})});
+  assert.equal((await rejectedSections.create().message({uid:12})).attachments[0].size,attachment.length);
+  const disconnected=fixture({source,meta,partsError:Object.assign(new Error('disconnected'),{responseStatus:'BYE'})});
+  await assert.rejects(()=>disconnected.create().message({uid:12}),/disconnected/);
+  assert.ok(!disconnected.calls.some(c=>c[0]==='fetchOne' && c[2].source));
 });

@@ -30,8 +30,11 @@ async function main(){
         window.__calls.push({action,payload:structuredClone(payload)});
         if(action==='bootstrap')return structuredClone(identity);
         if(action==='folders')return [{path:'INBOX',name:'INBOX',unseen:2},{path:'Sent',name:'Sent',specialUse:'\\Sent'},{path:'Archive',name:'Archive',specialUse:'\\Archive'},{path:'Trash',name:'Trash',specialUse:'\\Trash'}];
-        if(action==='messages')return {messages:payload.query==='nothing'?[]:[{...sample},{...sample,uid:11,from:[{name:'Veyro',address:'hello@example.test'}],subject:'Dit næste projekt starter her',flagged:false,seen:true}],total:82,page:payload.page,pageSize:40,hasNext:payload.page<3,uidValidity:'42'};
-        if(action==='message')return {...sample,uid:payload.uid,seen:true,text:'Hej Test Owner,\n\nTak for en rigtig god samtale i går. Jeg har samlet vores tanker om det nye projekt, så vi kan finde den rigtige retning sammen.\n\nLad os mødes på torsdag og se på de første skitser.\n\nBedste hilsner\nSofie\n\n<img src=x onerror="window.injected=true">',replyTo:[],messageId:'<test@example.test>',references:[],attachments:[{index:0,filename:'Projektbeskrivelse.pdf',contentType:'application/pdf',size:42800}]};
+        if(action==='messages')return {messages:payload.query==='nothing'?[]:[{...sample},{...sample,uid:11,from:[{name:'Veyro',address:'hello@example.test'}],subject:'Dit næste projekt starter her',flagged:false,seen:true},...(query.has('readerTest')?[{...sample,uid:10,subject:'Et tredje brev'}]:[])],total:82,page:payload.page,pageSize:40,hasNext:payload.page<3,uidValidity:'42'};
+        if(action==='message' && window.__holdReads){
+          await new Promise(resolve=>{window.__finishRead=()=>{delete window.__finishRead;resolve();};});
+        }
+        if(action==='message')return {...sample,uid:payload.uid,subject:payload.uid===10?'Et tredje brev':payload.uid===11?'Dit næste projekt starter her':sample.subject,seen:true,text:'Hej Test Owner,\n\nTak for en rigtig god samtale i går. Jeg har samlet vores tanker om det nye projekt, så vi kan finde den rigtige retning sammen.\n\nLad os mødes på torsdag og se på de første skitser.\n\nBedste hilsner\nSofie\n\n<img src=x onerror="window.injected=true">',replyTo:[],messageId:'<test@example.test>',references:[],attachments:[{index:0,filename:'Projektbeskrivelse.pdf',contentType:'application/pdf',size:42800},...(query.has('readerTest')?[{index:1,filename:'Original.zip',contentType:'application/zip',size:null}]:[])]};
         if(action==='action'||action==='saveAttachment')return {ok:true};
         if(action==='drafts')return structuredClone(drafts);
         if(action==='saveDraft'){if(window.__draftDelay)await new Promise(resolve=>setTimeout(resolve,window.__draftDelay));const draft={...payload,id:payload.id || 'fixture-draft'};drafts=drafts.filter(d=>d.id!==draft.id).concat(draft);return structuredClone(draft);}
@@ -65,6 +68,43 @@ async function main(){
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     await page.setViewportSize({width:420,height:860});await page.screenshot({path:path.join(output,'mobile.png'),fullPage:true,animations:"disabled"});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     assert.deepEqual(errors,[]);
+    const readerTest=await browser.newPage({viewport:{width:1280,height:900}});
+    readerTest.on('pageerror',error=>errors.push(error.message));
+    await readerTest.addInitScript(installFixture);
+    await readerTest.goto(`http://127.0.0.1:${server.address().port}/?readerTest=1`);
+    const first=readerTest.getByRole('button',{name:/En god begyndelse/});
+    const second=readerTest.getByRole('button',{name:/Dit næste projekt/});
+    const third=readerTest.getByRole('button',{name:/Et tredje brev/});
+    const reads=()=>readerTest.evaluate(()=>window.__calls.filter(c=>c.action==='message').map(c=>c.payload.uid));
+    const finishRead=()=>readerTest.evaluate(()=>window.__finishRead());
+    await first.click();
+    await readerTest.locator('#message-body').waitFor();
+    assert.equal(await readerTest.locator('#message-attachments button').nth(1).innerText(),'↓ Original.zip');
+    await readerTest.locator('#forward').click();
+    assert.equal(await readerTest.locator('#compose-attachments button').nth(1).innerText(),'Original.zip · videresendes ×');
+    await readerTest.locator('#discard-draft').click();
+    await first.click();
+    assert.deepEqual(await reads(),[12],'Clicking the already open, read message reuses its body.');
+    await readerTest.evaluate(()=>{window.__holdReads=true;});
+    await second.click();
+    await readerTest.locator('#reader-pending').waitFor();
+    assert.match(await readerTest.locator('#pending-subject').innerText(),/Dit næste projekt/);
+    assert.equal(await readerTest.locator('#reply').isVisible(),false,'Old message actions must disappear immediately.');
+    await second.click();await third.click();await first.click();
+    assert.match(await readerTest.locator('#pending-subject').innerText(),/En god begyndelse/);
+    assert.deepEqual(await reads(),[12,11],'Only the active fetch may reach IMAP while it is pending.');
+    await finishRead();
+    await readerTest.waitForFunction(()=>window.__calls.filter(c=>c.action==='message').length===3 && !!window.__finishRead);
+    assert.deepEqual(await reads(),[12,11,12],'Skipped intermediate selections must not queue another fetch.');
+    await finishRead();
+    await readerTest.locator('#message-body').waitFor();
+    assert.match(await readerTest.locator('#message-subject').innerText(),/En god begyndelse/);
+    await readerTest.setViewportSize({width:420,height:860});
+    await readerTest.locator('#back-list').click();await third.click();
+    await readerTest.locator('#cancel-read').click();await finishRead();
+    await third.waitFor();
+    assert.equal(await readerTest.locator('#message').isVisible(),false,'Finishing an abandoned read must not reopen it on mobile.');
+    await readerTest.close();
     const freshSetup=async(suffix='')=>{
       const setup=await browser.newPage({viewport:{width:1024,height:820}});setup.on('pageerror',error=>errors.push(error.message));
       await setup.addInitScript(installFixture);await setup.goto(`http://127.0.0.1:${server.address().port}/?setup=1${suffix}`);await setup.locator('#settings-dialog').waitFor();return setup;

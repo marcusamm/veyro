@@ -2,8 +2,9 @@
 (() => {
   const $=id=>document.getElementById(id);
   const invoke=(action,payload={})=>window.veyroMail.invoke(action,payload);
-  const state={identity:null,folders:[],folder:'INBOX',page:1,query:'',uidValidity:null,messages:[],current:null,drafts:[],draft:null,view:'mail',listEpoch:0,readEpoch:0,draftEpoch:0,uploading:false,sending:false};
+  const state={identity:null,folders:[],folder:'INBOX',page:1,query:'',uidValidity:null,messages:[],current:null,drafts:[],draft:null,view:'mail',listEpoch:0,draftEpoch:0,uploading:false,sending:false};
   let draftTimer,draftChain=Promise.resolve(),oauthBusy=false,configureBusy=false,gmailManual=false;
+  let activeRead=null,wantedRead=null,openedAt=0;
   const providers={
     gmail:{imap:'imap.gmail.com',smtp:'smtp.gmail.com',oauth:'google',note:'Vælg din Google-konto i browseren. Du bruger din eksisterende Gmail-adresse.'},
     outlook:{imap:'outlook.office365.com',smtp:'smtp.office365.com',oauth:'microsoft',note:'Du logger ind hos Microsoft i din browser.'},
@@ -22,9 +23,22 @@
   function addressList(list){return (list || []).map(a=>a.name?`${a.name} <${a.address}>`:a.address).join(', ');}
   function recipientString(list){return (list || []).map(a=>a.name?`"${a.name.replace(/["\\\r\n]/g,'')}" <${a.address}>`:a.address).join(', ');}
   function bytes(value){return value<1024?`${value} B`:value<1048576?`${Math.round(value/1024)} KB`:`${(value/1048576).toFixed(1)} MB`;}
+  function attachmentSizeSuffix(size){return Number.isSafeInteger(size) && size>=0 ? ' · '+bytes(size) : '';}
   function folderName(folder){return folder.path.toUpperCase()==='INBOX'?'Indbakke':names[folder.specialUse] || folder.name;}
   function selected(){return state.current?{folder:state.current.folder,uid:state.current.uid,uidValidity:state.current.uidValidity}:null;}
-  function setReader(message){state.current=message;$('message').hidden=!message;$('reader-empty').hidden=!!message;$('workspace').classList.toggle('reading',!!message);if(!message){$('message-frame').removeAttribute('src');$('message-frame').hidden=true;}}
+  function setReader(message, pending=null){
+    state.current=message;
+    openedAt=message?Date.now():0;
+    wantedRead=pending;
+    $('message').hidden=!message;
+    $('reader-pending').hidden=!pending;
+    $('reader-empty').hidden=!!(message || pending);
+    $('workspace').classList.toggle('reading',!!(message || pending));
+    if(!message){
+      $('message-frame').removeAttribute('src');
+      $('message-frame').hidden=true;
+    }
+  }
   async function start(){
     $('retry-start').hidden=true;
     try{
@@ -140,7 +154,7 @@
     $('drafts').setAttribute('aria-current',String(state.view==='drafts'));
   }
   async function refreshFolders(){state.folders=await invoke('folders');if(!state.folders.some(f=>f.path===state.folder)&&state.folders.length)state.folder=state.folders[0].path;renderFolders();}
-  async function changeFolder(folder){state.view='mail';state.folder=folder;state.page=1;state.query='';$('search').value='';setReader(null);state.readEpoch++;renderFolders();await loadMessages();}
+  async function changeFolder(folder){state.view='mail';state.folder=folder;state.page=1;state.query='';$('search').value='';setReader(null);renderFolders();await loadMessages();}
   async function loadMessages(){
     const epoch=++state.listEpoch;state.view='mail';renderFolders();
     const folder=state.folders.find(f=>f.path===state.folder);text($('folder-title'),folder?folderName(folder):state.folder);
@@ -148,25 +162,63 @@
     try{
       const result=await invoke('messages',{folder:state.folder,query:state.query,page:state.page,pageSize:40});if(epoch!==state.listEpoch)return;
       if(!result.messages.length&&state.page>1){state.page--;return loadMessages();}
+      const selection=wantedRead || state.current;
+      if(selection?.folder===state.folder && selection.uidValidity!==result.uidValidity)setReader(null);
       state.messages=result.messages;state.uidValidity=result.uidValidity;renderMessages();text($('list-state'),result.messages.length?'':state.query?'Ingen mails matcher din søgning.':'Her er ingen mails endnu.');
       text($('page-label'),`${result.total} mails · side ${state.page}`);$('previous').disabled=state.page<=1;$('next').disabled=!result.hasNext;
     }catch(error){if(epoch===state.listEpoch){text($('list-state'),errorText(error));notice('Kunne ikke hente mappen. Tryk på opdater for at prøve igen.');}}
   }
   function renderMessages(){
     $('messages').replaceChildren();
+    const selection=wantedRead || state.current;
     for(const message of state.messages){
-      const li=node('li'),button=node('button',`message-row${message.seen?'':' unread'}`);button.type='button';button.setAttribute('aria-current',String(state.current?.uid===message.uid&&state.current.folder===state.folder));
+      const li=node('li'),button=node('button',`message-row${message.seen?'':' unread'}`);button.type='button';button.setAttribute('aria-current',String(selection?.uid===message.uid&&selection.folder===state.folder));
       const row=node('span','row');row.append(node('span','sender',message.from?.map(a=>a.name || a.address).join(', ') || 'Ukendt afsender'),node('span','date',showDate(message.date)));
       const subject=node('span','subject');if(message.flagged)subject.append(node('span','star','★'));subject.append(document.createTextNode(message.subject || '(Intet emne)'));button.append(row,subject);
       button.addEventListener('click',()=>openMessage(message.uid));li.append(button);$('messages').append(li);
     }
   }
-  async function openMessage(uid){
-    const epoch=++state.readEpoch,folder=state.folder,uidValidity=state.uidValidity;notice('Åbner mail …');
-    try{
-      const message=await invoke('message',{folder,uid,uidValidity});if(epoch!==state.readEpoch||folder!==state.folder||state.view!=='mail')return;
-      setReader({...message,folder,richMode:true,imagesEnabled:false});const row=state.messages.find(m=>m.uid===uid);if(row)row.seen=true;renderMessages();renderMessage();notice('');
-    }catch(error){if(epoch===state.readEpoch)notice(errorText(error));}
+  function openMessage(uid){
+    const {folder,uidValidity,identity}=state;
+    const matches=target=>target?.folder===folder && target.uid===uid && target.uidValidity===uidValidity;
+    if(matches(wantedRead))return;
+    const row=state.messages.find(item=>item.uid===uid);
+    if(!activeRead && matches(state.current) && Date.now()-openedAt<30_000 && state.current.seen && row?.seen && state.current.flagged===row.flagged){
+      $('workspace').classList.add('reading');
+      return;
+    }
+    const request=matches(activeRead) && activeRead.identity===identity ? activeRead : {folder,uid,uidValidity,identity};
+    text($('pending-subject'),row?.subject || '(Intet emne)');
+    setReader(null,request);
+    renderMessages();
+    if(!activeRead)void readSelection();
+  }
+  async function readSelection(){
+    // The native account queue serializes reads. Only enqueue the latest selection
+    // once the current request finishes, so skipped rows do not delay it.
+    while(wantedRead){
+      const request=activeRead=wantedRead;
+      const {folder,uid,uidValidity}=request;
+      try{
+        const message=await invoke('message',{folder,uid,uidValidity});
+        if(wantedRead!==request)continue;
+        if(state.view!=='mail' || folder!==state.folder || uidValidity!==state.uidValidity || request.identity!==state.identity){
+          setReader(null);
+          continue;
+        }
+        setReader({...message,folder,richMode:true,imagesEnabled:false});
+        const row=state.messages.find(item=>item.uid===uid);
+        if(row)row.seen=true;
+        renderMessages();
+        renderMessage();
+      }catch(error){
+        if(wantedRead===request){
+          setReader(null);
+          renderMessages();
+          notice(errorText(error));
+        }
+      }finally{activeRead=null;}
+    }
   }
   function renderMessage(){
     const message=state.current;if(!message)return;
@@ -183,7 +235,7 @@
     text($('toggle-read'),message.seen?'Markér ulæst':'Markér læst');text($('toggle-star'),message.flagged?'★ Fjern stjerne':'☆ Stjernemarkér');
     $('message-attachments').replaceChildren();
     for(const file of message.attachments || []){
-      const button=node('button','attachment',`↓ ${file.filename} · ${bytes(file.size)}`);button.type='button';button.title='Gem vedhæftet fil';
+      const button=node('button','attachment',`↓ ${file.filename}${attachmentSizeSuffix(file.size)}`);button.type='button';button.title='Gem vedhæftet fil';
       button.addEventListener('click',async()=>{button.disabled=true;try{await invoke('saveAttachment',{folder:message.folder,uid:message.uid,uidValidity:message.uidValidity,index:file.index});}catch(error){notice(errorText(error));}finally{button.disabled=false;}});
       $('message-attachments').append(button);
     }
@@ -200,7 +252,7 @@
     try{
       await invoke('action',{...target,action});
       if(state.current?.uid===target.uid&&state.current.folder===target.folder){
-        if(action==='archive'||action==='trash'){state.readEpoch++;setReader(null);}
+        if(action==='archive'||action==='trash'){setReader(null);}
         else{if(action==='read'||action==='unread')state.current.seen=action==='read';else state.current.flagged=action==='star';renderMessage();}
       }
       if(state.folder===target.folder&&state.view==='mail')await loadMessages();await refreshFolders();
@@ -208,7 +260,7 @@
   }
   async function refreshDrafts(){state.drafts=await invoke('drafts');text($('draft-count'),state.drafts.length?String(state.drafts.length):'');}
   async function showDrafts(){
-    state.view='drafts';state.listEpoch++;state.readEpoch++;setReader(null);renderFolders();$('search-form').hidden=true;$('pagination').hidden=true;text($('folder-title'),'Kladder');text($('list-state'),'Henter kladder …');$('messages').replaceChildren();
+    state.view='drafts';state.listEpoch++;setReader(null);renderFolders();$('search-form').hidden=true;$('pagination').hidden=true;text($('folder-title'),'Kladder');text($('list-state'),'Henter kladder …');$('messages').replaceChildren();
     try{
       await refreshDrafts();if(state.view!=='drafts')return;
       text($('list-state'),state.drafts.length?'Kladder gemmes krypteret på denne computer.':'Ingen gemte kladder på denne computer.');
@@ -262,7 +314,7 @@
       button.addEventListener('click',()=>{if(state.sending)return;state.draft.attachments.splice(index,1);renderComposeAttachments();scheduleDraft();});$('compose-attachments').append(button);
     }
     for(const [index,file] of (state.draft?.forwardedAttachments || []).entries()){
-      const button=node('button','attachment',`${file.filename} · ${bytes(file.size)} · videresendes ×`);button.type='button';button.title='Fjern vedhæftet fil fra videresendelsen';
+      const button=node('button','attachment',`${file.filename}${attachmentSizeSuffix(file.size)} · videresendes ×`);button.type='button';button.title='Fjern vedhæftet fil fra videresendelsen';
       button.addEventListener('click',()=>{if(state.sending)return;state.draft.forwardedAttachments.splice(index,1);renderComposeAttachments();scheduleDraft();});$('compose-attachments').append(button);
     }
   }
@@ -270,7 +322,7 @@
     const files=Array.from($('attachment-input').files || []);$('attachment-input').value='';if(!files.length||!state.draft)return;
     errorAt('compose-error',null);state.uploading=true;$('send').disabled=true;
     try{
-      const existing=state.draft.attachments.reduce((sum,a)=>sum+Math.floor(a.data.length*3/4),0)+state.draft.forwardedAttachments.reduce((sum,a)=>sum+a.size,0);
+      const existing=state.draft.attachments.reduce((sum,a)=>sum+Math.floor(a.data.length*3/4),0)+state.draft.forwardedAttachments.reduce((sum,a)=>sum+(Number.isSafeInteger(a.size)?Math.max(0,a.size):0),0);
       if(existing+files.reduce((sum,f)=>sum+f.size,0)>20*1024*1024)throw new Error('Vedhæftninger må tilsammen fylde højst 20 MB.');
       if(state.draft.attachments.length+state.draft.forwardedAttachments.length+files.length>30)throw new Error('Du kan vedhæfte højst 30 filer.');
       const pending=[];
@@ -308,6 +360,7 @@
   $('search-form').addEventListener('submit',event=>{event.preventDefault();state.query=$('search').value.trim();state.page=1;loadMessages();});
   $('search').addEventListener('search',()=>{if(!$('search').value){state.query='';state.page=1;loadMessages();}});
   $('previous').addEventListener('click',()=>{state.page=Math.max(1,state.page-1);loadMessages();});$('next').addEventListener('click',()=>{state.page++;loadMessages();});
+  $('cancel-read').addEventListener('click',()=>{setReader(null);renderMessages();});
   $('back-list').addEventListener('click',()=>{$('workspace').classList.remove('reading');});
   $('toggle-read').addEventListener('click',()=>messageAction(state.current?.seen?'unread':'read'));$('toggle-star').addEventListener('click',()=>messageAction(state.current?.flagged?'unstar':'star'));$('archive').addEventListener('click',()=>messageAction('archive'));$('trash').addEventListener('click',()=>messageAction('trash'));
   $('reply').addEventListener('click',()=>composeReply());$('reply-all').addEventListener('click',()=>composeReply(true));$('forward').addEventListener('click',()=>composeReply(false,true));

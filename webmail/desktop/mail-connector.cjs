@@ -152,9 +152,57 @@ function richMessage(source,attachments=[]) {
   return {html,remoteImages:[...remoteImages]};
 }
 
-function createMailConnector({account, dependencies = {}, timeoutMs = OPERATION_TIMEOUT}) {
+// Owned by one account in the Electron main process. A client is checked out
+// exclusively; a second simultaneous operation can never switch its mailbox.
+class ImapSession {
+  constructor(idleMs = 20000) {
+    this.idleMs = idleMs;
+    this.clients = new Set();
+  }
+  take(key) {
+    const idle = this.idle;
+    if (!idle) return null;
+    this.idle = undefined;
+    clearTimeout(this.timer);
+    if (idle.key === key && idle.client.usable) return idle.client;
+    this.discard(idle.client);
+    return null;
+  }
+  track(client) {
+    if (this.closed) fail('The account session was closed.', 'SESSION_CLOSED');
+    this.clients.add(client);
+    return client;
+  }
+  keep(key, client) {
+    if (!this.clients.has(client) || !client.usable) {
+      this.discard(client);
+      return;
+    }
+    if (this.idle) this.discard(this.idle.client);
+    this.idle = {key, client};
+    this.timer = setTimeout(() => this.discard(client), this.idleMs);
+    this.timer.unref();
+  }
+  discard(client) {
+    if (this.idle?.client === client) {
+      this.idle = undefined;
+      clearTimeout(this.timer);
+    }
+    if (this.clients.delete(client)) client.close();
+  }
+  close() {
+    this.closed = true;
+    for (const client of this.clients) this.discard(client);
+  }
+}
+
+function createMailConnector({account, dependencies = {}, timeoutMs = OPERATION_TIMEOUT, imapSession}) {
   const config = normalizeAccount(account);
   const mailboxKey=require('node:crypto').createHash('sha256').update(JSON.stringify([config.email.toLowerCase(),config.imap.host.toLowerCase(),config.imap.port,config.imap.secure,config.imap.user])).digest('hex');
+  // This digest stays in memory and is never logged or written to disk. A
+  // changed identity, endpoint or token must authenticate a new connection.
+  const sessionKey = imapSession && require('node:crypto').createHash('sha256')
+    .update(JSON.stringify([mailboxKey, account.oauthSubject, config.imap])).digest('hex');
   const ImapFlow = dependencies.ImapFlow || require('imapflow').ImapFlow;
   const nodemailer = dependencies.nodemailer || require('nodemailer');
   const parse = dependencies.simpleParser || require('mailparser').simpleParser;
@@ -173,28 +221,61 @@ function createMailConnector({account, dependencies = {}, timeoutMs = OPERATION_
     return nodemailer.createTransport({host:s.host,port:s.port,secure:s.secure,requireTLS:!s.secure,ignoreTLS:false,opportunisticTLS:false,auth:s.accessToken?{type:'OAuth2',user:s.user,accessToken:s.accessToken}:{user:s.user,pass:s.password},tls:{...tls,servername:s.host},logger:false,debug:false,connectionTimeout:15000,greetingTimeout:10000,socketTimeout:30000,dnsTimeout:10000,disableFileAccess:true,disableUrlAccess:true});
   }
   async function withImap(folder, operation, expectedValidity) {
-    const client=imap();
-    const work=(async () => {
-      let lock;
+    let client = imapSession?.take(sessionKey);
+    let expired = false;
+    function discard() {
+      if (!client) return;
+      if (imapSession) imapSession.discard(client);
+      else client.close();
+    }
+    const work = (async () => {
+      let lock, success = false;
       try {
-        await client.connect();
+        if (client) {
+          // Flush pending EXISTS/EXPUNGE updates before pagination reads the
+          // selected mailbox count. Only this side-effect-free probe is retried.
+          try {
+            await client.noop();
+            if (!client.usable) fail('The mail server disconnected.', 'MAIL_DISCONNECTED');
+          }
+          catch (error) {
+            discard();
+            if (expired || imapSession.closed) throw error;
+            client = null;
+          }
+        }
+        if (!client) {
+          client = imapSession ? imapSession.track(imap()) : imap();
+          await client.connect();
+        }
         if (folder !== null) {
           lock=await client.getMailboxLock(checkedFolder(folder));
           if (expectedValidity !== undefined && String(client.mailbox.uidValidity) !== String(expectedValidity)) fail('This folder has changed on the server. Refresh it before opening or changing this message.', 'STALE_MAILBOX');
         }
-        return await operation(client);
-      } finally { if (lock) lock.release(); client.close(); }
+        if (expired || imapSession?.closed) fail('The account session was closed.', 'SESSION_CLOSED');
+        const result = await operation(client);
+        success = true;
+        return result;
+      } finally {
+        if (lock) lock.release();
+        if (imapSession && success && !expired) imapSession.keep(sessionKey, client);
+        else discard();
+      }
     })();
-    return timeout(work, () => client.close(),timeoutMs);
+    return timeout(work, () => { expired = true; discard(); }, timeoutMs);
   }
-  async function read(client, uid) {
-    const meta=await client.fetchOne(uid,{uid:true,envelope:true,flags:true,size:true,internalDate:true},{uid:true});
+  async function read(client, uid, preview = false) {
+    const meta=await client.fetchOne(uid,{uid:true,envelope:true,flags:true,size:true,internalDate:true,...(preview ? {bodyStructure:true} : {})},{uid:true});
     if (!meta) fail('This message is no longer in this folder. Refresh the folder.', 'NOT_FOUND');
     if (meta.size > MAX_SOURCE) fail('This message exceeds the 30 MB reading limit. Open it in your provider’s webmail.', 'MESSAGE_TOO_LARGE');
-    const fetched=await client.fetchOne(uid,{source:{start:0,maxLength:MAX_SOURCE+1}},{uid:true});
-    if (!fetched?.source) fail('The server did not return this message.', 'NOT_FOUND');
-    if (fetched.source.length > MAX_SOURCE) fail('This message exceeds the 30 MB reading limit.', 'MESSAGE_TOO_LARGE');
-    const mail=await parse(fetched.source,{skipHtmlToText:false,skipTextToHtml:true,skipImageLinks:true,maxHtmlLengthToParse:MAX_TEXT});
+    const parseOptions={skipHtmlToText:false,skipTextToHtml:true,skipImageLinks:true,maxHtmlLengthToParse:MAX_TEXT};
+    let mail=preview ? await require('./message-preview.cjs').messagePreview(client,uid,meta,parse,parseOptions) : null;
+    if (!mail) {
+      const fetched=await client.fetchOne(uid,{source:{start:0,maxLength:MAX_SOURCE+1}},{uid:true});
+      if (!fetched?.source) fail('The server did not return this message.', 'NOT_FOUND');
+      if (fetched.source.length > MAX_SOURCE) fail('This message exceeds the 30 MB reading limit.', 'MESSAGE_TOO_LARGE');
+      mail=await parse(fetched.source,parseOptions);
+    }
     // HTML-only messages nested in multipart/mixed are not always converted by
     // MailParser. Reparse just that bounded HTML as a root text part to get text.
     if (!mail.text && typeof mail.html==='string' && Buffer.byteLength(mail.html)<=MAX_TEXT) {
@@ -265,9 +346,9 @@ function createMailConnector({account, dependencies = {}, timeoutMs = OPERATION_
     async message({folder='INBOX',uid,uidValidity}={}) {
       uid=checkedUid(uid);
       return withImap(folder,async client => {
-        const {meta,mail}=await read(client,uid);
-        await client.messageFlagsAdd(uid,['\\Seen'],{uid:true});
-        return {...summary(meta),seen:true,mailboxKey,uidValidity:String(client.mailbox.uidValidity),text:String(mail.text || '').slice(0,MAX_TEXT),textTruncated:String(mail.text || '').length>MAX_TEXT,...richMessage(mail.html,mail.attachments),from:addresses(mail.from),to:addresses(mail.to),cc:addresses(mail.cc),bcc:addresses(mail.bcc),replyTo:addresses(mail.replyTo),messageId:mail.messageId || '',references:Array.isArray(mail.references)?mail.references:mail.references?[mail.references]:[],attachments:(mail.attachments || []).map((file,index)=>({index,filename:filename(file.filename),contentType:file.contentType,size:file.size || file.content.length}))};
+        const {meta,mail}=await read(client,uid,true);
+        if (!meta.flags?.has('\\Seen')) await client.messageFlagsAdd(uid,['\\Seen'],{uid:true});
+        return {...summary(meta),seen:true,mailboxKey,uidValidity:String(client.mailbox.uidValidity),text:String(mail.text || '').slice(0,MAX_TEXT),textTruncated:String(mail.text || '').length>MAX_TEXT,...richMessage(mail.html,mail.attachments),from:addresses(mail.from),to:addresses(mail.to),cc:addresses(mail.cc),bcc:addresses(mail.bcc),replyTo:addresses(mail.replyTo),messageId:mail.messageId || '',references:Array.isArray(mail.references)?mail.references:mail.references?[mail.references]:[],attachments:(mail.attachments || []).map((file,index)=>({index,filename:filename(file.filename),contentType:file.contentType,size:file.deferred ? null : file.size || file.content.length}))};
       },uidValidity);
     },
     async attachment({folder='INBOX',uid,index,uidValidity}={}) {
@@ -346,4 +427,4 @@ function createMailConnector({account, dependencies = {}, timeoutMs = OPERATION_
   });
 }
 
-module.exports={createMailConnector,normalizeAccount,richMessage,sanitizeCSS,safeImageURL,MAX_SOURCE,MAX_ATTACHMENTS};
+module.exports={createMailConnector,ImapSession,normalizeAccount,richMessage,sanitizeCSS,safeImageURL,MAX_SOURCE,MAX_ATTACHMENTS};
