@@ -48,6 +48,30 @@ jobs:
       - run: npm run test:smoke
       - name: Build installer without publishing
         run: npx electron-builder --${{ matrix.platform }} ${{ matrix.target }} --${{ matrix.arch }} --publish never
+      - name: Install and launch Windows artifact on the runner
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist/Veyro-Mail-*-win-x64.exe | Select-Object -First 1
+          $installRoot = Join-Path $env:RUNNER_TEMP 'VeyroMailSmoke'
+          $installed = Start-Process -FilePath $installer.FullName -ArgumentList '/S', "/D=$installRoot" -Wait -PassThru
+          if ($installed.ExitCode -ne 0) { throw "Installer failed: $($installed.ExitCode)" }
+          $executable = Join-Path $installRoot 'Veyro Mail.exe'
+          if (!(Test-Path $executable)) { throw 'Installed executable is missing' }
+          $mailProcess = Get-Process -Name 'Veyro Mail' -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $executable } | Select-Object -First 1
+          if (!$mailProcess) { $mailProcess = Start-Process -FilePath $executable -PassThru }
+          Start-Sleep -Seconds 6
+          if ($mailProcess.HasExited) { throw "Installed app exited: $($mailProcess.ExitCode)" }
+          taskkill /PID $mailProcess.Id /T /F
+      - name: Verify Mac bundle signature
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          if [ '${{ matrix.arch }}' = arm64 ]; then
+            codesign --verify --deep --strict 'dist/mac-arm64/Veyro Mail.app'
+          else
+            codesign --verify --deep --strict 'dist/mac/Veyro Mail.app'
+          fi
       - run: npm run checksums
       - uses: actions/upload-artifact@v4
         with:
