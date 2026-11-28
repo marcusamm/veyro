@@ -532,7 +532,7 @@
   };
   byId('messages').onclick = event => {
     const row = event.target.closest('button[data-id]');
-    if (row) openMail(row.dataset.id);
+    if (row && (row.dataset.id !== selected || (!detailRequest && !readerItem))) openMail(row.dataset.id);
   };
   function rowFor(id) {
     return Array.from(byId('messages').querySelectorAll('.message-row')).find(row => row.dataset.id === String(id));
@@ -946,7 +946,7 @@
         frame.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
         frame.referrerPolicy = 'no-referrer';
         frame.setAttribute('aria-busy', 'true');
-        frame.src = '/message-frame' + (images ? '?images=1' : '');
+        frame.src = '/message-frame?v=1' + (images ? '&images=1' : '');
         frame.addEventListener('load', () => {
           if (activeMailFrame?.frame !== frame || !frame.isConnected) return;
           // The sandbox intentionally has an opaque origin. Only this frame receives the content.
@@ -1061,6 +1061,8 @@
       const text = node('p', 'reader-error', message(error)); text.setAttribute('role', 'alert');
       const retry = node('button', 'secondary', 'Prøv igen'); retry.type = 'button'; retry.onclick = () => openMail(id);
       byId('paper').replaceChildren(text, retry);
+    } finally {
+      if (detailRequest === request) detailRequest = null;
     }
   }
   function hasDraft() {

@@ -62,9 +62,9 @@ bygges med desktop-README'ens særskilte konfigurerede buildkommando; de faktisk
 Google-registreringsværdier ligger i en ignoreret lokal fil og gemmes ikke i Git.
 Filnavne i `webmail/desktop/dist`:
 
-- `Veyro-Mail-0.1.0-beta.1-mac-arm64.dmg` (Apple Silicon)
-- `Veyro-Mail-0.1.0-beta.1-mac-x64.dmg` (Intel)
-- `Veyro-Mail-0.1.0-beta.1-win-x64.exe` (Windows 64-bit)
+- `Veyro-Mail-0.1.0-beta.2-mac-arm64.dmg` (Apple Silicon)
+- `Veyro-Mail-0.1.0-beta.2-mac-x64.dmg` (Intel)
+- `Veyro-Mail-0.1.0-beta.2-win-x64.exe` (Windows 64-bit)
 - `SHA256SUMS.txt`
 
 macOS-bygningen bruger lokal ad hoc-signering, ikke et Apple Developer ID eller

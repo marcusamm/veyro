@@ -6,7 +6,7 @@ set -eu
 [ "$#" = 1 ] || { echo 'Expected a staging directory.' >&2; exit 1; }
 source_dir=$(cd -- "$1" && pwd -P)
 origin_dir=$(cd -- "$(dirname -- "$0")" && pwd -P)
-version=0.1.0-beta.1
+version=0.1.0-beta.2
 manifest="$origin_dir/SHA256SUMS-$version.txt"
 base=/srv/veyro-mail-downloads
 install -d -o root -g root -m 0755 "$base"

@@ -42,6 +42,13 @@ describe('Veyro Mail gateway', () => {
     expect(frame.headers.get('Content-Security-Policy')).toContain("img-src data:;");
     expect(frame.headers.get('Content-Security-Policy')).not.toContain('allow-same-origin');
     expect(frame.headers.get('Content-Security-Policy')).not.toContain('allow-forms');
+    for (const path of ['/message-frame?v=1', '/message-frame?v=1&images=1', '/message-frame.js?v=1']) {
+      const response = await fetch(path);
+      expect(response.headers.get('Cache-Control')).toBe('private, max-age=300');
+      if (!path.includes('.js')) expect(response.headers.get('Content-Security-Policy')).toBe(messageFramePolicy(path.includes('images=1')));
+    }
+    const unavailable = setup({ASSETS:{fetch:async () => new Response('', {status:404})}});
+    expect((await unavailable.fetch('/message-frame?v=1')).headers.get('Cache-Control')).toBe('no-store');
     const images = await fetch('/message-frame?images=1');
     expect(images.headers.get('Content-Security-Policy')).toBe(messageFramePolicy(true));
     expect((await fetch('/message-frame?images=true')).headers.get('Content-Security-Policy')).toBe(messageFramePolicy(false));

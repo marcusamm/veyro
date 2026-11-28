@@ -27,6 +27,10 @@
     </section>
     <section id="reader" class="reader" aria-label="Læsevisning">
       <div id="reader-empty" class="empty"><span class="mail-symbol" aria-hidden="true">✉</span><h2>Plads til overblik.</h2><p>Vælg en mail, og læs den her.</p></div>
+      <div id="reader-pending" class="empty" hidden>
+        <h2 id="pending-subject"></h2><p role="status">Henter mailens indhold …</p>
+        <button id="cancel-read" class="quiet" type="button">← Tilbage</button>
+      </div>
       <article id="message" hidden>
         <div class="reader-toolbar"><button id="back-list" class="quiet" type="button">← Tilbage</button><div class="message-actions"><button id="toggle-read" class="quiet" type="button">Markér ulæst</button><button id="toggle-star" class="quiet" type="button">☆ Stjernemarkér</button><button id="archive" class="quiet" type="button">Arkivér</button><button id="trash" class="quiet" type="button">Papirkurv</button></div></div>
         <h2 id="message-subject" tabindex="-1"></h2>

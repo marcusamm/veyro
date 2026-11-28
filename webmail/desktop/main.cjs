@@ -31,7 +31,8 @@ async function bootstrap(options = {}) {
     // OAuth destinations are fixed in oauth.cjs and opened only by the explicit Connect action.
     openBrowser: openExternal,
   });
-  const connectorFor = (account) => (testing && options.createMailConnector ? options.createMailConnector : require('./mail-connector.cjs').createMailConnector)({account});
+  const imapSessions = new Map();
+  const connectorFor = (account, imapSession) => (testing && options.createMailConnector ? options.createMailConnector : require('./mail-connector.cjs').createMailConnector)({account, imapSession});
   const views = new Map();
   const protectedSessions = new Map();
   const downloads = new Map();
@@ -42,6 +43,18 @@ async function bootstrap(options = {}) {
   let window, accounts = [], activeId, dialogOpen = false, promptOpen = false, toast = '', shuttingDown = false, googleAddition;
   let mutation = Promise.resolve();
 
+  function sessionFor(id) {
+    if (!window || window.isDestroyed() || shuttingDown || removing.has(id)) return;
+    if (!imapSessions.has(id)) {
+      const {ImapSession} = require('./mail-connector.cjs');
+      imapSessions.set(id, new ImapSession());
+    }
+    return imapSessions.get(id);
+  }
+  function retireSession(id) {
+    imapSessions.get(id)?.close();
+    imapSessions.delete(id);
+  }
   function accountById(id) {
     const account = accounts.find((item) => item.id === id);
     if (!account) throw new Error('Kontoen findes ikke længere.');
@@ -163,6 +176,7 @@ async function bootstrap(options = {}) {
           if (listed) { accounts = accounts.filter((item) => item.id !== id); activeId = previousActive; await saveAccounts(); }
           throw error;
         }
+        retireSession(id);
         clearMessageViews(id);
       });
       await switchAccount(id);
@@ -363,6 +377,7 @@ async function bootstrap(options = {}) {
     invalidateOAuth(id);
     // Finish any in-flight account operation before deleting its credential vault.
     await accountQueues.get(id)?.catch(() => {});
+    retireSession(id);
     for (const download of downloads.get(id) || []) download.cancel();
     downloads.delete(id);
     const entry = views.get(id);
@@ -468,6 +483,7 @@ async function bootstrap(options = {}) {
         await vault.write(id, {...saved, account, oauth: tokens});
         assertAttempt();
       } catch (error) { await vault.write(id, saved); throw error; }
+      retireSession(id);
       clearMessageViews(id);
       return identity(account);
     }
@@ -479,6 +495,7 @@ async function bootstrap(options = {}) {
       const connector = connectorFor(account);
       await connector.verify();
       await vault.write(id, {...saved, account, oauth: undefined});
+      retireSession(id);
       clearMessageViews(id);
       return identity(account);
     }
@@ -502,7 +519,7 @@ async function bootstrap(options = {}) {
       if (tokens !== saved.oauth) await vault.write(id, {...saved, oauth: tokens});
       authenticated = {...saved.account, imap: {...saved.account.imap, accessToken: tokens.accessToken}, smtp: {...saved.account.smtp, accessToken: tokens.accessToken}};
     }
-    const connector = connectorFor(authenticated);
+    const connector = connectorFor(authenticated, sessionFor(id));
     if (action === 'saveAttachment') {
       const attachment = await connector.attachment(payload);
       const result = await prompt.showSaveDialog(window, {title: 'Gem vedhæftning', defaultPath: path.join(app.getPath('downloads'), policy.safeFilename(attachment.filename)), properties: ['showOverwriteConfirmation', 'createDirectory']});
@@ -587,6 +604,7 @@ async function bootstrap(options = {}) {
     window.on('resize', layout);
     window.on('closed', () => {
       cancelGoogle();
+      for (const id of imapSessions.keys()) retireSession(id);
       for (const entry of views.values()) if (!entry.view.webContents.isDestroyed()) entry.view.webContents.close();
       views.clear(); messageViews.clear(); window = undefined;
     });
@@ -600,7 +618,11 @@ async function bootstrap(options = {}) {
   app.on('second-instance', () => { if (window) { if (window.isMinimized()) window.restore(); window.show(); window.focus(); } });
   app.on('activate', () => { if (!window && !shuttingDown) void createWindow(); else window?.show(); });
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-  app.on('before-quit', () => { shuttingDown = true; oauth.cancelAll(); });
+  app.on('before-quit', () => {
+    shuttingDown = true;
+    oauth.cancelAll();
+    for (const id of imapSessions.keys()) retireSession(id);
+  });
   // Only an unpackaged test harness receives these references. This is never exposed to a page.
   if (testing) return {get window() { return window; }, views, messageViews, messageImageAllowed, state, shellAction, mailAction, assertSender, configureSession, vault, origin};
 }

@@ -1,11 +1,11 @@
 @downloadArea path /webmail-downloads /webmail-downloads/*
 @desktopInstaller {
 	method GET HEAD
-	path /webmail-downloads/Veyro-Mail-0.1.0-beta.1-mac-arm64.dmg /webmail-downloads/Veyro-Mail-0.1.0-beta.1-mac-x64.dmg /webmail-downloads/Veyro-Mail-0.1.0-beta.1-win-x64.exe
+	path_regexp installer ^/webmail-downloads/Veyro-Mail-(0[.]1[.]0-beta[.][12])-(mac-(arm64|x64)[.]dmg|win-x64[.]exe)$
 }
 handle @downloadArea {
 	handle @desktopInstaller {
-		root * /srv/veyro-mail-downloads/0.1.0-beta.1
+		root * /srv/veyro-mail-downloads/{re.installer.1}
 		uri strip_prefix /webmail-downloads
 		header Content-Type application/octet-stream
 		header Content-Disposition "attachment; filename=\"{http.request.uri.path.file}\""
