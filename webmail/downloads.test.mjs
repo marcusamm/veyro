@@ -34,6 +34,7 @@ it('uses the same signing key as the app and presents all three installer links'
   feed(envelope({schema:1,version,files}));
   for (const [index,path] of links.entries()) {
     expect(await desktopDownload(path, fixtureKey)).toBe(origin + Object.values(files)[index].name);
+    expect(fetch).toHaveBeenLastCalledWith(origin + 'update.json', expect.objectContaining({redirect:'manual'}));
     expect((await serve(path,'POST')).status).toBe(405);
     expect((await serve(path,'HEAD')).status).toBe(503); // Fixture key is not trusted in production.
   }
@@ -41,6 +42,8 @@ it('uses the same signing key as the app and presents all three installer links'
 });
 
 it('rejects invalid signatures, oversized responses and signed external file paths', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => Response.redirect('https://example.invalid/update.json', 302)));
+  await expect(desktopDownload('/download/windows',fixtureKey)).rejects.toThrow();
   feed(envelope({schema:1,version,files}, {signature:Buffer.alloc(64).toString('base64')}));
   await expect(desktopDownload('/download/windows',fixtureKey)).rejects.toThrow();
   feed(envelope({schema:1,version,files:{'win32-x64':{...files['win32-x64'],name:'https://example.invalid/app.exe'}}}));

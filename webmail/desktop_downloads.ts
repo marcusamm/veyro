@@ -39,7 +39,7 @@ export async function desktopDownload(path: string, publicKey = releaseKey): Pro
   const platform = platforms.get(path);
   if (!platform) return null;
   const response = await fetch(releaseOrigin + 'update.json', {
-    redirect: 'error', signal: AbortSignal.timeout(8000), cache: 'no-store',
+    redirect: 'manual', signal: AbortSignal.timeout(8000), cache: 'no-store',
   });
   const envelope = await readManifest(response);
   const key = await crypto.subtle.importKey('spki', decode(publicKey, 256), {name:'Ed25519'}, false, ['verify']);
