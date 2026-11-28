@@ -11,6 +11,11 @@ const staticFiles = new Map([
   ['/message-frame.js', '/message-frame.js'],
   ['/team.css', '/team.css'], ['/team.js', '/team.js'],
 ]);
+const installers = new Map([
+  ['/download/windows', 'Veyro-Mail-0.1.0-beta.1-win-x64.exe'],
+  ['/download/mac-apple', 'Veyro-Mail-0.1.0-beta.1-mac-arm64.dmg'],
+  ['/download/mac-intel', 'Veyro-Mail-0.1.0-beta.1-mac-x64.dmg'],
+]);
 const policy = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
 export function messageFramePolicy(images = false, origin = webOrigin) {
   return `default-src 'none'; script-src ${origin}/message-frame.js; style-src 'unsafe-inline'; img-src data:${images ? ' https:' : ''}; font-src 'none'; connect-src 'none'; frame-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox`;
@@ -177,6 +182,13 @@ async function serveWebmail(req: Request, env: Env, url: URL, read: boolean): Pr
     return response;
   }
   if (path === '/') return asset(req, env, '/inbox.html', true);
+  if (path === '/download' || path === '/download/') return asset(req, env, '/download.html', true);
+  const installer = installers.get(path);
+  if (installer) {
+    const headers = responseHeaders();
+    headers.set('Location', 'https://post.veyro.dk/webmail-downloads/' + installer);
+    return new Response(null, { status: 302, headers });
+  }
   if (path === '/team') return asset(req, env, '/team.html', true);
   if (path === '/administration') return administrationPage(req, env);
   if (bookmarks.has(path)) return redirect('/');

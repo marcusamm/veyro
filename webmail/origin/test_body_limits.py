@@ -81,6 +81,12 @@ class BodyLimits(unittest.TestCase):
             cls.port = selected.getsockname()[1]
         snippet = Path(__file__).with_name("mail-api.caddy").read_text()
         snippet = snippet.replace("127.0.0.1:18082", "127.0.0.1:" + str(cls.upstream.server_port))
+        downloads = Path(cls.temp.name) / "downloads"
+        downloads.mkdir()
+        cls.installer = "Veyro-Mail-0.1.0-beta.1-win-x64.exe"
+        (downloads / cls.installer).write_bytes(b"installer fixture")
+        (downloads / "private.txt").write_text("synthetic private file")
+        snippet = snippet.replace("/srv/veyro-mail-downloads/0.1.0-beta.1", str(downloads))
         config = Path(cls.temp.name) / "Caddyfile"
         config.write_text("{\n admin off\n auto_https off\n}\nhttp://127.0.0.1:" + str(cls.port) + " {\n" + snippet + "\n}\n")
         cls.environment = {**os.environ, "XDG_DATA_HOME": cls.temp.name, "XDG_CONFIG_HOME": cls.temp.name}
@@ -135,6 +141,27 @@ class BodyLimits(unittest.TestCase):
             return response.status, response.read()
         finally:
             connection.close()
+
+    def test_download_is_resumable_and_only_named_installers_are_served(self):
+        path = "/webmail-downloads/" + self.installer
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=3)
+        try:
+            connection.request("GET", path, headers={"Range": "bytes=0-3"})
+            response = connection.getresponse()
+            self.assertEqual(response.status, 206)
+            self.assertEqual(response.read(), b"inst")
+            self.assertEqual(response.getheader("Content-Disposition"), 'attachment; filename="' + self.installer + '"')
+            self.assertEqual(response.getheader("Content-Type"), "application/octet-stream")
+            connection.request("HEAD", path)
+            response = connection.getresponse()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(int(response.getheader("Content-Length")), len(b"installer fixture"))
+            self.assertEqual(response.read(), b"")
+        finally:
+            connection.close()
+        for method, target in [("POST", path), ("GET", "/webmail-downloads/"), ("GET", "/webmail-downloads/private.txt")]:
+            with self.subTest(method=method, target=target):
+                self.assertEqual(self.request(method, target, 0)[0], 404)
 
     def test_upload_accepts_exact_7mib_and_strips_proxy_path_and_untrusted_headers(self):
         # The exact path matcher must keep its upload allowance when a query

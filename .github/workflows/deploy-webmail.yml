@@ -88,6 +88,8 @@ jobs:
             [[ "$result" == 200 ]] && grep -Fq '<title>Veyro Mail</title>' "$page" && grep -Fq 'src="/inbox.js"' "$page" || return 1
             grep -Fq 'id="password-form"' "$page" || return 1
             grep -Fq 'id="mail-menu"' "$page" || return 1
+            result=$("${fetch[@]}" -o "$page.download" -w '%{http_code}' "$base/download") || return 1
+            [[ "$result" == 200 ]] && grep -Fq 'href="/download/windows"' "$page.download" || return 1
             result=$("${fetch[@]}" -o "$page.team" -w '%{http_code}' "$base/team") || return 1
             [[ "$result" == 200 ]] && grep -Fq 'src="/team.js"' "$page.team" || return 1
             result=$("${fetch[@]}" -o "$page.team-session" -w '%{http_code}' "$base/api/team/bootstrap") || return 1

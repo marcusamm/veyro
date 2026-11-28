@@ -48,6 +48,26 @@ h1:focus, h2:focus { outline: none; }
 .entry .appbar { width: min(calc(100% - 2 * var(--entry-gutter)), 86rem); height: 5.25rem; margin: 0 auto; padding: 0; border-color: #cbc8c0; background: transparent; }
 .entry .brand b,.entry-home { display: none; }
 .entry .entry-home { display: inline; padding-block: .8rem; color: #524e45; font-size: .9rem; font-weight: 600; text-underline-offset: .24em; }
+.app-links { display: flex; align-items: center; gap: clamp(.5rem, 1.6vw, 1.4rem); margin-left: auto; flex: none; }
+.app-tab { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 .85rem; border-radius: .55rem; color: #67331e; font-size: .88rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.app-tab:hover, .app-tab[aria-current=page] { background: #eae4d9; }
+.download-main { width: min(calc(100% - 2 * var(--entry-gutter)), 78rem); margin: 0 auto; padding: clamp(2.75rem, 8vw, 8rem) 0 4rem; display: grid; grid-template-columns: 1.12fr 1fr; align-items: start; gap: clamp(2rem, 6vw, 7rem); }
+.download-intro h1 { max-width: 11ch; font-size: clamp(3.25rem, 6.2vw, 6.6rem); font-weight: 650; line-height: 1.02; letter-spacing: -.075em; }
+.download-intro h1 span { color: #e4480b; }
+.download-intro p { max-width: 34ch; margin-top: 1.35rem; color: #524e45; font-size: clamp(1rem, 1.5vw, 1.22rem); line-height: 1.6; }
+.download-options h2 { margin-bottom: .85rem; color: #524e45; font-size: .88rem; font-weight: 650; }
+.download-options ul { padding: 0; border-top: 1px solid #c4bfb4; list-style: none; }
+.download-options li { border-bottom: 1px solid #c4bfb4; }
+.download-options li a { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: 1.15rem .25rem; color: inherit; font-size: clamp(1.18rem, 2.3vw, 1.65rem); font-weight: 650; letter-spacing: -.04em; text-decoration: none; }
+.download-options li a:hover { color: #8c3514; }
+.download-options small { display: block; margin-top: .15rem; color: #615c53; font-size: .82rem; font-weight: 500; letter-spacing: 0; }
+.download-options li a > span:last-child { display: grid; place-items: center; width: 2.45rem; height: 2.45rem; border-radius: 50%; background: #241f1b; color: #fff; font-size: 1.3rem; }
+.download-options li a:hover > span:last-child { background: #8c3514; }
+.download-help { margin-top: .85rem; }
+.download-help summary { padding: .8rem 0; font-size: .92rem; font-weight: 650; cursor: pointer; }
+.download-help summary:focus-visible { outline: 3px solid #a53a12; outline-offset: 2px; }
+.download-help p, .download-note { color: #615c53; font-size: .86rem; line-height: 1.65; }
+.download-note { margin-top: 1rem; }
 .gate { padding: 0 var(--entry-gutter); }
 .entry-desk { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(0,1fr); align-items: center; gap: clamp(2.25rem,5vw,6rem); max-width: 78rem; min-height: min(47rem,calc(100svh - 5.25rem)); margin: 0 auto; padding: clamp(2.4rem,5vw,5.5rem) 0; }
 .entry-fields { min-width: 0; }
@@ -196,6 +216,8 @@ dialog::backdrop { background: rgb(37 32 23 / 37%); }
   .reader { padding-inline: 1.5rem; }
 }
 @media (max-width: 46rem) {
+  .download-main { grid-template-columns: minmax(0, 1fr); gap: 2.4rem; }
+  .app-tab { font-size: .8rem; padding-inline: .5rem; }
   .mail-menu { left: .5rem !important; right: .5rem; bottom: max(.5rem,env(safe-area-inset-bottom)); top: auto !important; width: auto; min-width: 0; max-width: none; max-height: 72dvh; }
   .menu-option { min-height: 2.75rem; }
   .message-list .more-actions { width: 2.75rem; height: 2.75rem; }
