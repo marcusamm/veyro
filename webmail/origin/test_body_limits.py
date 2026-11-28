@@ -27,9 +27,11 @@ class BodyLimits(unittest.TestCase):
         cls.temp = tempfile.TemporaryDirectory(prefix="veyro-caddy-body-test-")
         cls.addClassCleanup(cls.temp.cleanup)
         cls.calls = []
+        cls.started = []
 
         class Upstream(BaseHTTPRequestHandler):
             def consume(self):
+                cls.started.append((self.command, self.path))
                 count = 0
                 try:
                     if self.headers.get("Transfer-Encoding", "").lower() == "chunked":
@@ -118,11 +120,16 @@ class BodyLimits(unittest.TestCase):
         headers = {"Content-Type": "application/json", "Authorization": "synthetic-stripped",
                    "X-Original-URL": "/synthetic-stripped", "X-Rewrite-URL": "/synthetic-stripped"}
         try:
-            if chunked:
-                body = (b"x" * min(65536, size - i) for i in range(0, size, 65536))
-                connection.request(method, path, body=body, headers=headers, encode_chunked=True)
-            else:
-                connection.request(method, path, body=b"x" * size, headers=headers)
+            try:
+                if chunked:
+                    body = (b"x" * min(65536, size - i) for i in range(0, size, 65536))
+                    connection.request(method, path, body=body, headers=headers, encode_chunked=True)
+                else:
+                    connection.request(method, path, body=b"x" * size, headers=headers)
+            except BrokenPipeError:
+                # Early 413 can close the upload while the client is still
+                # writing. The HTTP response below must still confirm 413.
+                pass
             response = connection.getresponse()
             return response.status, response.read()
         finally:
@@ -135,6 +142,37 @@ class BodyLimits(unittest.TestCase):
         headers = {key.lower(): value for key, value in self.calls[-1][3].items()}
         for name in ("authorization", "x-original-url", "x-rewrite-url"):
             self.assertNotIn(name, headers)
+
+    def test_oversize_content_length_is_rejected_before_reading_or_contacting_upstream(self):
+        # Send headers only: this must not wait for a body or open an upstream
+        # request. Caddy 2.6 otherwise turns a later proxy read failure into 502.
+        for path, limit in [("/webmail-api/api/team/files", 7 * 1024 * 1024),
+                            ("/webmail-api/api/team/posts", 256 * 1024)]:
+            with self.subTest(path=path):
+                started = len(self.started)
+                connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=2)
+                try:
+                    connection.putrequest("POST", path)
+                    connection.putheader("Content-Type", "application/json")
+                    connection.putheader("Content-Length", str(limit + 1))
+                    connection.endheaders()
+                    response = connection.getresponse()
+                    self.assertEqual(response.status, 413)
+                    response.read()
+                    self.assertEqual(len(self.started), started)
+                finally:
+                    connection.close()
+
+    def test_headerless_get_and_small_post_still_proxy(self):
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=2)
+        try:
+            connection.request("GET", "/webmail-api/api/team/bootstrap")
+            response = connection.getresponse()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(json.loads(response.read()), {"path": "/api/team/bootstrap", "bytes": 0})
+        finally:
+            connection.close()
+        self.assertEqual(self.request("POST", "/webmail-api/api/team/posts", 2)[0], 200)
 
     def test_upload_rejects_larger_declared_and_chunked_bodies(self):
         for chunked in (False, True):
