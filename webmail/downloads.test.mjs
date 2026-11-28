@@ -4,7 +4,7 @@ import gateway from './worker.ts';
 
 it('serves the public download page and maps its three buttons to the checked release files', async () => {
   const html = readFileSync(new URL('./assets/download.html', import.meta.url), 'utf8');
-  const manifest = readFileSync(new URL('./origin/SHA256SUMS-0.1.0-beta.1.txt', import.meta.url), 'utf8');
+  const manifest = readFileSync(new URL('./origin/SHA256SUMS-0.1.0-beta.2.txt', import.meta.url), 'utf8');
   const files = new Set(manifest.trim().split('\n').map(line => line.trim().split(/\s+/)[1]));
   const assets = vi.fn(async req => new Response(new URL(req.url).pathname === '/download.html' ? html : '', {status:200}));
   const serve = (path, method = 'GET') => gateway.fetch(new Request('https://mail.veyro.dk' + path, {method}), {WEBMAIL_ENABLED:'1', ASSETS:{fetch:assets}});

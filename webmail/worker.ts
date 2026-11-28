@@ -12,9 +12,9 @@ const staticFiles = new Map([
   ['/team.css', '/team.css'], ['/team.js', '/team.js'],
 ]);
 const installers = new Map([
-  ['/download/windows', 'Veyro-Mail-0.1.0-beta.1-win-x64.exe'],
-  ['/download/mac-apple', 'Veyro-Mail-0.1.0-beta.1-mac-arm64.dmg'],
-  ['/download/mac-intel', 'Veyro-Mail-0.1.0-beta.1-mac-x64.dmg'],
+  ['/download/windows', 'Veyro-Mail-0.1.0-beta.2-win-x64.exe'],
+  ['/download/mac-apple', 'Veyro-Mail-0.1.0-beta.2-mac-arm64.dmg'],
+  ['/download/mac-intel', 'Veyro-Mail-0.1.0-beta.2-mac-x64.dmg'],
 ]);
 const policy = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
 export function messageFramePolicy(images = false, origin = webOrigin) {
@@ -175,8 +175,17 @@ async function serveWebmail(req: Request, env: Env, url: URL, read: boolean): Pr
     return methodNotAllowed(req, isReadApi && isWriteApi ? 'GET, POST' : isWriteApi ? 'POST' : 'GET');
   }
   if (!read) return methodNotAllowed(req, 'GET, HEAD');
+  // Only the empty reader and its script can be reused. Message data arrives after load.
+  if (path === '/message-frame.js' && url.search === '?v=1') {
+    const response = await asset(req, env, '/message-frame.js');
+    if (response.ok) response.headers.set('Cache-Control', 'private, max-age=300');
+    return response;
+  }
   if (path === '/message-frame') {
     const response = await asset(req, env, '/message-frame.html', true);
+    if (response.ok && (url.search === '?v=1' || url.search === '?v=1&images=1')) {
+      response.headers.set('Cache-Control', 'private, max-age=300');
+    }
     response.headers.set('Content-Security-Policy', messageFramePolicy(url.searchParams.get('images') === '1'));
     response.headers.set('X-Frame-Options', 'SAMEORIGIN');
     return response;

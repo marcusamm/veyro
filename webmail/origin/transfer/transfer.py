@@ -20,9 +20,9 @@ PREFIX = "/webmail-release-upload/"
 PORT = 18146
 CHUNK = 8 * 1024 * 1024
 FILES = {
-    "mac-apple": ("Veyro-Mail-0.1.0-beta.1-mac-arm64.dmg", 121897457, "d0cabd73a30dd768d9912c51dc05a3c00485d68bad3979b8f8608199e95fbb3e"),
-    "mac-intel": ("Veyro-Mail-0.1.0-beta.1-mac-x64.dmg", 129174344, "e7328dc6cad3bf753bce037d1b76349a0b729b954acafd840a958277fce648fe"),
-    "windows": ("Veyro-Mail-0.1.0-beta.1-win-x64.exe", 122978391, "71c693e05f3acf915e1df86f52c9030c6f172a3a9dc4ba262afcb21afd36ca91"),
+    "mac-apple": ("Veyro-Mail-0.1.0-beta.2-mac-arm64.dmg", 121885608, "240d647c1bd9cba0a4bd1b5e2a199d8a3410f14770b4a66a137e3d00d519799e"),
+    "mac-intel": ("Veyro-Mail-0.1.0-beta.2-mac-x64.dmg", 129180662, "63c620a405e0d905edfee80889bbeed4459d351473bacdf294e0729734202086"),
+    "windows": ("Veyro-Mail-0.1.0-beta.2-win-x64.exe", 122980375, "2c89adf78284399504087d5442dbce506b50feb695c3831b8cb70aaf5ae3f86c"),
 }
 
 def digest(path):

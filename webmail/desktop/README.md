@@ -1,6 +1,6 @@
 # Veyro Mail desktop
 
-Veyro Mail `0.1.0-beta.1` is an Electron desktop app for macOS and Windows. It keeps the existing Veyro Mail interface and adds a compact account rail, independent account sessions, native attachment saving, and a native IMAP/SMTP client for other providers.
+Veyro Mail `0.1.0-beta.2` is an Electron desktop app for macOS and Windows. It keeps the existing Veyro Mail interface and adds a compact account rail, independent account sessions, native attachment saving, and a native IMAP/SMTP client for other providers.
 
 ## Account support
 
@@ -54,9 +54,9 @@ The default registration path is `oauth-config.local.json` in this directory; `V
 
 | Platform | Installer |
 | --- | --- |
-| Apple Silicon Mac | `dist/Veyro-Mail-0.1.0-beta.1-mac-arm64.dmg` |
-| Intel Mac | `dist/Veyro-Mail-0.1.0-beta.1-mac-x64.dmg` |
-| Windows x64 | `dist/Veyro-Mail-0.1.0-beta.1-win-x64.exe` |
+| Apple Silicon Mac | `dist/Veyro-Mail-0.1.0-beta.2-mac-arm64.dmg` |
+| Intel Mac | `dist/Veyro-Mail-0.1.0-beta.2-mac-x64.dmg` |
+| Windows x64 | `dist/Veyro-Mail-0.1.0-beta.2-win-x64.exe` |
 | Integrity checks | `dist/SHA256SUMS.txt` |
 
 Mac installers contain a drag-to-Applications app. The Windows installer uses NSIS, offers an installation directory, and installs per user. Uninstallation deliberately retains user data; use **Fjern fra computeren** in the app to remove a saved account and its local data.

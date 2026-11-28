@@ -90,6 +90,29 @@ async function mailbox(t, viewport, messages = [newsletter]) {
   return {page, open, requests, policies};
 }
 
+test('repeated clicks on an opening or displayed message share the original read', async t => {
+  const {page} = await mailbox(t, {width: 1440, height: 1000});
+  await page.evaluate(() => {
+    const original = window.fetch;
+    window.fixtureDetailReads = 0;
+    window.fetch = async (...args) => {
+      if (String(args[0]).startsWith('/api/messages/')) {
+        window.fixtureDetailReads++;
+        await new Promise(resolve => { window.releaseDetailRead = resolve; });
+      }
+      return original(...args);
+    };
+  });
+  const row = page.locator('.message-row').first();
+  await row.click();
+  await row.click();
+  assert.equal(await page.evaluate(() => window.fixtureDetailReads), 1);
+  await page.evaluate(() => window.releaseDetailRead());
+  await renderedFrame(page);
+  await row.click();
+  assert.equal(await page.evaluate(() => window.fixtureDetailReads), 1);
+});
+
 for (const viewport of [{width: 1440, height: 1000}, {width: 375, height: 812}]) {
   test(`preserves newsletter layout and inline images at ${viewport.width}px; external images require this message's consent`, async t => {
     const second = {...newsletter, id: '1.3', subject: 'Et andet nyhedsbrev'};
@@ -123,15 +146,15 @@ for (const viewport of [{width: 1440, height: 1000}, {width: 375, height: 812}])
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     assert.equal(await content.locator('body').evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
     const preConsentFrame = await page.locator('.mail-frame').getAttribute('src');
-    assert.equal(preConsentFrame, '/message-frame');
+    assert.equal(preConsentFrame, '/message-frame?v=1');
     await page.getByRole('button', {name: 'Vis billeder', exact: true}).click();
     content = await renderedFrame(page);
     assert.equal(await content.locator('#newsletter-hero').evaluate(image => image.naturalWidth), 600);
     assert.deepEqual(requests.map(request => request.url), [imageUrl]);
     assert.equal(requests[0].referer, undefined);
-    assert.equal(await page.locator('.mail-frame').getAttribute('src'), '/message-frame?images=1');
-    assert.ok(policies.some(response => response.path === '/message-frame' && response.policy.includes('img-src data:;')));
-    assert.ok(policies.some(response => response.path === '/message-frame?images=1' && response.policy.includes('img-src data: https:;')));
+    assert.equal(await page.locator('.mail-frame').getAttribute('src'), '/message-frame?v=1&images=1');
+    assert.ok(policies.some(response => response.path === '/message-frame?v=1' && response.policy.includes('img-src data:;')));
+    assert.ok(policies.some(response => response.path === '/message-frame?v=1&images=1' && response.policy.includes('img-src data: https:;')));
     await page.getByRole('button', {name: 'Vis som tekst', exact: true}).click();
     assert.equal(await page.locator('.mail-plain').textContent(), newsletter.text);
     assert.equal(await page.locator('.mail-frame').count(), 0);
@@ -147,7 +170,7 @@ for (const viewport of [{width: 1440, height: 1000}, {width: 375, height: 812}])
     await open(newsletter.id);
     await observeBlockedRequests(page);
     assert.equal(await page.getByRole('button', {name: 'Vis billeder', exact: true}).isVisible(), true);
-    assert.equal(await page.locator('.mail-frame').getAttribute('src'), '/message-frame');
+    assert.equal(await page.locator('.mail-frame').getAttribute('src'), '/message-frame?v=1');
     assert.equal(requests.length, beforeSecond, 'Reopening a message requires fresh permission');
   });
 }

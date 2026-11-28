@@ -1,6 +1,6 @@
 # Veyro Mail beta installer transfer
 
-This temporary tool copies the three **configured** 0.1.0-beta.1 installers
+This temporary tool copies the three **configured** 0.1.0-beta.2 installers
 from the release Mac directly to the Veyro mail origin. It needs Python 3.8+
 and the default CA trust store. Run it independently of the production mail API.
 The receiver admits only the three declared release files. Each file is kept
