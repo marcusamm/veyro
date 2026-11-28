@@ -79,7 +79,7 @@ jobs:
           taskkill /PID $mailProcess.Id /T /F
       - name: Verify Settings updater upgrades the running Windows fixture
         if: runner.os == 'Windows'
-        shell: pwsh
+        shell: powershell
         run: ./tests/windows-upgrade.ps1
       - name: Verify Mac bundle signature
         if: runner.os == 'macOS'

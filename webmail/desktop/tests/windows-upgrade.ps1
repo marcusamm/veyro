@@ -14,8 +14,8 @@ $profile = @('Veyro Mail','veyro-mail-desktop') | ForEach-Object { Join-Path $en
 if (!$profile -or !(Test-Path $exe)) { throw 'Expected the disposable cold-install fixture first.' }
 $accounts = Join-Path $profile 'accounts.json'
 $id = [guid]::NewGuid().ToString()
-@{accounts=@(@{id=$id; label='Windows update fixture'; kind='external'});activeId=$id} |
-  ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8NoBOM $accounts
+$accountData = @{accounts=@(@{id=$id; label='Windows update fixture'; kind='external'});activeId=$id} | ConvertTo-Json -Depth 4
+[System.IO.File]::WriteAllText($accounts, $accountData, [System.Text.UTF8Encoding]::new($false))
 
 function Read-InstalledVersion {
   $metadata = Join-Path $installRoot 'resources/app.asar'
