@@ -41,9 +41,25 @@ try {
   Start-Sleep -Seconds 4
   if ($old.HasExited) { throw 'The prior app must be running at the start of the handoff.' }
   $priorId=$old.Id
+  # The hosted runner has no operator for a native Windows launch prompt. Record
+  # visible windows and installer processes to distinguish OS consent from a hung upgrade.
+  $watch = Start-Job -ScriptBlock {
+    for ($sample=1; $sample -le 5; $sample++) {
+      Start-Sleep -Seconds 15
+      "Windows handoff sample $sample"
+      Get-Process | Where-Object { $_.MainWindowTitle -or $_.ProcessName -match '^(?:Veyro|powershell$|smartscreen$|consent$|OpenWith$)' } |
+        Select-Object Id,ProcessName,MainWindowTitle | Format-Table -AutoSize | Out-String -Width 200
+    }
+  }
   # Run the exact Windows updater handoff, including origin marking, publisher checks and NSIS launch flags.
-  & node -e "require('./update-install.cjs').installPackage({platform:'win32',filename:process.argv[1],execPath:process.argv[2],beforeHandoff:async()=>{process.kill(Number(process.argv[3]),0)}}).catch(e=>{console.error(e.message);process.exitCode=1})" $installer $exe $priorId
-  if ($LASTEXITCODE -ne 0) { throw 'Windows updater rejected the test installer.' }
+  try {
+    & node -e "require('./update-install.cjs').installPackage({platform:'win32',filename:process.argv[1],execPath:process.argv[2],beforeHandoff:async()=>{process.kill(Number(process.argv[3]),0);console.log('Publisher check passed; handing off')}}).catch(e=>{console.error(e.message,e.code,e.killed,e.signal);process.exitCode=1})" $installer $exe $priorId
+    if ($LASTEXITCODE -ne 0) { throw 'Windows updater rejected the test installer.' }
+  } finally {
+    Stop-Job $watch
+    Receive-Job $watch
+    Remove-Job $watch
+  }
   if (!$old.HasExited) { $null=$old.CloseMainWindow() }
   if (!$old.WaitForExit(30000)) { throw 'The previous app remained open after the upgrade request.' }
   $deadline=[datetime]::UtcNow.AddSeconds(100)
