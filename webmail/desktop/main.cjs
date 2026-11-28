@@ -329,7 +329,14 @@ async function bootstrap(options = {}) {
       }
       case 'retry': {
         const entry = views.get(activeId);
-        if (entry) entry.view.webContents.reload();
+        if (entry) {
+          // A retry may begin before Chromium finishes the failed navigation;
+          // in that case did-start-loading need not fire again.
+          entry.failed = false;
+          entry.status = 'loading';
+          layout(); publish();
+          entry.view.webContents.reload();
+        }
         return state();
       }
       case 'dismiss': toast = ''; publish(); return state();

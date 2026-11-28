@@ -47,6 +47,10 @@ jobs:
       - run: npm test
       - run: npm run test:smoke
       - name: Build installer without publishing
+        env:
+          # PR builds still need the configured ad-hoc Mac signature after the
+          # Electron fuses/ASAR are changed. No publisher credentials are used.
+          CSC_FOR_PULL_REQUEST: ${{ runner.os == 'macOS' && 'true' || 'false' }}
         run: npx electron-builder --${{ matrix.platform }} ${{ matrix.target }} --${{ matrix.arch }} --publish never
       - name: Install and launch Windows artifact on the runner
         if: runner.os == 'Windows'

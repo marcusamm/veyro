@@ -8,7 +8,7 @@ const os = require('node:os');
 const {randomUUID} = require('node:crypto');
 const {bootstrap} = require('../main.cjs');
 const {SHELL_URL} = require('../security.cjs');
-let runtime, server, temp, offline = false;
+let runtime, server, temp, offline = false, documentLoads = 0;
 const confirmations = [], opened = [];
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function until(fn, label) { for (let i = 0; i < 400; i++) { if (await fn()) return; await wait(25); } throw new Error(`Timed out: ${label}`); }
@@ -17,8 +17,9 @@ async function run() {
   server = http.createServer((request, response) => {
     if (offline) { request.socket.destroy(); return; }
     if (request.url === '/attachment') { response.writeHead(200, {'Content-Disposition': 'attachment; filename="smoke.txt"', 'Content-Type': 'application/octet-stream'}); response.end('Veyro attachment smoke'); return; }
+    documentLoads++;
     response.writeHead(200, {'Content-Type': 'text/html'});
-    response.end('<!doctype html><html><body style="font-family:system-ui;background:#faf9f6;padding:40px"><h1>Veyro Mail · testkonto</h1><p>Isoleret session og sikker desktop-skal.</p><a id="download" href="/attachment">Gem vedhæftning</a></body></html>');
+    response.end(`<!doctype html><html><body style="font-family:system-ui;background:#faf9f6;padding:40px"><h1>Veyro Mail · testkonto</h1><p>Isoleret session og sikker desktop-skal.</p><span id="load-id">${documentLoads}</span><a id="download" href="/attachment">Gem vedhæftning</a></body></html>`);
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${server.address().port}`;
@@ -76,6 +77,23 @@ async function run() {
   offline = false;
   await runtime.shellAction('retry');
   await until(() => runtime.state().status === 'ready', 'retry recovery');
+  await until(() => !first.isLoading(), 'recovery document settled');
+  // A user can retry as soon as the failure screen appears, while Chromium is
+  // still completing the failed navigation. Exercise that event ordering.
+  const previousDocument = documentLoads;
+  offline = true;
+  const immediateRetry = new Promise((resolve) => {
+    first.once('did-fail-load', () => {
+      offline = false;
+      void runtime.shellAction('retry').then(resolve);
+    });
+  });
+  await runtime.shellAction('retry');
+  await immediateRetry;
+  await until(() => runtime.state().status === 'ready' && !first.isLoading(), 'retry during failure callback');
+  assert.match(await first.executeJavaScript('document.body.innerText'), /testkonto/);
+  assert.ok(documentLoads > previousDocument);
+  assert.equal(await first.executeJavaScript('Number(document.getElementById("load-id").textContent)'), documentLoads);
   const firstSession = first.session;
   await runtime.shellAction('remove', {id: firstId});
   assert.equal(runtime.views.has(firstId), false);
@@ -95,7 +113,8 @@ async function run() {
     const native = runtime.views.get(runtime.state().activeId).view.webContents;
     assert.deepEqual(await native.executeJavaScript('({node:typeof require,bridge:typeof veyroMail,shell:typeof veyroDesktop})'), {node: 'undefined', bridge: 'object', shell: 'undefined'});
     assert.equal((await native.executeJavaScript('veyroMail.invoke("bootstrap")')).configured, false);
-    assert.deepEqual((await native.executeJavaScript('veyroMail.invoke("bootstrap")')).oauth, {google: {available: false}, microsoft: {available: false}});
+    const configuredGoogle = Boolean(process.env.VEYRO_GOOGLE_CLIENT_ID || require('../oauth-config.json').google?.clientId);
+    assert.deepEqual((await native.executeJavaScript('veyroMail.invoke("bootstrap")')).oauth, {google: {available: configuredGoogle}, microsoft: {available: false}});
     // Real asynchronous OS encryption, draft persistence and public-data redaction.
     await native.executeJavaScript('veyroMail.invoke("saveDraft",{subject:"Private draft",text:"SECRET-SMOKE-DRAFT"})');
     console.log('Smoke: encrypted draft saved');
